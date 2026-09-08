@@ -1,0 +1,1082 @@
+import { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  FiArrowRight,
+  FiChevronDown,
+  FiCopy,
+  FiHeart,
+  FiMinus,
+  FiPlus,
+  FiShare2,
+  FiShoppingBag,
+  FiStar,
+} from "react-icons/fi";
+import {
+  Link,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
+
+import { products } from "../data/products";
+import { useCart } from "../context/CartContext";
+
+function Product() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+
+  const { addToCart } = useCart();
+
+  const product = products.find(
+    (item) => item.id === id
+  );
+
+  const [selectedImage, setSelectedImage] =
+    useState(0);
+
+  const [selectedColor, setSelectedColor] =
+    useState("");
+
+  const [selectedSize, setSelectedSize] =
+    useState("Free Size");
+
+  const [quantity, setQuantity] =
+    useState(1);
+
+  const [liked, setLiked] =
+    useState(false);
+
+  const [copied, setCopied] =
+    useState(false);
+
+  const [openFaq, setOpenFaq] =
+    useState<number | null>(null);
+
+  const [showAdded, setShowAdded] =
+    useState(false);
+
+  /*
+   * ============================================================
+   * PRODUCT NOT FOUND
+   * ============================================================
+   */
+
+  if (!product) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#FAF8F5] px-5 text-center">
+        <div>
+          <p className="text-[9px] uppercase tracking-[0.2em] text-[#8E3D51]">
+            BECHO
+          </p>
+
+          <h1 className="mt-3 font-serif text-4xl">
+            Product not found.
+          </h1>
+
+          <Link
+            to="/shop"
+            className="mt-7 inline-flex rounded-full bg-[#2A2421] px-7 py-4 text-[9px] font-semibold uppercase tracking-[0.15em] text-white"
+          >
+            Return to collection
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
+  /*
+   * ============================================================
+   * RELATED PRODUCTS
+   * ============================================================
+   */
+
+  const relatedProducts = products
+    .filter(
+      (item) =>
+        item.id !== product.id &&
+        item.category === product.category
+    )
+    .slice(0, 4);
+
+  /*
+   * ============================================================
+   * ADD TO BAG
+   * ============================================================
+   */
+
+  const handleAddToCart = () => {
+    addToCart(product, {
+      quantity,
+      selectedColor,
+      selectedSize,
+    });
+
+    setShowAdded(true);
+
+    window.setTimeout(() => {
+      setShowAdded(false);
+    }, 2200);
+  };
+
+  /*
+   * ============================================================
+   * BUY NOW
+   *
+   * Adds the selected product/variant to the cart
+   * and immediately navigates to checkout.
+   * ============================================================
+   */
+
+  const handleBuyNow = () => {
+    addToCart(product, {
+      quantity,
+      selectedColor,
+      selectedSize,
+    });
+
+    navigate("/checkout");
+  };
+
+  /*
+   * ============================================================
+   * SHARE PRODUCT
+   * ============================================================
+   */
+
+  const handleShare = async () => {
+    const url = window.location.href;
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: product.name,
+          text: `Take a look at ${product.name} from BECHO.`,
+          url,
+        });
+      } else {
+        await navigator.clipboard.writeText(url);
+
+        setCopied(true);
+
+        window.setTimeout(() => {
+          setCopied(false);
+        }, 1800);
+      }
+    } catch {
+      /*
+       * User cancelled native sharing.
+       */
+    }
+  };
+
+  /*
+   * ============================================================
+   * MAIN PRODUCT PAGE
+   * ============================================================
+   */
+
+  return (
+    <main className="min-h-screen overflow-hidden bg-[#FAF8F5] pb-24">
+      {/* =====================================================
+          PRODUCT HERO
+      ====================================================== */}
+
+      <section className="mx-auto max-w-[1600px] px-3 pt-3 sm:px-6 sm:pt-6 lg:px-10">
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1.05fr)_minmax(380px,0.95fr)] lg:items-start lg:gap-10">
+          {/* =================================================
+              IMAGE AREA
+          ================================================== */}
+
+          <div className="lg:sticky lg:top-[105px]">
+            <div className="grid gap-3 sm:grid-cols-[82px_1fr]">
+              {/* THUMBNAILS */}
+
+              <div className="order-2 flex gap-2 overflow-x-auto sm:order-1 sm:flex-col sm:overflow-visible">
+                {product.images.map(
+                  (image, index) => (
+                    <button
+                      key={image}
+                      type="button"
+                      onClick={() =>
+                        setSelectedImage(index)
+                      }
+                      aria-label={`View image ${index + 1
+                        }`}
+                      className={`relative h-20 w-16 shrink-0 overflow-hidden rounded-xl transition-all sm:h-[92px] sm:w-[70px] ${selectedImage === index
+                          ? "ring-1 ring-[#8E3D51]"
+                          : "opacity-55 hover:opacity-100"
+                        }`}
+                    >
+                      <img
+                        src={image}
+                        alt={`${product.name} view ${index + 1
+                          }`}
+                        className="h-full w-full object-cover"
+                      />
+                    </button>
+                  )
+                )}
+              </div>
+
+              {/* MAIN IMAGE */}
+
+              <div className="group relative order-1 aspect-[4/5] overflow-hidden rounded-[1.4rem] bg-[#E8DED5] sm:order-2 sm:aspect-[4/5] lg:aspect-[0.86]">
+                <AnimatePresence mode="wait">
+                  <motion.img
+                    key={
+                      product.images[
+                      selectedImage
+                      ]
+                    }
+                    src={
+                      product.images[
+                      selectedImage
+                      ]
+                    }
+                    alt={product.name}
+                    initial={{
+                      opacity: 0,
+                      scale: 1.025,
+                    }}
+                    animate={{
+                      opacity: 1,
+                      scale: 1,
+                    }}
+                    transition={{
+                      duration: 0.5,
+                      ease: [
+                        0.22,
+                        1,
+                        0.36,
+                        1,
+                      ],
+                    }}
+                    className="h-full w-full object-cover"
+                  />
+                </AnimatePresence>
+
+                {/* IMAGE LABEL */}
+
+                <div className="absolute left-4 top-4 rounded-full bg-white/75 px-3 py-2 text-[8px] font-semibold uppercase tracking-[0.16em] text-black/60 backdrop-blur-xl">
+                  BECHO EDIT
+                </div>
+
+                {/* WISHLIST */}
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setLiked((current) => !current)
+                  }
+                  aria-label="Add to wishlist"
+                  className={`absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full backdrop-blur-xl transition-all ${liked
+                      ? "bg-[#8E3D51] text-white"
+                      : "bg-white/75 text-[#2A2421] hover:bg-white"
+                    }`}
+                >
+                  <FiHeart
+                    size={17}
+                    fill={
+                      liked
+                        ? "currentColor"
+                        : "none"
+                    }
+                  />
+                </button>
+
+                {/* IMAGE COUNT */}
+
+                <div className="absolute bottom-4 right-4 rounded-full bg-black/40 px-3 py-2 text-[8px] tracking-[0.12em] text-white backdrop-blur-md">
+                  {selectedImage + 1} /{" "}
+                  {product.images.length}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* =================================================
+              PRODUCT INFORMATION
+          ================================================== */}
+
+          <div className="px-1 pb-8 sm:px-3 lg:pt-5">
+            {/* BREADCRUMB */}
+
+            <div className="mb-8 flex items-center gap-2 text-[8px] uppercase tracking-[0.16em] text-black/30">
+              <Link
+                to="/shop"
+                className="transition-colors hover:text-[#8E3D51]"
+              >
+                Collection
+              </Link>
+
+              <span>/</span>
+
+              <span>
+                {product.category}
+              </span>
+            </div>
+
+            {/* TITLE */}
+
+            <div className="flex items-start justify-between gap-5">
+              <div>
+                <p className="text-[9px] font-semibold uppercase tracking-[0.22em] text-[#8E3D51]">
+                  {product.material}
+                </p>
+
+                <h1 className="mt-3 max-w-xl font-serif text-4xl leading-[0.95] tracking-[-0.02em] sm:text-5xl lg:text-6xl">
+                  {product.name}
+                </h1>
+              </div>
+
+              {/* SHARE */}
+
+              <button
+                type="button"
+                onClick={handleShare}
+                aria-label="Share product"
+                className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-black/[0.08] bg-white/50 transition-all hover:bg-white"
+              >
+                {copied ? (
+                  <FiCopy size={15} />
+                ) : (
+                  <FiShare2 size={15} />
+                )}
+              </button>
+            </div>
+
+            {/* RATING */}
+
+            <div className="mt-6 flex items-center gap-3">
+              <div className="flex items-center gap-1">
+                {[1, 2, 3, 4, 5].map(
+                  (star) => (
+                    <FiStar
+                      key={star}
+                      size={12}
+                      fill="currentColor"
+                      className="text-[#B78352]"
+                    />
+                  )
+                )}
+              </div>
+
+              <span className="text-[9px] uppercase tracking-[0.12em] text-black/35">
+                {product.rating} ·{" "}
+                {product.reviewCount} reviews
+              </span>
+            </div>
+
+            {/* PRICE */}
+
+            <div className="mt-7 flex items-end gap-3">
+              <span className="font-semibold text-3xl">
+                ₹
+                {product.price.toLocaleString(
+                  "en-IN"
+                )}
+              </span>
+
+              {product.originalPrice &&
+                product.originalPrice >
+                product.price && (
+                  <>
+                    <span className="mb-1 text-sm text-black/30 line-through">
+                      ₹
+                      {product.originalPrice.toLocaleString(
+                        "en-IN"
+                      )}
+                    </span>
+
+                    <span className="mb-1 rounded-full bg-[#F0DDE1] px-2.5 py-1 text-[8px] font-semibold uppercase tracking-[0.12em] text-[#8E3D51]">
+                      {Math.round(
+                        ((product.originalPrice -
+                          product.price) /
+                          product.originalPrice) *
+                        100
+                      )}
+                      % off
+                    </span>
+                  </>
+                )}
+            </div>
+
+            {/* SHORT DESCRIPTION */}
+
+            <p className="mt-5 max-w-xl text-sm leading-7 text-black/50">
+              {product.description}
+            </p>
+
+            {/* DIVIDER */}
+
+            <div className="my-8 h-px bg-black/[0.08]" />
+
+            {/* =================================================
+                COLOUR
+            ================================================== */}
+
+            {product.colors &&
+              product.colors.length > 0 && (
+                <div>
+                  <div className="flex items-center justify-between">
+                    <p className="text-[9px] font-semibold uppercase tracking-[0.17em]">
+                      Colour
+                    </p>
+
+                    <span className="text-[9px] text-black/35">
+                      {selectedColor ||
+                        "Select colour"}
+                    </span>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {product.colors.map(
+                      (color) => (
+                        <button
+                          key={color}
+                          type="button"
+                          onClick={() =>
+                            setSelectedColor(
+                              color
+                            )
+                          }
+                          className={`rounded-full border px-4 py-2.5 text-[9px] transition-all ${selectedColor ===
+                              color
+                              ? "border-[#8E3D51] bg-[#8E3D51] text-white"
+                              : "border-black/10 bg-white/50 text-black/55 hover:border-black/25 hover:bg-white"
+                            }`}
+                        >
+                          {color}
+                        </button>
+                      )
+                    )}
+                  </div>
+                </div>
+              )}
+
+            {/* =================================================
+                SIZE
+            ================================================== */}
+
+            {product.sizes &&
+              product.sizes.length > 0 && (
+                <div className="mt-7">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[9px] font-semibold uppercase tracking-[0.17em]">
+                      Size
+                    </p>
+
+                    <button
+                      type="button"
+                      className="text-[8px] uppercase tracking-[0.12em] text-black/35 underline underline-offset-4"
+                    >
+                      Size guide
+                    </button>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {product.sizes.map(
+                      (size) => (
+                        <button
+                          key={size}
+                          type="button"
+                          onClick={() =>
+                            setSelectedSize(
+                              size
+                            )
+                          }
+                          className={`min-w-16 rounded-full border px-4 py-2.5 text-[9px] transition-all ${selectedSize ===
+                              size
+                              ? "border-[#2A2421] bg-[#2A2421] text-white"
+                              : "border-black/10 bg-white/50 hover:bg-white"
+                            }`}
+                        >
+                          {size}
+                        </button>
+                      )
+                    )}
+                  </div>
+                </div>
+              )}
+
+            {/* =================================================
+                OFFERS
+            ================================================== */}
+
+            <div className="mt-8 overflow-hidden rounded-2xl border border-[#DDCEC1] bg-[#F1E8E0]/70">
+              <div className="flex items-start gap-4 p-5">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/70">
+                  <span className="font-serif text-lg">
+                    %
+                  </span>
+                </div>
+
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em]">
+                    A little something extra
+                  </p>
+
+                  <p className="mt-1 text-[10px] leading-5 text-black/45">
+                    Enjoy complimentary shipping
+                    on orders above ₹1,999.
+                  </p>
+                </div>
+              </div>
+
+              <div className="border-t border-[#DDCEC1] px-5 py-3.5">
+                <p className="text-[8px] uppercase tracking-[0.14em] text-[#8E3D51]">
+                  Code: BECHO10 · Demo offer
+                </p>
+              </div>
+            </div>
+
+            {/* =================================================
+                QUANTITY + PURCHASE ACTIONS
+            ================================================== */}
+
+            <div className="mt-7 space-y-3">
+              {/* QUANTITY + ADD TO BAG */}
+
+              <div className="flex gap-3">
+                {/* QUANTITY */}
+
+                <div className="flex h-14 shrink-0 items-center rounded-full border border-black/10 bg-white/60">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setQuantity(
+                        (current) =>
+                          Math.max(
+                            1,
+                            current - 1
+                          )
+                      )
+                    }
+                    aria-label="Decrease quantity"
+                    className="flex h-14 w-11 items-center justify-center transition-colors hover:text-[#8E3D51]"
+                  >
+                    <FiMinus size={13} />
+                  </button>
+
+                  <span className="w-8 text-center text-xs">
+                    {quantity}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setQuantity(
+                        (current) =>
+                          current + 1
+                      )
+                    }
+                    aria-label="Increase quantity"
+                    className="flex h-14 w-11 items-center justify-center transition-colors hover:text-[#8E3D51]"
+                  >
+                    <FiPlus size={13} />
+                  </button>
+                </div>
+
+                {/* ADD TO BAG */}
+
+                <button
+                  type="button"
+                  onClick={handleAddToCart}
+                  className="group flex h-14 flex-1 items-center justify-center gap-3 rounded-full bg-[#2A2421] text-[9px] font-semibold uppercase tracking-[0.16em] text-white transition-all duration-300 hover:bg-[#8E3D51] active:scale-[0.98]"
+                >
+                  <FiShoppingBag
+                    size={15}
+                  />
+
+                  {showAdded
+                    ? "Added to bag"
+                    : "Add to bag"}
+
+                  {!showAdded && (
+                    <FiPlus
+                      size={13}
+                      className="transition-transform duration-300 group-hover:rotate-90"
+                    />
+                  )}
+                </button>
+              </div>
+
+              {/* BUY NOW */}
+
+              <button
+                type="button"
+                onClick={handleBuyNow}
+                className="group flex h-14 w-full items-center justify-center gap-3 rounded-full bg-[#8E3D51] text-[9px] font-semibold uppercase tracking-[0.17em] text-white shadow-[0_12px_35px_rgba(142,61,81,0.14)] transition-all duration-300 hover:bg-[#773246] hover:shadow-[0_16px_40px_rgba(142,61,81,0.20)] active:scale-[0.98]"
+              >
+                Buy now
+
+                <FiArrowRight
+                  size={14}
+                  className="transition-transform duration-300 group-hover:translate-x-1"
+                />
+              </button>
+            </div>
+
+            {/* =================================================
+                PRODUCT INFO
+            ================================================== */}
+
+            <div className="mt-8 divide-y divide-black/[0.08] border-y border-black/[0.08]">
+              <InfoRow
+                title="About the product"
+                text={product.longDescription}
+              />
+
+              <InfoRow
+                title="Fabric & care"
+                text={`Made from ${product.material}. We recommend gentle hand washing or professional dry cleaning to preserve the fabric and finish.`}
+              />
+
+              <InfoRow
+                title="Shipping & returns"
+                text="Complimentary shipping above ₹1,999. Returns are available according to the store's return policy."
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* =====================================================
+          MARQUEE
+      ====================================================== */}
+
+      <section className="mt-20 overflow-hidden border-y border-black/[0.07] py-5">
+        <motion.div
+          animate={{
+            x: ["0%", "-50%"],
+          }}
+          transition={{
+            duration: 22,
+            repeat: Infinity,
+            ease: "linear",
+          }}
+          className="flex w-max"
+        >
+          {[...Array(2)].map(
+            (_, groupIndex) => (
+              <div
+                key={groupIndex}
+                className="flex items-center"
+              >
+                {[
+                  "CRAFTED WITH INTENTION",
+                  "TIMELESS FABRICS",
+                  "BECHO",
+                  "MADE TO BE REMEMBERED",
+                ].map((text) => (
+                  <div
+                    key={`${groupIndex}-${text}`}
+                    className="flex items-center"
+                  >
+                    <span className="mx-8 font-serif text-lg italic text-black/40">
+                      {text}
+                    </span>
+
+                    <span className="text-[#8E3D51]">
+                      ✦
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )
+          )}
+        </motion.div>
+      </section>
+
+      {/* =====================================================
+          RELATED PRODUCTS
+      ====================================================== */}
+
+      {relatedProducts.length > 0 && (
+        <section className="mx-auto mt-20 max-w-[1400px] px-4 sm:px-8 lg:px-10">
+          <div className="mb-8 flex items-end justify-between">
+            <div>
+              <p className="text-[9px] font-semibold uppercase tracking-[0.22em] text-[#8E3D51]">
+                You may also like
+              </p>
+
+              <h2 className="mt-2 font-serif text-4xl sm:text-5xl">
+                Complete the look.
+              </h2>
+            </div>
+
+            <Link
+              to="/shop"
+              className="hidden text-[9px] font-semibold uppercase tracking-[0.14em] text-black/40 hover:text-[#8E3D51] sm:block"
+            >
+              View collection →
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-5">
+            {relatedProducts.map(
+              (item, index) => (
+                <RelatedProductCard
+                  key={item.id}
+                  product={item}
+                  index={index}
+                />
+              )
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* =====================================================
+          FAQ
+      ====================================================== */}
+
+      <section className="mx-auto mt-24 max-w-4xl px-5 sm:px-8">
+        <div className="text-center">
+          <p className="text-[9px] font-semibold uppercase tracking-[0.22em] text-[#8E3D51]">
+            Questions
+          </p>
+
+          <h2 className="mt-2 font-serif text-4xl sm:text-5xl">
+            Before you order.
+          </h2>
+        </div>
+
+        <div className="mt-10 divide-y divide-black/[0.08] border-y border-black/[0.08]">
+          {[
+            {
+              question:
+                "What fabric is this made from?",
+              answer: `This piece is crafted using ${product.material} and has been selected for its texture, drape and overall finish.`,
+            },
+            {
+              question:
+                "How should I care for it?",
+              answer:
+                "We recommend gentle hand washing or professional dry cleaning depending on the fabric. Avoid harsh detergents and prolonged direct sunlight.",
+            },
+            {
+              question:
+                "How long does delivery take?",
+              answer:
+                "For this demo, delivery information is illustrative. A production version will show live delivery estimates based on the customer's PIN code.",
+            },
+            {
+              question:
+                "Can I return or exchange this?",
+              answer:
+                "Returns and exchanges can be enabled according to the store's final policy once the backend and order management system are connected.",
+            },
+            {
+              question:
+                "Is this product authentic?",
+              answer:
+                "Yes. The products displayed in this demo represent the catalogue experience. Production inventory and authenticity information will come from the store's backend.",
+            },
+          ].map((faq, index) => {
+            const isOpen =
+              openFaq === index;
+
+            return (
+              <div key={faq.question}>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setOpenFaq(
+                      isOpen ? null : index
+                    )
+                  }
+                  className="flex w-full items-center justify-between gap-5 py-5 text-left"
+                >
+                  <span className="font-serif text-lg sm:text-xl">
+                    {faq.question}
+                  </span>
+
+                  <span
+                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-black/[0.08] transition-transform duration-300 ${isOpen
+                        ? "rotate-180 bg-[#2A2421] text-white"
+                        : ""
+                      }`}
+                  >
+                    <FiChevronDown
+                      size={14}
+                    />
+                  </span>
+                </button>
+
+                <AnimatePresence>
+                  {isOpen && (
+                    <motion.div
+                      initial={{
+                        height: 0,
+                        opacity: 0,
+                      }}
+                      animate={{
+                        height: "auto",
+                        opacity: 1,
+                      }}
+                      exit={{
+                        height: 0,
+                        opacity: 0,
+                      }}
+                      className="overflow-hidden"
+                    >
+                      <p className="max-w-2xl pb-6 pr-10 text-xs leading-6 text-black/45">
+                        {faq.answer}
+                      </p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* =====================================================
+          REVIEWS
+      ====================================================== */}
+
+      <section className="mx-auto mt-24 max-w-[1200px] px-5 sm:px-8">
+        <div className="grid gap-10 md:grid-cols-[280px_1fr]">
+          <div>
+            <p className="text-[9px] font-semibold uppercase tracking-[0.22em] text-[#8E3D51]">
+              The reviews
+            </p>
+
+            <h2 className="mt-2 font-serif text-4xl sm:text-5xl">
+              Loved by them.
+            </h2>
+
+            <div className="mt-6">
+              <p className="font-serif text-5xl">
+                {product.rating}
+              </p>
+
+              <div className="mt-2 flex gap-1">
+                {[1, 2, 3, 4, 5].map(
+                  (star) => (
+                    <FiStar
+                      key={star}
+                      size={13}
+                      fill="currentColor"
+                      className="text-[#B78352]"
+                    />
+                  )
+                )}
+              </div>
+
+              <p className="mt-2 text-[9px] uppercase tracking-[0.12em] text-black/30">
+                Based on{" "}
+                {product.reviewCount} reviews
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {[
+              {
+                name: "Ananya",
+                location: "Hyderabad",
+                text: "The fabric feels beautiful and the drape is exactly what I wanted. The colour is even prettier in person.",
+              },
+              {
+                name: "Meera",
+                location: "Bengaluru",
+                text: "Beautifully finished. It feels elegant without trying too hard.",
+              },
+              {
+                name: "Kavya",
+                location: "Chennai",
+                text: "Absolutely loved the texture. Very comfortable and easy to style.",
+              },
+            ].map((review) => (
+              <div
+                key={review.name}
+                className="rounded-2xl border border-black/[0.07] bg-white/45 p-5 backdrop-blur-xl sm:p-6"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="font-serif text-lg">
+                      {review.name}
+                    </p>
+
+                    <p className="mt-1 text-[8px] uppercase tracking-[0.13em] text-black/30">
+                      {review.location}
+                    </p>
+                  </div>
+
+                  <div className="flex gap-1">
+                    {[1, 2, 3, 4, 5].map(
+                      (star) => (
+                        <FiStar
+                          key={star}
+                          size={10}
+                          fill="currentColor"
+                          className="text-[#B78352]"
+                        />
+                      )
+                    )}
+                  </div>
+                </div>
+
+                <p className="mt-4 text-xs leading-6 text-black/50">
+                  “{review.text}”
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* =====================================================
+          MOBILE PURCHASE BAR
+      ====================================================== */}
+
+      <motion.div
+        initial={{
+          y: 100,
+        }}
+        animate={{
+          y: 0,
+        }}
+        transition={{
+          delay: 0.5,
+        }}
+        className="fixed bottom-0 left-0 right-0 z-40 border-t border-black/[0.08] bg-[#FAF8F5]/90 p-3 backdrop-blur-2xl lg:hidden"
+      >
+        <div className="flex gap-2">
+          {/* TOTAL */}
+
+          <div className="flex min-w-0 flex-1 items-center rounded-full border border-black/10 bg-white/60 px-4">
+            <div>
+              <p className="text-[7px] uppercase tracking-[0.12em] text-black/30">
+                Total
+              </p>
+
+              <p className="font-sans text-lg">
+                ₹
+                {(
+                  product.price * quantity
+                ).toLocaleString("en-IN")}
+              </p>
+            </div>
+          </div>
+
+          {/* ADD */}
+
+          <button
+            type="button"
+            onClick={handleAddToCart}
+            className="flex h-14 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full bg-[#2A2421] px-3 text-[8px] font-semibold uppercase tracking-[0.1em] text-white active:scale-[0.98]"
+          >
+            <FiShoppingBag size={13} />
+
+            {showAdded
+              ? "Added"
+              : "Add"}
+          </button>
+
+          {/* BUY NOW */}
+
+          <button
+            type="button"
+            onClick={handleBuyNow}
+            className="flex h-14 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full bg-[#8E3D51] px-3 text-[8px] font-semibold uppercase tracking-[0.1em] text-white active:scale-[0.98]"
+          >
+            Buy now
+
+            <FiArrowRight size={13} />
+          </button>
+        </div>
+      </motion.div>
+    </main>
+  );
+}
+
+/* =============================================================
+   INFO ROW
+============================================================= */
+
+function InfoRow({
+  title,
+  text,
+}: {
+  title: string;
+  text: string;
+}) {
+  return (
+    <div className="py-5">
+      <p className="text-[9px] font-semibold uppercase tracking-[0.16em]">
+        {title}
+      </p>
+
+      <p className="mt-3 max-w-xl text-xs leading-6 text-black/45">
+        {text}
+      </p>
+    </div>
+  );
+}
+
+/* =============================================================
+   RELATED PRODUCT
+============================================================= */
+
+function RelatedProductCard({
+  product,
+  index,
+}: {
+  product: any;
+  index: number;
+}) {
+  return (
+    <motion.div
+      initial={{
+        opacity: 0,
+        y: 20,
+      }}
+      whileInView={{
+        opacity: 1,
+        y: 0,
+      }}
+      viewport={{
+        once: true,
+        amount: 0.2,
+      }}
+      transition={{
+        delay: index * 0.05,
+      }}
+    >
+      <Link
+        to={`/product/${product.id}`}
+        className="group block"
+      >
+        <div className="relative aspect-[3/4] overflow-hidden rounded-xl bg-[#E7DDD5]">
+          <img
+            src={product.images[0]}
+            alt={product.name}
+            className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+          />
+
+          <div className="absolute bottom-3 left-3 rounded-full bg-white/80 px-3 py-1.5 text-[8px] uppercase tracking-[0.12em] backdrop-blur-md">
+            {product.material}
+          </div>
+        </div>
+
+        <div className="mt-3">
+          <h3 className="font-serif text-lg leading-tight">
+            {product.name}
+          </h3>
+
+          <p className="mt-1 text-xs text-black/45">
+            ₹
+            {product.price.toLocaleString(
+              "en-IN"
+            )}
+          </p>
+        </div>
+      </Link>
+    </motion.div>
+  );
+}
+
+export default Product;
