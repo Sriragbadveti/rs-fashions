@@ -1,0 +1,29 @@
+{
+  "name": "rs-fashions-backend",
+  "version": "1.0.0",
+  "description": "Backend API and Supabase Integration for RS Fashions e-Commerce & Admin",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "keywords": [
+    "node",
+    "express",
+    "supabase",
+    "ecommerce",
+    "admin",
+    "fashion"
+  ],
+  "author": "RS Fashions",
+  "license": "ISC",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "nanoid": "^5.1.3",
+    "razorpay": "^2.9.8"
+  }
+}
