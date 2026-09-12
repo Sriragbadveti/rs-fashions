@@ -18,7 +18,7 @@ import {
 } from "react-icons/fi";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
-import { products } from "../data/products";
+import { type Product as ProductType, products as staticProducts } from "../data/products";
 import { useCart } from "../context/CartContext";
 import { StoreService } from "../services/supabase";
 
@@ -29,7 +29,11 @@ function Product() {
   const navigate = useNavigate();
   const { addToCart } = useCart();
 
-  const product = products.find((item) => item.id === id);
+  const [allProducts, setAllProducts] = useState<ProductType[]>(staticProducts);
+  const [product, setProduct] = useState<ProductType | null>(() => {
+    return staticProducts.find((item) => item.id === id) || null;
+  });
+  const [loading, setLoading] = useState<boolean>(!product);
 
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedColor, setSelectedColor] = useState<string>(
@@ -43,6 +47,39 @@ function Product() {
   const [couponCopied, setCouponCopied] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [showAddedToast, setShowAddedToast] = useState(false);
+
+  // Dynamic Product Hydration
+  useEffect(() => {
+    let isMounted = true;
+    async function loadProduct() {
+      if (!id) return;
+      try {
+        const prods = await StoreService.getProducts();
+        if (isMounted && prods.length > 0) setAllProducts(prods);
+        const found = prods.find((p) => p.id === id) || (await StoreService.getProductById(id));
+        if (isMounted && found) {
+          setProduct(found);
+          if (found.colors?.length && (!selectedColor || selectedColor === "Standard")) {
+            setSelectedColor(found.colors[0]);
+          }
+        }
+      } catch (err) {
+        console.warn("Could not fetch product dynamically:", err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+    loadProduct();
+
+    const unsubscribe = StoreService.subscribeToRealtime(() => {
+      loadProduct();
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
+  }, [id]);
 
   // Real-time Inventory Status & Temporary Lock Tracking
   const [inventoryStatus, setInventoryStatus] = useState<{
@@ -96,6 +133,19 @@ function Product() {
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  if (loading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#FAF7F2] font-sans">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#8E3D51] border-t-transparent" />
+          <span className="text-xs uppercase tracking-widest text-[#8C7A6B]">
+            Opening Atelier Vault...
+          </span>
+        </div>
+      </main>
+    );
+  }
+
   if (!product) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center bg-[#FAF7F2] px-6 text-center font-sans">
@@ -124,8 +174,8 @@ function Product() {
       )
     : 0;
 
-  const relatedProducts = products
-    .filter((item) => item.id !== product.id && item.category === product.category)
+  const relatedProducts = allProducts
+    .filter((item: ProductType) => item.id !== product.id && item.category === product.category)
     .slice(0, 4);
 
   const handleAddToCart = () => {
@@ -144,6 +194,11 @@ function Product() {
       selectedColor,
       selectedSize,
     });
+    const userStr = localStorage.getItem("rs_fashions_current_user");
+    if (!userStr) {
+      navigate("/login?redirect=/checkout");
+      return;
+    }
     navigate("/checkout");
   };
 

@@ -150,6 +150,41 @@ export const StoreService = {
 
   // 1. PRODUCTS (Storefront & Admin)
   async getProducts(): Promise<Product[]> {
+    try {
+      const res = await fetch("http://localhost:5001/api/catalog/products");
+      const json = await res.json();
+      const productList = json.products || json.data?.products;
+      if (json.success && Array.isArray(productList) && productList.length > 0) {
+        const mapped = productList.map((d: any) => ({
+          id: d.id,
+          name: d.name,
+          category: d.category || "SiCo Gadwal Sarees",
+          material: d.material || "Silk Cotton (SiCo)",
+          price: Number(d.salePrice || d.price) || 0,
+          originalPrice: d.originalPrice ? Number(d.originalPrice) : (Number(d.salePrice || d.price) * 1.3),
+          stock: d.variants ? d.variants.reduce((sum: number, v: any) => sum + (Number(v.stock) || 0), 0) : (d.stock || 0),
+          rating: Number(d.rating) || 4.8,
+          reviewCount: Number(d.reviewCount) || 12,
+          images: (Array.isArray(d.images) && d.images.length > 0)
+            ? d.images
+            : (d.imageUrl ? [d.imageUrl] : ["https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1200&auto=format&fit=crop"]),
+          colors: d.variants && d.variants.length > 0 ? d.variants.map((v: any) => v.color) : (Array.isArray(d.colors) && d.colors.length > 0 ? d.colors : ["Standard"]),
+          sizes: ["Free Size (5.5m + 0.8m Blouse)"],
+          description: d.description || "",
+          longDescription: d.longDescription || d.description || "",
+          featured: Boolean(d.featured),
+        }));
+        try {
+          localStorage.setItem(LOCAL_STORAGE_PRODUCTS, JSON.stringify(mapped));
+        } catch {
+          // ignore
+        }
+        return mapped;
+      }
+    } catch {
+      // ignore
+    }
+
     if (supabase) {
       const { data, error } = await supabase.from("products").select("*").order("created_at", { ascending: false });
       if (!error && data) {
@@ -181,6 +216,13 @@ export const StoreService = {
       }
     }
     return [];
+  },
+
+  async getProductById(id: string): Promise<Product | null> {
+    const all = await this.getProducts();
+    const found = all.find((p) => p.id === id);
+    if (found) return found;
+    return null;
   },
 
   async addProduct(product: Omit<Product, "id"> & { id?: string }): Promise<Product> {
@@ -273,8 +315,67 @@ export const StoreService = {
     return true;
   },
 
+  // 1.0 BOOTSTRAP ALL DATA (Unified Fast Hydration)
+  async getBootstrapData(): Promise<{
+    categories: Category[];
+    products: DashboardProduct[];
+    stockMovements: StockMovement[];
+    sales: CompletedSale[];
+    customers: CustomerProfile[];
+    trackedOrders: TrackedOrder[];
+  }> {
+    try {
+      const res = await fetch("http://localhost:5001/api/admin/bootstrap");
+      const json = await res.json();
+      if (json.success) {
+        if (json.products) localStorage.setItem(LOCAL_STORAGE_PRODUCTS, JSON.stringify(json.products));
+        if (json.categories) localStorage.setItem(LOCAL_STORAGE_CATEGORIES, JSON.stringify(json.categories));
+        if (json.stockMovements) localStorage.setItem(LOCAL_STORAGE_STOCK_MOVEMENTS, JSON.stringify(json.stockMovements));
+        if (json.sales) localStorage.setItem(LOCAL_STORAGE_SALES, JSON.stringify(json.sales));
+        if (json.customers) localStorage.setItem(LOCAL_STORAGE_CUSTOMERS, JSON.stringify(json.customers));
+        if (json.trackedOrders) localStorage.setItem(LOCAL_STORAGE_TRACKED_ORDERS, JSON.stringify(json.trackedOrders));
+        return {
+          categories: json.categories || [],
+          products: json.products || [],
+          stockMovements: json.stockMovements || [],
+          sales: json.sales || [],
+          customers: json.customers || [],
+          trackedOrders: json.trackedOrders || [],
+        };
+      }
+    } catch {
+      // ignore
+    }
+
+    const [cats, prods, movs, sales, custs, tracked] = await Promise.all([
+      this.getCategories(),
+      this.getDashboardProducts(),
+      this.getStockMovements(),
+      this.getCompletedSales(),
+      this.getCustomers(),
+      this.getTrackedOrders(),
+    ]);
+    return {
+      categories: cats,
+      products: prods,
+      stockMovements: movs,
+      sales,
+      customers: custs,
+      trackedOrders: tracked,
+    };
+  },
+
   // 1.1 ADMIN DASHBOARD PRODUCTS
   async getDashboardProducts(): Promise<DashboardProduct[]> {
+    try {
+      const res = await fetch("http://localhost:5001/api/admin/bootstrap");
+      const json = await res.json();
+      if (json.success && json.products) {
+        return json.products;
+      }
+    } catch {
+      // ignore
+    }
     if (supabase) {
       const { data, error } = await supabase.from("products").select("*").order("created_at", { ascending: false });
       if (!error && data) {
@@ -311,37 +412,14 @@ export const StoreService = {
   },
 
   async addDashboardProduct(product: DashboardProduct, categoryId: string): Promise<DashboardProduct> {
-    const totalStock = product.variants.reduce((sum, v) => sum + (v.stock || 0), 0);
-    const colorNames = product.variants.map((v) => v.color);
-    const images = product.imageUrl ? [product.imageUrl] : [];
-
-    if (supabase) {
-      try {
-        await supabase.from("products").insert([{
-          id: product.id,
-          name: product.name,
-          category_id: categoryId,
-          category: product.material || "SiCo Gadwal Sarees",
-          material: product.material || "Silk Cotton (SiCo)",
-          purchase_price: product.purchasePrice,
-          price: product.salePrice,
-          stock: totalStock,
-          variants: product.variants,
-          tags: product.tags,
-          images: images,
-          colors: colorNames,
-          description: product.description || `Handcrafted ${product.name} saree.`,
-        }]);
-
-        // Increment sequence in category
-        try {
-          await supabase.rpc("increment_category_sequence", { cat_id: categoryId });
-        } catch {
-          await supabase.from("categories").update({ next_sequence: 2 }).eq("id", categoryId);
-        }
-      } catch (err) {
-        console.warn("Supabase insert error:", err);
-      }
+    try {
+      await fetch("http://localhost:5001/api/admin/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...product, categoryId }),
+      });
+    } catch (err) {
+      console.warn("Backend add product fetch notice:", err);
     }
 
     const current = await this.getDashboardProducts();
@@ -351,28 +429,14 @@ export const StoreService = {
   },
 
   async updateDashboardProduct(product: DashboardProduct): Promise<DashboardProduct> {
-    const totalStock = product.variants.reduce((sum, v) => sum + (v.stock || 0), 0);
-    const colorNames = product.variants.map((v) => v.color);
-
-    if (supabase) {
-      try {
-        await supabase.from("products").update({
-          name: product.name,
-          category_id: product.categoryId,
-          purchase_price: product.purchasePrice,
-          price: product.salePrice,
-          stock: totalStock,
-          variants: product.variants,
-          tags: product.tags,
-          colors: colorNames,
-          images: product.imageUrl ? [product.imageUrl] : undefined,
-          material: product.material,
-          description: product.description,
-          updated_at: new Date().toISOString(),
-        }).eq("id", product.id);
-      } catch (err) {
-        console.warn("Supabase update error:", err);
-      }
+    try {
+      await fetch(`http://localhost:5001/api/admin/products/${encodeURIComponent(product.id)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(product),
+      });
+    } catch (err) {
+      console.warn("Backend update product fetch notice:", err);
     }
 
     const current = await this.getDashboardProducts();
@@ -382,12 +446,12 @@ export const StoreService = {
   },
 
   async deleteDashboardProduct(id: string): Promise<boolean> {
-    if (supabase) {
-      try {
-        await supabase.from("products").delete().eq("id", id);
-      } catch (err) {
-        console.warn("Supabase delete error:", err);
-      }
+    try {
+      await fetch(`http://localhost:5001/api/admin/products/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+      });
+    } catch (err) {
+      console.warn("Backend delete product fetch notice:", err);
     }
 
     const current = await this.getDashboardProducts();
@@ -398,9 +462,24 @@ export const StoreService = {
 
   // 1.2 CATEGORIES
   async getCategories(): Promise<Category[]> {
+    try {
+      const res = await fetch("http://localhost:5001/api/admin/categories");
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+        return json.data.map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          slug: c.slug,
+          hsn: c.hsn || "5208",
+          nextSequence: Number(c.next_sequence) || 1,
+        }));
+      }
+    } catch {
+      // ignore
+    }
     if (supabase) {
       const { data, error } = await supabase.from("categories").select("*").order("name", { ascending: true });
-      if (!error && data) {
+      if (!error && data && data.length > 0) {
         return data.map((d: any) => ({
           id: d.id,
           name: d.name,
@@ -430,18 +509,14 @@ export const StoreService = {
   },
 
   async addCategory(category: Category): Promise<Category> {
-    if (supabase) {
-      try {
-        await supabase.from("categories").insert([{
-          id: category.id,
-          name: category.name,
-          slug: category.slug,
-          hsn: category.hsn,
-          next_sequence: category.nextSequence,
-        }]);
-      } catch (err) {
-        console.warn("Supabase add category error:", err);
-      }
+    try {
+      await fetch("http://localhost:5001/api/admin/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(category),
+      });
+    } catch (err) {
+      console.warn("Backend add category notice:", err);
     }
     const current = await this.getCategories();
     const updated = [...current, category];
@@ -451,6 +526,15 @@ export const StoreService = {
 
   // 1.3 STOCK MOVEMENTS
   async getStockMovements(): Promise<StockMovement[]> {
+    try {
+      const res = await fetch("http://localhost:5001/api/admin/bootstrap");
+      const json = await res.json();
+      if (json.success && json.stockMovements) {
+        return json.stockMovements;
+      }
+    } catch {
+      // ignore
+    }
     if (supabase) {
       const { data, error } = await supabase.from("stock_movements").select("*").order("created_at", { ascending: false });
       if (!error && data) {
@@ -483,26 +567,14 @@ export const StoreService = {
   },
 
   async addStockMovement(movement: StockMovement): Promise<StockMovement> {
-    if (supabase) {
-      try {
-        await supabase.from("stock_movements").insert([{
-          id: movement.id,
-          date: movement.date,
-          sku: movement.sku,
-          product_name: movement.productName,
-          color: movement.color,
-          color_slug: movement.colorSlug,
-          type: movement.type,
-          quantity: movement.quantity,
-          previous_stock: movement.previousStock,
-          new_stock: movement.newStock,
-          reference_number: movement.referenceNumber,
-          performed_by: movement.performedBy,
-          note: movement.note,
-        }]);
-      } catch (err) {
-        console.warn("Supabase stock movement insert error:", err);
-      }
+    try {
+      await fetch("http://localhost:5001/api/admin/stock-movements", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(movement),
+      });
+    } catch (err) {
+      console.warn("Backend add stock movement notice:", err);
     }
     const current = await this.getStockMovements();
     const updated = [movement, ...current];
@@ -512,6 +584,15 @@ export const StoreService = {
 
   // 1.4 PATRONS & CUSTOMER CRM
   async getCustomers(): Promise<CustomerProfile[]> {
+    try {
+      const res = await fetch("http://localhost:5001/api/admin/bootstrap");
+      const json = await res.json();
+      if (json.success && json.customers) {
+        return json.customers;
+      }
+    } catch {
+      // ignore
+    }
     if (supabase) {
       const { data, error } = await supabase.from("customers").select("*").order("created_at", { ascending: false });
       if (!error && data) {
@@ -544,26 +625,14 @@ export const StoreService = {
   },
 
   async addCustomer(customer: CustomerProfile): Promise<CustomerProfile> {
-    if (supabase) {
-      try {
-        await supabase.from("customers").insert([{
-          id: customer.id,
-          name: customer.name,
-          phone: customer.phone,
-          email: customer.email,
-          city: customer.city,
-          tier: customer.tier,
-          total_spent: customer.totalSpent,
-          orders_count: customer.ordersCount,
-          birthday: customer.birthday || null,
-          anniversary: customer.anniversary || null,
-          preferred_weave: customer.preferredWeave,
-          notes: customer.notes,
-          gstin: customer.gstin,
-        }]);
-      } catch (err) {
-        console.warn("Supabase add customer error:", err);
-      }
+    try {
+      await fetch("http://localhost:5001/api/admin/customers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(customer),
+      });
+    } catch (err) {
+      console.warn("Backend add customer notice:", err);
     }
     const current = await this.getCustomers();
     const updated = [customer, ...current];
@@ -572,26 +641,14 @@ export const StoreService = {
   },
 
   async updateCustomer(customer: CustomerProfile): Promise<CustomerProfile> {
-    if (supabase) {
-      try {
-        await supabase.from("customers").update({
-          name: customer.name,
-          phone: customer.phone,
-          email: customer.email,
-          city: customer.city,
-          tier: customer.tier,
-          total_spent: customer.totalSpent,
-          orders_count: customer.ordersCount,
-          birthday: customer.birthday || null,
-          anniversary: customer.anniversary || null,
-          preferred_weave: customer.preferredWeave,
-          notes: customer.notes,
-          gstin: customer.gstin,
-          updated_at: new Date().toISOString(),
-        }).eq("id", customer.id);
-      } catch (err) {
-        console.warn("Supabase update customer error:", err);
-      }
+    try {
+      await fetch("http://localhost:5001/api/admin/customers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(customer),
+      });
+    } catch (err) {
+      console.warn("Backend update customer notice:", err);
     }
     const current = await this.getCustomers();
     const updated = current.map((c) => (c.id === customer.id ? customer : c));
@@ -615,6 +672,15 @@ export const StoreService = {
 
   // 1.5 TRACKED ORDERS & DISPATCHES
   async getTrackedOrders(): Promise<TrackedOrder[]> {
+    try {
+      const res = await fetch("http://localhost:5001/api/admin/bootstrap");
+      const json = await res.json();
+      if (json.success && json.trackedOrders) {
+        return json.trackedOrders;
+      }
+    } catch {
+      // ignore
+    }
     if (supabase) {
       const { data, error } = await supabase.from("tracked_orders").select("*").order("created_at", { ascending: false });
       if (!error && data) {
@@ -650,29 +716,14 @@ export const StoreService = {
   },
 
   async addTrackedOrder(order: TrackedOrder): Promise<TrackedOrder> {
-    if (supabase) {
-      try {
-        await supabase.from("tracked_orders").insert([{
-          id: order.id,
-          tracking_number: order.trackingNumber,
-          direction: order.direction,
-          title: order.title,
-          party_name: order.partyName,
-          party_contact: order.partyContact,
-          location: order.location,
-          sku_list: order.skuList,
-          total_pieces: order.totalPieces,
-          total_value: order.totalValue,
-          courier_or_loom_partner: order.courierOrLoomPartner,
-          current_stage: order.currentStage,
-          estimated_completion: order.estimatedCompletion,
-          last_update: order.lastUpdate,
-          notes: order.notes,
-          history_timeline: order.historyTimeline,
-        }]);
-      } catch (err) {
-        console.warn("Supabase add tracked order error:", err);
-      }
+    try {
+      await fetch("http://localhost:5001/api/admin/tracked-orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(order),
+      });
+    } catch (err) {
+      console.warn("Backend add tracked order notice:", err);
     }
     const current = await this.getTrackedOrders();
     const updated = [order, ...current];
@@ -681,28 +732,14 @@ export const StoreService = {
   },
 
   async updateTrackedOrder(order: TrackedOrder): Promise<TrackedOrder> {
-    if (supabase) {
-      try {
-        await supabase.from("tracked_orders").update({
-          direction: order.direction,
-          title: order.title,
-          party_name: order.partyName,
-          party_contact: order.partyContact,
-          location: order.location,
-          sku_list: order.skuList,
-          total_pieces: order.totalPieces,
-          total_value: order.totalValue,
-          courier_or_loom_partner: order.courierOrLoomPartner,
-          current_stage: order.currentStage,
-          estimated_completion: order.estimatedCompletion,
-          last_update: order.lastUpdate,
-          notes: order.notes,
-          history_timeline: order.historyTimeline,
-          updated_at: new Date().toISOString(),
-        }).eq("id", order.id);
-      } catch (err) {
-        console.warn("Supabase update tracked order error:", err);
-      }
+    try {
+      await fetch("http://localhost:5001/api/admin/tracked-orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(order),
+      });
+    } catch (err) {
+      console.warn("Backend update tracked order notice:", err);
     }
     const current = await this.getTrackedOrders();
     const updated = current.map((o) => (o.id === order.id ? order : o));
@@ -726,6 +763,15 @@ export const StoreService = {
 
   // 1.6 COMPLETED SALES & POS BILLS
   async getCompletedSales(): Promise<CompletedSale[]> {
+    try {
+      const res = await fetch("http://localhost:5001/api/admin/bootstrap");
+      const json = await res.json();
+      if (json.success && json.sales) {
+        return json.sales;
+      }
+    } catch {
+      // ignore
+    }
     if (supabase) {
       const { data, error } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
       if (!error && data) {
@@ -791,39 +837,14 @@ export const StoreService = {
   },
 
   async addCompletedSale(sale: CompletedSale): Promise<CompletedSale> {
-    if (supabase) {
-      try {
-        await supabase.from("orders").insert([{
-          id: `ord-${Date.now().toString(36)}`,
-          order_number: sale.invoiceNumber,
-          invoice_number: sale.invoiceNumber,
-          billing_type: sale.billingType || "gst",
-          customer_name: sale.customerName,
-          email: sale.customer?.email,
-          phone: sale.customerPhone,
-          shipping_address: sale.customer ? {
-            address: sale.customer.address,
-            city: sale.customer.city,
-            state: sale.customer.state,
-            pincode: sale.customer.pincode,
-          } : {},
-          items: sale.items,
-          subtotal: sale.subtotal,
-          shipping_fee: 0,
-          discount_amount: sale.discount,
-          coupon_code: sale.promoCode,
-          cgst: sale.cgst,
-          sgst: sale.sgst,
-          total: sale.total,
-          payment_method: sale.paymentMethod,
-          payment_status: "paid",
-          transaction_id: sale.transactionId,
-          payment_link: sale.paymentLink,
-          order_status: "delivered",
-        }]);
-      } catch (err) {
-        console.warn("Supabase add completed sale error:", err);
-      }
+    try {
+      await fetch("http://localhost:5001/api/admin/sales", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(sale),
+      });
+    } catch (err) {
+      console.warn("Backend add sale notice:", err);
     }
     const current = await this.getCompletedSales();
     const updated = [sale, ...current];
@@ -835,7 +856,7 @@ export const StoreService = {
     try {
       if (onProgress) onProgress(25);
       
-      const res = await fetch("http://localhost:5001/api/upload/cloudinary", {
+      const res = await fetch("http://localhost:5001/api/upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ image: base64OrDataUrl }),
@@ -846,8 +867,10 @@ export const StoreService = {
       const data = await res.json();
       if (onProgress) onProgress(100);
 
-      if (data.success && data.url) {
-        return { success: true, url: data.url, message: data.message };
+      const uploadedUrl = data.url || data.data?.url || data.publicUrl || data.data?.publicUrl;
+
+      if (data.success && uploadedUrl) {
+        return { success: true, url: uploadedUrl, message: data.message };
       }
       return { success: false, url: base64OrDataUrl, message: data.message || "Upload failed" };
     } catch (err: any) {
@@ -910,19 +933,30 @@ export const StoreService = {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          customerName: newOrder.customerName,
           customer_name: newOrder.customerName,
           email: newOrder.email,
+          customerEmail: newOrder.email,
           phone: newOrder.phone,
+          customerPhone: newOrder.phone,
           shipping_address: newOrder.address,
+          address: newOrder.address,
           items: newOrder.items,
           subtotal: newOrder.subtotal,
+          shippingFee: newOrder.shipping,
           shipping_fee: newOrder.shipping,
+          discount: newOrder.discount,
           discount_amount: newOrder.discount,
+          couponCode: newOrder.couponCode,
           coupon_code: newOrder.couponCode,
           total: newOrder.total,
+          paymentMethod: newOrder.paymentMethod,
           payment_method: newOrder.paymentMethod,
+          paymentStatus: newOrder.paymentStatus,
           payment_status: newOrder.paymentStatus,
+          transactionId: newOrder.transactionId,
           transaction_id: newOrder.transactionId,
+          paymentDetails: newOrder.paymentDetails,
           payment_details: newOrder.paymentDetails,
           session_id: sessionId,
         }),
@@ -1436,6 +1470,9 @@ export const StoreService = {
     success: boolean;
     key_id?: string;
     order?: any;
+    orderId?: string;
+    amount?: number;
+    currency?: string;
     message?: string;
   }> {
     try {
@@ -1444,7 +1481,25 @@ export const StoreService = {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ amount, receipt }),
       });
-      return await res.json();
+      const data = await res.json();
+      const actualData = data.data || data;
+      const orderId = actualData.orderId || actualData.order?.id || actualData.id;
+      const keyId = actualData.key_id || actualData.key || "rzp_test_TaPipYug8QFFpU";
+      const orderObj = actualData.order || {
+        id: orderId,
+        amount: actualData.amount || Math.round(amount * 100),
+        currency: actualData.currency || "INR",
+      };
+
+      return {
+        success: Boolean(data.success),
+        key_id: keyId,
+        order: orderObj,
+        orderId,
+        amount: actualData.amount,
+        currency: actualData.currency,
+        message: data.message,
+      };
     } catch (err: any) {
       console.warn("Razorpay create-order fetch error:", err);
       return {

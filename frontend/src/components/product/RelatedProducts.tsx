@@ -1,10 +1,12 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { FiArrowUpRight } from "react-icons/fi";
 
 import {
-  products,
+  products as defaultProducts,
   type Product,
 } from "../../data/products";
+import { StoreService } from "../../services/supabase";
 
 import ProductCard from "./ProductCard";
 
@@ -15,7 +17,21 @@ interface RelatedProductsProps {
 function RelatedProducts({
   product,
 }: RelatedProductsProps) {
-  const related = products
+  const [allProducts, setAllProducts] = useState<Product[]>(defaultProducts);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const prods = await StoreService.getProducts();
+        if (prods.length > 0) setAllProducts(prods);
+      } catch {
+        // ignore
+      }
+    }
+    load();
+  }, []);
+
+  const related = allProducts
     .filter(
       (item) =>
         item.id !== product.id &&

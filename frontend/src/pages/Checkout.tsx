@@ -89,6 +89,27 @@ interface OrderSnapshot {
   recipient: AddressForm;
 }
 
+const loadRazorpayScript = (): Promise<boolean> => {
+  return new Promise((resolve) => {
+    if (typeof window !== "undefined" && (window as any).Razorpay) {
+      return resolve(true);
+    }
+    const existing = document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
+    if (existing) {
+      existing.addEventListener("load", () => resolve(true));
+      existing.addEventListener("error", () => resolve(false));
+      if ((window as any).Razorpay) return resolve(true);
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async = true;
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
+
 function Checkout() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -104,6 +125,37 @@ function Checkout() {
   const [activeTxnId, setActiveTxnId] = useState<string | null>(null);
   const [existingOrderNumber, setExistingOrderNumber] = useState<string | null>(null);
   const [existingOrderId, setExistingOrderId] = useState<string | null>(null);
+
+  // User Authentication Gate: user must be logged in to purchase
+  const [currentUser, setCurrentUser] = useState<any>(() => {
+    try {
+      const saved = localStorage.getItem("rs_fashions_current_user");
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  useEffect(() => {
+    const userStr = localStorage.getItem("rs_fashions_current_user");
+    if (!userStr) {
+      navigate("/login?redirect=/checkout");
+    } else {
+      try {
+        const u = JSON.parse(userStr);
+        setCurrentUser(u);
+        setAddress((prev) => ({
+          ...prev,
+          firstName: prev.firstName || (u.name ? u.name.split(" ")[0] : ""),
+          lastName: prev.lastName || (u.name ? u.name.split(" ").slice(1).join(" ") : ""),
+          email: prev.email || u.email || "",
+          phone: prev.phone || (u.phone ? u.phone.replace("+91", "").trim() : ""),
+        }));
+      } catch {
+        // ignore
+      }
+    }
+  }, [navigate]);
 
   // Auto-populate cart, customer address, and pre-select payment method if opening a generated link
   useEffect(() => {
@@ -586,19 +638,24 @@ function Checkout() {
     // If Razorpay is selected
     if (paymentMethod === "razorpay") {
       try {
+        await loadRazorpayScript();
+
         const razorpayRes = await StoreService.createRazorpayOrder(total);
-        if (!razorpayRes.success || !razorpayRes.order) {
+        const orderId = razorpayRes.order?.id || (razorpayRes as any).orderId || (razorpayRes as any).id;
+        if (!razorpayRes.success || !orderId) {
           throw new Error(razorpayRes.message || "Failed to create Razorpay order");
         }
 
+        const orderAmount = razorpayRes.order?.amount || (razorpayRes as any).amount || Math.round(total * 100);
+
         const options = {
           key: razorpayRes.key_id || "rzp_test_TaPipYug8QFFpU",
-          amount: razorpayRes.order.amount,
-          currency: razorpayRes.order.currency || "INR",
-          name: "BECHO ATELIER",
+          amount: orderAmount,
+          currency: razorpayRes.order?.currency || (razorpayRes as any).currency || "INR",
+          name: "RS Fashions",
           description: "Artisan Silk Saree Order (Test Mode)",
           image: "/saree.png",
-          order_id: razorpayRes.order.id,
+          order_id: orderId,
           handler: async function (response: any) {
             try {
               await StoreService.verifyRazorpayPayment({
@@ -613,12 +670,12 @@ function Checkout() {
             }
           },
           prefill: {
-            name: `${address.firstName} ${address.lastName}`.trim(),
-            email: address.email,
-            contact: `${address.phone}`,
+            name: `${address.firstName} ${address.lastName}`.trim() || currentUser?.name || "Customer",
+            email: address.email || currentUser?.email || "customer@rsfashions.in",
+            contact: `${address.phone}` || currentUser?.phone || "9999999999",
           },
           notes: {
-            address: `${address.address}, ${address.city}`,
+            address: `${address.address || ""}, ${address.city || ""}`,
           },
           theme: {
             color: "#8E3D51",
@@ -633,9 +690,14 @@ function Checkout() {
         const RazorpayConstructor = (window as any).Razorpay;
         if (RazorpayConstructor) {
           const rzp = new RazorpayConstructor(options);
+          rzp.on("payment.failed", function (failResponse: any) {
+            console.error("Razorpay payment failed:", failResponse.error);
+            alert(`Payment Declined: ${failResponse.error?.description || "Transaction declined"}`);
+            setIsProcessing(false);
+          });
           rzp.open();
         } else {
-          alert("Razorpay SDK is loading, please try again in a second.");
+          alert("Razorpay checkout could not be initialized. Please try again.");
           setIsProcessing(false);
         }
         return;
@@ -948,6 +1010,49 @@ function Checkout() {
               <FiPrinter size={13} className="text-[#8E3D51]" />
               <span>Print Official Invoice</span>
             </button>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  /* =========================================================
+      1. AUTHENTICATION REQUIRED VIEW (Must be logged in to purchase)
+  ========================================================== */
+  if (!currentUser) {
+    return (
+      <main className="min-h-screen bg-[#FAF7F2] font-sans px-5 pb-20 pt-20 text-[#2A2421] select-none flex items-center justify-center">
+        <div className="mx-auto max-w-md w-full rounded-3xl bg-white p-8 shadow-xl border border-black/8 text-center space-y-5">
+          <div className="flex h-16 w-16 mx-auto items-center justify-center rounded-2xl bg-[#8E3D51]/10 text-[#8E3D51]">
+            <FiLock size={28} />
+          </div>
+
+          <div>
+            <span className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#8C7A6B]">
+              BECHO Private Atelier
+            </span>
+            <h1 className="mt-1 font-serif text-2xl font-light text-[#2A2421]">
+              Login Required to Purchase
+            </h1>
+            <p className="mt-2 text-xs font-light leading-relaxed text-[#756A60]">
+              To ensure order authenticity and secure courier tracking, please sign in or create an account to complete your saree purchase. Your cart items remain saved.
+            </p>
+          </div>
+
+          <div className="pt-2 flex flex-col gap-3">
+            <button
+              type="button"
+              onClick={() => navigate("/login?redirect=/checkout")}
+              className="w-full py-3.5 rounded-full bg-[#8E3D51] hover:bg-[#783144] text-white text-xs font-semibold uppercase tracking-[0.16em] shadow-md transition-all active:scale-95"
+            >
+              Sign In or Create Account
+            </button>
+            <Link
+              to="/cart"
+              className="w-full py-3 rounded-full border border-black/10 text-[#2A2421] text-xs font-medium hover:bg-stone-50 transition-colors block text-center"
+            >
+              Return to Shopping Bag
+            </Link>
           </div>
         </div>
       </main>

@@ -1,3 +1,4 @@
+
 import { useMemo, useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useSearchParams } from "react-router-dom";
@@ -10,7 +11,7 @@ import {
   FiRotateCcw,
 } from "react-icons/fi";
 
-import { type Product } from "../data/products";
+import { type Product, products as fallbackProducts } from "../data/products";
 import ProductCard from "../components/product/ProductCard";
 import FilterSheet, {
   type FilterState,
@@ -30,7 +31,7 @@ const sortOptionsList: SortOption[] = [
   "Most Popular",
 ];
 
-const categoryPills = [
+const initialCategoryPills = [
   "All",
   "Silk Sarees",
   "Cotton Sarees",
@@ -47,8 +48,19 @@ const initialFilters: FilterState = {
 
 function Shop() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [allProducts, setAllProducts] = useState<Product[]>([]);
-  const [, setLoading] = useState(true);
+  const [allProducts, setAllProducts] = useState<Product[]>(() => {
+    try {
+      const saved = localStorage.getItem("rs_fashions_products");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {
+      // ignore
+    }
+    return fallbackProducts;
+  });
+  const [, setLoading] = useState(false);
 
   const initialSearch = searchParams.get("search") || "";
   const initialCategory = searchParams.get("category") || "All";
@@ -82,20 +94,37 @@ function Shop() {
   const [showFilters, setShowFilters] = useState(false);
   const [showSort, setShowSort] = useState(false);
 
-  // Fetch products from StoreService (Supabase / local DB)
+  // Dynamic category pills that automatically include live categories
+  const categoryPills = useMemo(() => {
+    const liveCats = allProducts
+      .map((p) => p.category)
+      .filter((c): c is string => Boolean(c && c.trim()));
+    return Array.from(new Set([...initialCategoryPills, ...liveCats]));
+  }, [allProducts]);
+
+  // Instant SWR loading: products are displayed on frame 0, then seamlessly synced
   useEffect(() => {
+    let isMounted = true;
     async function loadProducts() {
-      setLoading(true);
       try {
         const data = await StoreService.getProducts();
-        setAllProducts(data);
+        if (isMounted && Array.isArray(data) && data.length > 0) {
+          setAllProducts(data);
+        }
       } catch (err) {
-        console.error("Error loading products:", err);
-      } finally {
-        setLoading(false);
+        console.error("Error refreshing products:", err);
       }
     }
     loadProducts();
+
+    const unsubscribe = StoreService.subscribeToRealtime(() => {
+      loadProducts();
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, []);
 
   // Sync searchParams with state
@@ -143,10 +172,15 @@ function Shop() {
 
     // Category filter
     if (filters.category !== "All") {
-      result = result.filter(
-        (product: Product) =>
-          product.category?.toLowerCase() === filters.category.toLowerCase()
-      );
+      const catFilter = filters.category.toLowerCase().trim();
+      result = result.filter((product: Product) => {
+        const prodCat = (product.category || "").toLowerCase().trim();
+        return (
+          prodCat === catFilter ||
+          prodCat.includes(catFilter) ||
+          catFilter.includes(prodCat)
+        );
+      });
     }
 
     // Material filter

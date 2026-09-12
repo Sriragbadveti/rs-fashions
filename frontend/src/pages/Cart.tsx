@@ -357,9 +357,14 @@ function Cart() {
 
                 <button
                   type="button"
-                  onClick={() =>
-                    navigate("/checkout")
-                  }
+                  onClick={() => {
+                    const userStr = localStorage.getItem("rs_fashions_current_user");
+                    if (!userStr) {
+                      navigate("/login?redirect=/checkout");
+                      return;
+                    }
+                    navigate("/checkout");
+                  }}
                   className="group mt-7 flex w-full items-center justify-center gap-3 rounded-full bg-[#8E3D51] py-4 text-[9px] font-semibold uppercase tracking-[0.16em] text-white transition-all duration-300 hover:bg-[#773246] active:scale-[0.98]"
                 >
                   Continue to checkout

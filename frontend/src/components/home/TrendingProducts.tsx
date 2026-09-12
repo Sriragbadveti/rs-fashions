@@ -1,11 +1,45 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { FiArrowUpRight } from "react-icons/fi";
 
-import { products } from "../../data/products";
+import { type Product, products as fallbackProducts } from "../../data/products";
 import ProductCard from "../product/ProductCard";
+import { StoreService } from "../../services/supabase";
 
 function TrendingProducts() {
-  const trendingPieces = products.slice(0, 4);
+  const [trendingPieces, setTrendingPieces] = useState<Product[]>(() => {
+    try {
+      const saved = localStorage.getItem("rs_fashions_products");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed.slice(0, 4);
+      }
+    } catch {}
+    return fallbackProducts.slice(0, 4);
+  });
+
+  useEffect(() => {
+    let isMounted = true;
+    async function load() {
+      try {
+        const prods = await StoreService.getProducts();
+        if (isMounted && Array.isArray(prods) && prods.length > 0) {
+          setTrendingPieces(prods.slice(0, 4));
+        }
+      } catch (err) {
+        console.warn("Could not load trending pieces:", err);
+      }
+    }
+    load();
+
+    const unsubscribe = StoreService.subscribeToRealtime(() => {
+      load();
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   return (
     <section className="bg-[#FAF7F2] px-4 py-10 sm:px-6 sm:py-24 lg:px-10 font-sans select-none">

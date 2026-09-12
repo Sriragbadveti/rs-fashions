@@ -47,22 +47,20 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   const handleGeneratePhonePeLink = async () => {
     setGeneratingLink(true);
     try {
-      // Call PhonePe integration endpoint
-      const res = await fetch("http://localhost:5001/api/phonepe/initiate", {
+      const res = await fetch("http://localhost:5001/api/payments/phonepe/initiate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           amount: totalAmount,
           customerName: customer.name || "Patron",
-          customerPhone: customer.phone || "9876543210",
+          phone: customer.phone || "9876543210",
         }),
       });
       const data = await res.json();
-      if (data.paymentUrl) {
-        setPaymentLink(data.paymentUrl);
-        setTxnId(data.transactionId || `PP-${Date.now().toString().slice(-6)}`);
+      if (data.redirectUrl) {
+        setPaymentLink(data.redirectUrl);
+        setTxnId(data.merchantTransactionId || `PP-${Date.now().toString().slice(-6)}`);
       } else {
-        // Fallback simulation URL if offline/test
         const fallbackUrl = `https://mercury-uat.phonepe.com/transact/simulator?merchantId=M234BFDRI0N1I_2609102233&amount=${totalAmount}&orderId=RSF-${Date.now()}`;
         setPaymentLink(fallbackUrl);
         setTxnId(`PP-TEST-${Date.now().toString().slice(-6)}`);
@@ -80,35 +78,32 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   const handleGenerateRazorpayLink = async () => {
     setGeneratingLink(true);
     try {
-      const res = await fetch("http://localhost:5001/api/razorpay/create-order", {
+      const res = await fetch("http://localhost:5001/api/payments/razorpay/create-payment-link", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           amount: totalAmount,
-          currency: "INR",
-          customer: {
-            name: customer.name || "Patron",
-            contact: customer.phone || "9876543210",
-            email: customer.email || "patron@rsfashions.com",
-          },
+          customerName: customer.name || "Patron",
+          customerPhone: customer.phone || "9876543210",
+          customerEmail: customer.email || "patron@rsfashions.in",
+          description: `RS Fashions Saree Atelier Bill for ${customer.name || "Patron"}`,
         }),
       });
       const data = await res.json();
-      if (data.id || data.orderId) {
-        const rzpOrderId = data.id || data.orderId;
-        const link = `https://rzp.io/i/${rzpOrderId}`;
+      if (data.paymentLink || data.shortUrl) {
+        const link = data.paymentLink || data.shortUrl;
         setPaymentLink(link);
-        setTxnId(rzpOrderId);
+        setTxnId(data.id || `plink_${Date.now().toString().slice(-6)}`);
       } else {
-        const fallbackUrl = `https://rzp.io/l/rsfashions-test-checkout?amount=${totalAmount}`;
+        const fallbackUrl = `https://rzp.io/rzp/rsfashions?amount=${totalAmount}`;
         setPaymentLink(fallbackUrl);
-        setTxnId(`order_test_${Date.now().toString().slice(-6)}`);
+        setTxnId(`plink_${Date.now().toString().slice(-6)}`);
       }
     } catch (err) {
       console.warn("Razorpay API call error:", err);
-      const fallbackUrl = `https://rzp.io/l/rsfashions-test-checkout?amount=${totalAmount}`;
+      const fallbackUrl = `https://rzp.io/rzp/rsfashions?amount=${totalAmount}`;
       setPaymentLink(fallbackUrl);
-      setTxnId(`order_test_${Date.now().toString().slice(-6)}`);
+      setTxnId(`plink_${Date.now().toString().slice(-6)}`);
     } finally {
       setGeneratingLink(false);
     }
@@ -124,7 +119,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
   const handleWhatsAppShare = () => {
     if (!paymentLink) return;
-    const phone = customer.phone.replace(/[^0-9]/g, "");
+    const phone = (customer.phone || "").replace(/[^0-9]/g, "");
     const text = encodeURIComponent(
       `Namaste ${customer.name || "Patron"},\n\nYour luxury saree bill from RS Fashions is ready for ₹${totalAmount.toLocaleString("en-IN")}.\n\nPlease complete your payment securely via the link below:\n${paymentLink}\n\nThank you for choosing RS Fashions!`
     );

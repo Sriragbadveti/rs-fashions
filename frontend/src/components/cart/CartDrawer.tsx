@@ -29,6 +29,11 @@ function CartDrawer({ open, onClose }: CartDrawerProps) {
 
   const handleCheckout = () => {
     onClose();
+    const userStr = localStorage.getItem("rs_fashions_current_user");
+    if (!userStr) {
+      navigate("/login?redirect=/checkout");
+      return;
+    }
     navigate("/checkout");
   };
 
