@@ -21,6 +21,7 @@ import {
   Smartphone,
 } from "lucide-react";
 import type { CompletedSale } from "../types/inventory";
+import logo from "../assets/logo/logo1.png";
 import {
   useOrderFulfillment,
   ORDER_STATUS_LABELS,
@@ -773,7 +774,7 @@ export default function TransactionHistory({
               <div className="border-b border-stone-200 pb-3 text-center flex flex-col items-center justify-center">
                 <div className="mb-2 flex justify-center">
                   <img
-                    src="src/assets/logo/logo1.png"
+                    src={logo}
                     alt="RS Fashions Logo"
                     className="w-10 h-full object-contain"
                   />

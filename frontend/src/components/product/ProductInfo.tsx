@@ -41,7 +41,7 @@ function ProductInfo({ product, onAddToCart, onBuyNow }: ProductInfoProps) {
       )
     : 0;
 
-  const promoCode = "BECHO10";
+  const promoCode = "RSFASHION10";
 
   const handleCopyCoupon = () => {
     navigator.clipboard?.writeText(promoCode);

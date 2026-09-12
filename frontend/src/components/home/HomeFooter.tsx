@@ -224,13 +224,13 @@ function HomeFooter() {
           {/* Monumental Editorial Brand Name */}
           <div className="overflow-hidden py-2 text-center">
             <span className="block font-serif text-[clamp(4.8rem,19vw,17.5rem)] font-light leading-[0.78] tracking-[0.14em] text-[#FAF7F2]/8 transition-colors duration-500 hover:text-[#FAF7F2]/15">
-              BECHO
+              RS FASHIONS
             </span>
           </div>
 
           {/* Legal Bar */}
           <div className="mt-8 flex flex-col items-center justify-between gap-4 border-t border-white/5 pt-6 text-[10px] uppercase tracking-[0.22em] text-[#8C7A6B] sm:flex-row">
-            <span>© {new Date().getFullYear()} BECHO ATELIER. ALL RIGHTS RESERVED.</span>
+            <span>© {new Date().getFullYear()} RS FASHIONS. ALL RIGHTS RESERVED.</span>
             
             <div className="flex gap-6">
               <Link to="/privacy" className="hover:text-white transition-colors">

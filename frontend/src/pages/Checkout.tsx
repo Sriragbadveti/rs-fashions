@@ -866,7 +866,7 @@ function Checkout() {
                     Tax Invoice & Receipt
                   </span>
                   <h2 className="font-serif text-xl sm:text-2xl text-[#2A2421] tracking-tight mt-0.5">
-                    BECHO ATELIER
+                    RS FASHIONS
                   </h2>
                   <p className="text-[9px] text-[#8C7A6B] leading-relaxed mt-0.5">
                     Heirloom Silk Sarees · Jubilee Hills, Hyderabad<br />
@@ -1029,7 +1029,7 @@ function Checkout() {
 
           <div>
             <span className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#8C7A6B]">
-              BECHO Private Atelier
+              RS Fashions Private Atelier
             </span>
             <h1 className="mt-1 font-serif text-2xl font-light text-[#2A2421]">
               Login Required to Purchase

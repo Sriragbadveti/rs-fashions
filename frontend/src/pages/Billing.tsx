@@ -34,6 +34,7 @@ import {
 
 import type { CartItem, CompletedSale, Product, CustomerProfile } from "../types/inventory";
 import { API_BASE } from "../config/api";
+import logo from "../assets/logo/logo1.png";
 
 import {
   useBilling,
@@ -1695,12 +1696,12 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({
           {/* CENTERED LOGO & STORE HEADER */}
           <div className="mb-6 flex flex-col items-center text-center border-b border-stone-200 pb-5">
             <img
-              src="src/assets/logo/logo1.png"
+              src={logo}
               alt="RS Fashions Logo"
               className="w-12 h-full object-contain mb-2"
             />
             <h1 className="font-mona text-2xl font-bold tracking-wide text-[#2A0E20]">
-              Fashions
+              RS Fashions
             </h1>
             <p className="text-xs font-light text-stone-700 mt-0.5">
               SiCo Gadwal Sarees &bull; Pure Handlooms &bull; Heritage Silks

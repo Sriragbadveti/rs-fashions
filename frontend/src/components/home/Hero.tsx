@@ -44,7 +44,7 @@ function Hero() {
             ease: [0.22, 1, 0.36, 1],
           }}
           src={cms.imageUrl}
-          alt="BECHO fashion collection"
+          alt="RS Fashions collection"
           className="absolute inset-0 h-full w-full object-cover"
         />
 
@@ -151,7 +151,7 @@ function Hero() {
 
         {/* Vertical side text */}
         <div className="absolute bottom-8 right-6 hidden origin-right rotate-90 text-[9px] uppercase tracking-[0.35em] text-white/50 sm:block">
-          BECHO · MADE TO BE REMEMBERED
+          RS FASHIONS · MADE TO BE REMEMBERED
         </div>
       </div>
     </section>

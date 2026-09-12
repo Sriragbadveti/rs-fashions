@@ -39,7 +39,7 @@ function Cart() {
         <div className="mb-10 flex items-end justify-between gap-6 border-b border-black/[0.08] pb-6">
           <div>
             <p className="mb-2 text-[9px] font-semibold uppercase tracking-[0.24em] text-[#8E3D51]">
-              BECHO / YOUR SELECTION
+              RS FASHIONS / YOUR SELECTION
             </p>
 
             <h1 className="font-serif text-4xl leading-none sm:text-5xl lg:text-6xl">

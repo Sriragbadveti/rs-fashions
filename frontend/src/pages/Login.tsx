@@ -26,7 +26,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     setTimeout(() => {
       setIsLoading(false);
       onLoginSuccess({
-        name: "Becho",
+        name: "RS Fashions",
         email: email,
         role: "Superadmin",
       });

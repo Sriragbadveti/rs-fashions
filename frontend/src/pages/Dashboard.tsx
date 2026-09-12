@@ -31,6 +31,7 @@ import { sound } from "../types/soundEngine";
 import BulkStock from "./BulkStock";
 import { OrderFulfillmentProvider } from "../context/OrderFulfillmentContext"; // NEW: shared order status/AWB store
 import { API_BASE } from "../config/api";
+import logo from "../assets/logo/logo1.png";
 import type {
   Product,
   Category,
@@ -139,9 +140,9 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
     }
   };
 
-  const loadLiveBootstrap = useCallback(async () => {
+  const loadLiveBootstrap = useCallback(async (forceRefresh = false) => {
     try {
-      const res = await fetch(`${API_BASE}/admin/bootstrap`);
+      const res = await fetch(`${API_BASE}/admin/bootstrap${forceRefresh ? "?refresh=true" : ""}`);
       if (!res.ok) return;
       const json = await res.json();
       const d = json?.data || json;
@@ -439,7 +440,10 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
         customerPhone: sale.customerPhone || "9999999999",
       }),
     })
-      .then(() => loadLiveBootstrap())
+      .then((response) => {
+        if (!response.ok) throw new Error("The sale could not be saved to the server.");
+        return loadLiveBootstrap(true);
+      })
       .catch((err) => console.warn("Sync sale error:", err));
   }
 
@@ -510,7 +514,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
             {/* Brand Header */}
             <div className="flex items-center gap-3 px-1 py-2 mb-3 border-b border-stone-200/50">
                 <img
-                  src="src/assets/logo/logo1.png"
+                  src={logo}
                   alt="RS Fashions Logo"
                   className="w-10 h-full object-cover"
                 />

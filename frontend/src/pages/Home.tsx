@@ -26,7 +26,7 @@ function Home() {
       <Hero />
 
       {/* <Marquee
-        text="BECHO · ELEGANCE WITHOUT EFFORT"
+        text="RS FASHIONS · ELEGANCE WITHOUT EFFORT"
         speed={26}
       /> */}
 

@@ -150,7 +150,7 @@ function Product() {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center bg-[#FAF7F2] px-6 text-center font-sans">
         <span className="text-[10px] font-semibold uppercase tracking-[0.32em] text-[#8C7A6B]">
-          BECHO ATELIER
+          RS FASHIONS
         </span>
         <h1 className="mt-3 font-serif text-4xl font-light text-[#2A2421] sm:text-5xl">
           Weave not found.
@@ -208,7 +208,7 @@ function Product() {
       if (navigator.share) {
         await navigator.share({
           title: product.name,
-          text: `Explore the ${product.name} from BECHO Atelier.`,
+          text: `Explore the ${product.name} from RS Fashions.`,
           url,
         });
       } else {
@@ -222,7 +222,7 @@ function Product() {
   };
 
   const handleCopyCoupon = () => {
-    navigator.clipboard.writeText("BECHO10");
+    navigator.clipboard.writeText("RSFASHION10");
     setCouponCopied(true);
     setTimeout(() => setCouponCopied(false), 2000);
   };
@@ -508,7 +508,7 @@ function Product() {
                   Atelier Privilege Code
                 </span>
                 <p className="font-mono text-sm font-semibold tracking-wider text-[#2A2421] mt-0.5">
-                  BECHO10
+                  RSFASHION10
                 </p>
                 <p className="text-[10px] text-[#8C7A6B]">
                   Flat 10% savings on this festive edit
@@ -639,7 +639,7 @@ function Product() {
               {[
                 "CRAFTED WITH INTENTION",
                 "TIMELESS WEAVES",
-                "BECHO ATELIER",
+                "RS FASHIONS",
                 "MADE TO BE REMEMBERED",
                 "PURE SILK MARK HALLMARK",
               ].map((text) => (
@@ -668,7 +668,7 @@ function Product() {
               About the <span className="italic font-normal">weave.</span>
             </h2>
             <p className="mt-4 text-xs sm:text-sm font-light leading-relaxed text-[#756A60]">
-              Every BECHO saree is an intimate dialogue between master weavers, heritage looms, and pure natural yarns. We craft in limited micro-batches to honor slow, mindful fashion.
+              Every RS Fashions saree is an intimate dialogue between master weavers, heritage looms, and pure natural yarns. We craft in limited micro-batches to honor slow, mindful fashion.
             </p>
           </div>
 
@@ -750,7 +750,7 @@ function Product() {
                   <span>WhatsApp</span>
                 </a>
                 <a
-                  href="mailto:concierge@becho.com"
+                  href="mailto:concierge@rsfashions.com"
                   className="flex items-center gap-1.5 rounded-full border border-black/10 bg-white px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-[#2A2421] active:scale-95 transition-transform"
                 >
                   <FiMail size={13} />
@@ -766,7 +766,7 @@ function Product() {
               {
                 question: "Is this saree ready to wear, and does it include Fall & Pico?",
                 answer:
-                  "Yes, absolutely. All BECHO drapes arrive with complimentary pre-stitched Fall and hand-finished Pico roll edges. Each piece measures 5.5 meters with an attached unstitched 0.8-meter matching blouse piece.",
+                  "Yes, absolutely. All RS Fashions drapes arrive with complimentary pre-stitched Fall and hand-finished Pico roll edges. Each piece measures 5.5 meters with an attached unstitched 0.8-meter matching blouse piece.",
               },
               {
                 question: "Are these pure handloom silks certified with Silk Mark?",

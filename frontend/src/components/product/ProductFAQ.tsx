@@ -105,7 +105,7 @@ function ProductFAQ() {
               </a>
 
               <a
-                href="mailto:concierge@becho.com"
+                href="mailto:concierge@rsfashions.com"
                 className="flex items-center gap-1.5 rounded-full border border-black/10 bg-white px-3.5 py-2 text-[10px] font-semibold uppercase tracking-wider text-[#2A2421] transition-transform active:scale-95"
               >
                 <FiMail size={13} />
@@ -124,4 +124,4 @@ function ProductFAQ() {
   );
 }
 
-export default ProductFAQ;  
+export default ProductFAQ;

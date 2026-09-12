@@ -103,7 +103,7 @@ export default function Auth() {
           to="/"
           className="font-serif text-3xl sm:text-4xl font-light tracking-[0.24em] text-[#8E3D51]"
         >
-          BECHO
+          RS FASHIONS
         </Link>
         <p className="mt-2 text-xs font-light uppercase tracking-[0.2em] text-[#8C7A6B]">
           Artisanal Vault & Atelier Access

@@ -13,6 +13,7 @@ import { useCart } from "../../context/CartContext";
 
 import CartDrawer from "../cart/CartDrawer";
 import MobileMenu from "./MobileMenu";
+import logo from "../../assets/logo/logo1.png";
 
 function Navbar() {
   const location = useLocation();
@@ -135,12 +136,10 @@ function Navbar() {
             {/* Center: Editorial Brand Logo (Static, Pure Luxury) */}
             <Link
               to="/"
-              aria-label="BECHO Home"
+              aria-label="RS Fashions Home"
               className="absolute left-1/2 -translate-x-1/2"
             >
-              <span className="block font-serif text-[1.4rem] font-light tracking-[0.24em] text-[#2A2421] transition-opacity duration-300 hover:opacity-75 sm:text-[1.85rem]">
-                BECHO
-              </span>
+              <img src={logo} alt="RS Fashions" className="h-10 w-auto object-contain transition-opacity duration-300 hover:opacity-75 sm:h-12" />
             </Link>
 
             {/* Right: Actions */}

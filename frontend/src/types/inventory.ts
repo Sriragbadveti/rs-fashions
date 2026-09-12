@@ -988,7 +988,7 @@ export const MOCK_STOCK_HISTORY: StockMovement[] = [
     previousStock: 6,
     newStock: 5,
     referenceNumber: "INV-9021",
-    performedBy: "Becho",
+    performedBy: "RS Fashions",
     note: "POS Counter #1 Sale",
   },
 
@@ -1020,7 +1020,7 @@ export const MOCK_STOCK_HISTORY: StockMovement[] = [
     previousStock: 0,
     newStock: 8,
     referenceNumber: "PO-WEAVER-GADWAL-42",
-    performedBy: "Becho",
+    performedBy: "RS Fashions",
     note: "Gadwal master weaver direct shipment batch #4",
   },
 
@@ -1036,7 +1036,7 @@ export const MOCK_STOCK_HISTORY: StockMovement[] = [
     previousStock: 0,
     newStock: 5,
     referenceNumber: "PO-WEAVER-GADWAL-41",
-    performedBy: "Becho",
+    performedBy: "RS Fashions",
     note: "Pre-festive fresh consignment",
   },
 
@@ -1052,7 +1052,7 @@ export const MOCK_STOCK_HISTORY: StockMovement[] = [
     previousStock: 7,
     newStock: 6,
     referenceNumber: "DEF-2026-09",
-    performedBy: "Becho",
+    performedBy: "RS Fashions",
     note: "Zari pulled on pallu during transit - marked for restoration",
   },
 ];

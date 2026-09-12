@@ -8,6 +8,7 @@ import {
   FiChevronDown,
 } from "react-icons/fi";
 import { Link, useNavigate } from "react-router-dom";
+import logo from "../../assets/logo/logo1.png";
 
 interface MobileMenuProps {
   onClose: () => void;
@@ -292,9 +293,9 @@ function MobileMenu({ onClose }: MobileMenuProps) {
             <Link
               to="/"
               onClick={handleDismiss}
-              className="font-serif text-2xl font-light tracking-[0.24em] text-[#8E3D51]"
+              className="inline-flex items-center"
             >
-              BECHO
+              <img src={logo} alt="RS Fashions" className="h-9 w-auto object-contain" />
             </Link>
 
             <button

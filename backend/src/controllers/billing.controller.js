@@ -1,6 +1,7 @@
 import { supabase } from "../config/supabase.js";
 import { successResponse, errorResponse } from "../utils/response.js";
 import { invalidateCatalogCache } from "./catalog.controller.js";
+import { invalidateBootstrapCache } from "./bootstrap.controller.js";
 
 /**
  * Controller: POS Billing, Counter Invoicing & Coupons
@@ -151,8 +152,9 @@ export async function handleCheckout(req, res) {
         console.warn("Customer loyalty notice:", crmErr.message);
       }
 
-      // Invalidate bootstrap & catalog cache so latest sale & stock movements reflect immediately
+      // Invalidate both caches so the next admin refresh includes this sale and its movements.
       invalidateCatalogCache();
+      invalidateBootstrapCache();
 
       return successResponse(res, {
         sale: orderData,
@@ -161,6 +163,7 @@ export async function handleCheckout(req, res) {
     }
 
     invalidateCatalogCache();
+    invalidateBootstrapCache();
     return successResponse(res, { sale: req.body, invoiceNumber: finalInvoiceNumber }, "Sale recorded locally", 201);
   } catch (err) {
     console.error("POS Checkout error:", err);
