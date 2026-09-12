@@ -1,9 +1,9 @@
 -- ==============================================================================
--- RS Fashions Database Schema for Supabase (v2.4 - Full Atelier & POS Suite)
--- Run this SQL in your Supabase SQL Editor (Dashboard -> SQL Editor -> Run)
+-- RS FASHIONS UNIFIED DATABASE SCHEMA (Supabase PostgreSQL)
+-- Multi-Device Sync: Web Storefront, Web Admin, Desktop Dashboard & POS
 -- ==============================================================================
 
--- Enable UUID Extension
+-- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ------------------------------------------------------------------------------
@@ -18,33 +18,24 @@ CREATE TABLE IF NOT EXISTS public.categories (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
-INSERT INTO public.categories (id, name, slug, hsn, next_sequence)
-VALUES ('c1', 'SiCo Gadwal Sarees', 'SGS', '5208', 1)
-ON CONFLICT (id) DO NOTHING;
-
 -- ------------------------------------------------------------------------------
--- 2. PRODUCTS / SAREE VAULT
+-- 2. PRODUCTS / SAREE ATELIER VAULT
 -- ------------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.products (
     id TEXT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    category_id TEXT REFERENCES public.categories(id) ON DELETE SET NULL,
     category VARCHAR(100) NOT NULL DEFAULT 'SiCo Gadwal Sarees',
     material VARCHAR(100) NOT NULL DEFAULT 'Silk Cotton (SiCo)',
-    purchase_price NUMERIC(10, 2) DEFAULT 0,
     price NUMERIC(10, 2) NOT NULL CHECK (price >= 0),
     original_price NUMERIC(10, 2),
-    stock INTEGER NOT NULL DEFAULT 10 CHECK (stock >= 0),
-    variants JSONB NOT NULL DEFAULT '[]'::jsonb,
-    tags TEXT[] DEFAULT '{}',
+    stock INTEGER NOT NULL DEFAULT 0 CHECK (stock >= 0),
     images TEXT[] NOT NULL DEFAULT '{}',
     colors TEXT[] NOT NULL DEFAULT '{}',
-    sizes TEXT[] DEFAULT '{"Free Size"}',
+    tags TEXT[] NOT NULL DEFAULT '{}',
     rating NUMERIC(2, 1) DEFAULT 4.8 CHECK (rating >= 1 AND rating <= 5),
     review_count INTEGER DEFAULT 0 CHECK (review_count >= 0),
-    description TEXT,
-    long_description TEXT,
     featured BOOLEAN DEFAULT false,
+    description TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
@@ -58,7 +49,7 @@ CREATE INDEX IF NOT EXISTS idx_products_featured ON public.products(featured);
 -- ------------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.stock_movements (
     id TEXT PRIMARY KEY,
-    date VARCHAR(100) NOT NULL,
+    date VARCHAR(50) NOT NULL,
     sku VARCHAR(100) NOT NULL,
     product_name VARCHAR(255) NOT NULL,
     color VARCHAR(100) NOT NULL,
@@ -75,56 +66,54 @@ CREATE TABLE IF NOT EXISTS public.stock_movements (
 
 CREATE INDEX IF NOT EXISTS idx_stock_movements_sku ON public.stock_movements(sku);
 CREATE INDEX IF NOT EXISTS idx_stock_movements_type ON public.stock_movements(type);
+CREATE INDEX IF NOT EXISTS idx_stock_movements_created ON public.stock_movements(created_at DESC);
 
 -- ------------------------------------------------------------------------------
--- 4. ORDERS & COMPLETED SALES (POS COUNTER & ONLINE BILLING)
+-- 4. ORDERS & SALES TRANSACTIONS (COUNTER POS & ONLINE)
 -- ------------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.orders (
     id TEXT PRIMARY KEY,
-    order_number VARCHAR(50) UNIQUE NOT NULL,
-    invoice_number VARCHAR(50),
-    billing_type VARCHAR(20) DEFAULT 'gst' CHECK (billing_type IN ('gst', 'non-gst')),
+    order_number VARCHAR(100) UNIQUE,
+    invoice_number VARCHAR(100),
     customer_name VARCHAR(255) NOT NULL,
     email VARCHAR(255),
-    phone VARCHAR(30) NOT NULL,
+    phone VARCHAR(50) NOT NULL,
     shipping_address JSONB,
-    items JSONB NOT NULL,
-    subtotal NUMERIC(10, 2) NOT NULL,
+    items JSONB NOT NULL DEFAULT '[]'::jsonb,
+    subtotal NUMERIC(10, 2) NOT NULL DEFAULT 0,
+    cgst NUMERIC(10, 2) NOT NULL DEFAULT 0,
+    sgst NUMERIC(10, 2) NOT NULL DEFAULT 0,
     shipping_fee NUMERIC(10, 2) NOT NULL DEFAULT 0,
     discount_amount NUMERIC(10, 2) NOT NULL DEFAULT 0,
     coupon_code VARCHAR(50),
-    cgst NUMERIC(10, 2) DEFAULT 0,
-    sgst NUMERIC(10, 2) DEFAULT 0,
-    total NUMERIC(10, 2) NOT NULL,
-    payment_method VARCHAR(50) NOT NULL DEFAULT 'upi',
-    payment_provider VARCHAR(50),
-    payment_status VARCHAR(50) NOT NULL DEFAULT 'paid',
-    transaction_id VARCHAR(100),
-    payment_link TEXT,
-    order_status VARCHAR(50) NOT NULL DEFAULT 'delivered' CHECK (order_status IN ('new', 'processing', 'shipped', 'delivered', 'cancelled')),
+    total NUMERIC(10, 2) NOT NULL DEFAULT 0,
+    payment_method VARCHAR(50) NOT NULL DEFAULT 'cash',
+    payment_status VARCHAR(50) NOT NULL DEFAULT 'pending',
+    order_status VARCHAR(50) NOT NULL DEFAULT 'new',
+    billing_type VARCHAR(20) NOT NULL DEFAULT 'gst',
     notes TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_orders_status ON public.orders(order_status);
-CREATE INDEX IF NOT EXISTS idx_orders_created_at ON public.orders(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_orders_phone ON public.orders(phone);
+CREATE INDEX IF NOT EXISTS idx_orders_created ON public.orders(created_at DESC);
 
 -- ------------------------------------------------------------------------------
--- 5. PATRONS & CLIENT CRM DIRECTORY
+-- 5. CRM CUSTOMER PROFILES & LOYALTY TIERS
 -- ------------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.customers (
     id TEXT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    phone VARCHAR(30) UNIQUE NOT NULL,
+    phone VARCHAR(50) UNIQUE NOT NULL,
     email VARCHAR(255),
-    city VARCHAR(100) NOT NULL DEFAULT 'Hyderabad',
-    tier VARCHAR(50) NOT NULL DEFAULT 'Heritage Club' CHECK (tier IN ('Royal Patron', 'Heritage Club', 'Boutique Member')),
+    city VARCHAR(100) DEFAULT 'Hyderabad',
+    tier VARCHAR(50) NOT NULL DEFAULT 'Heritage Club',
     total_spent NUMERIC(12, 2) NOT NULL DEFAULT 0,
     orders_count INTEGER NOT NULL DEFAULT 0,
-    birthday DATE,
-    anniversary DATE,
-    preferred_weave VARCHAR(255),
+    birthday VARCHAR(50),
+    anniversary VARCHAR(50),
+    preferred_weave VARCHAR(100),
     notes TEXT,
     gstin VARCHAR(50),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
@@ -135,78 +124,154 @@ CREATE INDEX IF NOT EXISTS idx_customers_phone ON public.customers(phone);
 CREATE INDEX IF NOT EXISTS idx_customers_tier ON public.customers(tier);
 
 -- ------------------------------------------------------------------------------
--- 6. LOOM & COURIER DISPATCH TRACKING
+-- 6. TRACKED ORDERS & PRODUCTION PIPELINE
 -- ------------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.tracked_orders (
     id TEXT PRIMARY KEY,
     tracking_number VARCHAR(100) UNIQUE NOT NULL,
-    direction VARCHAR(50) NOT NULL CHECK (direction IN ('OUTWARD_CUSTOMER', 'INWARD_WEAVER')),
+    direction VARCHAR(20) NOT NULL CHECK (direction IN ('inward', 'outward')),
     title VARCHAR(255) NOT NULL,
     party_name VARCHAR(255) NOT NULL,
-    party_contact VARCHAR(30) NOT NULL,
+    party_contact VARCHAR(50) NOT NULL,
     location VARCHAR(255) NOT NULL,
-    sku_list TEXT[] DEFAULT '{}',
+    sku_list TEXT[] NOT NULL DEFAULT '{}',
     total_pieces INTEGER NOT NULL DEFAULT 1,
     total_value NUMERIC(10, 2) NOT NULL DEFAULT 0,
     courier_or_loom_partner VARCHAR(255) NOT NULL,
     current_stage VARCHAR(100) NOT NULL,
     estimated_completion VARCHAR(100) NOT NULL,
-    last_update TEXT NOT NULL,
+    last_update VARCHAR(100) NOT NULL,
     notes TEXT,
     history_timeline JSONB NOT NULL DEFAULT '[]'::jsonb,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_tracked_orders_number ON public.tracked_orders(tracking_number);
 CREATE INDEX IF NOT EXISTS idx_tracked_orders_direction ON public.tracked_orders(direction);
 
 -- ------------------------------------------------------------------------------
--- 7. COUPONS / PROMO CODES TABLE
+-- 7. COUPONS & PROMOTIONS
 -- ------------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.coupons (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id TEXT PRIMARY KEY,
     code VARCHAR(50) UNIQUE NOT NULL,
     description TEXT,
     discount_type VARCHAR(20) NOT NULL CHECK (discount_type IN ('percentage', 'fixed')),
-    discount_value NUMERIC(10, 2) NOT NULL CHECK (discount_value > 0),
-    min_order_value NUMERIC(10, 2) DEFAULT 0,
-    max_discount_cap NUMERIC(10, 2),
-    max_uses INTEGER DEFAULT 100,
-    times_used INTEGER DEFAULT 0,
-    is_active BOOLEAN DEFAULT true,
+    discount_value NUMERIC(10, 2) NOT NULL,
+    min_order_value NUMERIC(10, 2) NOT NULL DEFAULT 0,
+    max_uses INTEGER NOT NULL DEFAULT 100,
+    times_used INTEGER NOT NULL DEFAULT 0,
+    is_active BOOLEAN NOT NULL DEFAULT true,
     expires_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
 -- ------------------------------------------------------------------------------
--- 8. CMS / WEBSITE CONTENT
+-- 8. STORE SETTINGS & CONFIGURATIONS
 -- ------------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS public.cms_content (
-    section_key VARCHAR(100) PRIMARY KEY,
-    title VARCHAR(255),
-    subtitle TEXT,
-    badge VARCHAR(100),
-    image_url TEXT NOT NULL,
-    secondary_image_url TEXT,
-    link VARCHAR(255),
-    meta JSONB DEFAULT '{}'::jsonb,
+CREATE TABLE IF NOT EXISTS public.settings (
+    key VARCHAR(100) PRIMARY KEY,
+    value JSONB NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
 -- ------------------------------------------------------------------------------
--- 9. INITIAL SEED DATA FOR PATRONS & PROMOS
+-- SEED INITIAL CATEGORIES & PRODUCTS
 -- ------------------------------------------------------------------------------
-INSERT INTO public.customers (id, name, phone, email, city, tier, total_spent, orders_count, birthday, anniversary, preferred_weave)
-VALUES
-    ('cust-001', 'Shailaja Reddy', '9849012345', 'shailaja.reddy@gmail.com', 'Banjara Hills, Hyderabad', 'Royal Patron', 184500, 7, '1982-09-14', '2006-11-28', 'Ma Inti Bangaram 3 Inch Borders'),
-    ('cust-002', 'Dr. Ananya Rao', '9988776655', 'ananya.rao@carehospitals.com', 'Jubilee Hills, Hyderabad', 'Heritage Club', 92400, 4, '1988-12-05', '2015-09-12', 'Vintage Checks'),
-    ('cust-003', 'Vani Prasanna', '9123456780', NULL, 'Secunderabad', 'Boutique Member', 38000, 2, '1994-09-16', NULL, 'Gatti Borders')
-ON CONFLICT (phone) DO NOTHING;
+INSERT INTO public.categories (id, name, slug, hsn, next_sequence)
+VALUES 
+    ('c1', 'SiCo Gadwal Sarees', 'SGS', '5208', 3),
+    ('c2', 'Pure Silk Kanjivaram', 'PSK', '5007', 1),
+    ('c3', 'Banarasi Silk Heritage', 'BSH', '5007', 1),
+    ('c4', 'Handloom Mulberry Cotton', 'HMC', '5208', 1)
+ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO public.coupons (code, description, discount_type, discount_value, min_order_value, max_uses, is_active)
+INSERT INTO public.products (id, name, category, material, price, original_price, stock, images, colors, tags, rating, review_count, featured, description)
+VALUES 
+    (
+        'kanjivaram-bridal-heritage-saree',
+        'Kanjivaram Bridal Heritage Saree',
+        'Pure Silk Kanjivaram',
+        'Pure Kanjivaram Silk',
+        12999,
+        16999,
+        5,
+        ARRAY['https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1200&auto=format&fit=crop'],
+        ARRAY['Rani Pink', 'Gold'],
+        ARRAY['bridal', 'kanjivaram', 'pure silk', 'heritage'],
+        4.9,
+        18,
+        true,
+        'Authentic temple-border Kanjivaram woven with 3-ply mulberry silk and pure gold zari.'
+    ),
+    (
+        'emerald-banarasi-saree',
+        'Emerald Banarasi Saree',
+        'Banarasi Silk Heritage',
+        'Banarasi Silk',
+        8499,
+        11200,
+        8,
+        ARRAY['https://medias.utsavfashion.com/media/catalog/product/cache/1/image/1000x/040ec09b1e35df139433887a97daa66f/w/o/woven-art-silk-saree-in-emerald-green-v1-ssf833_2.jpg'],
+        ARRAY['Emerald', 'Gold Zari'],
+        ARRAY['banarasi', 'emerald', 'festive', 'zari'],
+        4.8,
+        14,
+        true,
+        'Rich heritage gold zari motifs woven on opulent royal emerald green silk.'
+    ),
+    (
+        'rose-silk-saree',
+        'Rose Silk Saree',
+        'Pure Silk Kanjivaram',
+        'Pure Silk',
+        4999,
+        6499,
+        9,
+        ARRAY['https://medias.utsavfashion.com/media/catalog/product/cache/1/image/1000x/040ec09b1e35df139433887a97daa66f/e/m/embroidered-viscose-silk-saree-in-baby-pink-v1-sgsa847_1.jpg'],
+        ARRAY['Rose', 'Silver'],
+        ARRAY['silk', 'soft silk', 'pastel'],
+        4.7,
+        11,
+        true,
+        'A softly luminous silk saree designed around graceful drape, delicate colour and timeless elegance.'
+    ),
+    (
+        'ivory-cotton-saree',
+        'Ivory Cotton Saree',
+        'Handloom Mulberry Cotton',
+        'Organic Cotton',
+        2899,
+        3800,
+        20,
+        ARRAY['https://medias.utsavfashion.com/media/catalog/product/cache/1/image/1000x/040ec09b1e35df139433887a97daa66f/b/a/bandhej-printed-cotton-saree-in-cream-v1-sfc217.jpg'],
+        ARRAY['Cream', 'Beige'],
+        ARRAY['cotton', 'handloom', 'daily luxury', 'summer'],
+        4.8,
+        22,
+        false,
+        'Breathable, lightweight and effortlessly graceful cotton weave for everyday celebration.'
+    ),
+    (
+        'shimmer-organza-saree',
+        'Shimmer Organza Saree',
+        'Banarasi Silk Heritage',
+        'Organza',
+        3499,
+        4500,
+        11,
+        ARRAY['https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?q=80&w=1200&auto=format&fit=crop'],
+        ARRAY['Dusty Rose', 'Silver Sheen'],
+        ARRAY['organza', 'tissue', 'modern', 'party'],
+        4.6,
+        9,
+        false,
+        'Weightless organza drape with a gentle metallic sheen and delicate hand-embroidery.'
+    )
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.coupons (id, code, description, discount_type, discount_value, min_order_value, max_uses, times_used, is_active)
 VALUES
-    ('ROYAL10', '10% off on all royal sarees', 'percentage', 10.00, 1999.00, 500, true),
-    ('FESTIVE20', '20% off for festive season orders above ₹4000', 'percentage', 20.00, 4000.00, 200, true),
-    ('FIRST500', 'Flat ₹500 off on your first heirloom drape', 'fixed', 500.00, 2999.00, 1000, true)
-ON CONFLICT (code) DO NOTHING;
+    ('c-festive', 'FESTIVE10', '10% discount on all heirloom silks', 'percentage', 10, 2000, 500, 0, true),
+    ('c-welcome', 'WELCOME500', 'Flat ₹500 off on first order above ₹3000', 'fixed', 500, 3000, 1000, 0, true)
+ON CONFLICT (id) DO NOTHING;
