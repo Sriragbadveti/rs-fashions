@@ -34,6 +34,7 @@ import {
 } from "../types/settings";
 import type { ShowroomSettings, AppTheme } from "../types/settings";
 import { useModal } from "../context/ModalContext";
+import { API_BASE } from "../config/api";
 
 interface SettingsProps {
   devices: Device[];
@@ -190,7 +191,7 @@ export default function SettingsView({
     fetchRealClientIP().then((ip) => setRealIp(ip));
     applyTheme(settings.theme);
 
-    fetch("http://localhost:5001/api/settings")
+    fetch(`${API_BASE}/settings`)
       .then((res) => (res.ok ? res.json() : null))
       .then((json) => {
         if (json?.settings && Object.keys(json.settings).length > 0) {
@@ -222,7 +223,7 @@ export default function SettingsView({
 
     // Sync with backend API in Supabase
     Object.entries(updatedFields).forEach(([key, value]) => {
-      fetch(`http://localhost:5001/api/settings/${encodeURIComponent(key)}`, {
+      fetch(`${API_BASE}/settings/${encodeURIComponent(key)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ value }),

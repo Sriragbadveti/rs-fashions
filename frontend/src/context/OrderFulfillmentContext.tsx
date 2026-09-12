@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { API_BASE } from "../config/api";
 
 // The three stages an order can be in. Add more here later if you need
 // finer-grained stages (e.g. "out_for_delivery") — every place that reads
@@ -69,7 +70,7 @@ export function OrderFulfillmentProvider({
       [invoiceNumber]: { ...(prev[invoiceNumber] ?? DEFAULT_FULFILLMENT), status },
     }));
 
-    fetch(`http://localhost:5001/api/sales/${encodeURIComponent(invoiceNumber)}/fulfillment`, {
+    fetch(`${API_BASE}/sales/${encodeURIComponent(invoiceNumber)}/fulfillment`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
@@ -82,7 +83,7 @@ export function OrderFulfillmentProvider({
       [invoiceNumber]: { ...(prev[invoiceNumber] ?? DEFAULT_FULFILLMENT), trackingNumber },
     }));
 
-    fetch(`http://localhost:5001/api/sales/${encodeURIComponent(invoiceNumber)}/fulfillment`, {
+    fetch(`${API_BASE}/sales/${encodeURIComponent(invoiceNumber)}/fulfillment`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ trackingNumber }),
@@ -95,7 +96,7 @@ export function OrderFulfillmentProvider({
       [invoiceNumber]: { ...(prev[invoiceNumber] ?? DEFAULT_FULFILLMENT), carrierPartner },
     }));
 
-    fetch(`http://localhost:5001/api/sales/${encodeURIComponent(invoiceNumber)}/fulfillment`, {
+    fetch(`${API_BASE}/sales/${encodeURIComponent(invoiceNumber)}/fulfillment`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ carrierPartner }),

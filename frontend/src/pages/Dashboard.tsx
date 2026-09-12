@@ -30,6 +30,7 @@ import Notifications from "./Notifications";
 import { sound } from "../types/soundEngine";
 import BulkStock from "./BulkStock";
 import { OrderFulfillmentProvider } from "../context/OrderFulfillmentContext"; // NEW: shared order status/AWB store
+import { API_BASE } from "../config/api";
 import type {
   Product,
   Category,
@@ -122,8 +123,6 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       ipAddress: "192.168.1.108",
     },
   ]);
-
-  const API_BASE = "http://localhost:5001/api";
 
   const safeStorageSet = (key: string, data: any) => {
     try {

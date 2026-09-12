@@ -12,6 +12,7 @@ import {
   FiPhone,
   FiCheckCircle,
 } from "react-icons/fi";
+import { API_BASE } from "../config/api";
 
 type AuthRole = "user" | "admin";
 type AuthMode = "signin" | "signup";
@@ -64,7 +65,7 @@ export default function Auth() {
       // If signing up as a customer, register into CRM backend
       if (role === "user" && authMode === "signup") {
         try {
-          await fetch("http://localhost:5001/api/crm/customers", {
+          await fetch(`${API_BASE}/crm/customers`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({

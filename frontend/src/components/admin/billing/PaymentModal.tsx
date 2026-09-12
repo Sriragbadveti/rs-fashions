@@ -13,6 +13,7 @@ import {
   Loader2,
 } from "lucide-react";
 import type { PaymentMethod, CustomerDetails } from "../../../types/dashboard";
+import { API_BASE } from "../../../config/api";
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -47,7 +48,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   const handleGeneratePhonePeLink = async () => {
     setGeneratingLink(true);
     try {
-      const res = await fetch("http://localhost:5001/api/payments/phonepe/initiate", {
+      const res = await fetch(`${API_BASE}/payments/phonepe/initiate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -78,7 +79,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   const handleGenerateRazorpayLink = async () => {
     setGeneratingLink(true);
     try {
-      const res = await fetch("http://localhost:5001/api/payments/razorpay/create-payment-link", {
+      const res = await fetch(`${API_BASE}/payments/razorpay/create-payment-link`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

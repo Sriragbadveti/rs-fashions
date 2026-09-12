@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 
 import type { CartItem, CompletedSale, Product, CustomerProfile } from "../types/inventory";
+import { API_BASE } from "../config/api";
 
 import {
   useBilling,
@@ -167,7 +168,7 @@ const Billing: React.FC<BillingProps> = ({
 
     try {
       if (provider === "phonepe") {
-        const res = await fetch("http://localhost:5001/api/payments/phonepe/create-order", {
+        const res = await fetch(`${API_BASE}/payments/phonepe/create-order`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -194,7 +195,7 @@ const Billing: React.FC<BillingProps> = ({
         return link;
       } else {
         // Razorpay
-        const res = await fetch("http://localhost:5001/api/payments/razorpay/create-payment-link", {
+        const res = await fetch(`${API_BASE}/payments/razorpay/create-payment-link`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import type { CustomerProfile, ClientTier } from "../types/inventory";
 import { MOCK_CUSTOMERS } from "../types/inventory";
+import { API_BASE } from "../config/api";
 
 interface CRMProps {
   customers?: CustomerProfile[];
@@ -808,7 +809,7 @@ export default function CRM({
     if (onAddCustomer) {
       onAddCustomer(newCustomer);
     } else {
-      fetch("http://localhost:5001/api/crm/customers", {
+      fetch(`${API_BASE}/crm/customers`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newCustomer),
