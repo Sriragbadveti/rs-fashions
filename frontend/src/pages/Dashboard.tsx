@@ -15,6 +15,8 @@ import {
   RotateCw,
   AlertTriangle,
   PackagePlus,
+  Menu,
+  X,
 } from "lucide-react";
 import Overview from "./Overview";
 import Catalog from "./SareeStock";
@@ -62,12 +64,22 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const setActiveTab = (tab: DashboardTab) => {
     sound.playClick();
     sessionStorage.setItem(ACTIVE_TAB_STORAGE_KEY, tab);
     setActiveTabState(tab);
+    setIsSidebarOpen(false);
   };
+
+  useEffect(() => {
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsSidebarOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, []);
 
   const [categories, setCategories] = useState<Category[]>(() => {
     try {
@@ -498,9 +510,18 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
         <div className="absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full bg-gradient-to-br from-[#F5E6DC] via-[#EBD5C6] to-transparent blur-3xl opacity-60 pointer-events-none" />
         <div className="absolute -bottom-40 -right-40 w-[700px] h-[700px] rounded-full bg-gradient-to-tl from-[#E5D7E3] via-[#F3EBE6] to-transparent blur-3xl opacity-60 pointer-events-none" />
 
+        {isSidebarOpen && (
+          <button
+            type="button"
+            aria-label="Close navigation menu"
+            className="fixed inset-0 z-20 bg-stone-950/35 backdrop-blur-[1px] md:hidden"
+            onClick={() => setIsSidebarOpen(false)}
+          />
+        )}
+
         {/* SIDEBAR NAVIGATION */}
         <aside
-          className="w-64 h-full glass-panel border-r border-stone-200/60 flex flex-col p-4 z-20 overflow-y-auto
+          className={`fixed inset-y-0 left-0 z-30 flex h-full w-72 max-w-[85vw] flex-col overflow-y-auto border-r border-stone-200/60 bg-[#F6F4EE]/95 p-4 shadow-2xl backdrop-blur-xl transition-transform duration-300 ease-out md:static md:z-20 md:w-64 md:max-w-none md:translate-x-0 md:bg-transparent md:shadow-none ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}
             [scrollbar-width:thin] [scrollbar-color:rgba(168,162,158,0.55)_transparent]
             [&::-webkit-scrollbar]:w-1.5
             [&::-webkit-scrollbar-track]:bg-transparent
@@ -509,7 +530,9 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
             [&::-webkit-scrollbar-thumb]:border-2
             [&::-webkit-scrollbar-thumb]:border-transparent
             [&::-webkit-scrollbar-thumb]:bg-clip-padding
-            hover:[&::-webkit-scrollbar-thumb]:bg-stone-400/70">
+            hover:[&::-webkit-scrollbar-thumb]:bg-stone-400/70`}
+          aria-label="Admin navigation"
+        >
           <div>
             {/* Brand Header */}
             <div className="flex items-center gap-3 px-1 py-2 mb-3 border-b border-stone-200/50">
@@ -744,8 +767,17 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
 
         {/* MAIN VIEW AREA */}
         <main className="flex-1 h-full flex flex-col overflow-hidden z-10 bg-transparent">
-          <header className="h-16 px-8 flex items-center justify-between gap-4 border-b border-stone-200/40 bg-white/40 backdrop-blur-md shrink-0">
+          <header className="h-16 px-4 sm:px-8 flex items-center justify-between gap-4 border-b border-stone-200/40 bg-white/40 backdrop-blur-md shrink-0">
             <div className="flex items-center gap-2 text-xs text-stone-500">
+              <button
+                type="button"
+                className="-ml-1 mr-1 flex h-9 w-9 items-center justify-center rounded-lg text-stone-700 transition-colors hover:bg-stone-200/70 md:hidden"
+                onClick={() => setIsSidebarOpen((open) => !open)}
+                aria-label={isSidebarOpen ? "Close navigation menu" : "Open navigation menu"}
+                aria-expanded={isSidebarOpen}
+              >
+                {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
+              </button>
               <span>RS Fashions</span>
               <span>&bull;</span>
               <span className="font-semibold text-stone-800 capitalize">
