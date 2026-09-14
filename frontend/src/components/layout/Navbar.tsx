@@ -9,6 +9,7 @@ import {
   FiUser,
 } from "react-icons/fi";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Store } from "lucide-react";
 import { useCart } from "../../context/CartContext";
 
 import CartDrawer from "../cart/CartDrawer";
@@ -26,6 +27,9 @@ function Navbar() {
   const [cartOpen, setCartOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
+  const isOurStory = location.pathname === "/our-story";
+  const [isNavVisible, setIsNavVisible] = useState(true);
+
   /* Scroll detection */
   useEffect(() => {
     const handleScroll = () => {
@@ -36,6 +40,28 @@ function Navbar() {
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  /* Our Story page specific: Fades in at the top, fades out when scrolled down to page */
+  useEffect(() => {
+    if (!isOurStory) {
+      setIsNavVisible(true);
+      return;
+    }
+
+    const checkScrollPosition = () => {
+      // At the top of the page: navbar fades in (visible)
+      // When scrolled down to page: navbar fades out (hidden)
+      if (window.scrollY > 60) {
+        setIsNavVisible(false);
+      } else {
+        setIsNavVisible(true);
+      }
+    };
+
+    checkScrollPosition();
+    window.addEventListener("scroll", checkScrollPosition, { passive: true });
+    return () => window.removeEventListener("scroll", checkScrollPosition);
+  }, [isOurStory]);
 
   /* Close overlays on route change */
   useEffect(() => {
@@ -82,9 +108,17 @@ function Navbar() {
     return () => window.removeEventListener("keydown", handleKeyboard);
   }, []);
 
+  const showHeader = !isOurStory || isNavVisible || isMenuOpen || isSearchOpen || cartOpen;
+
   return (
     <>
-      <header className="fixed inset-x-0 top-0 z-80 select-none font-sans">
+      <header
+        className={`fixed inset-x-0 top-0 z-80 select-none font-sans transition-all duration-500 ease-in-out ${
+          showHeader
+            ? "opacity-100 translate-y-0 pointer-events-auto"
+            : "opacity-0 -translate-y-full pointer-events-none"
+        }`}
+      >
         {/* ===================================================
             TOP ANNOUNCEMENT BANNER
         ==================================================== */}
@@ -111,13 +145,13 @@ function Navbar() {
             MAIN NAVIGATION BAR
         ==================================================== */}
         <nav
-          className={`w-full transition-all duration-500 ease-out ${isScrolled
+          className={`w-full transition-all duration-500 ease-out ${
+            isScrolled || isOurStory
               ? "bg-[#FAF7F2]/95 py-3 shadow-[0_10px_30px_-10px_rgba(42,36,33,0.07)] backdrop-blur-md"
               : "bg-transparent py-4 sm:py-6"
-            }`}
+          }`}
         >
           <div className="mx-auto flex max-w-[1600px] items-center justify-between px-5 sm:px-8 lg:px-12">
-
             {/* Left: Mobile Drawer Trigger */}
             <button
               type="button"
@@ -133,13 +167,17 @@ function Navbar() {
               />
             </button>
 
-            {/* Center: Editorial Brand Logo (Static, Pure Luxury) */}
+            {/* Center: Editorial Brand Logo */}
             <Link
               to="/"
               aria-label="RS Fashions Home"
               className="absolute left-1/2 -translate-x-1/2"
             >
-              <img src={logo} alt="RS Fashions" className="h-10 w-auto object-contain transition-opacity duration-300 hover:opacity-75 sm:h-12" />
+              <img
+                src={logo}
+                alt="RS Fashions"
+                className="h-10 w-auto object-contain transition-opacity duration-300 hover:opacity-75 sm:h-12"
+              />
             </Link>
 
             {/* Right: Actions */}
@@ -158,6 +196,18 @@ function Navbar() {
                   <FiSearch size={19} strokeWidth={1.5} />
                 )}
               </button>
+
+              {/* Shop Collection Link */}
+              <Link
+                to="/shop"
+                aria-label="Explore Saree Shop Collection"
+                title="Shop Saree Collection"
+                className={`flex h-10 w-10 items-center justify-center rounded-full text-[#2A2421] transition-all duration-300 hover:bg-[#EFEAE2] active:scale-90 ${
+                  location.pathname === "/shop" ? "bg-[#EFEAE2] text-[#8E3D51]" : ""
+                }`}
+              >
+                <Store size={19} strokeWidth={1.5} />
+              </Link>
 
               {/* Account / Login Link */}
               <Link
@@ -216,7 +266,7 @@ function Navbar() {
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         autoFocus
-                        placeholder="Search pure silk, banarasi, organza..."
+                        placeholder="Search SiCo Gadwal sarees..."
                         className="w-full bg-transparent text-sm tracking-wide text-[#2A2421] placeholder-[#A89C8F] outline-none"
                       />
 
@@ -243,7 +293,7 @@ function Navbar() {
                       <span className="text-[9px] uppercase tracking-widest text-[#8C7A6B]">
                         Trending:
                       </span>
-                      {["Kanjivaram", "Tussar Silk", "Bridal Edit", "Linen"].map(
+                      {["Vintage Checks", "Gatti Borders", "Ma Inti Bangaram", "Big Kanchi"].map(
                         (tag) => (
                           <button
                             key={tag}

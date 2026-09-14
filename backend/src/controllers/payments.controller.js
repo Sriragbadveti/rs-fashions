@@ -38,7 +38,7 @@ export async function createPaymentLink(req, res) {
         amount: amountInPaise,
         currency: "INR",
         accept_partial: false,
-        description: `RS Fashions Saree Atelier Billing #${invoiceNumber}`,
+        description: `RS Fashions Saree admin Billing #${invoiceNumber}`,
         customer: {
           name: customerName,
           email: customerEmail,

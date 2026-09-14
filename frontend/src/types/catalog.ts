@@ -113,7 +113,7 @@ export function getNextDesignSerial(
       highest = Math.max(highest, productSerial);
     }
 
-    product.variants.forEach((variant) => {
+    (product.variants || []).forEach((variant) => {
       const serial = Number(extractSerialFromSku(variant.sku));
       if (Number.isFinite(serial)) {
         highest = Math.max(highest, serial);
@@ -129,12 +129,12 @@ export function calculateInventoryMetrics(inventory: Product[]) {
   let inventoryCost = 0;
   let lowStockCount = 0;
 
-  inventory.forEach((product) => {
-    product.variants.forEach((variant) => {
-      totalStock += variant.stock;
-      inventoryCost += variant.stock * product.purchasePrice;
+  (inventory || []).forEach((product) => {
+    (product.variants || []).forEach((variant) => {
+      totalStock += variant.stock || 0;
+      inventoryCost += (variant.stock || 0) * (product.purchasePrice || 0);
 
-      if (variant.stock <= LOW_STOCK_THRESHOLD) {
+      if ((variant.stock || 0) <= LOW_STOCK_THRESHOLD) {
         lowStockCount++;
       }
     });
@@ -153,16 +153,16 @@ export function filterInventory(inventory: Product[], rawQuery: string): Product
     return inventory;
   }
 
-  return inventory.filter(
+  return (inventory || []).filter(
     (product) =>
-      product.id.toLowerCase().includes(query) ||
-      product.name.toLowerCase().includes(query) ||
-      product.tags.some((tag) => tag.toLowerCase().includes(query)) ||
-      product.variants.some(
+      (product.id || "").toLowerCase().includes(query) ||
+      (product.name || "").toLowerCase().includes(query) ||
+      (product.tags || []).some((tag) => (tag || "").toLowerCase().includes(query)) ||
+      (product.variants || []).some(
         (variant) =>
-          variant.color.toLowerCase().includes(query) ||
-          variant.colorSlug.toLowerCase().includes(query) ||
-          variant.sku.toLowerCase().includes(query)
+          (variant.color || "").toLowerCase().includes(query) ||
+          (variant.colorSlug || "").toLowerCase().includes(query) ||
+          (variant.sku || "").toLowerCase().includes(query)
       )
   );
 }

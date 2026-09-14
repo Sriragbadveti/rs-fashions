@@ -19,17 +19,17 @@ export interface Product {
 export const products: Product[] = [
   {
     id: "rose-silk-saree",
-    name: "Rose Silk Saree",
-    category: "Sarees",
+    name: "Rose SiCo Gadwal Saree",
+    category: "SiCo Gadwal Sarees",
     material: "Pure Silk",
     price: 4999,
     originalPrice: 6499,
     rating: 4.8,
     reviewCount: 124,
     description:
-      "A softly luminous silk saree designed around graceful drape, delicate colour and timeless elegance.",
+      "A softly luminous SiCo Gadwal saree designed around graceful drape, delicate colour and timeless elegance.",
     longDescription:
-      "The Rose Silk Saree brings together a fluid silhouette, a refined sheen and an understated palette. Designed for celebrations, intimate occasions and evenings where simplicity speaks louder than excess.",
+      "The Rose SiCo Gadwal saree brings together a fluid silhouette, a refined sheen and an understated palette. Designed for celebrations, intimate occasions and evenings where simplicity speaks louder than excess.",
     images: [
       "https://medias.utsavfashion.com/media/catalog/product/cache/1/image/1000x/040ec09b1e35df139433887a97daa66f/e/m/embroidered-viscose-silk-saree-in-baby-pink-v1-sgsa847_1.jpg",
       "https://medias.utsavfashion.com/media/catalog/product/cache/1/image/1000x/040ec09b1e35df139433887a97daa66f/e/m/embroidered-viscose-silk-saree-in-baby-pink-v1-sgsa847.jpg",
@@ -45,17 +45,17 @@ export const products: Product[] = [
 
   {
     id: "ivory-cotton-saree",
-    name: "Ivory Cotton Saree",
-    category: "Sarees",
+    name: "Ivory SiCo Gadwal Saree",
+    category: "SiCo Gadwal Sarees",
     material: "Organic Cotton",
     price: 2899,
     originalPrice: 3599,
     rating: 4.7,
     reviewCount: 89,
     description:
-      "An airy cotton saree with a naturally textured finish and effortless everyday elegance.",
+      "An airy SiCo Gadwal saree with a naturally textured finish and effortless everyday elegance.",
     longDescription:
-      "Woven for comfort and movement, this cotton saree balances traditional character with an easy contemporary silhouette.",
+      "Woven for comfort and movement, this SiCo Gadwal saree balances traditional character with an easy contemporary silhouette.",
     images: [
       "https://chugalisarees.com/uploads/products/products-1781856976-5049b4a7.jpeg",
       "https://chugalisarees.com/uploads/products/products-1781856976-85aed79e.jpeg",
@@ -70,10 +70,10 @@ export const products: Product[] = [
   },
 
   {
-    id: "midnight-kanjeevaram",
-    name: "Midnight Kanjeevaram",
-    category: "Sarees",
-    material: "Kanjeevaram Silk",
+    id: "midnight-sico-gadwal",
+    name: "Midnight SiCo Gadwal",
+    category: "SiCo Gadwal Sarees",
+    material: "Silk Cotton (SiCo)",
     price: 7999,
     originalPrice: 9999,
     rating: 4.9,
@@ -98,7 +98,7 @@ export const products: Product[] = [
   {
     id: "terracotta-handloom",
     name: "Terracotta Handloom",
-    category: "Sarees",
+    category: "SiCo Gadwal Sarees",
     material: "Handloom Cotton",
     price: 3299,
     rating: 4.6,
@@ -120,18 +120,18 @@ export const products: Product[] = [
     featured: false,
   },
     {
-    id: "emerald-banarasi-silk",
-    name: "Emerald Banarasi Silk",
-    category: "Banarasi Sarees",
-    material: "Banarasi Silk",
+    id: "emerald-sico-gadwal",
+    name: "Emerald SiCo Gadwal Silk",
+    category: "SiCo Gadwal Sarees",
+    material: "Silk Cotton (SiCo)",
     price: 6299,
     originalPrice: 7999,
     rating: 4.8,
     reviewCount: 96,
     description:
-      "A rich emerald Banarasi silk saree with luminous texture and a beautifully traditional silhouette.",
+      "A rich emerald SiCo Gadwal SiCo Gadwal saree with luminous texture and a beautifully traditional silhouette.",
     longDescription:
-      "Woven for occasions that call for quiet grandeur, the Emerald Banarasi Silk pairs a deep jewel tone with the luxurious character of Banarasi weaving. A timeless choice for weddings, festive evenings and celebrations.",
+      "Woven for occasions that call for quiet grandeur, the Emerald SiCo Gadwal Silk pairs a deep jewel tone with the luxurious character of SiCo Gadwal weaving. A timeless choice for weddings, festive evenings and celebrations.",
     images: [
       "https://images.pexels.com/photos/19857173/pexels-photo-19857173.jpeg?auto=compress&cs=tinysrgb&w=1200",
       "https://images.pexels.com/photos/8387170/pexels-photo-8387170.jpeg?auto=compress&cs=tinysrgb&w=1200",
@@ -144,7 +144,7 @@ export const products: Product[] = [
   {
     id: "ruby-red-khadi-saree",
     name: "Ruby Red Khadi Saree",
-    category: "Cotton Sarees",
+    category: "SiCo Gadwal Sarees",
     material: "Handwoven Cotton",
     price: 3199,
     originalPrice: 3899,
@@ -164,18 +164,18 @@ export const products: Product[] = [
   },
 
   {
-    id: "golden-chanderi-drape",
-    name: "Golden Chanderi Drape",
-    category: "Chanderi Sarees",
-    material: "Chanderi Silk Cotton",
+    id: "golden-sico-gadwal",
+    name: "Golden SiCo Gadwal Drape",
+    category: "SiCo Gadwal Sarees",
+    material: "Silk Cotton (SiCo)",
     price: 4599,
     originalPrice: 5799,
     rating: 4.8,
     reviewCount: 81,
     description:
-      "A softly luminous golden saree inspired by the delicate transparency and grace of Chanderi weaving.",
+      "A softly luminous golden saree inspired by the delicate transparency and grace of Gadwal handloom weaving.",
     longDescription:
-      "The Golden Chanderi Drape is light, elegant and naturally festive. Its subtle sheen makes it equally beautiful for daytime celebrations and intimate evening gatherings.",
+      "The Golden SiCo Gadwal Drape is light, elegant and naturally festive. Its subtle sheen makes it equally beautiful for daytime celebrations and intimate evening gatherings.",
     images: [
       "https://images.pexels.com/photos/7589447/pexels-photo-7589447.jpeg?auto=compress&cs=tinysrgb&w=1200",
       "https://images.pexels.com/photos/37706903/pexels-photo-37706903.jpeg?auto=compress&cs=tinysrgb&w=1200",
@@ -188,7 +188,7 @@ export const products: Product[] = [
   {
     id: "midnight-indigo-saree",
     name: "Midnight Indigo Saree",
-    category: "Silk Sarees",
+    category: "SiCo Gadwal Sarees",
     material: "Art Silk",
     price: 3899,
     originalPrice: 4699,
@@ -208,18 +208,18 @@ export const products: Product[] = [
   },
 
   {
-    id: "blush-organza-dream",
-    name: "Blush Organza Dream",
-    category: "Organza Sarees",
-    material: "Organza Silk",
+    id: "blush-sico-gadwal-dream",
+    name: "Blush SiCo Gadwal Dream",
+    category: "SiCo Gadwal Sarees",
+    material: "Silk Cotton (SiCo)",
     price: 4299,
     originalPrice: 5499,
     rating: 4.7,
     reviewCount: 88,
     description:
-      "A romantic blush organza saree with an airy fall and delicate festive character.",
+      "A romantic blush SiCo Gadwal saree with an airy fall and delicate festive character.",
     longDescription:
-      "Designed for graceful occasions, the Blush Organza Dream combines a lightweight silhouette with a softly structured drape. Perfect for receptions, celebrations and elegant daytime events.",
+      "Designed for graceful occasions, the Blush SiCo Gadwal Dream combines a lightweight silk-cotton texture with a softly structured drape. Perfect for receptions, celebrations and elegant daytime events.",
     images: [
       "https://images.pexels.com/photos/33328181/pexels-photo-33328181.jpeg?auto=compress&cs=tinysrgb&w=1200",
       "https://images.pexels.com/photos/14596121/pexels-photo-14596121.jpeg?auto=compress&cs=tinysrgb&w=1200",
@@ -230,18 +230,18 @@ export const products: Product[] = [
   },
 
   {
-    id: "saffron-kanjeevaram",
-    name: "Saffron Kanjeevaram",
-    category: "Kanjeevaram Sarees",
-    material: "Kanjeevaram Silk",
+    id: "saffron-sico-gadwal",
+    name: "Saffron SiCo Gadwal",
+    category: "SiCo Gadwal Sarees",
+    material: "Silk Cotton (SiCo)",
     price: 8499,
     originalPrice: 10499,
     rating: 4.9,
     reviewCount: 112,
     description:
-      "A vibrant saffron Kanjeevaram-inspired silk saree made for grand celebrations and unforgettable evenings.",
+      "A vibrant saffron traditional Gadwal-crafted SiCo Gadwal saree made for grand celebrations and unforgettable evenings.",
     longDescription:
-      "The Saffron Kanjeevaram celebrates the richness of South Indian silk traditions through a radiant colour palette and an elegant ceremonial drape.",
+      "The Saffron SiCo Gadwal celebrates the richness of South Indian silk traditions through a radiant colour palette and an elegant ceremonial drape.",
     images: [
       "https://images.pexels.com/photos/35620983/pexels-photo-35620983.jpeg?auto=compress&cs=tinysrgb&w=1200",
       "https://images.pexels.com/photos/37358465/pexels-photo-37358465.jpeg?auto=compress&cs=tinysrgb&w=1200",
@@ -252,10 +252,10 @@ export const products: Product[] = [
   },
 
   {
-    id: "plum-banarasi-glow",
-    name: "Plum Banarasi Glow",
-    category: "Banarasi Sarees",
-    material: "Banarasi Silk",
+    id: "plum-sico-gadwal",
+    name: "Plum SiCo Gadwal Glow",
+    category: "SiCo Gadwal Sarees",
+    material: "Silk Cotton (SiCo)",
     price: 6799,
     originalPrice: 8299,
     rating: 4.8,
@@ -263,7 +263,7 @@ export const products: Product[] = [
     description:
       "A deep plum saree with an elegant silk sheen and a rich ceremonial presence.",
     longDescription:
-      "Plum Banarasi Glow brings together a dramatic jewel tone and the unmistakable richness of traditional silk. Designed for weddings, receptions and festive gatherings.",
+      "Plum SiCo Gadwal Glow brings together a dramatic jewel tone and the unmistakable richness of traditional silk. Designed for weddings, receptions and festive gatherings.",
     images: [
       "https://images.pexels.com/photos/12992062/pexels-photo-12992062.jpeg?auto=compress&cs=tinysrgb&w=1200",
       "https://images.pexels.com/photos/37358465/pexels-photo-37358465.jpeg?auto=compress&cs=tinysrgb&w=1200",
@@ -276,7 +276,7 @@ export const products: Product[] = [
   {
     id: "ivory-kasavu-grace",
     name: "Ivory Kasavu Grace",
-    category: "Kerala Sarees",
+    category: "SiCo Gadwal Sarees",
     material: "Kerala Cotton",
     price: 3499,
     originalPrice: 4199,
@@ -298,14 +298,14 @@ export const products: Product[] = [
   {
     id: "sunset-orange-silk",
     name: "Sunset Orange Silk",
-    category: "Silk Sarees",
+    category: "SiCo Gadwal Sarees",
     material: "Silk Blend",
     price: 5199,
     originalPrice: 6399,
     rating: 4.7,
     reviewCount: 69,
     description:
-      "A glowing sunset-orange silk saree created for vibrant celebrations and statement dressing.",
+      "A glowing sunset-orange SiCo Gadwal saree created for vibrant celebrations and statement dressing.",
     longDescription:
       "Warm, expressive and full of character, the Sunset Orange Silk pairs a radiant colour with a polished drape that transitions effortlessly from festive ceremonies to evening occasions.",
     images: [
@@ -320,8 +320,8 @@ export const products: Product[] = [
   {
     id: "pearl-white-saree",
     name: "Pearl White Saree",
-    category: "Contemporary Sarees",
-    material: "Soft Georgette",
+    category: "SiCo Gadwal Sarees",
+    material: "Silk Cotton (SiCo)",
     price: 3999,
     originalPrice: 4899,
     rating: 4.6,
@@ -342,14 +342,14 @@ export const products: Product[] = [
   {
     id: "royal-maroon-silk",
     name: "Royal Maroon Silk",
-    category: "Silk Sarees",
+    category: "SiCo Gadwal Sarees",
     material: "Pure Silk Blend",
     price: 5899,
     originalPrice: 7199,
     rating: 4.9,
     reviewCount: 91,
     description:
-      "A regal maroon silk saree with a deep colour story and a beautifully traditional mood.",
+      "A regal maroon SiCo Gadwal saree with a deep colour story and a beautifully traditional mood.",
     longDescription:
       "Royal Maroon Silk is made for evenings when the saree should be the centre of attention. Its rich tone pairs naturally with gold jewellery and festive styling.",
     images: [
@@ -364,14 +364,14 @@ export const products: Product[] = [
   {
     id: "mustard-kalamkari",
     name: "Mustard Kalamkari",
-    category: "Printed Sarees",
+    category: "SiCo Gadwal Sarees",
     material: "Cotton Kalamkari",
     price: 2999,
     originalPrice: 3699,
     rating: 4.6,
     reviewCount: 48,
     description:
-      "A mustard cotton saree inspired by traditional Indian textile artistry and expressive printed motifs.",
+      "A mustard SiCo Gadwal saree inspired by traditional Indian textile artistry and expressive printed motifs.",
     longDescription:
       "Mustard Kalamkari celebrates the beauty of handcrafted textile traditions through a warm colour palette and an easy everyday drape.",
     images: [
@@ -386,7 +386,7 @@ export const products: Product[] = [
   {
     id: "rosewood-handloom",
     name: "Rosewood Handloom",
-    category: "Handloom Sarees",
+    category: "SiCo Gadwal Sarees",
     material: "Handloom Cotton",
     price: 2799,
     originalPrice: 3299,
@@ -406,18 +406,18 @@ export const products: Product[] = [
   },
 
   {
-    id: "royal-purple-tussar",
-    name: "Royal Purple Tussar",
-    category: "Tussar Sarees",
-    material: "Tussar Silk",
+    id: "royal-purple-sico-gadwal",
+    name: "Royal Purple SiCo Gadwal",
+    category: "SiCo Gadwal Sarees",
+    material: "Silk Cotton (SiCo)",
     price: 4799,
     originalPrice: 5899,
     rating: 4.8,
     reviewCount: 77,
     description:
-      "A sophisticated purple Tussar silk saree with a naturally textured finish and graceful fall.",
+      "A sophisticated purple SiCo Gadwal SiCo Gadwal saree with a naturally textured finish and graceful fall.",
     longDescription:
-      "Royal Purple Tussar brings together the organic character of Tussar silk and a rich jewel-toned palette. Elegant enough for celebrations while remaining beautifully understated.",
+      "Royal Purple SiCo Gadwal brings together the organic character of SiCo Gadwal silk and a rich jewel-toned palette. Elegant enough for celebrations while remaining beautifully understated.",
     images: [
       "https://images.pexels.com/photos/32441377/pexels-photo-32441377.jpeg?auto=compress&cs=tinysrgb&w=1200",
       "https://images.pexels.com/photos/6018958/pexels-photo-6018958.jpeg?auto=compress&cs=tinysrgb&w=1200",
@@ -428,18 +428,18 @@ export const products: Product[] = [
   },
 
   {
-    id: "garden-green-organza",
-    name: "Garden Green Organza",
-    category: "Organza Sarees",
-    material: "Organza",
+    id: "garden-green-sico-gadwal",
+    name: "Garden Green SiCo Gadwal",
+    category: "SiCo Gadwal Sarees",
+    material: "Silk Cotton (SiCo)",
     price: 4499,
     originalPrice: 5599,
     rating: 4.7,
     reviewCount: 52,
     description:
-      "A fresh garden-green organza saree with a light silhouette and contemporary romantic appeal.",
+      "A fresh garden-green SiCo Gadwal saree with a light silhouette and traditional temple border.",
     longDescription:
-      "Garden Green Organza is airy, feminine and easy to style. Its luminous finish gives the saree a soft statement quality without overwhelming the wearer.",
+      "Garden Green SiCo Gadwal is airy, feminine and easy to style. Its luminous silk-cotton finish gives the drape a refined festive charm.",
     images: [
       "https://images.pexels.com/photos/35737662/pexels-photo-35737662.jpeg?auto=compress&cs=tinysrgb&w=1200",
       "https://images.pexels.com/photos/37087941/pexels-photo-37087941.jpeg?auto=compress&cs=tinysrgb&w=1200",
@@ -452,7 +452,7 @@ export const products: Product[] = [
   {
     id: "scarlet-festive-saree",
     name: "Scarlet Festive Saree",
-    category: "Festive Sarees",
+    category: "SiCo Gadwal Sarees",
     material: "Silk Blend",
     price: 5299,
     originalPrice: 6499,
@@ -474,7 +474,7 @@ export const products: Product[] = [
   {
     id: "monsoon-blue-saree",
     name: "Monsoon Blue Saree",
-    category: "Contemporary Sarees",
+    category: "SiCo Gadwal Sarees",
     material: "Soft Cotton Silk",
     price: 3599,
     originalPrice: 4299,
@@ -496,7 +496,7 @@ export const products: Product[] = [
   {
     id: "temple-gold-saree",
     name: "Temple Gold Saree",
-    category: "Traditional Sarees",
+    category: "SiCo Gadwal Sarees",
     material: "Silk Cotton",
     price: 4899,
     originalPrice: 5999,
@@ -518,8 +518,8 @@ export const products: Product[] = [
   {
     id: "lotus-pink-saree",
     name: "Lotus Pink Saree",
-    category: "Printed Sarees",
-    material: "Soft Georgette",
+    category: "SiCo Gadwal Sarees",
+    material: "Silk Cotton (SiCo)",
     price: 3299,
     originalPrice: 3999,
     rating: 4.6,
@@ -540,14 +540,14 @@ export const products: Product[] = [
   {
     id: "heritage-bengal-cotton",
     name: "Heritage Bengal Cotton",
-    category: "Bengal Cotton Sarees",
+    category: "SiCo Gadwal Sarees",
     material: "Bengal Cotton",
     price: 2899,
     originalPrice: 3499,
     rating: 4.8,
     reviewCount: 71,
     description:
-      "A graceful Bengal-inspired cotton saree celebrating traditional draping and understated textile beauty.",
+      "A graceful Bengal-inspired SiCo Gadwal saree celebrating traditional draping and understated textile beauty.",
     longDescription:
       "Heritage Bengal Cotton takes inspiration from classic Bengali saree styling and breathable woven fabrics. A beautiful choice for everyday elegance and cultural occasions.",
     images: [
@@ -562,7 +562,7 @@ export const products: Product[] = [
   {
     id: "royal-teal-saree",
     name: "Royal Teal Saree",
-    category: "Silk Sarees",
+    category: "SiCo Gadwal Sarees",
     material: "Silk Blend",
     price: 5599,
     originalPrice: 6899,
@@ -584,7 +584,7 @@ export const products: Product[] = [
   {
     id: "burgundy-heritage-saree",
     name: "Burgundy Heritage Saree",
-    category: "Traditional Sarees",
+    category: "SiCo Gadwal Sarees",
     material: "Silk",
     price: 6199,
     originalPrice: 7499,

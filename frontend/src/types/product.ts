@@ -1,18 +1,10 @@
 export type ProductMaterial =
-  | "Silk"
-  | "Cotton"
-  | "Chiffon"
-  | "Georgette"
-  | "Organza"
-  | "Linen"
-  | "Banarasi";
+  | "Silk Cotton (SiCo)"
+  | "Pure Handloom Silk"
+  | "Gadwal Zari Silk"
+  | "Organic Cotton";
 
-export type ProductCategory =
-  | "Sarees"
-  | "Designer"
-  | "Festive"
-  | "Party Wear"
-  | "New Arrivals";
+export type ProductCategory = "SiCo Gadwal Sarees";
 
 export interface Product {
   id: number;

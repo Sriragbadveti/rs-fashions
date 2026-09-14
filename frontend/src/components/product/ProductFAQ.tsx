@@ -15,7 +15,7 @@ const faqData = [
     category: "Care & Silk Mark",
     title: "Are these authentic handloom silks certified by Silk Mark?",
     content:
-      "Yes. Every pure Katan, Kanjivaram, and Tussar silk piece carries an authorized Silk Mark India QR tag with an artisan weaving authenticity card inside your package.",
+      "Yes. Every authentic SiCo Gadwal saree carries an authorized handloom authenticity card and certified weave verification inside your package.",
   },
   {
     category: "Care & Silk Mark",

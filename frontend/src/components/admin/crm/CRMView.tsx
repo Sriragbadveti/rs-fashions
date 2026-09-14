@@ -65,10 +65,10 @@ export const CRMView: React.FC<CRMViewProps> = ({
     type: "greeting" | "birthday" | "anniversary" | "drop"
   ) => {
     const phone = c.phone.replace(/[^0-9]/g, "");
-    let text = `Namaste ${c.name},\n\nGreetings from RS Fashions Jubilee Hills Flagship Atelier!`;
+    let text = `Namaste ${c.name},\n\nGreetings from RS Fashions Jubilee Hills Flagship Studio!`;
 
     if (type === "birthday") {
-      text = `Namaste ${c.name},\n\nWishing you a joyful & blessed Birthday from all of us at RS Fashions!\n\nAs a valued ${c.tier}, we have reserved an exclusive 10% celebratory privilege on your next heirloom Gadwal silk saree choice.\n\nWarm regards,\nRS Fashions`;
+      text = `Namaste ${c.name},\n\nWishing you a joyful & blessed Birthday from all of us at RS Fashions!\n\nAs a valued ${c.tier}, we have reserved an exclusive 10% celebratory privilege on your next heirloom Gadwal SiCo Gadwal saree choice.\n\nWarm regards,\nRS Fashions`;
     } else if (type === "anniversary") {
       text = `Namaste ${c.name},\n\nWishing you and your family a very happy Wedding Anniversary from RS Fashions!\n\nMay your celebrations be adorned with elegance. We look forward to welcoming you soon.\n\nWarm regards,\nRS Fashions`;
     } else if (type === "drop") {

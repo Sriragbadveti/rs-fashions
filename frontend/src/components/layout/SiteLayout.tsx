@@ -1,6 +1,6 @@
-import { Outlet } from "react-router-dom";
-
+﻿import { Outlet } from "react-router-dom";
 import Navbar from "./Navbar";
+import CookieConsent from "../common/CookieConsent";
 
 function SiteLayout() {
   return (
@@ -10,6 +10,9 @@ function SiteLayout() {
       <main className="pt-22 sm:pt-25">
         <Outlet />
       </main>
+
+      {/* Floating Bespoke Cookie Consent */}
+      <CookieConsent />
     </div>
   );
 }

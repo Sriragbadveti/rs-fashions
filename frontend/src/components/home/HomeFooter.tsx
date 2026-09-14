@@ -30,7 +30,7 @@ function HomeFooter() {
           {/* Main Statement */}
           <div className="lg:col-span-7">
             <span className="text-[10px] font-semibold uppercase tracking-[0.32em] text-[#A89C8F]">
-              The Atelier Journal
+              The Heritage Journal
             </span>
             <h2 className="mt-3 font-serif text-[clamp(2.5rem,6vw,5.2rem)] font-light leading-[0.92] tracking-tight text-[#FAF7F2]">
               Fashion fades. <br />
@@ -88,37 +88,37 @@ function HomeFooter() {
             </p>
             <ul className="space-y-3 text-xs tracking-wider text-[#C9BFB5]/80 font-light">
               <li>
-                <Link to="/shop?material=silk" className="hover:text-white transition-colors">
-                  Pure Kanjivaram Silks
+                <Link to="/shop?search=Vintage+Checks" className="hover:text-white transition-colors">
+                  SiCo Gadwal Vintage Checks
                 </Link>
               </li>
               <li>
-                <Link to="/shop?material=banarasi" className="hover:text-white transition-colors">
-                  Banarasi Katan Brocades
+                <Link to="/shop?search=Gatti+Borders" className="hover:text-white transition-colors">
+                  SiCo Gadwal Gatti Borders
                 </Link>
               </li>
               <li>
-                <Link to="/shop?material=cotton" className="hover:text-white transition-colors">
-                  Mulberry Cotton Handlooms
+                <Link to="/shop?search=Ma+Inti+Bangaram" className="hover:text-white transition-colors">
+                  SiCo Gadwal Ma Inti Bangaram
                 </Link>
               </li>
               <li>
-                <Link to="/shop?material=organza" className="hover:text-white transition-colors">
-                  Chanderi & Organza Tissue
+                <Link to="/shop?search=Big+Kanchi" className="hover:text-white transition-colors">
+                  SiCo Gadwal Big Kanchi Borders
                 </Link>
               </li>
               <li>
-                <Link to="/shop?category=bridal" className="hover:text-white transition-colors">
-                  The Bridal Heirloom Edit
+                <Link to="/shop?category=SiCo+Gadwal+Sarees" className="hover:text-white transition-colors">
+                  SiCo Gadwal Festive Specials
                 </Link>
               </li>
             </ul>
           </div>
 
-          {/* Column 2: The Atelier */}
+          {/* Column 2: The Heritage Studio */}
           <div className="lg:col-span-3">
             <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[#8C7A6B] mb-5">
-              The Atelier
+              The Studio
             </p>
             <ul className="space-y-3 text-xs tracking-wider text-[#C9BFB5]/80 font-light">
               <li>
@@ -180,7 +180,7 @@ function HomeFooter() {
                 Connect
               </p>
               <p className="text-xs text-[#C9BFB5]/80 font-light leading-relaxed mb-5">
-                Flagship Atelier: Jubilee Hills, Hyderabad · By Prior Appointment
+                Flagship Showroom: Jubilee Hills, Hyderabad · By Prior Appointment
               </p>
             </div>
 

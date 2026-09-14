@@ -1,10 +1,11 @@
-import {
+﻿import {
   Routes,
   Route,
   useLocation,
 } from "react-router-dom";
 
 import SiteLayout from "./components/layout/SiteLayout";
+import ErrorBoundary from "./components/common/ErrorBoundary";
 
 import Home from "./pages/Home";
 import Shop from "./pages/Shop";
@@ -13,7 +14,10 @@ import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
 import OurStory from "./pages/OurStory";
 import Admin from "./pages/Admin";
+import Login from "./pages/Login";
 import Auth from "./pages/Auth";
+import NotFound from "./pages/NotFound";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 
 function AppContent() {
   const location = useLocation();
@@ -22,6 +26,7 @@ function AppContent() {
     <Routes location={location}>
       {/* ADMIN PORTAL (Stand-alone Layout) */}
       <Route path="/admin" element={<Admin />} />
+      <Route path="/admin/login" element={<Login />} />
 
       {/* AUTHENTICATION / LOGIN */}
       <Route path="/login" element={<Auth />} />
@@ -53,6 +58,12 @@ function AppContent() {
           element={<OurStory />}
         />
 
+        {/* PRIVACY POLICY */}
+        <Route
+          path="/privacy-policy"
+          element={<PrivacyPolicy />}
+        />
+
         {/* CART */}
         <Route
           path="/cart"
@@ -65,10 +76,20 @@ function AppContent() {
           element={<Checkout />}
         />
       </Route>
+
+      {/* 404 NOT FOUND (CATCH-ALL) */}
+      <Route
+        path="*"
+        element={<NotFound />}
+      />
     </Routes>
   );
 }
 
 export default function App() {
-  return <AppContent />;
+  return (
+    <ErrorBoundary>
+      <AppContent />
+    </ErrorBoundary>
+  );
 }

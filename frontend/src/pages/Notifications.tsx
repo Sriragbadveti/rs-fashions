@@ -35,7 +35,22 @@ function getStoredCRMContactsWithMilestones() {
 
 export default function Notifications({ salesHistory, onNavigateTab, onClose }: NotificationsProps) {
   const [isVisible, setIsVisible] = useState(false);
-  const [dismissedIds, setDismissedIds] = useState<string[]>([]);
+  const [readIds, setReadIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem("rs_admin_notifications_read");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [dismissedIds, setDismissedIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem("rs_admin_notifications_dismissed");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [clearingIds, setClearingIds] = useState<string[]>([]);
 
   useEffect(() => {
@@ -95,7 +110,7 @@ export default function Notifications({ salesHistory, onNavigateTab, onClose }: 
             id: `bday-${c.phone}`,
             type: "birthday",
             title: `🎂 Upcoming Birthday: ${c.name}`,
-            description: `${c.name}'s birthday is in ${diffDays === 0 ? "today!" : `${diffDays} day(s).`} Send a special silk saree greeting.`,
+            description: `${c.name}'s birthday is in ${diffDays === 0 ? "today!" : `${diffDays} day(s).`} Send a special SiCo Gadwal saree greeting.`,
             timestamp: "Milestone Alert",
             actionTab: "crm",
             badgeText: "Birthday",
@@ -124,30 +139,58 @@ export default function Notifications({ salesHistory, onNavigateTab, onClose }: 
   }, [salesHistory]);
 
   const activeNotifications = useMemo(() => {
-    return allNotifications.filter((item) => !dismissedIds.includes(item.id));
-  }, [allNotifications, dismissedIds]);
+    return allNotifications.filter(
+      (item) => !dismissedIds.includes(item.id) && !readIds.includes(item.id)
+    );
+  }, [allNotifications, dismissedIds, readIds]);
+
+  const handleMarkAsRead = (id: string) => {
+    sound.playPaperCrease();
+    setClearingIds((prev) => [...prev, id]);
+    setTimeout(() => {
+      setReadIds((prev) => {
+        const next = prev.includes(id) ? prev : [...prev, id];
+        try {
+          localStorage.setItem("rs_admin_notifications_read", JSON.stringify(next));
+        } catch {}
+        return next;
+      });
+      setClearingIds((prev) => prev.filter((item) => item !== id));
+      window.dispatchEvent(new Event("notificationsUpdated"));
+    }, 320);
+  };
 
   const handleDismiss = (id: string) => {
     sound.playPaperCrease();
     setClearingIds((prev) => [...prev, id]);
     setTimeout(() => {
-      setDismissedIds((prev) => [...prev, id]);
+      setDismissedIds((prev) => {
+        const next = prev.includes(id) ? prev : [...prev, id];
+        try {
+          localStorage.setItem("rs_admin_notifications_dismissed", JSON.stringify(next));
+        } catch {}
+        return next;
+      });
       setClearingIds((prev) => prev.filter((item) => item !== id));
-    }, 400);
+      window.dispatchEvent(new Event("notificationsUpdated"));
+    }, 320);
   };
 
   const handleClearAll = () => {
     sound.playPaperCrease();
     const ids = activeNotifications.map((item) => item.id);
-    ids.forEach((id, index) => {
-      setTimeout(() => {
-        setClearingIds((prev) => [...prev, id]);
-        setTimeout(() => {
-          setDismissedIds((prev) => [...prev, id]);
-          setClearingIds((prev) => prev.filter((item) => item !== id));
-        }, 400);
-      }, index * 120);
-    });
+    setClearingIds(ids);
+    setTimeout(() => {
+      setDismissedIds((prev) => {
+        const next = Array.from(new Set([...prev, ...ids]));
+        try {
+          localStorage.setItem("rs_admin_notifications_dismissed", JSON.stringify(next));
+        } catch {}
+        return next;
+      });
+      setClearingIds([]);
+      window.dispatchEvent(new Event("notificationsUpdated"));
+    }, 350);
   };
 
   return (
@@ -226,7 +269,7 @@ export default function Notifications({ salesHistory, onNavigateTab, onClose }: 
                 <div
                   key={item.id}
                   className={`group flex flex-col gap-3 rounded-2xl border border-stone-200/80 bg-white/90 p-4 shadow-sm transition-all duration-400 transform ${
-                    isClearing ? "opacity-0 scale-95 translate-x-4" : "opacity-100 scale-100 translate-x-0"
+                    isClearing ? "opacity-0 scale-95 translate-x-full transition-all duration-300 ease-in" : "opacity-100 scale-100 translate-x-0 transition-all duration-200"
                   } hover:border-[#D4A373]/50 hover:shadow`}
                 >
                   <div className="flex items-start gap-3.5 min-w-0">
@@ -261,15 +304,27 @@ export default function Notifications({ salesHistory, onNavigateTab, onClose }: 
                   </div>
 
                   <div className="flex items-center justify-between pt-1 border-t border-stone-100">
-                    <button
-                      type="button"
-                      onClick={() => handleDismiss(item.id)}
-                      className="flex items-center gap-1 text-[11px] font-semibold text-stone-500 hover:text-stone-800 transition-colors"
-                      title="Mark as read"
-                    >
-                      <CheckCheck size={14} className="text-emerald-600" />
-                      <span>Read</span>
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleMarkAsRead(item.id)}
+                        className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-lg transition-all"
+                        title="Mark as read"
+                      >
+                        <CheckCheck size={13} className="text-emerald-600" />
+                        <span>Mark as Read</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDismiss(item.id)}
+                        className="flex items-center gap-1 text-[11px] font-medium text-stone-400 hover:text-rose-600 px-2 py-1 rounded-lg hover:bg-rose-50 transition-all"
+                        title="Dismiss notification"
+                      >
+                        <X size={13} />
+                        <span>Clear</span>
+                      </button>
+                    </div>
 
                     <button
                       type="button"

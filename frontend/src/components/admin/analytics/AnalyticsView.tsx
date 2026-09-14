@@ -124,7 +124,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
     salesHistory.forEach((s) => {
       s.items.forEach((it) => {
-        const key = it.name || "Gadwal Silk Saree";
+        const key = it.name || "SiCo Gadwal Saree";
         if (!designMap[key]) {
           designMap[key] = { revenue: 0, units: 0 };
         }
@@ -273,7 +273,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                   </span>
                   <div className="w-full bg-stone-100 rounded-xl h-48 flex items-end p-1 overflow-hidden">
                     <div
-                      className="w-full rounded-lg bg-gradient-to-t from-[#2A0E20] to-[#D4A373] group-hover:brightness-110 transition-all duration-300"
+                      className="w-full rounded-lg bg-linear-to-t from-[#2A0E20] to-[#D4A373] group-hover:brightness-110 transition-all duration-300"
                       style={{ height: `${Math.max(12, heightPercent)}%` }}
                     />
                   </div>
@@ -314,7 +314,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                   </div>
                   <div className="w-full bg-stone-100 h-2 rounded-full overflow-hidden">
                     <div
-                      className="bg-gradient-to-r from-[#D4A373] to-[#2A0E20] h-full rounded-full"
+                      className="bg-linear-to-r from-[#D4A373] to-[#2A0E20] h-full rounded-full"
                       style={{ width: `${d.share}%` }}
                     />
                   </div>

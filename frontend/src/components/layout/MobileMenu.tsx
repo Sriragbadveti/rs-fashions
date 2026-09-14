@@ -25,50 +25,28 @@ const sortOptions = [
     query: "price_desc",
     icon: FiTrendingDown,
   },
-  {
-    label: "Best Sellers",
-    query: "bestseller",
-    icon: FiAward,
-  },
 ];
 
-// Saree Types grouped into the Saree section dropdown
 const sareeSubcategories = [
-  { label: "All Sarees", path: "/shop" },
-  { label: "Silk Sarees (Pure Katan & Mulberry)", path: "/shop?category=Silk+Sarees" },
-  { label: "Kanjivaram Heritage Sarees", path: "/shop?search=kanjivaram" },
-  { label: "Banarasi Weave Sarees", path: "/shop?material=Banarasi" },
-  { label: "Cotton & Chanderi Sarees", path: "/shop?category=Cotton+Sarees" },
-  { label: "Designer Sarees", path: "/shop?category=Designer+Sarees" },
-  { label: "Organza & Tissue Sarees", path: "/shop?material=Organza" },
-  { label: "Chiffon & Georgette Sarees", path: "/shop?material=Chiffon" },
-  { label: "Handloom Linen Sarees", path: "/shop?material=Linen" },
-  { label: "Bridal Heritage Sarees", path: "/shop?category=Bridal+Heritage" },
-];
-
-const otherCategories = [
-  { label: "New Arrivals", path: "/shop?sort=bestseller" },
-  { label: "Festive Wear", path: "/shop?category=Festive+Wear" },
-  { label: "Party Wear", path: "/shop?category=Party+Wear" },
-  { label: "Best Sellers", path: "/shop?sort=bestseller" },
+  { label: "Vintage Checks", path: "/shop?search=Vintage+Checks" },
+  { label: "Gatti borders", path: "/shop?search=Gatti+borders" },
+  { label: "Ma inti Bangaram 3 inch borders", path: "/shop?search=Ma+inti+Bangaram" },
+  { label: "Big Kanchi borders", path: "/shop?search=Big+Kanchi" },
+  { label: "Equal Kanchi borders", path: "/shop?search=Equal+Kanchi" },
+  { label: "Chakra border", path: "/shop?search=Chakra+border" },
+  { label: "Gab borders", path: "/shop?search=Gab+borders" },
+  { label: "Gab checks borders", path: "/shop?search=Gab+checks" },
+  { label: "Box Gadwal Checks", path: "/shop?search=Box+Gadwal+Checks" },
 ];
 
 const secondaryLinks = [
   {
+    label: "Shop",
+    path: "/shop",
+  },
+  {
     label: "Our Story",
     path: "/our-story",
-  },
-  {
-    label: "Sign In / Login",
-    path: "/login",
-  },
-  {
-    label: "Admin Atelier",
-    path: "/admin",
-  },
-  {
-    label: "Curated Vault",
-    path: "/shop",
   },
 ];
 
@@ -85,7 +63,6 @@ function MobileMenu({ onClose }: MobileMenuProps) {
   const [isClosing, setIsClosing] = useState(false);
   const [isSareeDropdownOpen, setIsSareeDropdownOpen] = useState(true);
 
-  // Trigger smooth exit animation before unmounting
   const handleDismiss = () => {
     if (isClosing) return;
     setIsClosing(true);
@@ -94,7 +71,6 @@ function MobileMenu({ onClose }: MobileMenuProps) {
     }, 240);
   };
 
-  // Lock body scroll
   useEffect(() => {
     const originalOverflow = document.body.style.overflow;
     const originalOverscroll = document.body.style.overscrollBehavior;
@@ -108,7 +84,6 @@ function MobileMenu({ onClose }: MobileMenuProps) {
     };
   }, []);
 
-  // Escape key handler
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -120,7 +95,6 @@ function MobileMenu({ onClose }: MobileMenuProps) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isClosing]);
 
-  // Price handlers
   const handleMinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = Number(e.target.value);
     const nextValue = Math.min(value, maxPrice - STEP);
@@ -150,7 +124,6 @@ function MobileMenu({ onClose }: MobileMenuProps) {
   return (
     <>
       <style>{`
-        /* Optimized touch scrolling */
         .becho-menu-scroll {
           -webkit-overflow-scrolling: touch;
           overscroll-behavior-y: contain;
@@ -171,7 +144,6 @@ function MobileMenu({ onClose }: MobileMenuProps) {
           border-radius: 999px;
         }
 
-        /* Pure GPU layer composition */
         .becho-menu-drawer {
           transform: translate3d(0, 0, 0);
           backface-visibility: hidden;
@@ -187,7 +159,6 @@ function MobileMenu({ onClose }: MobileMenuProps) {
           -webkit-backface-visibility: hidden;
         }
 
-        /* Custom range slider */
         .becho-range {
           pointer-events: none;
           position: absolute;
@@ -241,7 +212,6 @@ function MobileMenu({ onClose }: MobileMenuProps) {
           cursor: pointer;
         }
 
-        /* Keyframes */
         @keyframes bechoDrawerIn {
           from { transform: translate3d(-100%, 0, 0); }
           to { transform: translate3d(0, 0, 0); }
@@ -264,7 +234,6 @@ function MobileMenu({ onClose }: MobileMenuProps) {
       `}</style>
 
       <div className="fixed inset-0 z-[100] font-sans">
-        {/* Backdrop */}
         <div
           aria-hidden="true"
           onClick={handleDismiss}
@@ -276,7 +245,6 @@ function MobileMenu({ onClose }: MobileMenuProps) {
           }}
         />
 
-        {/* Drawer */}
         <aside
           role="dialog"
           aria-modal="true"
@@ -289,7 +257,7 @@ function MobileMenu({ onClose }: MobileMenuProps) {
           }}
         >
           {/* Header */}
-          <header className="flex shrink-0 items-center justify-between border-b border-black/[0.06] px-6 py-4">
+          <header className="flex h-16 shrink-0 items-center justify-between border-b border-black/6 px-6">
             <Link
               to="/"
               onClick={handleDismiss}
@@ -309,13 +277,13 @@ function MobileMenu({ onClose }: MobileMenuProps) {
           </header>
 
           {/* Filter / Price Panel */}
-          <section className="shrink-0 border-b border-black/[0.06] bg-[#F3EFE9]/70 px-6 py-4">
+          <section className="shrink-0 border-b border-black/6 bg-[#F3EFE9]/70 px-6 py-4">
             <div className="mb-2.5 flex items-center justify-between gap-3">
               <span className="text-[9.5px] font-semibold uppercase tracking-[0.24em] text-[#8C7A6B]">
                 Price Range
               </span>
 
-              <span className="whitespace-nowrap font-sans text-xs font-medium text-[#2A2421]">
+              <span className="whitespace-nowrap font-mono text-xs font-medium text-[#2A2421]">
                 ₹{minPrice.toLocaleString("en-IN")} — ₹{maxPrice.toLocaleString("en-IN")}
               </span>
             </div>
@@ -356,9 +324,9 @@ function MobileMenu({ onClose }: MobileMenuProps) {
             </div>
 
             {/* Sort Options */}
-            <div className="mt-3 flex items-center gap-2">
+            <div className="mt-3.5 flex items-center gap-2">
               <div
-                className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto py-0.5"
+                className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto py-0.5"
                 style={{
                   scrollbarWidth: "none",
                   WebkitOverflowScrolling: "touch",
@@ -373,13 +341,12 @@ function MobileMenu({ onClose }: MobileMenuProps) {
                       key={option.query}
                       type="button"
                       onClick={() => handleSortClick(option.query)}
-                      className={`flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[9.5px] font-medium tracking-wide transition-colors duration-150 active:scale-[0.97] ${
-                        isActive
+                      className={`inline-flex h-7 shrink-0 items-center gap-1 rounded-full px-2.5 text-[9.5px] font-medium tracking-wide transition-colors duration-150 active:scale-[0.97] ${isActive
                           ? "bg-[#8E3D51] text-white"
                           : "border border-black/10 bg-white/80 text-[#544B44]"
-                      }`}
+                        }`}
                     >
-                      <Icon size={11} />
+                      <Icon size={11} className="shrink-0" />
                       <span>{option.label}</span>
                     </button>
                   );
@@ -389,121 +356,117 @@ function MobileMenu({ onClose }: MobileMenuProps) {
               <button
                 type="button"
                 onClick={handleApplyPrice}
-                className="shrink-0 rounded-full bg-[#2A2421] px-3.5 py-1 text-[9.5px] font-semibold uppercase tracking-wider text-white transition-transform duration-150 active:scale-95 hover:bg-[#8E3D51]"
+                className="inline-flex h-7 shrink-0 items-center justify-center rounded-full bg-[#2A2421] px-3 text-[9.5px] font-semibold uppercase tracking-wider text-white transition-all duration-150 hover:bg-[#8E3D51] active:scale-95"
               >
                 Apply
               </button>
             </div>
           </section>
 
-          {/* Scrollable Collections & Sarees Dropdown */}
+          {/* Scrollable Collections & Navigation Section */}
           <div className="becho-menu-scroll min-h-0 flex-1 overflow-y-auto px-6 py-5">
-            <p className="mb-3 text-[9.5px] font-semibold uppercase tracking-[0.26em] text-[#8C7A6B]">
-              Curated Collections
-            </p>
+            {/* Section 1: Curated Collections */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between px-0.5">
+                <span className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#8C7A6B]">
+                  Collections
+                </span>
+              </div>
 
-            <nav className="space-y-1.5" aria-label="Collections">
-              {/* 1. Sarees Grouped Section (Dropdown Accordion) */}
-              <div className="rounded-2xl border border-black/8 bg-white/80 p-1 transition-all overflow-hidden">
+              {/* Saree Accordion Card */}
+              <div
+                className={`overflow-hidden rounded-2xl border transition-all duration-300 ${isSareeDropdownOpen
+                    ? "border-[#8E3D51]/30 bg-white shadow-md ring-1 ring-[#8E3D51]/10"
+                    : "border-black/[0.07] bg-white/90 shadow-xs hover:border-black/15"
+                  }`}
+              >
+                {/* Accordion Toggle Header */}
                 <button
                   type="button"
                   onClick={() => setIsSareeDropdownOpen(!isSareeDropdownOpen)}
-                  className="flex w-full items-center justify-between px-4 py-3 text-left font-serif text-lg font-normal text-[#2A2421] hover:text-[#8E3D51]"
+                  className="group flex w-full items-center justify-between px-4 py-3.5 text-left transition-colors"
                 >
-                  <div className="flex items-center gap-2">
-                    <span>Sarees Collection</span>
-                    <span className="rounded-full bg-[#8E3D51]/10 px-2 py-0.5 text-[10px] font-bold font-sans text-[#8E3D51]">
-                      {sareeSubcategories.length} Types
-                    </span>
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#8E3D51]/10 text-[#8E3D51] transition-transform duration-300 group-hover:scale-105">
+                      <span className="font-serif text-sm font-semibold">G</span>
+                    </div>
+                    <div>
+                      <h3 className="font-serif text-[15px] font-normal tracking-tight text-[#2A2421] transition-colors group-hover:text-[#8E3D51]">
+                        SiCo Gadwal Sarees
+                      </h3>
+                      <p className="text-[10px] font-light tracking-wide text-[#8C7A6B]">
+                        Interlocked Zari & Pure Silk Warp
+                      </p>
+                    </div>
                   </div>
 
-                  <FiChevronDown
-                    size={18}
-                    className={`text-[#8E3D51] transition-transform duration-300 ${
-                      isSareeDropdownOpen ? "rotate-180" : ""
-                    }`}
-                  />
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-black/[0.03] text-[#8E3D51] transition-colors group-hover:bg-[#8E3D51]/10">
+                      <FiChevronDown
+                        size={14}
+                        className={`transition-transform duration-300 ${isSareeDropdownOpen ? "rotate-180 text-[#8E3D51]" : "text-stone-400"
+                          }`}
+                      />
+                    </div>
+                  </div>
                 </button>
 
-                {isSareeDropdownOpen && (
-                  <div className="border-t border-black/5 bg-[#FAF7F2]/60 px-2 py-2 space-y-1">
-                    {sareeSubcategories.map((item) => (
-                      <Link
-                        key={item.label}
-                        to={item.path}
-                        onClick={handleDismiss}
-                        className="flex items-center justify-between rounded-xl px-3 py-2 text-xs font-light text-[#544B44] transition-colors hover:bg-white hover:text-[#8E3D51]"
-                      >
-                        <span>{item.label}</span>
-                        <FiArrowUpRight size={13} className="text-[#8C7A6B]" />
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* 2. Other Categories */}
-              {otherCategories.map((category) => (
-                <Link
-                  key={category.label}
-                  to={category.path}
-                  onClick={handleDismiss}
-                  className="group flex items-center justify-between rounded-2xl px-4 py-3 font-serif text-lg font-light text-[#2A2421] transition-colors hover:bg-black/5 hover:text-[#8E3D51]"
+                {/* Accordion Content with CSS Grid Height Transition */}
+                <div
+                  className={`grid transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${isSareeDropdownOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+                    }`}
                 >
-                  <span>{category.label}</span>
-                  <FiArrowUpRight
-                    size={15}
-                    className="text-[#8C7A6B] opacity-0 transition-opacity group-hover:opacity-100"
-                  />
-                </Link>
-              ))}
-            </nav>
+                  <div className="overflow-hidden">
+                    <div className="space-y-1 border-t border-black/[0.05] bg-[#FAF7F2]/75 p-2">
+                      {sareeSubcategories.map((item, index) => (
+                        <Link
+                          key={item.label}
+                          to={item.path}
+                          onClick={handleDismiss}
+                          style={{
+                            transitionDelay: isSareeDropdownOpen ? `${index * 25}ms` : "0ms",
+                          }}
+                          className={`group flex items-center justify-between rounded-xl px-3 py-2.5 transition-all duration-200 hover:bg-white hover:shadow-xs active:scale-[0.99] ${isSareeDropdownOpen ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-1"
+                            }`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#8E3D51]/30 transition-all duration-200 group-hover:w-3 group-hover:bg-[#8E3D51]" />
+                            <span className="truncate text-xs font-medium text-[#4A3F35] transition-colors group-hover:text-[#8E3D51]">
+                              {item.label}
+                            </span>
+                          </div>
 
-            {/* Secondary Links */}
-            <div className="mt-6 border-t border-black/[0.06] pt-5">
+                          <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-black/[0.02] text-[#8C7A6B] opacity-40 transition-all duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:bg-[#8E3D51]/10 group-hover:text-[#8E3D51] group-hover:opacity-100">
+                            <FiArrowUpRight size={12} strokeWidth={2} />
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {/* Section 2: Explore*/}
+            <div className="mt-6 border-t border-black/6 pt-5">
               <p className="mb-3 text-[9.5px] font-semibold uppercase tracking-[0.26em] text-[#8C7A6B]">
-                The Atelier & Administration
+                Explore
               </p>
 
-              <div className="flex flex-wrap gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 {secondaryLinks.map((link) => (
                   <Link
                     key={link.label}
                     to={link.path}
                     onClick={handleDismiss}
-                    className="rounded-xl border border-black/8 bg-white/70 px-3.5 py-1.5 text-xs font-medium tracking-wide text-[#5A5048] transition-colors hover:border-[#8E3D51]/30 hover:bg-white hover:text-[#8E3D51]"
+                    className="flex items-center justify-between rounded-xl border border-black/8 bg-white/80 px-3.5 py-2.5 text-xs font-medium text-[#5A5048] shadow-xs transition-colors hover:border-[#8E3D51]/30 hover:bg-white hover:text-[#8E3D51]"
                   >
-                    {link.label}
+                    <span>{link.label}</span>
+                    <FiArrowUpRight size={13} className="text-[#8C7A6B]" />
                   </Link>
                 ))}
               </div>
             </div>
           </div>
-
-          {/* Footer Banner */}
-          <footer className="shrink-0 border-t border-black/[0.06] bg-[#FAF7F2] p-5">
-            <div className="rounded-2xl border border-black/8 bg-white p-3.5 shadow-sm">
-              <div className="flex items-center justify-between gap-4">
-                <div className="min-w-0">
-                  <p className="font-serif text-sm font-normal text-[#2A2421]">
-                    Heirloom Vault '26
-                  </p>
-                  <p className="mt-0.5 text-[10.5px] leading-4 text-[#6E6359]">
-                    Certified pure Mulberry Silks & Zari.
-                  </p>
-                </div>
-
-                <Link
-                  to="/shop"
-                  onClick={handleDismiss}
-                  aria-label="Explore Vault"
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#8E3D51] text-white transition-transform active:scale-90"
-                >
-                  <FiArrowUpRight size={14} />
-                </Link>
-              </div>
-            </div>
-          </footer>
         </aside>
       </div>
     </>

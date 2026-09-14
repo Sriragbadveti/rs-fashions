@@ -179,7 +179,7 @@ export const ModalProvider: React.FC<{ children: React.ReactNode }> = ({
               onClick={(e) => e.stopPropagation()}
             >
               {/* Top Accent Highlight */}
-              <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-[#D4A373]/50 to-transparent" />
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-linear-to-r from-transparent via-[#D4A373]/50 to-transparent" />
 
               {/* Body */}
               <div className="flex items-start gap-4">

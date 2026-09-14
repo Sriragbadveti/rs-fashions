@@ -222,7 +222,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ sale, onClose }) => 
 
           {/* Terms & Footer */}
           <div className="pt-4 border-t border-stone-200/80 text-[10px] text-stone-400 text-center space-y-1">
-            <p>Thank you for patronizing RS Fashions Gadwal Silk Atelier.</p>
+            <p>Thank you for patronizing RS Fashions Gadwal Silk Studio.</p>
             <p className="font-mono">Computer Generated Official GST Tax Invoice &bull; E. &amp; O.E.</p>
           </div>
         </div>

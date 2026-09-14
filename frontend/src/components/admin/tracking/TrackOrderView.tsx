@@ -66,7 +66,7 @@ export const TrackOrderView: React.FC<TrackOrderViewProps> = ({
   const handleShareTrackingWhatsApp = (order: TrackedOrder) => {
     const phone = order.partyContact.replace(/[^0-9]/g, "");
     const text = encodeURIComponent(
-      `Namaste ${order.partyName},\n\nYour RS Fashions silk consignment "${order.title}" (Tracking: ${order.trackingNumber}) is currently "${order.currentStage.replace(/_/g, " ")}".\n\nPartner: ${order.courierOrLoomPartner}\nEstimated Delivery: ${order.estimatedCompletion}\n\nTrack your silk saree with RS Fashions!`
+      `Namaste ${order.partyName},\n\nYour RS Fashions SiCo Gadwal consignment "${order.title}" (Tracking: ${order.trackingNumber}) is currently "${order.currentStage.replace(/_/g, " ")}".\n\nPartner: ${order.courierOrLoomPartner}\nEstimated Delivery: ${order.estimatedCompletion}\n\nTrack your silk saree with RS Fashions!`
     );
     window.open(`https://api.whatsapp.com/send?phone=91${phone}&text=${text}`, "_blank");
   };

@@ -11,10 +11,12 @@ export interface UserSession {
 }
 
 export default function Admin() {
-  const [currentUser, setCurrentUser] = useState<UserSession | null>({
-    name: "Sindhu Reddy",
-    email: "admin@rsfashions.in",
-    role: "Superadmin",
+  const [currentUser, setCurrentUser] = useState<UserSession | null>(() => {
+    try {
+      const saved = localStorage.getItem("rs_admin_session");
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return null;
   });
 
   return (
@@ -23,6 +25,9 @@ export default function Admin() {
         {!currentUser ? (
           <Login
             onLoginSuccess={(user) => {
+              try {
+                localStorage.setItem("rs_admin_session", JSON.stringify(user));
+              } catch {}
               setCurrentUser(user);
             }}
           />
@@ -30,6 +35,9 @@ export default function Admin() {
           <Dashboard
             user={currentUser}
             onLogout={() => {
+              try {
+                localStorage.removeItem("rs_admin_session");
+              } catch {}
               setCurrentUser(null);
             }}
           />

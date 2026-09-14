@@ -61,7 +61,7 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({
       previousStock,
       newStock,
       referenceNumber: refNo.trim() || `REF-${Date.now().toString().slice(-4)}`,
-      performedBy: "Sindhu Reddy",
+      performedBy: "Sindhu",
       note: note.trim(),
     };
 

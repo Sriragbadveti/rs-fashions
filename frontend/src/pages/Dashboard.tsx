@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   LayoutDashboard,
   ShoppingBag,
@@ -17,11 +17,14 @@ import {
   PackagePlus,
   Menu,
   X,
+  Tag,
+  ChevronRight,
 } from "lucide-react";
 import Overview from "./Overview";
 import Catalog from "./SareeStock";
 import SettingsView from "./Settings";
 import Billing from "./Billing";
+import SaleManager from "./SaleManager";
 import StockHistory from "./StockHistory";
 import TransactionHistory from "./TransactionHistory";
 import Analysis from "./Analysis";
@@ -31,7 +34,7 @@ import AutomatedLowstock from "./AutomatedLowstock";
 import Notifications from "./Notifications";
 import { sound } from "../types/soundEngine";
 import BulkStock from "./BulkStock";
-import { OrderFulfillmentProvider } from "../context/OrderFulfillmentContext"; // NEW: shared order status/AWB store
+import { OrderFulfillmentProvider } from "../context/OrderFulfillmentContext";
 import { API_BASE } from "../config/api";
 import logo from "../assets/logo/logo1.png";
 import type {
@@ -47,7 +50,9 @@ import {
   MOCK_CATEGORIES,
   MOCK_INVENTORY,
   MOCK_STOCK_HISTORY,
+  MOCK_CUSTOMERS,
 } from "../types/inventory";
+import { getSavedCrmCustomers } from "../types/useBilling";
 
 interface DashboardProps {
   user: { name: string; email: string; role: string };
@@ -55,6 +60,19 @@ interface DashboardProps {
 }
 
 const ACTIVE_TAB_STORAGE_KEY = "rs_active_tab";
+const NOTIFICATIONS_SEEN_KEY = "rs_notifications_last_seen";
+
+interface NavItemConfig {
+  id: DashboardTab;
+  label: string;
+  icon: any;
+  badge?: string | number;
+}
+
+interface NavSectionConfig {
+  title: string;
+  items: NavItemConfig[];
+}
 
 export default function Dashboard({ user, onLogout }: DashboardProps) {
   const [activeTab, setActiveTabState] = useState<DashboardTab>(() => {
@@ -65,6 +83,27 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [currentTime, setCurrentTime] = useState("");
+
+  const [lastSeenTime, setLastSeenTime] = useState<number>(() => {
+    return Number(localStorage.getItem(NOTIFICATIONS_SEEN_KEY) || 0);
+  });
+
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      setCurrentTime(
+        now.toLocaleTimeString("en-IN", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
+        })
+      );
+    };
+    updateTime();
+    const timer = setInterval(updateTime, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const setActiveTab = (tab: DashboardTab) => {
     sound.playClick();
@@ -84,16 +123,39 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
   const [categories, setCategories] = useState<Category[]>(() => {
     try {
       const saved = localStorage.getItem("rs_admin_categories");
-      if (saved) return JSON.parse(saved);
-    } catch {}
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          const filtered = parsed.filter(
+            (c) => c.name === "SiCo Gadwal Sarees" || c.id === "c1"
+          );
+          if (filtered.length > 0) {
+            return filtered.map((c) => ({
+              ...c,
+              name: "SiCo Gadwal Sarees",
+              slug: "SGS",
+              hsn: "5208",
+            }));
+          }
+        }
+      }
+    } catch { }
     return MOCK_CATEGORIES;
   });
 
   const [inventory, setInventory] = useState<Product[]>(() => {
     try {
       const saved = localStorage.getItem("rs_admin_inventory");
-      if (saved) return JSON.parse(saved);
-    } catch {}
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((p) => ({
+            ...p,
+            categoryId: "c1",
+          }));
+        }
+      }
+    } catch { }
     return MOCK_INVENTORY;
   });
 
@@ -101,7 +163,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
     try {
       const saved = localStorage.getItem("rs_admin_stock_history");
       if (saved) return JSON.parse(saved);
-    } catch {}
+    } catch { }
     return MOCK_STOCK_HISTORY;
   });
 
@@ -109,18 +171,25 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
     try {
       const saved = localStorage.getItem("rs_admin_sales_history");
       if (saved) return JSON.parse(saved);
-    } catch {}
+    } catch { }
     return [];
   });
 
-  const [customers, setCustomers] = useState<CustomerProfile[]>([]);
+  const [customers, setCustomers] = useState<CustomerProfile[]>(() => {
+    try {
+      const list = getSavedCrmCustomers();
+      if (list && list.length > 0) return list;
+    } catch { }
+    return MOCK_CUSTOMERS;
+  });
+
   const [initialFulfillments, setInitialFulfillments] = useState<Record<string, any>>({});
 
   const [devices, setDevices] = useState<Device[]>([
     {
       id: "d1",
       uuid: "8f3a-9c21-win-0001",
-      name: "Front Counter Point-of-Sale (This PC)",
+      name: "Main Billing Terminal (This PC)",
       platform: "windows",
       lastActive: "Active now",
       isCurrentDevice: true,
@@ -129,13 +198,42 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
     {
       id: "d2",
       uuid: "2b7e-4410-win-0002",
-      name: "Sindhu's Inventory Surface Pro",
+      name: "Showroom Floor iPad",
       platform: "windows",
       lastActive: "15 mins ago",
       isCurrentDevice: false,
       ipAddress: "192.168.1.108",
     },
   ]);
+
+  // Dot is displayed ONLY when there are genuinely unseen notifications
+  const hasUnreadNotifications = useMemo(() => {
+    if (isNotificationsOpen) return false;
+
+    // 1. Any sales completed after lastSeenTime
+    const hasNewSale = salesHistory.some((s) => {
+      const saleTime = new Date(s.date).getTime();
+      return !Number.isNaN(saleTime) && saleTime > lastSeenTime;
+    });
+
+    // 2. Any stock adjustments logged after lastSeenTime
+    const hasNewStockMov = stockHistory.some((m) => {
+      const movTime = new Date(m.date).getTime();
+      return !Number.isNaN(movTime) && movTime > lastSeenTime;
+    });
+
+    return hasNewSale || hasNewStockMov;
+  }, [salesHistory, stockHistory, lastSeenTime, isNotificationsOpen]);
+
+  const handleOpenNotifications = () => {
+    sound.playClick();
+    sound.playNotification();
+    setIsNotificationsOpen(true);
+
+    const now = Date.now();
+    setLastSeenTime(now);
+    localStorage.setItem(NOTIFICATIONS_SEEN_KEY, String(now));
+  };
 
   const safeStorageSet = (key: string, data: any) => {
     try {
@@ -147,10 +245,76 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
           localStorage.setItem(key, JSON.stringify(data));
         }
       } catch {
-        // Storage unavailable or quota exceeded, ignore gracefully
+        // Safe fallback
       }
     }
   };
+
+  const syncInventoryToStorefront = useCallback((inventoryList: Product[]) => {
+    try {
+      const storeProducts = (inventoryList || []).map((p: any) => {
+        const variants = Array.isArray(p.variants) ? p.variants : [];
+        const variantImages = variants.map((v: any) => v.imageUrl).filter(Boolean) as string[];
+        const primaryImg =
+          p.imageUrl ||
+          variantImages[0] ||
+          "https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1200&auto=format&fit=crop";
+        const images = Array.from(
+          new Set([primaryImg, ...variantImages, ...(Array.isArray(p.images) ? p.images : [])])
+        ).filter(Boolean) as string[];
+
+        const totalStock =
+          variants.length > 0
+            ? variants.reduce((sum: number, v: any) => sum + (Number(v.stock) || 0), 0)
+            : Number(p.stock) || 10;
+
+        const price = Number(p.salePrice ?? p.price) || 0;
+        const originalPrice = p.originalPrice
+          ? Number(p.originalPrice)
+          : price > 0
+            ? Math.round(price * 1.25)
+            : 0;
+        const colors =
+          variants.length > 0
+            ? variants.map((v: any) => v.color)
+            : Array.isArray(p.colors) && p.colors.length > 0
+              ? p.colors
+              : ["Standard"];
+
+        return {
+          id: p.id,
+          name: p.name,
+          category: "SiCo Gadwal Sarees",
+          material: "SiCo Gadwal / Silk Cotton",
+          price,
+          originalPrice,
+          stock: totalStock,
+          rating: Number(p.rating) || 4.8,
+          reviewCount: Number(p.reviewCount) || 28,
+          images: images.length > 0 ? images : [primaryImg],
+          colors: colors.length > 0 ? colors : ["Standard"],
+          sizes: ["Free Size (5.5m + 0.8m Blouse)"],
+          description: p.description || "Authentic handwoven SiCo Gadwal drape.",
+          longDescription:
+            p.longDescription ||
+            p.description ||
+            "Handcrafted pure heirloom SiCo Gadwal drape featuring pure zari accents and rich traditional border motifs.",
+          featured: Boolean(p.featured ?? true),
+        };
+      });
+
+      safeStorageSet("rs_fashions_products", storeProducts);
+      window.dispatchEvent(new Event("rs_inventory_updated"));
+    } catch (e) {
+      console.warn("Storefront sync notice:", e);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (inventory && inventory.length > 0) {
+      syncInventoryToStorefront(inventory);
+    }
+  }, [syncInventoryToStorefront]);
 
   const loadLiveBootstrap = useCallback(async (forceRefresh = false) => {
     try {
@@ -159,17 +323,29 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       const json = await res.json();
       const d = json?.data || json;
       if (d) {
-        // ALWAYS update UI state first so components render reliably!
         if (Array.isArray(d.categories) && d.categories.length > 0) setCategories(d.categories);
         if (Array.isArray(d.products) && d.products.length > 0) setInventory(d.products);
         if (Array.isArray(d.stockMovements)) setStockHistory(d.stockMovements);
         if (Array.isArray(d.sales)) setSalesHistory(d.sales);
-        if (Array.isArray(d.customers) && d.customers.length > 0) setCustomers(d.customers);
+        if (Array.isArray(d.customers) && d.customers.length > 0) {
+          setCustomers((prev) => {
+            const map = new Map<string, CustomerProfile>();
+            prev.forEach((c) => map.set(c.id || c.phone, c));
+            d.customers.forEach((c: CustomerProfile) => map.set(c.id || c.phone, c));
+            const merged = Array.from(map.values());
+            safeStorageSet("rs_admin_customers", merged);
+            return merged;
+          });
+        }
 
-        // Safe background caching (non-blocking)
-        if (Array.isArray(d.categories) && d.categories.length > 0) safeStorageSet("rs_admin_categories", d.categories);
-        if (Array.isArray(d.products) && d.products.length > 0) safeStorageSet("rs_admin_inventory", d.products);
-        if (Array.isArray(d.stockMovements)) safeStorageSet("rs_admin_stock_history", d.stockMovements);
+        if (Array.isArray(d.categories) && d.categories.length > 0)
+          safeStorageSet("rs_admin_categories", d.categories);
+        if (Array.isArray(d.products) && d.products.length > 0) {
+          safeStorageSet("rs_admin_inventory", d.products);
+          syncInventoryToStorefront(d.products);
+        }
+        if (Array.isArray(d.stockMovements))
+          safeStorageSet("rs_admin_stock_history", d.stockMovements);
         if (Array.isArray(d.sales)) safeStorageSet("rs_admin_sales_history", d.sales);
 
         const fulfillMap: Record<string, any> = {};
@@ -177,7 +353,12 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
           d.sales.forEach((s: any) => {
             if (s.invoiceNumber) {
               fulfillMap[s.invoiceNumber] = {
-                status: s.orderStatus === "delivered" ? "delivered" : s.orderStatus === "shipped" ? "shipped" : "packaging",
+                status:
+                  s.orderStatus === "delivered"
+                    ? "delivered"
+                    : s.orderStatus === "shipped"
+                      ? "shipped"
+                      : "packaging",
                 trackingNumber: "",
                 carrierPartner: "",
               };
@@ -189,7 +370,8 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
             const inv = t.id?.replace(/^trk-/, "") || t.trackingNumber;
             if (inv && fulfillMap[inv]) {
               fulfillMap[inv].trackingNumber = t.trackingNumber || fulfillMap[inv].trackingNumber;
-              fulfillMap[inv].carrierPartner = t.courierOrLoomPartner || fulfillMap[inv].carrierPartner;
+              fulfillMap[inv].carrierPartner =
+                t.courierOrLoomPartner || fulfillMap[inv].carrierPartner;
               if (t.currentStage) fulfillMap[inv].status = t.currentStage;
             }
           });
@@ -199,7 +381,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
         }
       }
     } catch (err) {
-      console.warn("Bootstrap fetch warning:", err);
+      console.warn("Bootstrap sync notice:", err);
     }
   }, []);
 
@@ -210,10 +392,10 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
   const triggerRefresh = useCallback(() => {
     sound.playGunReload();
     setIsRefreshing(true);
-    loadLiveBootstrap().finally(() => {
+    loadLiveBootstrap(true).finally(() => {
       window.setTimeout(() => {
         setIsRefreshing(false);
-      }, 650);
+      }, 600);
     });
   }, [loadLiveBootstrap]);
 
@@ -231,7 +413,12 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
 
   function handleAddProduct(newProduct: Product, categoryId: string) {
     sound.playClick();
-    setInventory((prev) => [newProduct, ...prev]);
+    setInventory((prev) => {
+      const updated = [newProduct, ...prev];
+      safeStorageSet("rs_admin_inventory", updated);
+      syncInventoryToStorefront(updated);
+      return updated;
+    });
     setCategories((prev) =>
       prev.map((c) =>
         c.id === categoryId ? { ...c, nextSequence: c.nextSequence + 1 } : c
@@ -259,7 +446,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
           newStock: v.stock,
           referenceNumber: `INIT-${newProduct.id}`,
           performedBy: user.name,
-          note: "Initial catalogue registration",
+          note: "Initial catalogue intake",
         },
         ...prev,
       ]);
@@ -268,12 +455,11 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(newProduct),
-    }).catch((err) => console.warn("Sync catalog error:", err));
+    }).catch((err) => console.warn("Catalog sync error:", err));
   }
 
   function handleBulkRestock(newProducts: Product[]) {
     sound.playClick();
-
     const receivedAt = new Date().toLocaleString("en-IN", {
       day: "2-digit",
       month: "short",
@@ -282,39 +468,41 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       minute: "2-digit",
     });
 
-    const bulkMovements: StockMovement[] = newProducts.flatMap(
-      (newProduct) =>
-        newProduct.variants.map((variant) => ({
-          id: `mov-bulk-${Date.now()}-${variant.sku}`,
-          date: receivedAt,
-          sku: variant.sku,
-          productName: newProduct.name,
-          color: variant.color,
-          colorSlug: variant.colorSlug,
-          type: "RESTOCK" as const,
-          quantity: variant.stock,
-          previousStock: 0,
-          newStock: variant.stock,
-          referenceNumber: `BULK-${newProduct.id}`,
-          performedBy: user.name,
-          note: "Bulk Stock Entry / Loom Intake",
-        }))
+    const bulkMovements: StockMovement[] = newProducts.flatMap((newProduct) =>
+      newProduct.variants.map((variant) => ({
+        id: `mov-bulk-${Date.now()}-${variant.sku}`,
+        date: receivedAt,
+        sku: variant.sku,
+        productName: newProduct.name,
+        color: variant.color,
+        colorSlug: variant.colorSlug,
+        type: "RESTOCK" as const,
+        quantity: variant.stock,
+        previousStock: 0,
+        newStock: variant.stock,
+        referenceNumber: `BULK-${newProduct.id}`,
+        performedBy: user.name,
+        note: "Bulk Stock Consignment Intake",
+      }))
     );
 
-    setInventory((prev) => [...newProducts, ...prev]);
+    setInventory((prev) => {
+      const updated = [...newProducts, ...prev];
+      safeStorageSet("rs_admin_inventory", updated);
+      syncInventoryToStorefront(updated);
+      return updated;
+    });
     setStockHistory((prev) => [...bulkMovements, ...prev]);
 
     fetch(`${API_BASE}/inventory/bulk-intake`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ products: newProducts, performer: user.name }),
-    }).catch((err) => console.warn("Sync bulk intake error:", err));
+    }).catch((err) => console.warn("Bulk intake sync error:", err));
   }
 
   function handleUpdateProduct(updatedProduct: Product) {
     sound.playClick();
-
-    // Detect stock delta on each variant and create stock movements
     const oldProduct = inventory.find((p) => p.id === updatedProduct.id);
     const newMovements: StockMovement[] = [];
 
@@ -367,24 +555,50 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       setStockHistory((prev) => [...newMovements, ...prev]);
     }
 
-    setInventory((prev) =>
-      prev.map((p) => (p.id === updatedProduct.id ? updatedProduct : p))
-    );
+    setInventory((prev) => {
+      const updated = prev.map((p) => (p.id === updatedProduct.id ? updatedProduct : p));
+      safeStorageSet("rs_admin_inventory", updated);
+      syncInventoryToStorefront(updated);
+      return updated;
+    });
 
     fetch(`${API_BASE}/catalog/${updatedProduct.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updatedProduct),
-    }).catch((err) => console.warn("Sync update error:", err));
+    }).catch((err) => console.warn("Catalog update error:", err));
   }
 
   function handleDeleteProduct(productId: string) {
     sound.playClick();
-    setInventory((prev) => prev.filter((p) => p.id !== productId));
+    setInventory((prev) => {
+      const updated = prev.filter((p) => p.id !== productId);
+      safeStorageSet("rs_admin_inventory", updated);
+      syncInventoryToStorefront(updated);
+      return updated;
+    });
 
     fetch(`${API_BASE}/catalog/${productId}`, {
       method: "DELETE",
-    }).catch((err) => console.warn("Sync delete error:", err));
+    }).catch((err) => console.warn("Catalog delete error:", err));
+  }
+
+  function handleBatchDelete(productIds: string[]) {
+    sound.playClick();
+    if (!productIds || productIds.length === 0) return;
+
+    setInventory((prev) => {
+      const updated = prev.filter((p) => !productIds.includes(p.id));
+      safeStorageSet("rs_admin_inventory", updated);
+      syncInventoryToStorefront(updated);
+      return updated;
+    });
+
+    productIds.forEach((id) => {
+      fetch(`${API_BASE}/catalog/${id}`, {
+        method: "DELETE",
+      }).catch((err) => console.warn("Batch delete error:", err));
+    });
   }
 
   function revokeDevice(id: string) {
@@ -419,6 +633,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
         return { ...prod, variants: updatedVariants };
       });
       safeStorageSet("rs_admin_inventory", updatedInventory);
+      syncInventoryToStorefront(updatedInventory);
       return updatedInventory;
     });
 
@@ -435,7 +650,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       newStock: Math.max(0, item.maxStock - item.qty),
       referenceNumber: sale.invoiceNumber,
       performedBy: user.name,
-      note: `Customer sale for ${sale.customerName}`,
+      note: `Counter sale for ${sale.customerName}`,
     }));
 
     setStockHistory((prev) => {
@@ -443,6 +658,30 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       safeStorageSet("rs_admin_stock_history", updated);
       return updated;
     });
+
+    if (sale.customerPhone || sale.customerName) {
+      setCustomers((prev) => {
+        const cleanPhone = (sale.customerPhone || "").replace(/\D/g, "").slice(-10);
+        const updated = prev.map((cust) => {
+          const custPhone = (cust.phone || "").replace(/\D/g, "").slice(-10);
+          const isPhoneMatch = cleanPhone && custPhone && cleanPhone === custPhone;
+          const isNameMatch =
+            sale.customerName &&
+            cust.name &&
+            cust.name.trim().toLowerCase() === sale.customerName.trim().toLowerCase();
+          if (isPhoneMatch || isNameMatch) {
+            return {
+              ...cust,
+              totalSpent: (cust.totalSpent || 0) + (sale.total || sale.grandTotal || 0),
+              ordersCount: (cust.ordersCount || 0) + 1,
+            };
+          }
+          return cust;
+        });
+        safeStorageSet("rs_admin_customers", updated);
+        return updated;
+      });
+    }
 
     fetch(`${API_BASE}/billing/checkout`, {
       method: "POST",
@@ -453,10 +692,10 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       }),
     })
       .then((response) => {
-        if (!response.ok) throw new Error("The sale could not be saved to the server.");
+        if (!response.ok) throw new Error("Could not persist sale to server.");
         return loadLiveBootstrap(true);
       })
-      .catch((err) => console.warn("Sync sale error:", err));
+      .catch((err) => console.warn("Checkout sync error:", err));
   }
 
   function handleAddStockMovement(movement: StockMovement) {
@@ -489,526 +728,409 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       body: JSON.stringify(movement),
     })
       .then(() => loadLiveBootstrap())
-      .catch((err) => console.warn("Sync movement error:", err));
+      .catch((err) => console.warn("Movement sync error:", err));
   }
 
   function handleAddCustomer(newCustomer: CustomerProfile) {
     sound.playClick();
-    setCustomers((prev) => [newCustomer, ...prev]);
+    setCustomers((prev) => {
+      const updated = [
+        newCustomer,
+        ...prev.filter((c) => c.id !== newCustomer.id && c.phone !== newCustomer.phone),
+      ];
+      safeStorageSet("rs_admin_customers", updated);
+      return updated;
+    });
     fetch(`${API_BASE}/crm/customers`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(newCustomer),
-    }).catch((err) => console.warn("Sync customer error:", err));
+    }).catch((err) => console.warn("Customer sync error:", err));
   }
 
+  const navSections: NavSectionConfig[] = useMemo(
+    () => [
+      {
+        title: "Main",
+        items: [{ id: "overview", label: "Overview", icon: LayoutDashboard }],
+      },
+      {
+        title: "Inventory & Stock",
+        items: [
+          { id: "catalog", label: "Saree Stock", icon: ShoppingBag, badge: inventory.length },
+          { id: "bulk-stock", label: "Bulk Stock Entry", icon: PackagePlus },
+          { id: "history", label: "Stock History", icon: History },
+          { id: "categories", label: "Weave Types & HSN", icon: Layers },
+          { id: "low-stock" as DashboardTab, label: "Low Stock & POs", icon: AlertTriangle },
+        ],
+      },
+      {
+        title: "Sales & Checkout",
+        items: [
+          { id: "billing", label: "Billing Counter", icon: ReceiptIndianRupee },
+          { id: "sales-ledger", label: "Sales Receipts", icon: ScrollText, badge: salesHistory.length },
+          { id: "sale" as DashboardTab, label: "Special Offers", icon: Tag },
+        ],
+      },
+      {
+        title: "Operations & CRM",
+        items: [
+          { id: "tracking", label: "Order Tracking", icon: Truck },
+          { id: "crm", label: "Customer Profiles", icon: Users, badge: customers.length },
+          { id: "analytics", label: "Store Analytics", icon: BarChart2 },
+          { id: "settings", label: "Settings", icon: Settings },
+        ],
+      },
+    ],
+    [inventory.length, salesHistory.length, customers.length]
+  );
+
   return (
-    // Provider wraps the dashboard with preloaded fulfillment state from backend
     <OrderFulfillmentProvider initialFulfillments={initialFulfillments}>
-      <div className="relative h-screen w-screen overflow-hidden bg-[#F6F4EE] flex select-none font-sans text-stone-800">
-        {/* Background Ambience */}
-        <div className="absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full bg-gradient-to-br from-[#F5E6DC] via-[#EBD5C6] to-transparent blur-3xl opacity-60 pointer-events-none" />
-        <div className="absolute -bottom-40 -right-40 w-[700px] h-[700px] rounded-full bg-gradient-to-tl from-[#E5D7E3] via-[#F3EBE6] to-transparent blur-3xl opacity-60 pointer-events-none" />
+      <div className="relative h-screen w-screen overflow-hidden bg-[#FBF9F5] flex select-none font-sans text-stone-800 antialiased">
+        {/* Ambient Glows */}
+        <div className="pointer-events-none absolute -top-48 -left-48 h-[650px] w-[650px] rounded-full bg-gradient-to-br from-[#EEDFD5]/60 via-[#E4CEBD]/30 to-transparent blur-3xl opacity-70" />
+        <div className="pointer-events-none absolute -bottom-48 -right-48 h-[750px] w-[750px] rounded-full bg-gradient-to-tl from-[#E5D7E2]/50 via-[#F3EAE3]/40 to-transparent blur-3xl opacity-70" />
 
         {isSidebarOpen && (
           <button
             type="button"
             aria-label="Close navigation menu"
-            className="fixed inset-0 z-20 bg-stone-950/35 backdrop-blur-[1px] md:hidden"
+            className="fixed inset-0 z-40 bg-stone-950/40 backdrop-blur-xs transition-opacity duration-300 md:hidden"
             onClick={() => setIsSidebarOpen(false)}
           />
         )}
 
         {/* SIDEBAR NAVIGATION */}
         <aside
-          className={`fixed inset-y-0 left-0 z-30 flex h-full w-72 max-w-[85vw] flex-col overflow-y-auto border-r border-stone-200/60 bg-[#F6F4EE]/95 p-4 shadow-2xl backdrop-blur-xl transition-transform duration-300 ease-out md:static md:z-20 md:w-64 md:max-w-none md:translate-x-0 md:bg-transparent md:shadow-none ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}
-            [scrollbar-width:thin] [scrollbar-color:rgba(168,162,158,0.55)_transparent]
-            [&::-webkit-scrollbar]:w-1.5
-            [&::-webkit-scrollbar-track]:bg-transparent
-            [&::-webkit-scrollbar-thumb]:bg-stone-300/60
-            [&::-webkit-scrollbar-thumb]:rounded-full
-            [&::-webkit-scrollbar-thumb]:border-2
-            [&::-webkit-scrollbar-thumb]:border-transparent
-            [&::-webkit-scrollbar-thumb]:bg-clip-padding
-            hover:[&::-webkit-scrollbar-thumb]:bg-stone-400/70`}
-          aria-label="Admin navigation"
+          className={`fixed inset-y-0 left-0 z-50 flex h-full w-72 max-w-[85vw] flex-col border-r border-white/80 bg-white/70 backdrop-blur-2xl shadow-[0_12px_40px_rgba(42,14,32,0.06)] transition-transform duration-300 ease-out md:static md:z-20 md:w-64 md:max-w-none md:translate-x-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+            }`}
+          aria-label="Admin Navigation"
         >
-          <div>
-            {/* Brand Header */}
-            <div className="flex items-center gap-3 px-1 py-2 mb-3 border-b border-stone-200/50">
+          {/* Brand Header */}
+          <div className="flex h-20 shrink-0 items-center justify-between border-b border-stone-200/50 px-5">
+            <div className="flex items-center gap-3">
+              <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-white to-[#F7F2EB] p-1.5 shadow-[0_4px_16px_rgba(42,14,32,0.08)] border border-white">
                 <img
                   src={logo}
-                  alt="RS Fashions Logo"
-                  className="w-10 h-full object-cover"
+                  alt="RS Fashions Emblem"
+                  className="h-full w-full object-contain"
                 />
+              </div>
               <div>
-                <h2 className="font-display font-semibold text-stone-900 leading-none">
+                <h1 className="font-serif text-base font-medium tracking-wide text-stone-900 leading-tight">
                   RS Fashions
-                </h2>
-                <span className="text-[11px] text-stone-500 font-light tracking-wide">
+                </h1>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8E3D51]">
                   SiCo Gadwal Sarees
-                </span>
+                </p>
               </div>
             </div>
 
-            <nav className="space-y-1">
-              {/* 1. OVERVIEW */}
-              <button
-                onClick={() => setActiveTab("overview")}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${activeTab === "overview"
-                    ? "bg-[#2A0E20] text-amber-100 shadow-sm"
-                    : "text-stone-600 hover:bg-stone-200/50 hover:text-stone-900"
-                  }`}
-              >
-                <LayoutDashboard
-                  size={16}
-                  className={activeTab === "overview" ? "text-[#D4A373]" : "text-stone-400"}
-                />
-                <span>Overview</span>
-              </button>
-
-              {/* SECTION: INVENTORY */}
-              <div className="pt-3 pb-1 px-3.5">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-stone-400">
-                  Inventory
-                </span>
-              </div>
-
-              {/* 2. SAREE CATALOG */}
-              <button
-                onClick={() => setActiveTab("catalog")}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${activeTab === "catalog"
-                    ? "bg-[#2A0E20] text-amber-100 shadow-sm"
-                    : "text-stone-600 hover:bg-stone-200/50 hover:text-stone-900"
-                  }`}
-              >
-                <ShoppingBag
-                  size={16}
-                  className={activeTab === "catalog" ? "text-[#D4A373]" : "text-stone-400"}
-                />
-                <span>Saree Stock</span>
-              </button>
-
-              {/* BULK STOCK ENTRY */}
-              <button
-                onClick={() => setActiveTab("bulk-stock")}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${activeTab === "bulk-stock"
-                    ? "bg-[#2A0E20] text-amber-100 shadow-sm"
-                    : "text-stone-600 hover:bg-stone-200/50 hover:text-stone-900"
-                  }`}
-              >
-                <PackagePlus
-                  size={16}
-                  className={activeTab === "bulk-stock" ? "text-[#D4A373]" : "text-stone-400"}
-                />
-                <span>Bulk Stock Entry</span>
-              </button>
-
-              {/* 3. STOCK MOVEMENTS */}
-              <button
-                onClick={() => setActiveTab("history")}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${activeTab === "history"
-                    ? "bg-[#2A0E20] text-amber-100 shadow-sm"
-                    : "text-stone-600 hover:bg-stone-200/50 hover:text-stone-900"
-                  }`}
-              >
-                <History
-                  size={16}
-                  className={activeTab === "history" ? "text-[#D4A373]" : "text-stone-400"}
-                />
-                <span>Stock History</span>
-              </button>
-
-              {/* 4. WEAVES & HSN */}
-              <button
-                onClick={() => setActiveTab("categories")}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${activeTab === "categories"
-                    ? "bg-[#2A0E20] text-amber-100 shadow-sm"
-                    : "text-stone-600 hover:bg-stone-200/50 hover:text-stone-900"
-                  }`}
-              >
-                <Layers
-                  size={16}
-                  className={activeTab === "categories" ? "text-[#D4A373]" : "text-stone-400"}
-                />
-                <span>Categories</span>
-              </button>
-
-              {/* NEW MODULE: AUTOMATED LOW STOCK & WEAVER POs */}
-              <button
-                onClick={() => setActiveTab("low-stock" as DashboardTab)}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${activeTab === ("low-stock" as DashboardTab)
-                    ? "bg-[#2A0E20] text-amber-100 shadow-sm"
-                    : "text-stone-600 hover:bg-stone-200/50 hover:text-stone-900"
-                  }`}
-              >
-                <AlertTriangle
-                  size={16}
-                  className={activeTab === ("low-stock" as DashboardTab) ? "text-[#D4A373]" : "text-stone-400"}
-                />
-                <span>Low-Stock &amp; POs</span>
-              </button>
-
-              {/* SECTION: POINT OF SALE */}
-              <div className="pt-3 pb-1 px-3.5">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-stone-400">
-                  Point of Sale
-                </span>
-              </div>
-
-              {/* 5. COUNTER BILLING */}
-              <button
-                onClick={() => setActiveTab("billing")}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${activeTab === "billing"
-                    ? "bg-[#2A0E20] text-amber-100 shadow-sm"
-                    : "text-stone-600 hover:bg-stone-200/50 hover:text-stone-900"
-                  }`}
-              >
-                <ReceiptIndianRupee
-                  size={16}
-                  className={activeTab === "billing" ? "text-[#D4A373]" : "text-stone-400"}
-                />
-                <span>Counter Billing</span>
-              </button>
-
-              {/* 6. TRANSACTION HISTORY */}
-              <button
-                onClick={() => setActiveTab("sales-ledger")}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${activeTab === "sales-ledger"
-                    ? "bg-[#2A0E20] text-amber-100 shadow-sm"
-                    : "text-stone-600 hover:bg-stone-200/50 hover:text-stone-900"
-                  }`}
-              >
-                <ScrollText
-                  size={16}
-                  className={activeTab === "sales-ledger" ? "text-[#D4A373]" : "text-stone-400"}
-                />
-                <span>Transaction History</span>
-              </button>
-
-              {/* SECTION: INTELLIGENCE */}
-              <div className="pt-3 pb-1 px-3.5">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-stone-400">
-                  Intelligence
-                </span>
-              </div>
-
-              {/* 7. STORE ANALYTICS */}
-              <button
-                onClick={() => setActiveTab("analytics")}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${activeTab === "analytics"
-                    ? "bg-[#2A0E20] text-amber-100 shadow-sm"
-                    : "text-stone-600 hover:bg-stone-200/50 hover:text-stone-900"
-                  }`}
-              >
-                <BarChart2
-                  size={16}
-                  className={activeTab === "analytics" ? "text-[#D4A373]" : "text-stone-400"}
-                />
-                <span>Store Analytics</span>
-              </button>
-
-              {/* 8. CLIENT CRM */}
-              <button
-                onClick={() => setActiveTab("crm")}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${activeTab === "crm"
-                    ? "bg-[#2A0E20] text-amber-100 shadow-sm"
-                    : "text-stone-600 hover:bg-stone-200/50 hover:text-stone-900"
-                  }`}
-              >
-                <Users
-                  size={16}
-                  className={activeTab === "crm" ? "text-[#D4A373]" : "text-stone-400"}
-                />
-                <span>CRM</span>
-              </button>
-
-              {/* 9. ORDER & LOOM TRACKING */}
-              <button
-                onClick={() => setActiveTab("tracking")}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${activeTab === "tracking"
-                    ? "bg-[#2A0E20] text-amber-100 shadow-sm"
-                    : "text-stone-600 hover:bg-stone-200/50 hover:text-stone-900"
-                  }`}
-              >
-                <Truck
-                  size={16}
-                  className={activeTab === "tracking" ? "text-[#D4A373]" : "text-stone-400"}
-                />
-                <span>Order Tracking</span>
-              </button>
-
-              {/* SECTION: CONFIGURATION */}
-              <div className="pt-3 pb-1 px-3.5">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-stone-400">
-                  Configuration
-                </span>
-              </div>
-
-              {/* 10. STORE SETTINGS */}
-              <button
-                onClick={() => setActiveTab("settings")}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${activeTab === "settings"
-                    ? "bg-[#2A0E20] text-amber-100 shadow-sm"
-                    : "text-stone-600 hover:bg-stone-200/50 hover:text-stone-900"
-                  }`}
-              >
-                <div className="flex items-center gap-3">
-                  <Settings
-                    size={16}
-                    className={activeTab === "settings" ? "text-[#D4A373]" : "text-stone-400"}
-                  />
-                  <span>Settings</span>
-                </div>
-              </button>
-            </nav>
+            <button
+              type="button"
+              onClick={() => setIsSidebarOpen(false)}
+              className="flex h-8 w-8 items-center justify-center rounded-xl text-stone-400 hover:bg-stone-100 hover:text-stone-700 md:hidden"
+            >
+              <X size={18} />
+            </button>
           </div>
-        </aside>
 
-        {/* MAIN VIEW AREA */}
-        <main className="flex-1 h-full flex flex-col overflow-hidden z-10 bg-transparent">
-          <header className="h-16 px-4 sm:px-8 flex items-center justify-between gap-4 border-b border-stone-200/40 bg-white/40 backdrop-blur-md shrink-0">
-            <div className="flex items-center gap-2 text-xs text-stone-500">
-              <button
-                type="button"
-                className="-ml-1 mr-1 flex h-9 w-9 items-center justify-center rounded-lg text-stone-700 transition-colors hover:bg-stone-200/70 md:hidden"
-                onClick={() => setIsSidebarOpen((open) => !open)}
-                aria-label={isSidebarOpen ? "Close navigation menu" : "Open navigation menu"}
-                aria-expanded={isSidebarOpen}
-              >
-                {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
-              </button>
-              <span>RS Fashions</span>
-              <span>&bull;</span>
-              <span className="font-semibold text-stone-800 capitalize">
-                {activeTab === "history"
-                  ? "Stock History"
-                  : activeTab === "sales-ledger"
-                    ? "Transaction History"
-                    : activeTab === "analytics"
-                      ? "Store Analytics"
-                      : activeTab === "crm"
-                        ? "CRM"
-                        : activeTab === "bulk-stock"
-                          ? "Bulk Stock Entry"
-                          : activeTab === ("low-stock" as DashboardTab)
-                            ? "Low-Stock & POs"
-                            : activeTab === ("loyalty" as DashboardTab)
-                              ? "Store Credit & Khata"
-                              : activeTab}
-              </span>
-            </div>
+          {/* Nav List */}
+          <div className="flex-1 overflow-y-auto px-3.5 py-4 space-y-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {navSections.map((section) => (
+              <div key={section.title} className="space-y-1">
+                <p className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-stone-400">
+                  {section.title}
+                </p>
 
-            <div className="flex items-center gap-2 shrink-0">
-              {/* Cloud Sync Status */}
-              <div className="hidden sm:flex items-center gap-2 text-xs text-stone-600 font-medium bg-emerald-50 border border-emerald-200/60 px-3 py-1.5 rounded-full whitespace-nowrap">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_0_3px_rgba(16,185,129,0.10)]" />
-                <span>Cloud Sync Active</span>
+                {section.items.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = activeTab === item.id;
+
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setActiveTab(item.id)}
+                      className={`group relative flex h-10 w-full items-center justify-between rounded-xl px-3 text-xs font-semibold tracking-wide transition-all duration-200 ${isActive
+                          ? "bg-[#2A0E20] text-amber-100 shadow-[0_6px_20px_rgba(42,14,32,0.18)] translate-x-0.5"
+                          : "text-stone-600 hover:bg-white/80 hover:text-stone-900 hover:shadow-xs"
+                        }`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Icon
+                          size={16}
+                          className={`shrink-0 transition-transform duration-200 group-hover:scale-110 ${isActive ? "text-[#D4A373]" : "text-stone-400 group-hover:text-[#8E3D51]"
+                            }`}
+                        />
+                        <span className="truncate">{item.label}</span>
+                      </div>
+
+                      {item.badge !== undefined && (
+                        <span
+                          className={`ml-2 rounded-full px-2 py-0.5 font-mono text-[9.5px] font-bold transition-colors ${isActive
+                              ? "bg-white/15 text-amber-200"
+                              : "bg-stone-200/70 text-stone-600 group-hover:bg-stone-200"
+                            }`}
+                        >
+                          {item.badge}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+
+          {/* User Profile Footer */}
+          <div className="border-t border-stone-200/60 p-3.5 bg-gradient-to-t from-white/90 to-transparent">
+            <div className="flex items-center justify-between rounded-2xl border border-stone-200/70 bg-white/80 p-2.5 shadow-xs backdrop-blur-md">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#2A0E20] to-[#431534] font-serif text-xs font-bold text-amber-200 shadow-xs">
+                  {user.name.charAt(0).toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-bold text-stone-900">{user.name}</p>
+                  <p className="truncate text-[10px] font-medium text-stone-400 capitalize">
+                    {user.role}
+                  </p>
+                </div>
               </div>
 
-              {/* Refresh / Sync Action Button (Ctrl + R / Cmd + R) */}
-              <button
-                type="button"
-                onClick={triggerRefresh}
-                title="Refresh / Sync Store Data (Ctrl + R)"
-                className="flex items-center justify-center gap-1.5 h-9 px-3 text-xs font-semibold rounded-xl bg-white/80 border border-stone-200/90 text-stone-700 hover:border-[#D4A373] hover:text-stone-900 hover:bg-white shadow-sm transition-all active:scale-[0.97]"
-              >
-                <RotateCw
-                  size={13}
-                  className={`text-[#D4A373] ${isRefreshing ? "animate-spin" : ""}`}
-                />
-                <span className="hidden lg:inline">Refresh</span>
-              </button>
-
-              {/* Notifications Bell Button */}
               <button
                 type="button"
                 onClick={() => {
-                  sound.playClick();
-                  sound.playNotification();
-                  setIsNotificationsOpen(true);
+                  sound.playLogout();
+                  setTimeout(onLogout, 300);
                 }}
-                title="Notifications & Milestones"
-                className="relative flex items-center justify-center w-9 h-9 text-stone-600 hover:text-stone-900 bg-white/60 hover:bg-white border border-stone-200/70 rounded-xl shadow-sm transition-all"
+                title="Sign out from store"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-stone-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
               >
-                <Bell size={16} />
-                <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-rose-500 ring-2 ring-white" />
+                <LogOut size={15} />
+              </button>
+            </div>
+          </div>
+        </aside>
+
+        {/* MAIN VIEWPORT */}
+        <main className="relative flex-1 flex flex-col h-full overflow-hidden z-10">
+          <header className="h-20 shrink-0 border-b border-white/60 bg-white/60 px-5 sm:px-8 backdrop-blur-xl flex items-center justify-between gap-4 shadow-xs">
+            <div className="flex items-center gap-3 min-w-0">
+              <button
+                type="button"
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-stone-200/80 bg-white/80 text-stone-700 shadow-xs hover:bg-white md:hidden"
+                onClick={() => setIsSidebarOpen(true)}
+                aria-label="Open navigation drawer"
+              >
+                <Menu size={18} />
               </button>
 
-              {/* User / Session */}
-              <div className="h-7 w-px bg-stone-200/80 mx-0.5" />
-
-              <div className="flex items-center gap-2.5 pl-1.5 pr-1 py-1 rounded-xl border border-stone-200/80 bg-white/65 hover:bg-white/85 shadow-sm transition-all">
-                <div className="w-8 h-8 rounded-lg bg-[#2A0E20] text-amber-200 flex items-center justify-center font-display font-semibold text-xs shrink-0 shadow-sm">
-                  {user.name.charAt(0).toUpperCase()}
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 text-[11px] font-medium text-stone-400">
+                  <span>RS Fashions</span>
+                  <ChevronRight size={12} />
+                  <span className="font-semibold text-[#8E3D51] capitalize">
+                    {activeTab.replace("-", " ")}
+                  </span>
                 </div>
-
-                <div className="hidden md:block min-w-0 max-w-[150px] leading-tight">
-                  <p className="text-xs font-semibold text-stone-800 truncate">{user.name}</p>
-                  <p className="text-[10px] text-stone-500 truncate">{user.role}</p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    sound.playLogout();
-                    setTimeout(() => {
-                      onLogout();
-                    }, 350);
-                  }}
-                  title={`Logout ${user.name}`}
-                  aria-label={`Logout ${user.name}`}
-                  className="flex items-center justify-center w-8 h-8 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                >
-                  <LogOut size={15} />
-                </button>
+                <h2 className="font-serif text-lg sm:text-xl font-bold text-stone-950 tracking-tight capitalize truncate mt-0.5">
+                  {activeTab === "catalog"
+                    ? "SiCo Gadwal Inventory"
+                    : activeTab === "bulk-stock"
+                      ? "Bulk Consignment Intake"
+                      : activeTab === "billing"
+                        ? "Point of Sale Billing"
+                        : activeTab === "sales-ledger"
+                          ? "Sales Receipts & Invoices"
+                          : activeTab === "tracking"
+                            ? "Dispatch & Delivery Tracking"
+                            : activeTab === "crm"
+                              ? "Patron Book & Profiles"
+                              : activeTab === ("low-stock" as DashboardTab)
+                                ? "Low Stock Alerts & Weaver POs"
+                                : activeTab === ("sale" as DashboardTab)
+                                  ? "Promotional Bundles & Offers"
+                                  : activeTab === "history"
+                                    ? "Stock Movement Ledger"
+                                    : activeTab === "analytics"
+                                      ? "Store Performance Analytics"
+                                      : activeTab}
+                </h2>
               </div>
+            </div>
+
+            <div className="flex items-center gap-2.5 shrink-0">
+              <div className="hidden xl:flex items-center gap-2 rounded-full border border-stone-200/80 bg-white/70 px-3.5 py-1.5 text-xs font-mono font-semibold text-stone-700 shadow-2xs">
+                <span>{currentTime || "Live"}</span>
+              </div>
+
+              <div className="hidden sm:flex items-center gap-2 rounded-full border border-emerald-200/70 bg-emerald-50/80 px-3.5 py-1.5 text-xs font-semibold text-emerald-800 shadow-2xs">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.15)]" />
+                <span>Cloud Connected</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={triggerRefresh}
+                title="Synchronize store records (Ctrl + R)"
+                className="group flex h-10 items-center justify-center gap-2 rounded-xl border border-stone-200/80 bg-white/80 px-3.5 text-xs font-bold text-stone-700 shadow-xs transition-all hover:border-[#D4A373] hover:bg-white hover:text-stone-900 active:scale-95"
+              >
+                <RotateCw
+                  size={14}
+                  className={`text-[#D4A373] transition-transform duration-500 ${isRefreshing ? "animate-spin" : "group-hover:rotate-180"
+                    }`}
+                />
+                <span className="hidden md:inline">Sync</span>
+              </button>
+
+              {/* Bell Icon: Dot displays ONLY when hasUnreadNotifications is true */}
+              <button
+                type="button"
+                onClick={handleOpenNotifications}
+                title={hasUnreadNotifications ? "New notifications available" : "Notifications & Activity"}
+                className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-stone-200/80 bg-white/80 text-stone-700 shadow-xs transition-all hover:border-[#8E3D51] hover:bg-white hover:text-[#8E3D51] active:scale-95"
+              >
+                <Bell size={16} />
+                {hasUnreadNotifications && (
+                  <span className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-[#8E3D51] ring-2 ring-white" />
+                )}
+              </button>
             </div>
           </header>
 
-          {/* Dynamic Route Content with Custom Styled Scrollbar */}
-          <div
-            className="flex-1 min-h-0 overflow-y-auto p-8
-              [scrollbar-width:thin] [scrollbar-color:rgba(168,162,158,0.55)_transparent]
-              [&::-webkit-scrollbar]:w-1.5
-              [&::-webkit-scrollbar-track]:bg-transparent
-              [&::-webkit-scrollbar-thumb]:bg-stone-300/60
-              [&::-webkit-scrollbar-thumb]:rounded-full
-              [&::-webkit-scrollbar-thumb]:border-2
-              [&::-webkit-scrollbar-thumb]:border-transparent
-              [&::-webkit-scrollbar-thumb]:bg-clip-padding
-              hover:[&::-webkit-scrollbar-thumb]:bg-stone-400/70">
-            {/* TAB 0: OVERVIEW (Default Landing Page) */}
-            {activeTab === "overview" && (
-              <Overview
-                salesHistory={salesHistory}
-                inventory={inventory}
-                devices={devices}
-                stockHistory={stockHistory}
-                onNavigateTab={(tab) => setActiveTab(tab)}
-              />
-            )}
+          <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-7 [scrollbar-width:thin] [scrollbar-color:rgba(168,162,158,0.5)_transparent]">
+            <div className="mx-auto max-w-[1600px] animate-in fade-in duration-200">
+              {activeTab === "overview" && (
+                <Overview
+                  salesHistory={salesHistory}
+                  inventory={inventory}
+                  devices={devices}
+                  stockHistory={stockHistory}
+                  onNavigateTab={(tab) => setActiveTab(tab)}
+                />
+              )}
 
-            {/* TAB 1: SAREE CATALOG */}
-            {activeTab === "catalog" && (
-              <Catalog
-                inventory={inventory}
-                categories={categories}
-                onAddProduct={handleAddProduct}
-                onUpdateProduct={handleUpdateProduct}
-                onDeleteProduct={handleDeleteProduct}
-                onOpenHistory={() => setActiveTab("history")}
-              />
-            )}
+              {activeTab === "catalog" && (
+                <Catalog
+                  inventory={inventory}
+                  categories={categories}
+                  onAddProduct={handleAddProduct}
+                  onUpdateProduct={handleUpdateProduct}
+                  onDeleteProduct={handleDeleteProduct}
+                  onBatchDelete={handleBatchDelete}
+                  onOpenHistory={() => setActiveTab("history")}
+                />
+              )}
 
-            {/* BULK STOCK ENTRY */}
-            {activeTab === "bulk-stock" && (
-              <BulkStock
-                inventory={inventory}
-                categories={categories}
-                onBulkRestock={handleBulkRestock}
-              />
-            )}
+              {activeTab === "bulk-stock" && (
+                <BulkStock
+                  inventory={inventory}
+                  categories={categories}
+                  onBulkRestock={handleBulkRestock}
+                />
+              )}
 
-            {/* TAB 2: STOCK MOVEMENTS */}
-            {activeTab === "history" && (
-              <StockHistory
-                history={stockHistory}
-                inventory={inventory}
-                onAddStockMovement={handleAddStockMovement}
-              />
-            )}
+              {activeTab === "history" && (
+                <StockHistory
+                  history={stockHistory}
+                  inventory={inventory}
+                  onAddStockMovement={handleAddStockMovement}
+                />
+              )}
 
-            {/* TAB 3: COUNTER BILLING */}
-            {activeTab === "billing" && (
-              <Billing
-                inventory={inventory}
-                categories={categories}
-                onCompleteSale={handleCompleteSale}
-              />
-            )}
+              {activeTab === "billing" && (
+                <Billing
+                  inventory={inventory}
+                  categories={categories}
+                  onCompleteSale={handleCompleteSale}
+                  customers={customers}
+                  onAddCustomer={handleAddCustomer}
+                />
+              )}
 
-            {/* TAB 4: TRANSACTION HISTORY */}
-            {activeTab === "sales-ledger" && (
-              <TransactionHistory salesHistory={salesHistory} />
-            )}
+              {activeTab === "sales-ledger" && (
+                <TransactionHistory salesHistory={salesHistory} />
+              )}
 
-            {/* TAB 5: WEAVES & HSN CATEGORIES */}
-            {activeTab === "categories" && (
-              <div className="max-w-4xl mx-auto space-y-6">
-                <div>
-                  <span className="text-xs font-semibold uppercase tracking-wider text-[#D4A373]">
-                    Tax &amp; Classification
-                  </span>
-                  <h1 className="text-3xl font-display font-medium text-stone-900 mt-0.5">
-                    Weave Categories &amp; HSN Codes
-                  </h1>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {categories.map((cat) => (
-                    <div
-                      key={cat.id}
-                      className="glass-panel p-5 rounded-2xl flex items-center justify-between"
-                    >
-                      <div>
-                        <h4 className="text-sm font-semibold text-stone-900">{cat.name}</h4>
-                        <p className="text-xs text-stone-500 mt-1">
-                          Prefix: <span className="font-mono font-semibold text-stone-800">{cat.slug}</span>
-                        </p>
+              {activeTab === "categories" && (
+                <div className="max-w-4xl mx-auto space-y-5">
+                  <div>
+                    <span className="text-xs font-semibold uppercase tracking-wider text-[#D4A373]">
+                      Tax Classification
+                    </span>
+                    <h2 className="text-2xl sm:text-3xl font-serif font-bold text-stone-900 mt-1">
+                      Weave Standards &amp; HSN Codes
+                    </h2>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {categories.map((cat) => (
+                      <div
+                        key={cat.id}
+                        className="rounded-3xl border border-stone-200/80 bg-white/80 p-6 shadow-xs backdrop-blur-md flex items-center justify-between"
+                      >
+                        <div>
+                          <h4 className="text-sm font-bold text-stone-900">{cat.name}</h4>
+                          <p className="text-xs text-stone-500 mt-1">
+                            SKU Identifier:{" "}
+                            <span className="font-mono font-bold text-stone-800">{cat.slug}</span>
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <span className="px-3 py-1 rounded-xl bg-stone-100 text-stone-800 text-xs font-mono font-bold">
+                            HSN {cat.hsn}
+                          </span>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <span className="px-2.5 py-1 rounded-md bg-stone-100 text-stone-800 text-xs font-mono font-medium">
-                          HSN: {cat.hsn}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* TAB 6: STORE SETTINGS */}
-            {activeTab === "settings" && (
-              <SettingsView
-                devices={devices}
-                onRevokeDevice={revokeDevice}
-                currentUser={user}
-                inventory={inventory}
-                salesHistory={salesHistory}
-                stockHistory={stockHistory}
-                onRestoreInventory={(importedProducts) => setInventory(importedProducts)}
-              />
-            )}
+              {activeTab === "settings" && (
+                <SettingsView
+                  devices={devices}
+                  onRevokeDevice={revokeDevice}
+                  currentUser={user}
+                  inventory={inventory}
+                  salesHistory={salesHistory}
+                  stockHistory={stockHistory}
+                  onRestoreInventory={(importedProducts) => setInventory(importedProducts)}
+                />
+              )}
 
-            {/* TAB 7: STORE ANALYTICS */}
-            {activeTab === "analytics" && (
-              <Analysis
-                inventory={inventory}
-                salesHistory={salesHistory}
-                stockHistory={stockHistory}
-                categories={categories}
-              />
-            )}
+              {activeTab === "analytics" && (
+                <Analysis
+                  inventory={inventory}
+                  salesHistory={salesHistory}
+                  stockHistory={stockHistory}
+                  categories={categories}
+                />
+              )}
 
-            {/* TAB 8: CLIENT CRM */}
-            {activeTab === "crm" && (
-              <CRM customers={customers} onAddCustomer={handleAddCustomer} />
-            )}
+              {activeTab === "crm" && (
+                <CRM customers={customers} onAddCustomer={handleAddCustomer} />
+              )}
 
-            {/* NEW MODULE: LOW STOCK & WEAVER POs */}
-            {activeTab === ("low-stock" as DashboardTab) && (
-              <AutomatedLowstock
-                inventory={inventory}
-                onUpdateProduct={handleUpdateProduct}
-              />
-            )}
+              {activeTab === ("low-stock" as DashboardTab) && (
+                <AutomatedLowstock
+                  inventory={inventory}
+                  onUpdateProduct={handleUpdateProduct}
+                />
+              )}
 
-            {/* TAB 9: ORDER TRACKING */}
-            {activeTab === "tracking" && <TrackOrder salesHistory={salesHistory} />}
+              {activeTab === ("sale" as DashboardTab) && (
+                <SaleManager inventory={inventory} />
+              )}
+
+              {activeTab === "tracking" && (
+                <TrackOrder salesHistory={salesHistory} />
+              )}
+            </div>
           </div>
         </main>
 
-        {/* NOTIFICATION SLIDING OVERLAY DRAWER WITH SOUND INTEGRATION */}
         {isNotificationsOpen && (
           <Notifications
             salesHistory={salesHistory}

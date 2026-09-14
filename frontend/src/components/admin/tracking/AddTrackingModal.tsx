@@ -64,7 +64,7 @@ export const AddTrackingModal: React.FC<AddTrackingModalProps> = ({
             hour: "2-digit",
             minute: "2-digit",
           }),
-          locationOrDetail: "Jubilee Hills Flagship Atelier",
+          locationOrDetail: "Hyderabad Telengana",
           completed: true,
         },
         {

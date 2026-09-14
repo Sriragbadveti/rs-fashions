@@ -86,7 +86,7 @@ function CartDrawer({ open, onClose }: CartDrawerProps) {
             <div className="flex shrink-0 items-center justify-between border-b border-black/[0.05] px-5 py-4 sm:px-6 pt-[max(1.2rem,env(safe-area-inset-top))]">
               <div>
                 <p className="text-[9px] font-semibold uppercase tracking-[0.24em] text-[#8E3D51]">
-                  Atelier Selection
+                  Curated Selection
                 </p>
                 <h2 className="mt-0.5 font-serif text-xl sm:text-2xl text-[#2A2421]">
                   Your Bag
@@ -242,7 +242,7 @@ function CartDrawer({ open, onClose }: CartDrawerProps) {
 
             {/* Footer Summary & Checkout */}
             {items.length > 0 && (
-              <div className="shrink-0 border-t border-black/[0.06] bg-white p-5 sm:p-6 pb-[max(1.2rem,env(safe-area-inset-bottom))]">
+              <div className="shrink-0 border-t border-black/6 bg-white p-5 sm:p-6 pb-[max(1.2rem,env(safe-area-inset-bottom))]">
                 <div className="mb-2 flex items-center justify-between">
                   <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-[#8C7A6B]">
                     Bag Subtotal

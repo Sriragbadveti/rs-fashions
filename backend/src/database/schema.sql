@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS public.categories (
 );
 
 -- ------------------------------------------------------------------------------
--- 2. PRODUCTS / SAREE ATELIER VAULT
+-- 2. PRODUCTS / SAREE INVENTORY VAULT
 -- ------------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.products (
     id TEXT PRIMARY KEY,
@@ -180,98 +180,95 @@ CREATE TABLE IF NOT EXISTS public.settings (
 -- ------------------------------------------------------------------------------
 INSERT INTO public.categories (id, name, slug, hsn, next_sequence)
 VALUES 
-    ('c1', 'SiCo Gadwal Sarees', 'SGS', '5208', 3),
-    ('c2', 'Pure Silk Kanjivaram', 'PSK', '5007', 1),
-    ('c3', 'Banarasi Silk Heritage', 'BSH', '5007', 1),
-    ('c4', 'Handloom Mulberry Cotton', 'HMC', '5208', 1)
+    ('c1', 'SiCo Gadwal Sarees', 'SGS', '5208', 3)
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO public.products (id, name, category, material, price, original_price, stock, images, colors, tags, rating, review_count, featured, description)
 VALUES 
     (
-        'kanjivaram-bridal-heritage-saree',
-        'Kanjivaram Bridal Heritage Saree',
-        'Pure Silk Kanjivaram',
-        'Pure Kanjivaram Silk',
-        12999,
-        16999,
-        5,
+        'midnight-sico-gadwal',
+        'Midnight SiCo Gadwal Saree',
+        'SiCo Gadwal Sarees',
+        'Silk Cotton (SiCo)',
+        7999,
+        9999,
+        8,
         ARRAY['https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1200&auto=format&fit=crop'],
-        ARRAY['Rani Pink', 'Gold'],
-        ARRAY['bridal', 'kanjivaram', 'pure silk', 'heritage'],
+        ARRAY['Midnight Blue', 'Gold Zari'],
+        ARRAY['sico', 'gadwal', 'festive', 'zari'],
         4.9,
         18,
         true,
-        'Authentic temple-border Kanjivaram woven with 3-ply mulberry silk and pure gold zari.'
+        'Authentic temple-border SiCo Gadwal saree woven with pure silk cotton and fine gold zari.'
     ),
     (
-        'emerald-banarasi-saree',
-        'Emerald Banarasi Saree',
-        'Banarasi Silk Heritage',
-        'Banarasi Silk',
+        'emerald-sico-gadwal',
+        'Emerald SiCo Gadwal Saree',
+        'SiCo Gadwal Sarees',
+        'Silk Cotton (SiCo)',
         8499,
         11200,
         8,
         ARRAY['https://medias.utsavfashion.com/media/catalog/product/cache/1/image/1000x/040ec09b1e35df139433887a97daa66f/w/o/woven-art-silk-saree-in-emerald-green-v1-ssf833_2.jpg'],
-        ARRAY['Emerald', 'Gold Zari'],
-        ARRAY['banarasi', 'emerald', 'festive', 'zari'],
+        ARRAY['Emerald Green', 'Gold Zari'],
+        ARRAY['sico', 'gadwal', 'emerald', 'zari'],
         4.8,
         14,
         true,
-        'Rich heritage gold zari motifs woven on opulent royal emerald green silk.'
+        'Rich heritage gold zari border woven on opulent royal emerald green SiCo Gadwal drape.'
     ),
     (
-        'rose-silk-saree',
-        'Rose Silk Saree',
-        'Pure Silk Kanjivaram',
-        'Pure Silk',
+        'rose-sico-gadwal',
+        'Rose Pink SiCo Gadwal Saree',
+        'SiCo Gadwal Sarees',
+        'Silk Cotton (SiCo)',
         4999,
         6499,
         9,
         ARRAY['https://medias.utsavfashion.com/media/catalog/product/cache/1/image/1000x/040ec09b1e35df139433887a97daa66f/e/m/embroidered-viscose-silk-saree-in-baby-pink-v1-sgsa847_1.jpg'],
-        ARRAY['Rose', 'Silver'],
-        ARRAY['silk', 'soft silk', 'pastel'],
+        ARRAY['Rose Pink', 'Silver Zari'],
+        ARRAY['sico', 'gadwal', 'pink', 'pastel'],
         4.7,
         11,
         true,
-        'A softly luminous silk saree designed around graceful drape, delicate colour and timeless elegance.'
+        'A softly luminous SiCo Gadwal saree designed around graceful drape, delicate colour and timeless elegance.'
     ),
     (
-        'ivory-cotton-saree',
-        'Ivory Cotton Saree',
-        'Handloom Mulberry Cotton',
-        'Organic Cotton',
-        2899,
-        3800,
+        'ivory-sico-gadwal',
+        'Ivory Gold SiCo Gadwal Saree',
+        'SiCo Gadwal Sarees',
+        'Silk Cotton (SiCo)',
+        5899,
+        7800,
         20,
         ARRAY['https://medias.utsavfashion.com/media/catalog/product/cache/1/image/1000x/040ec09b1e35df139433887a97daa66f/b/a/bandhej-printed-cotton-saree-in-cream-v1-sfc217.jpg'],
-        ARRAY['Cream', 'Beige'],
-        ARRAY['cotton', 'handloom', 'daily luxury', 'summer'],
+        ARRAY['Ivory Cream', 'Gold'],
+        ARRAY['sico', 'gadwal', 'ivory', 'handloom'],
         4.8,
         22,
         false,
-        'Breathable, lightweight and effortlessly graceful cotton weave for everyday celebration.'
+        'Breathable, lightweight and effortlessly graceful SiCo Gadwal handloom weave for celebrations.'
     ),
     (
-        'shimmer-organza-saree',
-        'Shimmer Organza Saree',
-        'Banarasi Silk Heritage',
-        'Organza',
-        3499,
-        4500,
+        'crimson-sico-gadwal',
+        'Crimson Temple SiCo Gadwal Saree',
+        'SiCo Gadwal Sarees',
+        'Silk Cotton (SiCo)',
+        6499,
+        8500,
         11,
         ARRAY['https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?q=80&w=1200&auto=format&fit=crop'],
-        ARRAY['Dusty Rose', 'Silver Sheen'],
-        ARRAY['organza', 'tissue', 'modern', 'party'],
-        4.6,
-        9,
+        ARRAY['Crimson Red', 'Pure Gold'],
+        ARRAY['sico', 'gadwal', 'temple border', 'bridal'],
+        4.8,
+        19,
         false,
-        'Weightless organza drape with a gentle metallic sheen and delicate hand-embroidery.'
+        'Weightless SiCo Gadwal drape with traditional interlocked temple border and rich pallu.'
     )
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO public.coupons (id, code, description, discount_type, discount_value, min_order_value, max_uses, times_used, is_active)
 VALUES
-    ('c-festive', 'FESTIVE10', '10% discount on all heirloom silks', 'percentage', 10, 2000, 500, 0, true),
+    ('c-festive', 'FESTIVE10', '10% discount on all SiCo Gadwal sarees', 'percentage', 10, 2000, 500, 0, true),
     ('c-welcome', 'WELCOME500', 'Flat ₹500 off on first order above ₹3000', 'fixed', 500, 3000, 1000, 0, true)
 ON CONFLICT (id) DO NOTHING;

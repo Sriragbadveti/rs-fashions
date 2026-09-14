@@ -185,6 +185,7 @@ export async function getBootstrapData(req, res) {
       phone: c.phone,
       email: c.email || undefined,
       city: c.city || "Hyderabad",
+      address: c.address || (c.city ? `${c.city}, Telangana` : "Hyderabad, Telangana"),
       tier: c.tier || "Heritage Club",
       totalSpent: Number(c.total_spent) || 0,
       ordersCount: Number(c.orders_count) || 0,
@@ -193,6 +194,8 @@ export async function getBootstrapData(req, res) {
       preferredWeave: c.preferred_weave || undefined,
       notes: c.notes || undefined,
       gstin: c.gstin || undefined,
+      authProvider: (c.notes && c.notes.toLowerCase().includes("google")) ? "google" : "email",
+      joinedAt: c.created_at || c.updated_at || undefined,
     }));
 
     const trackedOrders = (trackedRes.data || []).map((t) => ({

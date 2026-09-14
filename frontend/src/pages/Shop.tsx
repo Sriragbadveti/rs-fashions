@@ -33,11 +33,7 @@ const sortOptionsList: SortOption[] = [
 
 const initialCategoryPills = [
   "All",
-  "Silk Sarees",
-  "Cotton Sarees",
-  "Designer Sarees",
-  "Festive Wear",
-  "Party Wear",
+  "SiCo Gadwal Sarees",
 ];
 
 const initialFilters: FilterState = {
@@ -53,12 +49,14 @@ function Shop() {
       const saved = localStorage.getItem("rs_fashions_products");
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((p: any) => ({ ...p, category: "SiCo Gadwal Sarees" }));
+        }
       }
     } catch {
       // ignore
     }
-    return fallbackProducts;
+    return fallbackProducts.map((p) => ({ ...p, category: "SiCo Gadwal Sarees" }));
   });
   const [, setLoading] = useState(false);
 
@@ -117,12 +115,21 @@ function Shop() {
     }
     loadProducts();
 
+    const handleInventorySync = () => {
+      loadProducts();
+    };
+
+    window.addEventListener("rs_inventory_updated", handleInventorySync);
+    window.addEventListener("storage", handleInventorySync);
+
     const unsubscribe = StoreService.subscribeToRealtime(() => {
       loadProducts();
     });
 
     return () => {
       isMounted = false;
+      window.removeEventListener("rs_inventory_updated", handleInventorySync);
+      window.removeEventListener("storage", handleInventorySync);
       unsubscribe();
     };
   }, []);
@@ -250,29 +257,26 @@ function Shop() {
           {/* Header */}
           <div className="mb-8 flex flex-col justify-between gap-4 border-b border-black/6 pb-8 md:flex-row md:items-end">
             <div>
-              <span className="text-[10px] font-semibold uppercase tracking-[0.32em] text-[#8C7A6B]">
-                Curated Vault · {allProducts.length} Heirloom Weaves
-              </span>
-              <h1 className="mt-2 font-serif text-4xl sm:text-6xl lg:text-7xl font-light tracking-tight text-[#2A2421]">
+              <h1 className="mt-1 font-serif text-4xl sm:text-6xl lg:text-7xl font-light tracking-tight text-[#2A2421]">
                 Find your <span className="italic font-normal text-[#8E3D51]">story.</span>
               </h1>
             </div>
 
             <p className="max-w-xs text-xs font-light leading-relaxed text-[#756A60]">
-              From courtyard Banarasis to weightless handloom cottons, discover authentic artisanal drapes.
+              From traditional temple borders to weightless handloom SiCo weaves, discover authentic SiCo Gadwal drapes.
             </p>
           </div>
 
           {/* Search & Filter Controls */}
           <div className="relative mb-6">
-            <div className="flex items-center rounded-2xl border border-black/10 bg-white/80 p-1.5 shadow-[0_8px_30px_rgba(42,36,33,0.04)] backdrop-blur-xl transition-all focus-within:border-[#8E3D51]/40">
+            <div className="flex items-center rounded-2xl border border-black/40 bg-white/80 p-1.5 shadow-[0_8px_30px_rgba(42,36,33,0.04)] backdrop-blur-xl transition-all focus-within:border-[#8E3D51]/40">
               <div className="relative flex flex-1 items-center pl-3 sm:pl-4">
                 <FiSearch size={18} className="shrink-0 text-[#8C7A6B]" />
                 <input
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search silk, kanjivaram, organza, handloom..."
+                  placeholder="Search SiCo Gadwal Sarees..."
                   className="h-11 w-full bg-transparent pl-3 pr-8 text-xs sm:text-sm font-light tracking-wide text-[#2A2421] placeholder-[#A89C8F] outline-none"
                 />
                 {search && (
@@ -289,7 +293,7 @@ function Shop() {
                 )}
               </div>
 
-              <div className="flex items-center gap-1.5 border-l border-black/5 pl-2">
+              <div className="flex items-center gap-1.5 border-l border-black/30 pl-2">
                 <button
                   type="button"
                   onClick={() => setShowFilters(true)}

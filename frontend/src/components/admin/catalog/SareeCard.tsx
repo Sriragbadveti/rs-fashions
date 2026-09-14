@@ -52,7 +52,7 @@ export const SareeCard: React.FC<SareeCardProps> = ({
                 className="w-full h-full object-cover"
               />
             ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-[#2A0E20]/10 via-stone-100 to-amber-100/30 text-stone-400 p-2 text-center">
+              <div className="w-full h-full flex flex-col items-center justify-center bg-linear-to-br from-[#2A0E20]/10 via-stone-100 to-amber-100/30 text-stone-400 p-2 text-center">
                 <Sparkles size={20} className="text-[#D4A373] mb-1 opacity-75" />
                 <span className="text-[9px] font-mono font-medium leading-tight">
                   RS Fashions

@@ -235,10 +235,10 @@ function Checkout() {
                 name: item.name,
                 price: item.price,
                 originalPrice: item.price,
-                description: "Handcrafted pure silk drape.",
-                longDescription: "Handcrafted pure silk drape with authentic weave.",
-                category: "Silk Sarees",
-                material: item.material || "Pure Silk",
+                description: "Handcrafted SiCo Gadwal drape.",
+                longDescription: "Handcrafted authentic SiCo Gadwal drape with heritage zari border.",
+                category: "SiCo Gadwal Sarees",
+                material: "Silk Cotton (SiCo)",
                 images: [item.image || "/saree.png"],
                 colors: [item.color || "Standard"],
                 sizes: ["Standard Drape (5.5m + 0.8m Blouse)"],
@@ -653,7 +653,7 @@ function Checkout() {
           amount: orderAmount,
           currency: razorpayRes.order?.currency || (razorpayRes as any).currency || "INR",
           name: "RS Fashions",
-          description: "Artisan Silk Saree Order (Test Mode)",
+          description: "Artisan SiCo Gadwal Saree Order (Test Mode)",
           image: "/saree.png",
           order_id: orderId,
           handler: async function (response: any) {
@@ -869,7 +869,7 @@ function Checkout() {
                     RS FASHIONS
                   </h2>
                   <p className="text-[9px] text-[#8C7A6B] leading-relaxed mt-0.5">
-                    Heirloom Silk Sarees · Jubilee Hills, Hyderabad<br />
+                    Heirloom SiCo Gadwal Sarees · Jubilee Hills, Hyderabad<br />
                     GSTIN: <span className="font-mono">36AAACB1234F1Z5</span>
                   </p>
                 </div>
@@ -1029,7 +1029,7 @@ function Checkout() {
 
           <div>
             <span className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#8C7A6B]">
-              RS Fashions Private Atelier
+              RS Fashions Private Studio
             </span>
             <h1 className="mt-1 font-serif text-2xl font-light text-[#2A2421]">
               Login Required to Purchase
@@ -1096,7 +1096,7 @@ function Checkout() {
     <main className="min-h-screen bg-[#FAF7F2] font-sans text-[#2A2421] select-none px-3.5 pb-20 pt-6 sm:px-6 md:px-8 lg:px-12">
       <div className="mx-auto max-w-[1300px]">
         {/* Navigation Bar */}
-        <div className="mb-5 flex items-center justify-between border-b border-black/[0.06] pb-3.5">
+        <div className="mb-5 flex items-center justify-between border-b border-black/6 pb-3.5">
           <button
             type="button"
             onClick={() => {
@@ -1243,7 +1243,7 @@ function Checkout() {
               className={`grid transition-[grid-template-rows,opacity] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${isSummaryOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
                 }`}
             >
-              <div className="overflow-hidden border-t border-black/[0.06] bg-[#FAF7F2]/50 p-4">
+              <div className="overflow-hidden border-t border-black/6 bg-[#FAF7F2]/50 p-4">
                 <div className="divide-y divide-black/[0.04] max-h-52 overflow-y-auto">
                   {items.map((item) => (
                     <div
@@ -1270,7 +1270,7 @@ function Checkout() {
                   ))}
                 </div>
 
-                <div className="mt-3 space-y-1.5 border-t border-black/[0.06] pt-2.5 text-[11px] font-light">
+                <div className="mt-3 space-y-1.5 border-t border-black/6 pt-2.5 text-[11px] font-light">
                   <div className="flex justify-between text-[#756A60]">
                     <span>Subtotal</span>
                     <span className="font-sans font-medium text-[#2A2421]">
@@ -1791,7 +1791,7 @@ function Checkout() {
           <aside className="hidden lg:block lg:sticky lg:top-24 lg:self-start">
             <div className="overflow-hidden rounded-3xl border border-black/10 bg-white shadow-[0_16px_40px_rgba(42,36,33,0.06)]">
               <div className="p-5 xl:p-6">
-                <div className="flex items-center justify-between border-b border-black/[0.06] pb-3.5">
+                <div className="flex items-center justify-between border-b border-black/6 pb-3.5">
                   <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#8C7A6B]">
                     Order Summary
                   </span>
@@ -1829,7 +1829,7 @@ function Checkout() {
                   ))}
                 </div>
 
-                <div className="space-y-2 border-t border-black/[0.06] pt-3.5 text-xs font-light">
+                <div className="space-y-2 border-t border-black/6 pt-3.5 text-xs font-light">
                   <div className="flex justify-between text-[#756A60]">
                     <span>Subtotal</span>
                     <span className="font-sans font-medium text-[#2A2421]">
@@ -1981,7 +1981,7 @@ function LuxuryReceiptPrinter({
   return (
     <div id="receipt-print-area" className={`relative mx-auto max-w-md ${className}`}>
       {/* Machined Metallic Dispenser Slot */}
-      <div className="relative z-20 mx-auto h-4 w-[94%] rounded-t-lg bg-gradient-to-b from-[#2A2421] via-[#3A332E] to-[#1F1A18] shadow-[0_4px_12px_rgba(0,0,0,0.25)] border-t border-x border-[#D4AF37]/30 print:hidden">
+      <div className="relative z-20 mx-auto h-4 w-[94%] rounded-t-lg bg-linear-to-b from-[#2A2421] via-[#3A332E] to-[#1F1A18] shadow-[0_4px_12px_rgba(0,0,0,0.25)] border-t border-x border-[#D4AF37]/30 print:hidden">
         <div className="absolute inset-x-4 top-1.5 h-1 rounded-full bg-black/80 shadow-[inset_0_1px_2px_rgba(0,0,0,0.8)]" />
       </div>
 

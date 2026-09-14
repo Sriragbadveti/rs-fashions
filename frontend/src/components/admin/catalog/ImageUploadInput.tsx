@@ -179,7 +179,7 @@ export const ImageUploadInput: React.FC<ImageUploadInputProps> = ({
               </div>
               <div className="w-full bg-stone-200 h-2 rounded-full overflow-hidden max-w-xs mx-auto">
                 <div
-                  className="bg-gradient-to-r from-[#D4A373] to-[#2A0E20] h-full rounded-full transition-all duration-200"
+                  className="bg-linear-to-r from-[#D4A373] to-[#2A0E20] h-full rounded-full transition-all duration-200"
                   style={{ width: `${uploadProgress}%` }}
                 />
               </div>

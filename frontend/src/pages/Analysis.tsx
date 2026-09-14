@@ -1176,7 +1176,7 @@ export default function Analysis({
                 {/* Progress Indicator */}
                 <div className="h-2 w-full rounded-full bg-stone-100 overflow-hidden">
                   <div
-                    className="h-full rounded-full bg-gradient-to-r from-[#2A0E20] via-[#7B2E58] to-[#D4A373] transition-all duration-500"
+                    className="h-full rounded-full bg-linear-to-r from-[#2A0E20] via-[#7B2E58] to-[#D4A373] transition-all duration-500"
                     style={{ width: `${Math.max(6, percentage)}%` }}
                   />
                 </div>

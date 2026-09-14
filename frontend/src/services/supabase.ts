@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { API_BASE } from "../config/api";
-import type { Product } from "../data/products";
+import { type Product, products as fallbackProducts } from "../data/products";
 import type {
   DashboardProduct,
   Category,
@@ -119,17 +119,17 @@ const initialOrders: StoreOrder[] = [];
 const initialCMS: CMSContent = {
   heroBanner: {
     title: "Timeless Drapes for Every Generation",
-    subtitle: "Heirloom Silks & Pure Handloom Drapes curated from master weavers across India.",
+    subtitle: "Heirloom SiCo Gadwal Drapes curated from master weavers.",
     badge: "The Royal Heritage Vault",
     imageUrl: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1600&auto=format&fit=crop",
     link: "/shop",
   },
   festiveBanner: {
     title: "Festive Weaves 2026",
-    subtitle: "Limited festive edition Kanjivarams and Banarasis with certified zari.",
-    badge: "Exclusive Atelier",
+    subtitle: "Limited festive edition SiCo Gadwal sarees with certified zari.",
+    badge: "Exclusive Collection",
     imageUrl: "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?q=80&w=1200&auto=format&fit=crop",
-    link: "/shop?category=Festive+Wear",
+    link: "/shop?category=SiCo+Gadwal+Sarees",
   },
   storyBanner: {
     title: "Crafted for Every Story",
@@ -208,15 +208,80 @@ export const StoreService = {
         }));
       }
     }
-    const saved = localStorage.getItem(LOCAL_STORAGE_PRODUCTS);
-    if (saved) {
+    // 1. Check if admin inventory has products in localStorage
+    let adminMapped: Product[] = [];
+    const adminSaved = localStorage.getItem("rs_admin_inventory");
+    if (adminSaved) {
       try {
-        return JSON.parse(saved);
+        const parsedAdmin = JSON.parse(adminSaved);
+        if (Array.isArray(parsedAdmin) && parsedAdmin.length > 0) {
+          adminMapped = parsedAdmin.map((d: any) => {
+            const variants = Array.isArray(d.variants) ? d.variants : [];
+            const variantImages = variants.map((v: any) => v.imageUrl).filter(Boolean) as string[];
+            const primaryImg = d.imageUrl || variantImages[0] || "https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1200&auto=format&fit=crop";
+            const images = Array.from(new Set([primaryImg, ...variantImages, ...(Array.isArray(d.images) ? d.images : [])])).filter(Boolean) as string[];
+
+            const totalStock = variants.length > 0
+              ? variants.reduce((sum: number, v: any) => sum + (Number(v.stock) || 0), 0)
+              : (Number(d.stock) || 10);
+
+            const price = Number(d.salePrice ?? d.price) || 0;
+            const originalPrice = d.originalPrice ? Number(d.originalPrice) : (price > 0 ? Math.round(price * 1.25) : 0);
+            const colors = variants.length > 0
+              ? variants.map((v: any) => v.color)
+              : (Array.isArray(d.colors) && d.colors.length > 0 ? d.colors : ["Standard"]);
+
+            return {
+              id: d.id,
+              name: d.name,
+              category: "SiCo Gadwal Sarees",
+              material: "SiCo Gadwal / Silk Cotton",
+              price,
+              originalPrice,
+              stock: totalStock,
+              rating: Number(d.rating) || 4.8,
+              reviewCount: Number(d.reviewCount) || 28,
+              images: images.length > 0 ? images : ["https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1200&auto=format&fit=crop"],
+              colors: colors.length > 0 ? colors : ["Standard"],
+              sizes: ["Free Size (5.5m + 0.8m Blouse)"],
+              description: d.description || "Handcrafted pure heirloom SiCo Gadwal drape.",
+              longDescription: d.longDescription || d.description || "Handcrafted pure heirloom SiCo Gadwal drape with certified zari and rich pallu motifs.",
+              featured: Boolean(d.featured ?? true),
+            };
+          });
+        }
       } catch {
         // ignore
       }
     }
-    return [];
+
+    const saved = localStorage.getItem(LOCAL_STORAGE_PRODUCTS);
+    let storeProducts: Product[] = [];
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) storeProducts = parsed;
+      } catch {
+        // ignore
+      }
+    }
+
+    if (adminMapped.length > 0) {
+      const mergedMap = new Map<string, Product>();
+      storeProducts.forEach((p) => mergedMap.set(p.id, p));
+      adminMapped.forEach((p) => mergedMap.set(p.id, p));
+      const combined = Array.from(mergedMap.values());
+      try {
+        localStorage.setItem(LOCAL_STORAGE_PRODUCTS, JSON.stringify(combined));
+      } catch {}
+      return combined;
+    }
+
+    if (storeProducts.length > 0) {
+      return storeProducts;
+    }
+
+    return fallbackProducts.map((p) => ({ ...p, category: "SiCo Gadwal Sarees" }));
   },
 
   async getProductById(id: string): Promise<Product | null> {

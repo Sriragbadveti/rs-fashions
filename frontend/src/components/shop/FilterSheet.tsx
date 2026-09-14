@@ -20,22 +20,15 @@ interface FilterSheetProps {
 
 const categories: FilterState["category"][] = [
   "All",
-  "Sarees",
-  "Designer",
-  "Festive",
-  "Party Wear",
-  "New Arrivals",
+  "SiCo Gadwal Sarees",
 ];
 
 const materials: FilterState["material"][] = [
   "All",
-  "Silk",
-  "Cotton",
-  "Chiffon",
-  "Georgette",
-  "Organza",
-  "Linen",
-  "Banarasi",
+  "Silk Cotton (SiCo)",
+  "Pure Handloom Silk",
+  "Gadwal Zari Silk",
+  "Organic Cotton",
 ];
 
 const priceRanges: FilterState["priceRange"][] = [

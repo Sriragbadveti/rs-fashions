@@ -22,6 +22,10 @@ export function AdminHeader({
     analytics: "Store Analytics & Intelligence",
     crm: "Client & Patrons CRM",
     tracking: "Loom & Courier Tracking",
+    "bulk-stock": "Bulk Stock Entry",
+    "low-stock": "Low-Stock & Weaver POs",
+    sale: "Sale & Promotional Offers",
+    trending: "Trending Pieces Curation",
     settings: "Store & Terminal Settings",
   };
 

@@ -21,6 +21,7 @@ import {
   Category,
   CompletedSale,
   CustomerDetails,
+  CustomerProfile,
   PaymentMethod,
   Product,
   MOCK_CUSTOMERS,
@@ -99,6 +100,88 @@ const initialCustomer: CustomerDetails = {
   gstin: "",
 };
 
+// Reads saved CRM customers from localStorage, registered online users, and mock customers
+export const getSavedCrmCustomers = (): CustomerProfile[] => {
+  const map = new Map<string, CustomerProfile>();
+
+  // 1. Base seed from MOCK_CUSTOMERS
+  MOCK_CUSTOMERS.forEach((c) => {
+    map.set(c.id, {
+      ...c,
+      address: c.address || (c.city ? `${c.city}, Telangana` : "Hyderabad, Telangana"),
+      state: "Telangana",
+    });
+  });
+
+  // 2. Read from rs_admin_customers (CRM persisted state)
+  try {
+    const saved = localStorage.getItem("rs_admin_customers");
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        parsed.forEach((c: CustomerProfile) => {
+          if (c && (c.phone || c.name || c.id)) {
+            const key = c.id || c.phone;
+            map.set(key, {
+              ...c,
+              address: c.address || (c.city ? `${c.city}, Telangana` : "Hyderabad, Telangana"),
+              state: (c as any).state || "Telangana",
+            });
+          }
+        });
+      }
+    }
+  } catch {}
+
+  // 2b. Read from rs_fashions_customers
+  try {
+    const saved = localStorage.getItem("rs_fashions_customers");
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        parsed.forEach((c: CustomerProfile) => {
+          if (c && (c.phone || c.name || c.id)) {
+            const key = c.id || c.phone;
+            if (!map.has(key)) {
+              map.set(key, {
+                ...c,
+                address: c.address || (c.city ? `${c.city}, Telangana` : "Hyderabad, Telangana"),
+                state: (c as any).state || "Telangana",
+              });
+            }
+          }
+        });
+      }
+    }
+  } catch {}
+
+  // 3. Read from online registered patrons (rs_fashions_current_user)
+  try {
+    const online = localStorage.getItem("rs_fashions_current_user");
+    if (online) {
+      const u = JSON.parse(online);
+      if (u && (u.email || u.phone)) {
+        const id = `user-${(u.email || u.phone).replace(/[^a-z0-9]/g, "")}`;
+        map.set(id, {
+          id,
+          name: u.name || "Online Patron",
+          phone: u.phone || "9999999999",
+          email: u.email || "",
+          city: u.city || "Hyderabad",
+          address: u.address || (u.city ? `${u.city}, Telangana` : "Hyderabad, Telangana"),
+          state: u.state || "Telangana",
+          tier: "Heritage Club",
+          totalSpent: 0,
+          ordersCount: 0,
+          notes: u.authProvider === "google" ? "Google Auth Registered" : "Website Account",
+        });
+      }
+    }
+  } catch {}
+
+  return Array.from(map.values());
+};
+
 // -----------------------------------------------------------------
 // HOOK PROPS
 // Same props the old Billing component used to receive directly.
@@ -107,6 +190,8 @@ export interface UseBillingProps {
   inventory: Product[];
   categories: Category[];
   onCompleteSale: (sale: CompletedSale) => void;
+  customers?: CustomerProfile[];
+  onAddCustomer?: (newCustomer: CustomerProfile) => void;
 }
 
 // ===================================================================
@@ -120,6 +205,8 @@ export function useBilling({
   inventory,
   categories,
   onCompleteSale,
+  customers,
+  onAddCustomer,
 }: UseBillingProps) {
   // ---------------------------------------------------------------
   // STATE
@@ -443,31 +530,46 @@ export function useBilling({
   }, [inventory, categoryMap, search, selectedCategory]);
 
   // ---------------------------------------------------------------
+  // DERIVED DATA: live customer pool combining props + CRM storage
+  // ---------------------------------------------------------------
+  const liveCustomerPool = useMemo(() => {
+    const base = getSavedCrmCustomers();
+    if (customers && customers.length > 0) {
+      const map = new Map<string, CustomerProfile>();
+      base.forEach((c) => map.set(c.id || c.phone, c));
+      customers.forEach((c) => map.set(c.id || c.phone, c));
+      return Array.from(map.values());
+    }
+    return base;
+  }, [customers]);
+
+  // ---------------------------------------------------------------
   // DERIVED DATA: existing customers filtered by the lookup search box
   // ---------------------------------------------------------------
   const filteredCustomers = useMemo(() => {
     const query = customerSearch.trim().toLowerCase();
 
     if (!query) {
-      return MOCK_CUSTOMERS.slice(0, 5);
+      return liveCustomerPool.slice(0, 8);
     }
 
-    return MOCK_CUSTOMERS.filter((existingCustomer) => {
+    return liveCustomerPool.filter((existingCustomer) => {
       const searchable = [
-        existingCustomer.name,
-        existingCustomer.phone,
+        existingCustomer.name || "",
+        existingCustomer.phone || "",
         existingCustomer.email ?? "",
-        existingCustomer.city,
+        existingCustomer.city || "",
+        existingCustomer.address ?? "",
         existingCustomer.gstin ?? "",
         existingCustomer.preferredWeave ?? "",
-        existingCustomer.tier,
+        existingCustomer.tier || "",
       ]
         .join(" ")
         .toLowerCase();
 
       return searchable.includes(query);
-    }).slice(0, 8);
-  }, [customerSearch]);
+    }).slice(0, 12);
+  }, [customerSearch, liveCustomerPool]);
 
   // ---------------------------------------------------------------
   // BILL CALCULATIONS
@@ -504,14 +606,19 @@ export function useBilling({
         : autoGstRate
       : 0;
 
-  const totalTax =
-    billingType === "gst" ? Math.round((taxableAmount * gstRate) / 100) : 0;
+  const totalTax = useMemo(
+    () => (taxableAmount > 0 ? Math.round((taxableAmount * gstRate) / 100) : 0),
+    [taxableAmount, gstRate]
+  );
 
   // GST is split evenly into CGST + SGST
   const cgst = billingType === "gst" ? Math.round(totalTax / 2) : 0;
   const sgst = billingType === "gst" ? totalTax - cgst : 0;
 
-  const total = taxableAmount + totalTax;
+  const total = useMemo(
+    () => taxableAmount + totalTax,
+    [taxableAmount, totalTax]
+  );
 
   const cartQuantity = cart.reduce((sum, item) => sum + item.qty, 0);
 
@@ -519,30 +626,60 @@ export function useBilling({
   // CUSTOMER HANDLERS
   // ---------------------------------------------------------------
 
-  // Updates a single field on the customer form.
+  // Updates a single field on the customer form with smart CRM phone autofill.
   const updateCustomer = (field: keyof CustomerDetails, value: string) => {
-    setCustomer((previous) => ({
-      ...previous,
-      [field]: value,
-    }));
+    setCustomer((previous) => {
+      const next = {
+        ...previous,
+        [field]: value,
+      };
+
+      // Smart CRM Lookup: When 10-digit phone is entered, auto-populate details if patron is known
+      if (field === "phone") {
+        const clean = value.replace(/\D/g, "").slice(0, 10);
+        if (clean.length === 10 && (!previous.name || previous.name.trim() === "")) {
+          const match = liveCustomerPool.find((c) => (c.phone || "").replace(/\D/g, "").endsWith(clean));
+          if (match) {
+            next.name = match.name || next.name;
+            next.email = match.email || next.email;
+            next.address = match.address || next.address || (match.city ? `${match.city}, Telangana` : "Hyderabad, Telangana");
+            next.city = match.city || next.city;
+            next.state = (match as any).state || next.state || "Telangana";
+            next.gstin = match.gstin || next.gstin;
+          }
+        }
+      }
+
+      return next;
+    });
   };
 
   // Fills the customer form from a previously-known customer picked
-  // from the lookup dropdown.
+  // from the lookup dropdown with complete address, phone, city, and state.
   const selectExistingCustomer = (
-    existingCustomer: (typeof MOCK_CUSTOMERS)[number]
+    existingCustomer: CustomerProfile
   ) => {
+    const resolvedAddress = existingCustomer.address?.trim()
+      ? existingCustomer.address.trim()
+      : existingCustomer.city?.trim()
+      ? `${existingCustomer.city.trim()}, Telangana`
+      : "Hyderabad, Telangana";
+
+    const resolvedState = (existingCustomer as any).state?.trim()
+      ? (existingCustomer as any).state.trim()
+      : "Telangana";
+
     setCustomer({
-      name: existingCustomer.name,
-      phone: existingCustomer.phone,
+      name: existingCustomer.name || "",
+      phone: (existingCustomer.phone || "").replace(/\D/g, "").slice(0, 10),
       email: existingCustomer.email ?? "",
-      address: "",
-      city: existingCustomer.city,
-      state: "Telangana",
+      address: resolvedAddress,
+      city: existingCustomer.city || "Hyderabad",
+      state: resolvedState,
       gstin: existingCustomer.gstin ?? "",
     });
 
-    setCustomerSearch(existingCustomer.name);
+    setCustomerSearch(existingCustomer.name || "");
     setShowCustomerSuggestions(false);
 
     if (billingType === "gst" && existingCustomer.gstin) {

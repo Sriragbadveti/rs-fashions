@@ -87,7 +87,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
           customerName: customer.name || "Patron",
           customerPhone: customer.phone || "9876543210",
           customerEmail: customer.email || "patron@rsfashions.in",
-          description: `RS Fashions Saree Atelier Bill for ${customer.name || "Patron"}`,
+          description: `RS Fashions Saree Studio Bill for ${customer.name || "Patron"}`,
         }),
       });
       const data = await res.json();

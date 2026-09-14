@@ -284,8 +284,8 @@ function OfferBanner() {
               "
             >
               Complimentary ₹2,000 privilege
-              savings on our signature Banarasi
-              and Kanjivaram bridal drapes.
+              savings on our signature handcrafted
+              SiCo Gadwal sarees and bridal drapes.
             </motion.p>
           </div>
 

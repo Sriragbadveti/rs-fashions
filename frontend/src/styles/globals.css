@@ -65,13 +65,18 @@ img {
   background: rgba(142, 61, 81, 0.22);
 }
 
-::-webkit-scrollbar {
-  width: 0;
-  height: 0;
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+*::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
 }
 
 * {
-  scrollbar-width: none;
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
 }
 
 .font-display {

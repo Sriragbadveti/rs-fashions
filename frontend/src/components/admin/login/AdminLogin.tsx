@@ -36,7 +36,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess }) => {
     setTimeout(() => {
       setIsLoading(false);
       onLoginSuccess({
-        name: "Sindhu Reddy",
+        name: "Sindhu",
         email: email,
         role: "Superadmin",
       });
@@ -46,13 +46,13 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess }) => {
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-[#F8F6F2] flex items-center justify-center p-6 md:p-12 select-none">
       {/* Background Ambience */}
-      <div className="absolute top-[-10%] left-[-5%] w-[520px] h-[520px] rounded-full bg-gradient-to-br from-[#F4E3D7] to-[#E9D5C4] blur-3xl opacity-70 pointer-events-none animate-pulse" />
-      <div className="absolute bottom-[-10%] right-[-5%] w-[580px] h-[580px] rounded-full bg-gradient-to-tl from-[#E2D4E0] to-[#F7EFE9] blur-3xl opacity-60 pointer-events-none" />
+      <div className="absolute top-[-10%] left-[-5%] w-[520px] h-[520px] rounded-full bg-linear-to-br from-[#F4E3D7] to-[#E9D5C4] blur-3xl opacity-70 pointer-events-none animate-pulse" />
+      <div className="absolute bottom-[-10%] right-[-5%] w-[580px] h-[580px] rounded-full bg-linear-to-tl from-[#E2D4E0] to-[#F7EFE9] blur-3xl opacity-60 pointer-events-none" />
 
       {/* Main Container */}
       <div className="glass-panel relative z-10 w-full max-w-4xl h-[560px] rounded-3xl overflow-hidden flex flex-col md:flex-row shadow-2xl border border-white/80">
         {/* Left Brand Panel */}
-        <div className="relative md:w-5/12 bg-gradient-to-br from-[#38152B] via-[#2A0E20] to-[#1E0916] text-white p-8 md:p-10 flex flex-col justify-between overflow-hidden">
+        <div className="relative md:w-5/12 bg-linear-to-br from-[#38152B] via-[#2A0E20] to-[#1E0916] text-white p-8 md:p-10 flex flex-col justify-between overflow-hidden">
           <div className="relative z-10">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-amber-200 text-xs tracking-wider uppercase font-medium mb-5">
               <Sparkles size={13} className="text-[#D4A373]" />
@@ -81,7 +81,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess }) => {
             <div className="p-1.5 rounded-lg bg-white/5 border border-white/10">
               <ShieldCheck size={14} className="text-emerald-400" />
             </div>
-            <span>Encrypted Session &bull; Hyderabad Atelier</span>
+            <span>Encrypted Session &bull; Hyderabad Studio</span>
           </div>
         </div>
 

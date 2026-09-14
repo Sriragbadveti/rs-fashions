@@ -170,6 +170,7 @@ export interface ColorVariant {
   colorSlug: string;
   stock: number;
   sku: string;
+  imageUrl?: string;
 }
 
 export interface DashboardProduct {
@@ -231,6 +232,10 @@ export type DashboardTab =
   | "analytics"
   | "crm"
   | "tracking"
+  | "bulk-stock"
+  | "low-stock"
+  | "sale"
+  | "trending"
   | "settings"
   | "categories";
 
@@ -687,7 +692,7 @@ export const MOCK_STOCK_HISTORY: StockMovement[] = [
     previousStock: 6,
     newStock: 5,
     referenceNumber: "INV-9021",
-    performedBy: "Sindhu Reddy",
+    performedBy: "Sindhu",
     note: "POS Counter #1 Sale",
   },
   {
@@ -717,7 +722,7 @@ export const MOCK_STOCK_HISTORY: StockMovement[] = [
     previousStock: 0,
     newStock: 8,
     referenceNumber: "PO-WEAVER-GADWAL-42",
-    performedBy: "Sindhu Reddy",
+    performedBy: "Sindhu",
     note: "Gadwal master weaver direct shipment batch #4",
   },
   {
@@ -732,7 +737,7 @@ export const MOCK_STOCK_HISTORY: StockMovement[] = [
     previousStock: 0,
     newStock: 5,
     referenceNumber: "PO-WEAVER-GADWAL-41",
-    performedBy: "Sindhu Reddy",
+    performedBy: "Sindhu",
     note: "Pre-festive fresh consignment",
   },
   {
@@ -747,7 +752,7 @@ export const MOCK_STOCK_HISTORY: StockMovement[] = [
     previousStock: 7,
     newStock: 6,
     referenceNumber: "DEF-2026-09",
-    performedBy: "Sindhu Reddy",
+    performedBy: "Sindhu",
     note: "Zari pulled on pallu during transit - marked for restoration",
   },
 ];
@@ -773,7 +778,7 @@ export const MOCK_TRACKED_ORDERS: TrackedOrder[] = [
       {
         stageTitle: "Order Packed & Fall-Pico Finished",
         timestamp: "10 Sep 2026, 09:30 AM",
-        locationOrDetail: "Jubilee Hills Flagship Atelier",
+        locationOrDetail: "Jubilee Hills Flagship Studio",
         completed: true,
       },
       {

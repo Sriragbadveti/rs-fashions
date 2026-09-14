@@ -63,6 +63,8 @@ const Billing: React.FC<BillingProps> = ({
   inventory,
   categories,
   onCompleteSale,
+  customers,
+  onAddCustomer,
 }) => {
   const {
     search,
@@ -123,7 +125,7 @@ const Billing: React.FC<BillingProps> = ({
     resetBilling,
     printInvoice,
     whatsappInvoice,
-  } = useBilling({ inventory, categories, onCompleteSale });
+  } = useBilling({ inventory, categories, onCompleteSale, customers, onAddCustomer });
 
   // VALIDATION, ENCRYPTION & TOAST STATE HOOKS
   const [addressError, setAddressError] = useState(false);
@@ -654,6 +656,13 @@ const Billing: React.FC<BillingProps> = ({
                                     {existingCustomer.phone} {" • "}
                                     {existingCustomer.city}
                                   </p>
+
+                                  {existingCustomer.address && (
+                                    <p className="mt-0.5 truncate text-[9.5px] text-stone-500 flex items-center gap-1">
+                                      <MapPin className="h-2.5 w-2.5 shrink-0 text-stone-400" />
+                                      <span className="truncate">{existingCustomer.address}</span>
+                                    </p>
+                                  )}
 
                                   {existingCustomer.email && (
                                     <p className="mt-0.5 truncate text-[9px] text-stone-400">

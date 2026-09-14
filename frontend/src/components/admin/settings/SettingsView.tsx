@@ -67,7 +67,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <span>Store Configuration &amp; Hardware</span>
           </div>
           <h1 className="text-3xl font-display font-medium text-stone-900 tracking-tight">
-            Atelier Settings
+            Showroom Settings
           </h1>
           <p className="text-xs text-stone-500 max-w-xl mt-0.5">
             Configure PhonePe &amp; Razorpay payment gateways, Cloudinary storage, active POS hardware terminals, and GST parameters.
@@ -257,7 +257,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <div className="space-y-4">
             <div>
               <h3 className="font-display font-semibold text-base text-stone-900">
-                Flagship Atelier Profile
+                Flagship Showroom Profile
               </h3>
               <p className="text-xs text-stone-500 mt-0.5">
                 Official business details printed on customer GST tax invoices.
@@ -292,7 +292,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
             <div className="space-y-1">
               <label className="block text-xs font-semibold text-stone-700">
-                Atelier Showroom Address
+                Showroom Address
               </label>
               <textarea
                 rows={2}
@@ -424,7 +424,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <div className="space-y-4">
             <div>
               <h3 className="font-display font-semibold text-base text-stone-900">
-                Atelier Security &amp; Access Control
+                Showroom Security &amp; Access Control
               </h3>
               <p className="text-xs text-stone-500 mt-0.5">
                 Session controls, multi-factor verification, and audit trail encryption.

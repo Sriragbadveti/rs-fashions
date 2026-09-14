@@ -11,6 +11,7 @@ import {
   Truck,
   Sparkles,
   LogOut,
+  Tag,
 } from "lucide-react";
 import type { DashboardTab, UserSession } from "../../../types/dashboard";
 
@@ -119,6 +120,23 @@ export function AdminSidebar({
               className={activeTab === "categories" ? "text-[#D4A373]" : "text-stone-400"}
             />
             <span>Weaves &amp; HSN</span>
+          </button>
+
+          {/* SALE & OFFERS */}
+          <button
+            type="button"
+            onClick={() => setActiveTab("sale")}
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${
+              activeTab === "sale"
+                ? "bg-[#2A0E20] text-amber-100 shadow-sm"
+                : "text-stone-600 hover:bg-stone-200/50 hover:text-stone-900"
+            }`}
+          >
+            <Tag
+              size={16}
+              className={activeTab === "sale" ? "text-[#D4A373]" : "text-stone-400"}
+            />
+            <span>Sale &amp; Offers</span>
           </button>
 
           {/* SECTION: SALES & BILLING */}

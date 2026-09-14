@@ -72,7 +72,7 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({
             No Weave Categories Registered
           </h3>
           <p className="text-xs text-stone-500 max-w-sm mx-auto">
-            Add your primary saree weave classifications (e.g., SiCo Gadwal Sarees, Kanjivaram Silk, Banarasi Katan) with their HSN tax codes.
+            Add your primary saree weave classifications (e.g., SiCo Gadwal Sarees) with their HSN tax codes.
           </p>
           <button
             type="button"

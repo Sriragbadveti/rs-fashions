@@ -71,12 +71,21 @@ function Product() {
     }
     loadProduct();
 
+    const handleInventorySync = () => {
+      loadProduct();
+    };
+
+    window.addEventListener("rs_inventory_updated", handleInventorySync);
+    window.addEventListener("storage", handleInventorySync);
+
     const unsubscribe = StoreService.subscribeToRealtime(() => {
       loadProduct();
     });
 
     return () => {
       isMounted = false;
+      window.removeEventListener("rs_inventory_updated", handleInventorySync);
+      window.removeEventListener("storage", handleInventorySync);
       unsubscribe();
     };
   }, [id]);
@@ -139,7 +148,7 @@ function Product() {
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#8E3D51] border-t-transparent" />
           <span className="text-xs uppercase tracking-widest text-[#8C7A6B]">
-            Opening Atelier Vault...
+            Opening Saree Vault...
           </span>
         </div>
       </main>
@@ -399,17 +408,6 @@ function Product() {
                 <span className="font-sans text-2xl font-medium text-[#2A2421]">
                   ₹{product.price.toLocaleString("en-IN")}
                 </span>
-
-                {product.originalPrice && product.originalPrice > product.price && (
-                  <>
-                    <span className="font-sans text-base text-[#8C7A6B] line-through">
-                      ₹{product.originalPrice.toLocaleString("en-IN")}
-                    </span>
-                    <span className="rounded-full bg-[#8E3D51]/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#8E3D51]">
-                      {discount}% Privilege Savings
-                    </span>
-                  </>
-                )}
               </div>
 
               {/* Hybrid Reservation & Stock Status Banner */}
@@ -505,7 +503,7 @@ function Product() {
             <div className="my-5 flex items-center justify-between rounded-2xl border border-dashed border-[#8E3D51]/30 bg-[#FAF4ED] p-3.5">
               <div>
                 <span className="text-[9px] font-semibold uppercase tracking-[0.24em] text-[#8E3D51]">
-                  Atelier Privilege Code
+                  Studio Privilege Code
                 </span>
                 <p className="font-mono text-sm font-semibold tracking-wider text-[#2A2421] mt-0.5">
                   RSFASHION10
@@ -656,7 +654,7 @@ function Product() {
       </section>
 
       {/* =========================================================
-          4. ABOUT THE ATELIER & WEAVE SPECIFICATIONS
+          4. ABOUT THE CRAFT & WEAVE SPECIFICATIONS
       ========================================================== */}
       <section className="mx-auto max-w-350 px-4 sm:px-6 lg:px-12 mt-16 sm:mt-24">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start border-b border-black/8 pb-16">
@@ -770,7 +768,7 @@ function Product() {
               },
               {
                 question: "Are these pure handloom silks certified with Silk Mark?",
-                answer: `Yes. Every pure Katan, Kanjivaram, and Tussar saree carries an official Silk Mark India QR certification tag and an artisan weaving authenticity card inside your package.`,
+                answer: `Yes. Every authentic SiCo Gadwal saree carries an official handloom certification tag and an artisan weaving authenticity card inside your package.`,
               },
               {
                 question: "How long does insured delivery take?",

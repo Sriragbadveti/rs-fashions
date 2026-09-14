@@ -64,11 +64,6 @@ function ProductCard({ product }: ProductCardProps) {
                 Featured
               </span>
             )}
-            {discountPercentage > 0 && (
-              <span className="rounded-full bg-[#8E3D51]/90 px-2.5 py-1 text-[8.5px] font-semibold uppercase tracking-widest text-white shadow-sm backdrop-blur-md">
-                {discountPercentage}% Off
-              </span>
-            )}
           </div>
         </div>
       </div>

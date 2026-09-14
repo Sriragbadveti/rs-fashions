@@ -55,7 +55,7 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | null>(null);
 
-const STORAGE_KEY = "becho_atelier_cart";
+const STORAGE_KEY = "rs_fashions_cart";
 const FREE_SHIPPING_LIMIT = 1999;
 
 /* ============================================================

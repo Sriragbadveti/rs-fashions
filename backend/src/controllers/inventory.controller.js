@@ -185,7 +185,7 @@ export async function handleBulkIntake(req, res) {
         count: insertedProducts.length,
         products: insertedProducts,
         movements: insertedMovements,
-      }, `Successfully ingested ${insertedProducts.length} sarees into atelier vault!`, 201);
+      }, `Successfully ingested ${insertedProducts.length} sarees into admin vault!`, 201);
     }
 
     invalidateCatalogCache();

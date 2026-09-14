@@ -159,7 +159,7 @@ export const AddSareeModal: React.FC<AddSareeModalProps> = ({
                 Catalogue New Gadwal Saree
               </h3>
               <p className="text-xs text-amber-200/70 font-light">
-                Add saree specifications, shades, and stock to atelier vault
+                Add saree specifications, shades, and stock to showroom inventory
               </p>
             </div>
           </div>

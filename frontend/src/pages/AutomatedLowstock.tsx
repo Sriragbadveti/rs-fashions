@@ -102,7 +102,7 @@ export default function AutomatedLowstock({
 
     const message = [
       "🧵 *RS FASHIONS — WEAVER PURCHASE ORDER (PO)* 🧵",
-      "Jubilee Hills Flagship Atelier • Hyderabad",
+      "Jubilee Hills Flagship Studio • Hyderabad",
       "━━━━━━━━━━━━━━━━━━━━━━━━━",
       `*PO Reference:* PO-WEAVER-${Date.now().toString().slice(-6)}`,
       `*Date:* ${new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}`,

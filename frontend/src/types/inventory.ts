@@ -104,6 +104,7 @@ export interface CompletedSale {
   cgst: number;
   sgst: number;
   total: number;
+  grandTotal?: number;
   paymentMethod: PaymentMethod;
   paymentLink?: string;
   transactionId?: string;
@@ -190,6 +191,10 @@ export const MOCK_DESIGNS: DesignOption[] = [
   {
     name: "Box Gadwal Checks",
     slug: "BGC",
+  },
+  {
+    name: "Broad checks",
+    slug: "BC",
   },
 ];
 
@@ -415,6 +420,11 @@ export interface ColorVariant {
    * RSF-VC-RD-001
    */
   sku: string;
+
+  /**
+   * Optional shade photograph URL
+   */
+  imageUrl?: string;
 }
 
 /* =========================================================
@@ -538,7 +548,7 @@ export const MOCK_TRACKED_ORDERS: TrackedOrder[] = [
       {
         stageTitle: "Order Packed & Fall-Pico Finished",
         timestamp: "10 Sep 2026, 09:30 AM",
-        locationOrDetail: "Jubilee Hills Flagship Atelier",
+        locationOrDetail: "Jubilee Hills Flagship Studio",
         completed: true,
       },
       {
@@ -658,7 +668,9 @@ export type DashboardTab =
   | "analytics"
   | "crm"
   | "tracking"
-  | "bulk-stock" // <--- ADD THIS
+  | "bulk-stock"
+  | "low-stock"
+  | "sale"
   | "settings"
   | "devices"
   | "categories";
@@ -674,6 +686,7 @@ export interface CustomerProfile {
   email?: string;
   city: string;
   address?: string; // <--- Added address support for CRM
+  state?: string;
   tier: ClientTier;
   totalSpent: number;
   ordersCount: number;
@@ -682,6 +695,39 @@ export interface CustomerProfile {
   preferredWeave?: string; // e.g. "Ma Inti Bangaram"
   notes?: string;
   gstin?: string;
+  authProvider?: "google" | "email" | "direct";
+  joinedAt?: string;
+}
+
+export interface SaleTierOffer {
+  id: string;
+  qty: number;
+  price: number;
+  label: string;
+  savingsText?: string;
+}
+
+export interface SaleProductItem {
+  id: string;
+  name: string;
+  imageUrl: string;
+  originalPrice?: number;
+  salePrice?: number;
+  category?: string;
+  customOfferText?: string;
+  isActive?: boolean;
+}
+
+export interface SaleConfig {
+  isEnabled: boolean;
+  saleTitle: string;
+  subtitle: string;
+  discountBadge?: string;
+  couponCode?: string;
+  tierOffers: SaleTierOffer[];
+  saleItems?: SaleProductItem[];
+  saleProductIds?: string[];
+  bannerBgColor?: string;
 }
 
 export const MOCK_CUSTOMERS: CustomerProfile[] = [

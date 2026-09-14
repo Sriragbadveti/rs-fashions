@@ -60,7 +60,7 @@ Server runs on: `http://localhost:5000`
 ## 📡 API Endpoints
 
 ### 1. Products & Inventory (`/api/products`)
-- `GET /api/products` — Retrieve all products (Supports filters: `?category=Silk+Sarees&material=Silk&minPrice=2000&maxPrice=5000&sort=price_asc&search=kanjivaram`)
+- `GET /api/products` — Retrieve all products (Supports filters: `?category=SiCo+Gadwal+Sarees&material=Silk+Cotton+(SiCo)&minPrice=2000&maxPrice=5000&sort=price_asc&search=kanjivaram`)
 - `GET /api/products/:id` — Get single product details
 - `POST /api/products` — Add a new product (Admin inventory)
 - `PUT /api/products/:id` — Update product details / stock

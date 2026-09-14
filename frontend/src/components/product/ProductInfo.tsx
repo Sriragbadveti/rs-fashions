@@ -209,7 +209,7 @@ function ProductInfo({ product, onAddToCart, onBuyNow }: ProductInfoProps) {
       <div className="flex items-center justify-between rounded-2xl border border-dashed border-[#8E3D51]/35 bg-[#FAF4ED] p-3.5 shadow-sm">
         <div>
           <span className="text-[9px] font-semibold uppercase tracking-[0.24em] text-[#8E3D51]">
-            Atelier Privilege
+            Studio Privilege
           </span>
           <p className="font-mono text-sm font-semibold tracking-wider text-[#2A2421] mt-0.5">
             {promoCode}

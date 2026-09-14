@@ -44,7 +44,7 @@ export function generateWeaverWhatsAppPO(
 
   const message = [
     `🏛️ *RS FASHIONS — MASTER WEAVER INWARD PO* 🏛️`,
-    `Jubilee Hills Atelier, Hyderabad`,
+    `Jubilee Hills Studio, Hyderabad`,
     `━━━━━━━━━━━━━━━━━━`,
     `*To Master Artisan:* ${weaverName}`,
     `*Date:* ${dateStr}`,

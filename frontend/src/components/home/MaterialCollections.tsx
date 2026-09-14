@@ -5,49 +5,49 @@ import { FiArrowUpRight } from "react-icons/fi";
 
 const materials = [
   {
-    id: "silk",
-    name: "Pure Silk",
-    origin: "Kanchipuram & Banaras",
-    feel: "Lustrous · Heavy Drape · 100% Mulberry",
-    tag: "01 / Heritage",
-    link: "/shop?material=silk",
+    id: "sico",
+    name: "Silk Cotton (SiCo)",
+    origin: "Gadwal Handloom Cluster",
+    feel: "Lustrous Silk Body · Fine Cotton Warp · Light & Crisp Drape",
+    tag: "01 / Signature Weave",
+    link: "/shop?material=Silk+Cotton+(SiCo)",
     image:
       "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=1200&q=85",
   },
   {
-    id: "organza",
-    name: "Organza & Tissue",
-    origin: "Chanderi Weaves",
-    feel: "Gossamer · Delicate Sheen · Featherlight",
-    tag: "02 / Modern",
-    link: "/shop?material=organza",
+    id: "gatti-border",
+    name: "Gatti Border Gadwal",
+    origin: "Gadwal Masterworks",
+    feel: "Solid Contrast Borders · Intricate Zari Buttas · Interlocked Weft",
+    tag: "02 / Heritage Border",
+    link: "/shop?search=Gatti+Borders",
     image:
       "https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?auto=format&fit=crop&w=1200&q=85",
   },
   {
-    id: "cotton",
-    name: "Mulberry Cotton",
-    origin: "Bengal Handlooms",
-    feel: "Breathable · Soft Matte · Daily Luxury",
-    tag: "03 / Artisanal",
-    link: "/shop?material=cotton",
+    id: "checks-gadwal",
+    name: "Vintage Checks SiCo",
+    origin: "Traditional Gadwal Looms",
+    feel: "Geometric Micro-Checks · Breathable Handloom · Festive Zari Pallu",
+    tag: "03 / Artisanal Pattern",
+    link: "/shop?search=Vintage+Checks",
     image:
       "https://cdn.corenexis.com/f/Gr2AsoVtVeK.png",
   },
   {
-    id: "bridal",
-    name: "Bridal Zari",
-    origin: "Royal Masterworks",
-    feel: "Gold Threading · Heirloom · Bespoke",
-    tag: "04 / Couture",
-    link: "/shop?material=designer",
+    id: "kanchi-border",
+    name: "Big Kanchi Border SiCo",
+    origin: "Gadwal Temple Looms",
+    feel: "Heavy Pure Zari Border · Regal Pallu · Royal Festive Grandeur",
+    tag: "04 / Festive Heirloom",
+    link: "/shop?search=Big+Kanchi",
     image:
       "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&w=1200&q=85",
   },
 ];
 
 function MaterialCollections() {
-  const [activeId, setActiveId] = useState<string>("silk");
+  const [activeId, setActiveId] = useState<string>("sico");
 
   return (
     <section className="bg-[#FAF7F2] px-4 py-16 sm:px-6 sm:py-20 lg:px-10 lg:py-28 font-sans select-none">

@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 
 import Hero from "../components/home/Hero";
 import MaterialCollections from "../components/home/MaterialCollections";
+import ForSaleProducts from "../components/home/ForSaleProducts";
 import TrendingProducts from "../components/home/TrendingProducts";
 import OfferBanner from "../components/home/OfferBanner";
 import HomeFooter from "../components/home/HomeFooter";
@@ -31,6 +32,8 @@ function Home() {
       /> */}
 
       <MaterialCollections />
+
+      <ForSaleProducts />
 
       <TrendingProducts />
 
