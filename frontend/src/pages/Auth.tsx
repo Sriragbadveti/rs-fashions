@@ -13,6 +13,9 @@ import {
   FiCheckCircle,
 } from "react-icons/fi";
 import { API_BASE } from "../config/api";
+import { setUserSession } from "../utils/userSession";
+import { StoreService } from "../services/supabase";
+import logo from "../assets/logo/logo1.png";
 
 type AuthRole = "user" | "admin";
 type AuthMode = "signin" | "signup";
@@ -47,7 +50,6 @@ export default function Auth() {
   };
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Only accept numeric inputs up to 10 digits
     const cleaned = e.target.value.replace(/\D/g, "").slice(0, 10);
     setPhoneDigits(cleaned);
   };
@@ -56,64 +58,109 @@ export default function Auth() {
     e.preventDefault();
     setError(null);
 
-    if (role === "user" && authMode === "signup" && phoneDigits.length < 10) {
-      setError("Please enter a valid 10-digit mobile number.");
-      return;
+    // 1. Admin Credentials Verification
+    if (role === "admin") {
+      if (password !== "admin2026") {
+        setError("Invalid administrator security key. Access denied.");
+        return;
+      }
+    }
+
+    // 2. User Input Validation
+    if (role === "user") {
+      if (authMode === "signup" && phoneDigits.length < 10) {
+        setError("Please enter a valid 10-digit mobile number.");
+        return;
+      }
+      if (!email.includes("@")) {
+        setError("Please enter a valid email address.");
+        return;
+      }
     }
 
     setLoading(true);
 
     try {
-      const displayName =
+      const cleanPhone = phoneDigits.trim();
+      const cleanEmail = email.trim().toLowerCase();
+      const formattedPhone = `+91 ${cleanPhone}`;
+
+      // 3. Duplicate Prevention on Signup
+      if (role === "user" && authMode === "signup") {
+        const check = await StoreService.checkUserExists(cleanEmail, cleanPhone);
+        if (check.exists) {
+          if (check.emailExists) {
+            setError(`An account with email '${cleanEmail}' is already registered. Please sign in instead.`);
+            setLoading(false);
+            return;
+          }
+          if (check.phoneExists) {
+            setError(`An account with mobile number '+91 ${cleanPhone}' is already registered. Please sign in instead.`);
+            setLoading(false);
+            return;
+          }
+        }
+      }
+
+      // 4. Resolve Name
+      let displayName =
         role === "admin"
           ? "Store Admin"
           : authMode === "signup"
           ? fullName.trim()
           : fullName || "Valued Customer";
 
-      const formattedPhone = `+91 ${phoneDigits.trim()}`;
+      if (role === "user" && authMode === "signin") {
+        try {
+          const check = await StoreService.checkUserExists(cleanEmail, cleanPhone);
+          if (check.existingName) {
+            displayName = check.existingName;
+          }
+        } catch {}
+      }
 
-      const userSession = {
-        email: email.trim().toLowerCase(),
-        role,
+      // 5. Establish Session
+      const session = setUserSession({
         name: displayName,
+        email: cleanEmail,
         phone: formattedPhone,
+        role,
         authProvider: "email",
-        loggedInAt: new Date().toISOString(),
-      };
+      });
 
-      localStorage.setItem("rs_fashions_current_user", JSON.stringify(userSession));
-
-      // Register into CRM backend & local admin store so customer appears on store admin CRM & Billing
+      // Register into CRM backend & local admin store
       if (role === "user") {
         try {
           const adminCustStr = localStorage.getItem("rs_admin_customers");
           const adminCusts = adminCustStr ? JSON.parse(adminCustStr) : [];
           const existingIdx = adminCusts.findIndex(
             (c: any) =>
-              (c.email && c.email.toLowerCase() === email.trim().toLowerCase()) ||
-              (c.phone && c.phone.replace(/\D/g, "") === phoneDigits.trim())
+              (c.email && c.email.toLowerCase() === cleanEmail) ||
+              (c.phone && c.phone.replace(/\D/g, "") === cleanPhone)
           );
+          const existing = existingIdx >= 0 ? adminCusts[existingIdx] : null;
+          const nowIso = new Date().toISOString();
           const newCust = {
-            id: `cust-${Date.now().toString().slice(-6)}`,
-            name: displayName,
-            email: email.trim().toLowerCase(),
-            phone: formattedPhone,
-            city: "Hyderabad",
-            address: "Hyderabad, Telangana",
-            state: "Telangana",
-            tier: "Heritage Club",
-            totalSpent: 0,
-            ordersCount: 0,
-            notes:
-              authMode === "signup"
-                ? "Registered via Website Account"
-                : "Signed in via Email",
+            id: existing?.id || session.id,
+            name: displayName || existing?.name,
+            email: cleanEmail || existing?.email,
+            phone: formattedPhone || existing?.phone,
+            city: existing?.city || "Hyderabad",
+            address: existing?.address || "Hyderabad, Telangana",
+            state: existing?.state || "Telangana",
+            totalSpent: existing?.totalSpent ?? 0,
+            ordersCount: existing?.ordersCount ?? 0,
+            birthday: existing?.birthday,
+            anniversary: existing?.anniversary,
+            preferredWeave: existing?.preferredWeave,
+            notes: existing?.notes || (authMode === "signup" ? "Registered via Website Account" : "Signed in via Email"),
             authProvider: "email",
-            joinedAt: new Date().toISOString(),
+            status: "active",
+            lastActiveAt: nowIso,
+            joinedAt: existing?.joinedAt || nowIso,
           };
           if (existingIdx >= 0) {
-            adminCusts[existingIdx] = { ...adminCusts[existingIdx], ...newCust };
+            adminCusts[existingIdx] = newCust;
           } else {
             adminCusts.unshift(newCust);
           }
@@ -125,12 +172,13 @@ export default function Auth() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
+              id: session.id,
               name: displayName,
-              email: email.trim().toLowerCase(),
+              email: cleanEmail,
               phone: formattedPhone,
               city: "Hyderabad",
               address: "Hyderabad, Telangana",
-              tier: "Heritage Club",
+              isNewRegistration: authMode === "signup",
               notes:
                 authMode === "signup"
                   ? "Registered via Website Account"
@@ -138,66 +186,70 @@ export default function Auth() {
               authProvider: "email",
             }),
           });
-        } catch {
-          // ignore offline mode
-        }
+        } catch {}
       }
 
       setTimeout(() => {
         setLoading(false);
-        if (redirectUrl) {
-          navigate(redirectUrl);
-        } else if (role === "admin") {
+        if (role === "admin") {
           navigate("/admin");
         } else {
-          navigate("/shop");
+          const destination = redirectUrl && redirectUrl !== "/account" ? redirectUrl : "/shop";
+          navigate(destination, { replace: true });
         }
-      }, 500);
+      }, 400);
     } catch (err: any) {
       setLoading(false);
       setError(err.message || "Authentication failed. Please check your details and try again.");
     }
   };
 
-  // Real Google Sign-in Trigger
+  // Google Sign-in Trigger
   const handleGoogleSignIn = () => {
     setGoogleLoading(true);
     setError(null);
 
-    // Save current redirect destination to return to after Google handshake
-    if (redirectUrl) {
-      sessionStorage.setItem("rs_auth_redirect", redirectUrl);
-    } else {
-      sessionStorage.setItem("rs_auth_redirect", "/shop");
-    }
+    const destination = redirectUrl && redirectUrl !== "/account" ? redirectUrl : "/shop";
+    sessionStorage.setItem("rs_auth_redirect", destination);
 
-    // Direct redirection to backend Google OAuth2 endpoint
-    const backendOAuthUrl = `${API_BASE}/auth/google?redirect=${encodeURIComponent(
-      redirectUrl || "/shop"
-    )}`;
-
+    const backendOAuthUrl = `${API_BASE}/auth/google?redirect=${encodeURIComponent(destination)}`;
     window.location.href = backendOAuthUrl;
   };
 
   return (
-    <main className="min-h-screen bg-[#FAF7F2] font-sans text-[#2A2421] flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 select-none">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <Link
-          to="/"
-          className="font-serif text-3xl sm:text-4xl font-light tracking-[0.24em] text-[#8E3D51]"
-        >
-          RS FASHIONS
+    <main
+      style={{ transform: "translate3d(0, 0, 0)" }}
+      className="relative min-h-screen bg-[#FAF7F2] font-sans text-[#2A2421] flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 select-none overflow-hidden will-change-transform"
+    >
+      <div className="relative z-10 sm:mx-auto sm:w-full sm:max-w-md text-center">
+        <Link to="/" className="inline-block group">
+          <div className="relative mx-auto flex flex-col items-center justify-center p-2">
+            <img
+              src={logo}
+              alt="RS Fashions"
+              className="relative h-14 sm:h-16 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+            />
+            <span className="relative mt-1.5 font-serif text-[10.5px] sm:text-xs font-semibold uppercase tracking-[0.3em] text-[#8E3D51]">
+              Fashion
+            </span>
+          </div>
         </Link>
-        <p className="mt-2 text-xs font-light uppercase tracking-[0.2em] text-[#8C7A6B]">
+        <p className="mt-1 text-xs font-light uppercase tracking-[0.2em] text-[#8C7A6B]">
           Heritage Silks &amp; Handloom Saree Store
         </p>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="rounded-3xl border border-black/8 bg-white p-7 sm:p-9 shadow-xl relative overflow-hidden">
+      <div className="relative z-10 mt-6 sm:mx-auto sm:w-full sm:max-w-md">
+        <div
+          style={{ contain: "paint layout" }}
+          className="rounded-[2.5rem] border border-white/80 bg-white/60 p-7 sm:p-9 shadow-[0_20px_50px_rgba(42,36,33,0.08)] backdrop-blur-[24px] relative overflow-hidden"
+        >
+          {/* Inner Glossy Highlight Line */}
+          <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white to-transparent opacity-80 pointer-events-none" />
+
           {/* Checkout Redirection Notice */}
           {redirectUrl && redirectUrl.includes("checkout") && (
-            <div className="mb-6 rounded-2xl bg-amber-50 border border-amber-200/80 p-3.5 flex items-start gap-2.5 text-amber-900">
+            <div className="mb-6 rounded-2xl bg-amber-50/90 border border-amber-200/90 p-3.5 flex items-start gap-2.5 text-amber-900 shadow-2xs backdrop-blur-xs">
               <FiCheckCircle className="shrink-0 mt-0.5 text-[#D4A373]" size={16} />
               <div className="text-[11px] leading-relaxed">
                 <strong className="block font-semibold">Sign In Required for Purchase</strong>
@@ -207,11 +259,12 @@ export default function Auth() {
           )}
 
           {/* Role Toggle */}
-          <div className="mb-6 flex rounded-2xl bg-[#FAF7F2] p-1.5 border border-black/6">
+          <div className="mb-6 flex rounded-2xl bg-black/5 p-1.5 border border-white/80 backdrop-blur-xs">
             <button
               type="button"
+              data-role-btn="user"
               onClick={() => handleRoleSwitch("user")}
-              className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-semibold uppercase tracking-wider transition-all ${
+              className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-semibold uppercase tracking-wider transition-all duration-200 ${
                 role === "user"
                   ? "bg-[#2A2421] text-white shadow-sm"
                   : "text-[#6E6359] hover:text-[#2A2421]"
@@ -223,8 +276,9 @@ export default function Auth() {
 
             <button
               type="button"
+              data-role-btn="admin"
               onClick={() => handleRoleSwitch("admin")}
-              className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-semibold uppercase tracking-wider transition-all ${
+              className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-semibold uppercase tracking-wider transition-all duration-200 ${
                 role === "admin"
                   ? "bg-[#8E3D51] text-white shadow-sm"
                   : "text-[#6E6359] hover:text-[#8E3D51]"
@@ -235,14 +289,14 @@ export default function Auth() {
             </button>
           </div>
 
-          {/* Real Google OAuth Button (For Customers) */}
+          {/* Google Sign-in */}
           {role === "user" && (
             <div className="mb-6">
               <button
                 type="button"
                 onClick={handleGoogleSignIn}
                 disabled={googleLoading || loading}
-                className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-full border border-stone-300 bg-white hover:bg-stone-50 text-stone-800 text-xs font-medium tracking-wide shadow-sm hover:shadow transition-all active:scale-[0.98] disabled:opacity-60"
+                className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-full border border-stone-200/90 bg-white/80 hover:bg-white text-stone-800 text-xs font-medium tracking-wide shadow-xs hover:shadow transition-all duration-200 active:scale-[0.98] disabled:opacity-60 backdrop-blur-xs"
               >
                 {googleLoading ? (
                   <div className="w-4 h-4 border-2 border-stone-400 border-t-[#8E3D51] rounded-full animate-spin" />
@@ -273,16 +327,16 @@ export default function Auth() {
 
               <div className="relative my-5">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-stone-200" />
+                  <div className="w-full border-t border-stone-200/80" />
                 </div>
                 <div className="relative flex justify-center text-[11px] uppercase tracking-wider">
-                  <span className="bg-white px-3 text-stone-400 font-medium">or continue with email</span>
+                  <span className="bg-[#FAF7F2]/90 px-3 text-stone-400 font-medium backdrop-blur-xs">or continue with email</span>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Customer Mode Toggle: Sign In vs Create Account */}
+          {/* Customer Mode Toggle */}
           {role === "user" && (
             <div className="mb-5 flex border-b border-black/6">
               <button
@@ -318,7 +372,7 @@ export default function Auth() {
 
           {/* Quick Pre-filled Credentials Info Box */}
           {authMode === "signin" && (
-            <div className="mb-6 rounded-2xl border border-dashed border-[#8E3D51]/30 bg-[#8E3D51]/5 p-3.5">
+            <div className="mb-6 rounded-2xl border border-dashed border-[#8E3D51]/30 bg-white/70 p-3.5 backdrop-blur-xs shadow-2xs">
               <div className="flex items-start gap-2 text-xs">
                 <FiKey className="mt-0.5 shrink-0 text-[#8E3D51]" size={14} />
                 <div className="text-[11px] leading-relaxed text-[#544B44]">
@@ -359,7 +413,7 @@ export default function Auth() {
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder="Ananya Sharma"
-                    className="w-full rounded-xl border border-black/10 bg-[#FAF7F2] py-2.5 pl-10 pr-4 text-xs font-light text-[#2A2421] outline-none transition-all focus:border-[#8E3D51] focus:bg-white"
+                    className="w-full rounded-xl border border-stone-200/90 bg-white/80 py-2.5 pl-10 pr-4 text-xs font-light text-[#2A2421] outline-none transition-all focus:border-[#8E3D51] focus:bg-white backdrop-blur-xs"
                   />
                 </div>
               </div>
@@ -378,25 +432,22 @@ export default function Auth() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@domain.com"
-                  className="w-full rounded-xl border border-black/10 bg-[#FAF7F2] py-2.5 pl-10 pr-4 text-xs font-light text-[#2A2421] outline-none transition-all focus:border-[#8E3D51] focus:bg-white"
+                  className="w-full rounded-xl border border-stone-200/90 bg-white/80 py-2.5 pl-10 pr-4 text-xs font-light text-[#2A2421] outline-none transition-all focus:border-[#8E3D51] focus:bg-white backdrop-blur-xs"
                 />
               </div>
             </div>
 
-            {/* Phone Number with Locked +91 Country Badge (Sign Up only) */}
+            {/* Phone Number (Sign Up only) */}
             {role === "user" && authMode === "signup" && (
               <div>
                 <label className="block text-[10.5px] font-semibold uppercase tracking-wider text-[#8C7A6B] mb-1">
                   Mobile Number
                 </label>
-                <div className="flex rounded-xl border border-black/10 bg-[#FAF7F2] overflow-hidden focus-within:border-[#8E3D51] focus-within:bg-white transition-all">
-                  {/* Fixed Non-Editable +91 Prefix */}
-                  <div className="flex items-center gap-1.5 px-3 bg-stone-100/90 border-r border-black/10 text-xs font-bold text-stone-700 select-none">
+                <div className="flex rounded-xl border border-stone-200/90 bg-white/80 overflow-hidden focus-within:border-[#8E3D51] focus-within:bg-white transition-all backdrop-blur-xs">
+                  <div className="flex items-center gap-1.5 px-3 bg-stone-100/90 border-r border-stone-200 text-xs font-bold text-stone-700 select-none">
                     <FiPhone size={13} className="text-[#8C7A6B]" />
                     <span>+91</span>
                   </div>
-
-                  {/* 10-Digit Clean Input Field */}
                   <input
                     type="tel"
                     required
@@ -429,7 +480,7 @@ export default function Auth() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full rounded-xl border border-black/10 bg-[#FAF7F2] py-2.5 pl-10 pr-10 text-xs font-light text-[#2A2421] outline-none transition-all focus:border-[#8E3D51] focus:bg-white"
+                  className="w-full rounded-xl border border-stone-200/90 bg-white/80 py-2.5 pl-10 pr-10 text-xs font-light text-[#2A2421] outline-none transition-all focus:border-[#8E3D51] focus:bg-white backdrop-blur-xs"
                 />
                 <button
                   type="button"
@@ -443,7 +494,7 @@ export default function Auth() {
             </div>
 
             {error && (
-              <p className="text-xs text-red-600 font-medium bg-red-50 p-2.5 rounded-xl border border-red-200">
+              <p className="text-xs text-red-600 font-medium bg-red-50 p-2.5 rounded-xl border border-red-200 shadow-2xs">
                 {error}
               </p>
             )}
@@ -451,7 +502,7 @@ export default function Auth() {
             <button
               type="submit"
               disabled={loading || googleLoading}
-              className={`group mt-6 flex w-full items-center justify-center gap-2 rounded-full py-3.5 text-xs font-semibold uppercase tracking-[0.18em] text-white shadow-md transition-all active:scale-95 ${
+              className={`group mt-6 flex w-full items-center justify-center gap-2 rounded-full py-3.5 text-xs font-semibold uppercase tracking-[0.18em] text-white shadow-md transition-all duration-200 active:scale-95 ${
                 role === "admin"
                   ? "bg-[#8E3D51] hover:bg-[#722F40]"
                   : "bg-[#2A2421] hover:bg-[#8E3D51]"
@@ -464,7 +515,7 @@ export default function Auth() {
                   ? "Open Admin Portal"
                   : authMode === "signup"
                   ? "Create Account & Go to Shop"
-                  : "Sign In & Go to Shop"}
+                  : "Sign In to Shop"}
               </span>
               <FiArrowRight
                 size={14}
@@ -515,4 +566,4 @@ export default function Auth() {
       </div>
     </main>
   );
-} 
+}

@@ -25,7 +25,6 @@ export async function getCustomers(req, res) {
       email: c.email || undefined,
       city: c.city || "Hyderabad",
       address: c.address || (c.city ? `${c.city}, Telangana` : "Hyderabad, Telangana"),
-      tier: c.tier || "Heritage Club",
       totalSpent: Number(c.total_spent) || 0,
       ordersCount: Number(c.orders_count) || 0,
       birthday: c.birthday || undefined,
@@ -43,6 +42,58 @@ export async function getCustomers(req, res) {
   }
 }
 
+// 1.5 CHECK IF CUSTOMER EXISTS (Strict Duplicate Prevention)
+export async function checkCustomerExists(req, res) {
+  try {
+    const rawEmail = req.query.email ? String(req.query.email).trim().toLowerCase() : null;
+    const rawPhone = req.query.phone ? String(req.query.phone).replace(/\D/g, "").slice(-10) : null;
+
+    if (!rawEmail && !rawPhone) {
+      return errorResponse(res, "Email or phone parameter is required", 400);
+    }
+
+    let emailExists = false;
+    let phoneExists = false;
+    let existingName = null;
+
+    if (supabase) {
+      if (rawEmail) {
+        const { data } = await supabase
+          .from("customers")
+          .select("id, name, email")
+          .ilike("email", rawEmail)
+          .maybeSingle();
+        if (data) {
+          emailExists = true;
+          existingName = data.name;
+        }
+      }
+
+      if (rawPhone) {
+        // Query both exact phone match and containing 10 digits
+        const { data } = await supabase
+          .from("customers")
+          .select("id, name, phone")
+          .ilike("phone", `%${rawPhone}%`)
+          .maybeSingle();
+        if (data) {
+          phoneExists = true;
+          if (!existingName) existingName = data.name;
+        }
+      }
+    }
+
+    return successResponse(res, {
+      exists: emailExists || phoneExists,
+      emailExists,
+      phoneExists,
+      existingName,
+    }, "Customer duplicate check completed");
+  } catch (err) {
+    return errorResponse(res, err.message, 500);
+  }
+}
+
 // 2. CREATE / SYNC CUSTOMER (Email or Google Signup)
 export async function createCustomer(req, res) {
   try {
@@ -53,7 +104,6 @@ export async function createCustomer(req, res) {
       email,
       city = "Hyderabad",
       address,
-      tier = "Heritage Club",
       totalSpent = 0,
       ordersCount = 0,
       birthday,
@@ -62,6 +112,8 @@ export async function createCustomer(req, res) {
       notes,
       gstin,
       authProvider = "email",
+      isNewRegistration = false,
+      strictDuplicateCheck = false,
     } = req.body;
 
     const customerName = (name || (email ? email.split("@")[0] : "Valued Patron")).trim();
@@ -78,22 +130,45 @@ export async function createCustomer(req, res) {
     if (supabase) {
       // Check if user already exists by email or phone
       let existingCust = null;
+      let emailMatched = false;
+      let phoneMatched = false;
+
       if (customerEmail) {
         const { data } = await supabase
           .from("customers")
-          .select("id, total_spent, orders_count, notes")
-          .eq("email", customerEmail)
+          .select("id, name, email, phone, total_spent, orders_count, notes")
+          .ilike("email", customerEmail)
           .maybeSingle();
-        if (data) existingCust = data;
+        if (data) {
+          existingCust = data;
+          emailMatched = true;
+        }
       }
 
-      if (!existingCust && phone) {
-        const { data } = await supabase
-          .from("customers")
-          .select("id, total_spent, orders_count, notes")
-          .eq("phone", customerPhone)
-          .maybeSingle();
-        if (data) existingCust = data;
+      if (phone && phone.trim()) {
+        const cleanDigits = phone.replace(/\D/g, "").slice(-10);
+        if (cleanDigits.length === 10) {
+          const { data } = await supabase
+            .from("customers")
+            .select("id, name, email, phone, total_spent, orders_count, notes")
+            .ilike("phone", `%${cleanDigits}%`)
+            .maybeSingle();
+          if (data) {
+            if (!existingCust) existingCust = data;
+            phoneMatched = true;
+          }
+        }
+      }
+
+      // STRICT DUPLICATE PREVENTION:
+      // If client requested a new registration, disallow if email or phone already registered!
+      if (isNewRegistration || strictDuplicateCheck) {
+        if (emailMatched) {
+          return errorResponse(res, `An account with email '${customerEmail}' already exists. Please sign in instead.`, 409);
+        }
+        if (phoneMatched) {
+          return errorResponse(res, `An account with mobile number '${phone}' already exists. Please sign in instead.`, 409);
+        }
       }
 
       const finalId = existingCust?.id || customerId;
@@ -107,7 +182,6 @@ export async function createCustomer(req, res) {
         email: customerEmail,
         city: city ? city.trim() : "Hyderabad",
         address: address ? address.trim() : (city ? `${city.trim()}, Telangana` : "Hyderabad, Telangana"),
-        tier,
         total_spent: finalSpent || 0,
         orders_count: finalOrders || 0,
         birthday: birthday || null,
@@ -131,7 +205,6 @@ export async function createCustomer(req, res) {
             email: customerEmail,
             city,
             address: address || (city ? `${city}, Telangana` : "Hyderabad, Telangana"),
-            tier,
             notes: customerNotes,
             authProvider,
             joinedAt: new Date().toISOString(),
@@ -157,7 +230,6 @@ export async function createCustomer(req, res) {
         email: customerEmail,
         city,
         address: address || (city ? `${city}, Telangana` : "Hyderabad, Telangana"),
-        tier,
         notes: customerNotes,
         authProvider,
         joinedAt: new Date().toISOString(),
@@ -179,7 +251,6 @@ export async function updateCustomer(req, res) {
       email,
       city,
       address,
-      tier,
       totalSpent,
       ordersCount,
       birthday,
@@ -196,7 +267,6 @@ export async function updateCustomer(req, res) {
       if (email !== undefined) updates.email = email ? email.trim() : null;
       if (city) updates.city = city.trim();
       if (address !== undefined) updates.address = address ? address.trim() : null;
-      if (tier) updates.tier = tier;
       if (totalSpent !== undefined) updates.total_spent = Number(totalSpent);
       if (ordersCount !== undefined) updates.orders_count = Number(ordersCount);
       if (birthday !== undefined) updates.birthday = birthday || null;

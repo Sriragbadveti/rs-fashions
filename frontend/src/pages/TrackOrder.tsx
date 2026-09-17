@@ -14,6 +14,7 @@ import {
   Image as ImageIcon,
   ExternalLink,
   X,
+  RefreshCw,
 } from "lucide-react";
 import type { CompletedSale, Product } from "../types/inventory";
 import {
@@ -51,8 +52,13 @@ const formatDate = (date: string) => {
 };
 
 export default function TrackOrder({ salesHistory }: TrackOrderProps) {
-  const { getFulfillment, updateStatus, updateTrackingNumber, updateCarrierPartner } =
-    useOrderFulfillment();
+  const {
+    getFulfillment,
+    updateStatus,
+    updateTrackingNumber,
+    updateCarrierPartner,
+    saveFulfillment,
+  } = useOrderFulfillment();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"ALL" | OrderStatus>("ALL");
@@ -61,6 +67,8 @@ export default function TrackOrder({ salesHistory }: TrackOrderProps) {
   );
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [previewImage, setPreviewImage] = useState<{ url: string; title: string } | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [savedSuccess, setSavedSuccess] = useState(false);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -162,9 +170,20 @@ export default function TrackOrder({ salesHistory }: TrackOrderProps) {
     }
   };
 
-  const handleSaveDispatchDetails = () => {
+  const handleSaveDispatchDetails = async () => {
     if (!selectedOrder) return;
-    sound.playNotification();
+    try {
+      setIsSaving(true);
+      sound.playNotification();
+      const currentFulfillment = getFulfillment(selectedOrder.invoiceNumber);
+      await saveFulfillment(selectedOrder.invoiceNumber, currentFulfillment);
+      setSavedSuccess(true);
+      setTimeout(() => setSavedSuccess(false), 3000);
+    } catch (err) {
+      console.error("Failed to save dispatch details:", err);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleShareTrackingWhatsApp = (sale: CompletedSale) => {
@@ -434,10 +453,29 @@ export default function TrackOrder({ salesHistory }: TrackOrderProps) {
                       <button
                         type="button"
                         onClick={handleSaveDispatchDetails}
-                        className="h-9 shrink-0 flex items-center justify-center gap-1.5 px-4 rounded-xl bg-[#2A0E20] hover:bg-[#3D142E] text-amber-100 text-xs font-semibold shadow-sm transition-all"
+                        disabled={isSaving}
+                        className={`h-9 shrink-0 flex items-center justify-center gap-1.5 px-4 rounded-xl text-xs font-semibold shadow-sm transition-all ${
+                          savedSuccess
+                            ? "bg-emerald-700 text-white"
+                            : "bg-[#2A0E20] hover:bg-[#3D142E] text-amber-100"
+                        }`}
                       >
-                        <Save size={13} className="text-brand-gold" />
-                        <span>Save AWB</span>
+                        {savedSuccess ? (
+                          <>
+                            <Check size={13} className="text-emerald-300" />
+                            <span>Saved &amp; Synced!</span>
+                          </>
+                        ) : isSaving ? (
+                          <>
+                            <RefreshCw size={13} className="animate-spin text-brand-gold" />
+                            <span>Saving...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Save size={13} className="text-brand-gold" />
+                            <span>Save AWB</span>
+                          </>
+                        )}
                       </button>
                     </div>
                   </div>

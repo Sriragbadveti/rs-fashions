@@ -74,8 +74,8 @@ const founders: Founder[] = [
       "Srirag personally reviews every warp lot before weaving begins. He spent months on weaver cottage floors in Gadwal, mastering the complex geometry of traditional interlocked 'kuttu' borders and reviving temple motifs that had been shelved for decades.",
     ],
     contributions: [
-      "Revived heirloom SiCo (Silk Cotton) Gadwal drapes, delivering featherlight yet opulent festive weaves.",
-      "Mandates 100% natural mulberry silk yarns and certified tested zari, barring synthetic foils.",
+      "Revived heirloom SiCo Gadwal drapes, delivering featherlight yet opulent festive weaves.",
+      "Mandates 100% natural yarns and certified tested zari, barring synthetic foils.",
       "Curates shade palettes and border geometry directly with master weaver guild elders.",
       "Instituted zero-defect microscopic inspection standards for bridal drapes.",
     ],

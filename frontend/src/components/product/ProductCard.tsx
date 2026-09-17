@@ -1,11 +1,12 @@
+import { useMemo } from "react";
 import { motion } from "framer-motion";
-import { FiStar, FiArrowUpRight } from "react-icons/fi";
+import { FiArrowUpRight, FiGift } from "react-icons/fi";
 import { Link } from "react-router-dom";
 
 import type { Product } from "../../data/products";
 
 interface ProductCardProps {
-  product: Product;
+  product: Product & { isOfferEligible?: boolean; offerTag?: string };
 }
 
 function ProductCard({ product }: ProductCardProps) {
@@ -14,6 +15,28 @@ function ProductCard({ product }: ProductCardProps) {
       ((product.originalPrice - product.price) / product.originalPrice) * 100
     )
     : 0;
+
+  const { isOffer, offerBadge } = useMemo(() => {
+    if (product.isOfferEligible) {
+      return { isOffer: true, offerBadge: product.offerTag || "Exclusive Offer" };
+    }
+    try {
+      const raw = localStorage.getItem("rs_fashions_sale_config");
+      if (raw) {
+        const conf = JSON.parse(raw);
+        const matchItem = conf.saleItems?.find(
+          (it: any) => String(it.id) === String(product.id) && it.isActive !== false
+        );
+        if (matchItem) {
+          return { isOffer: true, offerBadge: matchItem.customOfferText || "Exclusive Offer" };
+        }
+        if (conf.saleProductIds?.some((id: any) => String(id) === String(product.id))) {
+          return { isOffer: true, offerBadge: "Exclusive Offer" };
+        }
+      }
+    } catch {}
+    return { isOffer: false, offerBadge: "" };
+  }, [product.id, product.isOfferEligible, product.offerTag]);
 
   const primaryImage = product.images?.[0] || "";
   const hoverImage = product.images?.[1] || primaryImage;
@@ -59,12 +82,23 @@ function ProductCard({ product }: ProductCardProps) {
         {/* Top Badges */}
         <div className="pointer-events-none absolute inset-x-3 top-3 flex items-center justify-between">
           <div className="flex flex-col gap-1.5">
+            {isOffer && (
+              <span className="rounded-full bg-[#8E3D51] px-2.5 py-1 text-[8.5px] font-bold uppercase tracking-wider text-amber-100 shadow-md backdrop-blur-md flex items-center gap-1">
+                <FiGift size={11} className="text-amber-300" />
+                <span>{offerBadge}</span>
+              </span>
+            )}
             {product.featured && (
               <span className="rounded-full bg-[#FAF7F2]/90 px-2.5 py-1 text-[8.5px] font-semibold uppercase tracking-widest text-[#2A2421] shadow-sm backdrop-blur-md">
                 Featured
               </span>
             )}
           </div>
+          {discountPercentage > 0 && !isOffer && (
+            <span className="rounded-full bg-[#2A2421]/90 px-2 py-0.5 text-[8.5px] font-semibold tracking-wider text-white shadow-sm backdrop-blur-md">
+              -{discountPercentage}%
+            </span>
+          )}
         </div>
       </div>
 
@@ -74,12 +108,6 @@ function ProductCard({ product }: ProductCardProps) {
         <div className="flex items-center justify-between text-[11px]">
           <span className="text-[10px] font-medium uppercase tracking-widest text-[#8C7A6B]">
             {product.material}
-          </span>
-
-          <span className="flex items-center gap-1 font-serif text-[11px] text-[#2A2421]">
-            <FiStar size={10} className="fill-[#D4AF37] text-[#D4AF37]" />
-            {product.rating ? product.rating.toFixed(1) : "4.9"}
-            <span className="text-[#8C7A6B]">({product.reviewCount || 0})</span>
           </span>
         </div>
 
@@ -123,6 +151,22 @@ function ProductCard({ product }: ProductCardProps) {
             </span>
           )}
         </div>
+
+        {/* Bundle Deal Pill for offer sarees */}
+        {isOffer && (
+          <div className="mt-2.5 flex items-center justify-between rounded-xl bg-[#FAF4ED] px-2.5 py-1.5 border border-[#8E3D51]/20">
+            <span className="flex items-center gap-1.5 text-[10px] font-semibold text-[#8E3D51]">
+              <FiGift size={11} className="shrink-0 text-[#8E3D51]" />
+              <span>Bundle: 1 @ ₹2500 · 2 @ ₹4900 · 3 @ ₹4800</span>
+            </span>
+            <Link
+              to="/offers"
+              className="text-[9px] font-bold uppercase tracking-wider text-[#8E3D51] hover:underline shrink-0 ml-1"
+            >
+              Offers Store →
+            </Link>
+          </div>
+        )}
       </div>
     </motion.article>
   );

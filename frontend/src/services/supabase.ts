@@ -1,19 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
 import { API_BASE } from "../config/api";
 import { type Product, products as fallbackProducts } from "../data/products";
-import type {
-  DashboardProduct,
-  Category,
-  StockMovement,
-  CustomerProfile,
-  TrackedOrder,
-  CompletedSale,
-} from "../types/dashboard";
+import type { DashboardProduct, Category, StockMovement, CustomerProfile, TrackedOrder, CompletedSale } from "../types/dashboard";
+import { getCourierTrackingUrl, LOCAL_STORAGE_FULFILLMENTS } from "../context/OrderFulfillmentContext";
 
 // Environment variables from Vite
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "";
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
-
 const isConfigured = Boolean(
   SUPABASE_URL &&
   SUPABASE_ANON_KEY &&
@@ -63,7 +56,6 @@ export interface StoreOrder {
   createdAt: string;
 }
 
-
 export interface Coupon {
   id: string;
   code: string;
@@ -80,8 +72,6 @@ export interface Coupon {
 export interface CMSContent {
   heroBanner: {
     title: string;
-    subtitle: string;
-    badge: string;
     imageUrl: string;
     link: string;
   };
@@ -111,16 +101,11 @@ const LOCAL_STORAGE_SALES = "rs_fashions_sales";
 const LOCAL_STORAGE_ORDERS = "rs_fashions_orders";
 const LOCAL_STORAGE_COUPONS = "rs_fashions_coupons";
 const LOCAL_STORAGE_CMS = "rs_fashions_cms";
-
 const initialCoupons: Coupon[] = [];
-
 const initialOrders: StoreOrder[] = [];
-
 const initialCMS: CMSContent = {
   heroBanner: {
     title: "Timeless Drapes for Every Generation",
-    subtitle: "Heirloom SiCo Gadwal Drapes curated from master weavers.",
-    badge: "The Royal Heritage Vault",
     imageUrl: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1600&auto=format&fit=crop",
     link: "/shop",
   },
@@ -160,7 +145,7 @@ export const StoreService = {
           id: d.id,
           name: d.name,
           category: d.category || "SiCo Gadwal Sarees",
-          material: d.material || "Silk Cotton (SiCo)",
+          material: d.material || "SiCo",
           price: Number(d.salePrice || d.price) || 0,
           originalPrice: d.originalPrice ? Number(d.originalPrice) : (Number(d.salePrice || d.price) * 1.3),
           stock: d.variants ? d.variants.reduce((sum: number, v: any) => sum + (Number(v.stock) || 0), 0) : (d.stock || 0),
@@ -193,7 +178,7 @@ export const StoreService = {
           id: d.id,
           name: d.name,
           category: d.category || "SiCo Gadwal Sarees",
-          material: d.material || "Silk Cotton (SiCo)",
+          material: d.material || "SiCo",
           price: Number(d.price) || 0,
           originalPrice: d.original_price ? Number(d.original_price) : undefined,
           stock: d.stock !== undefined ? Number(d.stock) : 0,
@@ -208,6 +193,7 @@ export const StoreService = {
         }));
       }
     }
+    
     // 1. Check if admin inventory has products in localStorage
     let adminMapped: Product[] = [];
     const adminSaved = localStorage.getItem("rs_admin_inventory");
@@ -235,7 +221,7 @@ export const StoreService = {
               id: d.id,
               name: d.name,
               category: "SiCo Gadwal Sarees",
-              material: "SiCo Gadwal / Silk Cotton",
+              material: "SiCo Gadwal",
               price,
               originalPrice,
               stock: totalStock,
@@ -273,7 +259,7 @@ export const StoreService = {
       const combined = Array.from(mergedMap.values());
       try {
         localStorage.setItem(LOCAL_STORAGE_PRODUCTS, JSON.stringify(combined));
-      } catch {}
+      } catch { }
       return combined;
     }
 
@@ -461,7 +447,7 @@ export const StoreService = {
             }
           ],
           imageUrl: Array.isArray(d.images) && d.images.length > 0 ? d.images[0] : undefined,
-          material: d.material || "Silk Cotton (SiCo)",
+          material: d.material || "SiCo",
           description: d.description || "",
         }));
       }
@@ -668,7 +654,6 @@ export const StoreService = {
           phone: d.phone,
           email: d.email || undefined,
           city: d.city,
-          tier: d.tier,
           totalSpent: Number(d.total_spent) || 0,
           ordersCount: Number(d.orders_count) || 0,
           birthday: d.birthday || undefined,
@@ -921,7 +906,7 @@ export const StoreService = {
   async uploadImage(base64OrDataUrl: string, onProgress?: (percent: number) => void): Promise<{ success: boolean; url: string; message?: string }> {
     try {
       if (onProgress) onProgress(25);
-      
+
       const res = await fetch(`${API_BASE}/upload`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1174,12 +1159,12 @@ export const StoreService = {
     const updated = orders.map((o) =>
       o.id === idOrNumber || o.orderNumber === idOrNumber
         ? {
-            ...o,
-            paymentStatus,
-            paymentMethod: (paymentMethod as any) || o.paymentMethod,
-            transactionId: transactionId || o.transactionId,
-            paymentDetails: paymentDetails || o.paymentDetails,
-          }
+          ...o,
+          paymentStatus,
+          paymentMethod: (paymentMethod as any) || o.paymentMethod,
+          transactionId: transactionId || o.transactionId,
+          paymentDetails: paymentDetails || o.paymentDetails,
+        }
         : o
     );
     localStorage.setItem(LOCAL_STORAGE_ORDERS, JSON.stringify(updated));
@@ -1312,8 +1297,6 @@ export const StoreService = {
         return {
           heroBanner: hero ? {
             title: hero.title,
-            subtitle: hero.subtitle,
-            badge: hero.badge,
             imageUrl: hero.image_url,
             link: hero.link || "/shop",
           } : initialCMS.heroBanner,
@@ -1359,8 +1342,6 @@ export const StoreService = {
         await supabase.from("cms_content").upsert({
           section_key: sectionKey,
           title: data.title,
-          subtitle: data.subtitle,
-          badge: data.badge,
           image_url: data.imageUrl,
           link: data.link,
           updated_at: new Date().toISOString(),
@@ -1530,7 +1511,6 @@ export const StoreService = {
       };
     }
   },
-
   // 7. RAZORPAY PAYMENT GATEWAY
   async createRazorpayOrder(amount: number, receipt?: string): Promise<{
     success: boolean;
@@ -1556,7 +1536,6 @@ export const StoreService = {
         amount: actualData.amount || Math.round(amount * 100),
         currency: actualData.currency || "INR",
       };
-
       return {
         success: Boolean(data.success),
         key_id: keyId,
@@ -1574,7 +1553,6 @@ export const StoreService = {
       };
     }
   },
-
   async verifyRazorpayPayment(payload: {
     razorpay_order_id: string;
     razorpay_payment_id: string;
@@ -1599,11 +1577,237 @@ export const StoreService = {
       };
     }
   },
+  // 9. CUSTOMER ORDERS & SHIPMENT TRACKING
+  async getUserOrders(phone: string, email?: string): Promise<any[]> {
+    const cleanPhone = (phone || "").replace(/\D/g, "").slice(-10);
+    const cleanEmail = (email || "").trim().toLowerCase();
 
-  // 8. REALTIME BIDIRECTIONAL SYNC (Web & Desktop App Sync)
+    // Read active local fulfillments map
+    let localFulfillments: Record<string, any> = {};
+    try {
+      const rawF = localStorage.getItem(LOCAL_STORAGE_FULFILLMENTS);
+      if (rawF) localFulfillments = JSON.parse(rawF);
+    } catch {}
+
+    const enrichOrder = (o: any) => {
+      const invNum = o.invoiceNumber || o.orderNumber || o.id;
+      const f =
+        localFulfillments[invNum] ||
+        localFulfillments[o.id] ||
+        localFulfillments[o.orderNumber];
+
+      let awb = f?.trackingNumber || o.awbNumber || null;
+      let carrier = f?.carrierPartner || o.carrierPartner || "RS Fashions Express";
+
+      if (!awb && typeof o.notes === "string" && o.notes.includes("AWB:")) {
+        const match = o.notes.match(/\[(.*?)\]\s*AWB:\s*([^\s,]+)/i);
+        if (match) {
+          carrier = match[1];
+          awb = match[2] !== "Pending" ? match[2] : null;
+        }
+      }
+
+      let orderStatus = o.orderStatus || "processing";
+      if (f?.status) {
+        orderStatus =
+          f.status === "delivered"
+            ? "delivered"
+            : f.status === "shipped"
+            ? "shipped"
+            : "processing";
+      }
+
+      const currentStage = f?.status || o.currentStage || orderStatus;
+      const trackingUrl = awb ? getCourierTrackingUrl(carrier, awb) : o.trackingUrl || null;
+
+      let addressStr = o.shippingAddress || o.shipping_address || o.address || "";
+      if (typeof addressStr === "object" && addressStr !== null) {
+        addressStr = `${addressStr.address || ""}, ${addressStr.apartment ? addressStr.apartment + ", " : ""}${addressStr.city || ""}, ${addressStr.state || ""} - ${addressStr.pincode || ""}`.trim();
+      }
+
+      return {
+        id: o.id || invNum,
+        orderNumber: o.orderNumber || invNum,
+        invoiceNumber: invNum,
+        date:
+          o.date ||
+          (o.createdAt
+            ? new Date(o.createdAt).toLocaleDateString("en-IN", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+              })
+            : new Date().toLocaleDateString("en-IN")),
+        createdAt: o.createdAt || new Date().toISOString(),
+        customerName: o.customerName || o.customer_name || "Valued Patron",
+        customerPhone: o.customerPhone || o.phone || "",
+        customerEmail: o.customerEmail || o.email || "",
+        shippingAddress: addressStr,
+        items: Array.isArray(o.items) ? o.items : [],
+        subtotal: Number(o.subtotal) || 0,
+        cgst: Number(o.cgst) || 0,
+        sgst: Number(o.sgst) || 0,
+        shippingFee: Number(o.shippingFee || o.shipping_fee || o.shipping) || 0,
+        discount: Number(o.discount || o.discount_amount) || 0,
+        couponCode: o.couponCode || o.coupon_code,
+        total: Number(o.total) || 0,
+        paymentMethod: o.paymentMethod || o.payment_method || "Online",
+        paymentStatus: o.paymentStatus || o.payment_status || "completed",
+        orderStatus,
+        carrierPartner: carrier,
+        awbNumber: awb,
+        trackingUrl,
+        currentStage,
+        notes: o.notes,
+      };
+    };
+
+    // 1. Try Backend API
+    try {
+      const queryParams = new URLSearchParams();
+      if (cleanPhone) queryParams.set("phone", cleanPhone);
+      if (cleanEmail) queryParams.set("email", cleanEmail);
+
+      const res = await fetch(`${API_BASE}/sales/customer-orders?${queryParams.toString()}`);
+      if (res.ok) {
+        const json = await res.json();
+        const ordersList = json.orders || json.data?.orders;
+        if (Array.isArray(ordersList)) {
+          return ordersList.map(enrichOrder);
+        }
+      }
+    } catch (e) {
+      console.warn("Backend getUserOrders notice:", e);
+    }
+
+    // 2. Try direct Supabase client
+    if (supabase) {
+      try {
+        let query = supabase.from("orders").select("*");
+        if (cleanPhone && cleanEmail) {
+          query = query.or(`phone.ilike.%${cleanPhone}%,email.ilike.${cleanEmail}`);
+        } else if (cleanPhone) {
+          query = query.ilike("phone", `%${cleanPhone}%`);
+        } else if (cleanEmail) {
+          query = query.ilike("email", cleanEmail);
+        }
+
+        const { data, error } = await query.order("created_at", { ascending: false });
+        if (!error && data) {
+          return data.map(enrichOrder);
+        }
+      } catch (sbErr) {
+        console.warn("Direct Supabase getUserOrders notice:", sbErr);
+      }
+    }
+
+    // 3. Fallback to LocalStorage orders
+    try {
+      const raw = localStorage.getItem("rs_fashions_orders") || localStorage.getItem("rs_admin_sales");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          const matched = parsed.filter((o: any) => {
+            const oPhone = String(o.customerPhone || o.phone || "").replace(/\D/g, "").slice(-10);
+            const oEmail = String(o.customerEmail || o.email || "").trim().toLowerCase();
+            return (cleanPhone && oPhone === cleanPhone) || (cleanEmail && oEmail === cleanEmail);
+          });
+          return matched.map(enrichOrder);
+        }
+      }
+    } catch {}
+
+    return [];
+  },
+
+  // 10. STRICT DUPLICATE CHECKER (Phone & Email Uniqueness)
+  async checkUserExists(email?: string, phone?: string): Promise<{
+    exists: boolean;
+    emailExists: boolean;
+    phoneExists: boolean;
+    existingName?: string;
+  }> {
+    const cleanEmail = (email || "").trim().toLowerCase();
+    const cleanPhone = (phone || "").replace(/\D/g, "").slice(-10);
+
+    // 1. Try Backend API
+    try {
+      const params = new URLSearchParams();
+      if (cleanEmail) params.set("email", cleanEmail);
+      if (cleanPhone) params.set("phone", cleanPhone);
+
+      const res = await fetch(`${API_BASE}/crm/check-exists?${params.toString()}`);
+      if (res.ok) {
+        const json = await res.json();
+        const d = json.data || json;
+        return {
+          exists: Boolean(d.exists),
+          emailExists: Boolean(d.emailExists),
+          phoneExists: Boolean(d.phoneExists),
+          existingName: d.existingName,
+        };
+      }
+    } catch (e) {
+      console.warn("Backend checkUserExists notice:", e);
+    }
+
+    // 2. Try direct Supabase
+    if (supabase) {
+      try {
+        let emailExists = false;
+        let phoneExists = false;
+        let existingName = undefined;
+
+        if (cleanEmail) {
+          const { data } = await supabase.from("customers").select("id, name").ilike("email", cleanEmail).maybeSingle();
+          if (data) {
+            emailExists = true;
+            existingName = data.name;
+          }
+        }
+        if (cleanPhone) {
+          const { data } = await supabase.from("customers").select("id, name").ilike("phone", `%${cleanPhone}%`).maybeSingle();
+          if (data) {
+            phoneExists = true;
+            if (!existingName) existingName = data.name;
+          }
+        }
+
+        return {
+          exists: emailExists || phoneExists,
+          emailExists,
+          phoneExists,
+          existingName,
+        };
+      } catch {}
+    }
+
+    // 3. Fallback to LocalStorage customers
+    try {
+      const raw = localStorage.getItem("rs_admin_customers");
+      if (raw) {
+        const list = JSON.parse(raw);
+        if (Array.isArray(list)) {
+          const emailFound = cleanEmail && list.some((c: any) => c.email && c.email.trim().toLowerCase() === cleanEmail);
+          const phoneFound = cleanPhone && list.some((c: any) => {
+            const p = String(c.phone || "").replace(/\D/g, "").slice(-10);
+            return p === cleanPhone;
+          });
+          return {
+            exists: Boolean(emailFound || phoneFound),
+            emailExists: Boolean(emailFound),
+            phoneExists: Boolean(phoneFound),
+          };
+        }
+      }
+    } catch {}
+
+    return { exists: false, emailExists: false, phoneExists: false };
+  },
+
+  // 11. REALTIME BIDIRECTIONAL SYNC (Web & Desktop App Sync)
   subscribeToRealtime(onUpdate: (payload: { table: string; eventType: string; newRecord: any; oldRecord: any }) => void): () => void {
-    if (!supabase) return () => {};
-
+    if (!supabase) return () => { };
     const channel = supabase
       .channel("rs-fashions-live-sync")
       .on(
@@ -1619,7 +1823,6 @@ export const StoreService = {
         }
       )
       .subscribe();
-
     return () => {
       supabase.removeChannel(channel);
     };

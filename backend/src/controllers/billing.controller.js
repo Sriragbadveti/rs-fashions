@@ -2,6 +2,7 @@ import { supabase } from "../config/supabase.js";
 import { successResponse, errorResponse } from "../utils/response.js";
 import { invalidateCatalogCache } from "./catalog.controller.js";
 import { invalidateBootstrapCache } from "./bootstrap.controller.js";
+import { saveOrderToStore } from "../database/localStore.js";
 
 /**
  * Controller: POS Billing, Counter Invoicing & Coupons
@@ -112,38 +113,26 @@ export async function handleCheckout(req, res) {
 
       // 3. Upsert Customer Profile in CRM
       try {
-        const { data: existingCust } = await supabase.from("customers").select("*").eq("phone", customerPhone).single();
+        const { data: existingCust } = await supabase.from("customers").select("*").eq("phone", effectivePhone).maybeSingle();
         const saleTotal = Number(total) || 0;
 
         if (existingCust) {
           const newSpent = (Number(existingCust.total_spent) || 0) + saleTotal;
           const newOrders = (Number(existingCust.orders_count) || 0) + 1;
-          
-          let tier = "Heritage Club";
-          if (newSpent >= 100000) tier = "Platinum";
-          else if (newSpent >= 50000) tier = "Gold";
-          else if (newSpent >= 25000) tier = "Silver";
 
           await supabase.from("customers").update({
-            name: customerName || existingCust.name,
+            name: effectiveName || existingCust.name,
             total_spent: newSpent,
             orders_count: newOrders,
-            tier,
             updated_at: new Date().toISOString(),
-          }).eq("phone", customerPhone);
+          }).eq("phone", effectivePhone);
         } else {
-          let tier = "Heritage Club";
-          if (saleTotal >= 100000) tier = "Platinum";
-          else if (saleTotal >= 50000) tier = "Gold";
-          else if (saleTotal >= 25000) tier = "Silver";
-
           await supabase.from("customers").insert([{
             id: `cust-${Date.now().toString(36)}`,
-            name: customerName || "Counter Guest",
-            phone: customerPhone,
-            email: customerEmail || null,
+            name: effectiveName || "Counter Guest",
+            phone: effectivePhone,
+            email: effectiveEmail || null,
             city: "Hyderabad",
-            tier,
             total_spent: saleTotal,
             orders_count: 1,
           }]);
@@ -151,6 +140,18 @@ export async function handleCheckout(req, res) {
       } catch (crmErr) {
         console.warn("Customer loyalty notice:", crmErr.message);
       }
+
+      // Save to local persistence store for immediate customer lookup
+      saveOrderToStore({
+        ...orderData,
+        invoiceNumber: finalInvoiceNumber,
+        invoice_number: finalInvoiceNumber,
+        customerName: effectiveName,
+        customerPhone: effectivePhone,
+        customerEmail: effectiveEmail,
+        items,
+        total,
+      });
 
       // Invalidate both caches so the next admin refresh includes this sale and its movements.
       invalidateCatalogCache();
@@ -162,9 +163,33 @@ export async function handleCheckout(req, res) {
       }, "Sale recorded and inventory synced successfully", 201);
     }
 
+    const localSaved = saveOrderToStore({
+      id: saleId,
+      invoiceNumber: finalInvoiceNumber,
+      invoice_number: finalInvoiceNumber,
+      orderNumber: finalInvoiceNumber,
+      order_number: finalInvoiceNumber,
+      customerName: effectiveName,
+      customerPhone: effectivePhone,
+      customerEmail: effectiveEmail,
+      shippingAddress: effectiveAddress,
+      items,
+      subtotal,
+      cgst,
+      sgst,
+      shippingFee,
+      discount,
+      total,
+      paymentMethod,
+      paymentStatus,
+      orderStatus,
+      billingType,
+      createdAt: new Date().toISOString(),
+    });
+
     invalidateCatalogCache();
     invalidateBootstrapCache();
-    return successResponse(res, { sale: req.body, invoiceNumber: finalInvoiceNumber }, "Sale recorded locally", 201);
+    return successResponse(res, { sale: localSaved, invoiceNumber: finalInvoiceNumber }, "Sale recorded locally", 201);
   } catch (err) {
     console.error("POS Checkout error:", err);
     return errorResponse(res, err.message, 500);

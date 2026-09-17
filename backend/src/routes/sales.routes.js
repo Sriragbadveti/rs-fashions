@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   getTransactions,
+  getCustomerOrders,
   processRefund,
   getAnalyticsSummary,
   updateFulfillment,
@@ -8,6 +9,8 @@ import {
 
 const router = Router();
 
+router.get("/customer-orders", getCustomerOrders);
+router.get("/orders", getCustomerOrders);
 router.get("/transactions", getTransactions);
 router.post("/refund", processRefund);
 router.get("/analytics/summary", getAnalyticsSummary);

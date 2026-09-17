@@ -151,7 +151,6 @@ export interface DesignOption {
  * The slug is used as the Design Code in the SKU.
  *
  * Example:
- *
  * Vintage Checks -> VC
  * Gatti Borders  -> GB
  */
@@ -185,7 +184,7 @@ export const MOCK_DESIGNS: DesignOption[] = [
     slug: "GAB",
   },
   {
-    name: "Gab Checks Borders",
+    name: "Gap Border Checks",
     slug: "GCB",
   },
   {
@@ -217,174 +216,89 @@ export interface ColorDefinition {
 /**
  * Master Color Catalogue.
  *
- * These codes are used directly inside the SKU.
- *
- * Example:
- *
- * Crimson Red -> RD
- * Deep Teal   -> TL
- *
- * Final SKU:
- *
+ * These codes are used directly inside the SKU:
  * RSF-{DESIGN_CODE}-{COLOR_CODE}-{SERIAL}
  */
 export const COLOR_CODES: ColorDefinition[] = [
-  {
-    name: "Crimson Red",
-    code: "RD",
-  },
-  {
-    name: "Deep Teal",
-    code: "TL",
-  },
-  {
-    name: "Emerald Green",
-    code: "GR",
-  },
-  {
-    name: "Midnight Blue",
-    code: "BL",
-  },
-  {
-    name: "Maroon",
-    code: "MR",
-  },
-  {
-    name: "Maroon Gold",
-    code: "MG",
-  },
-  {
-    name: "Mustard Yellow",
-    code: "MY",
-  },
-  {
-    name: "Mustard Violet",
-    code: "MV",
-  },
-  {
-    name: "Rose Pink",
-    code: "PK",
-  },
-  {
-    name: "Hot Pink",
-    code: "HP",
-  },
-  {
-    name: "Baby Pink",
-    code: "BP",
-  },
-  {
-    name: "Peach",
-    code: "PC",
-  },
-  {
-    name: "Orange",
-    code: "OR",
-  },
-  {
-    name: "Rust Orange",
-    code: "RO",
-  },
-  {
-    name: "Wine",
-    code: "WN",
-  },
-  {
-    name: "Purple",
-    code: "PR",
-  },
-  {
-    name: "Violet",
-    code: "VT",
-  },
-  {
-    name: "Lavender",
-    code: "LV",
-  },
-  {
-    name: "Sky Blue",
-    code: "SB",
-  },
-  {
-    name: "Royal Blue",
-    code: "RB",
-  },
-  {
-    name: "Navy Blue",
-    code: "NB",
-  },
-  {
-    name: "Peacock Blue",
-    code: "PB",
-  },
-  {
-    name: "Pista Green",
-    code: "PI",
-  },
-  {
-    name: "Mint Green",
-    code: "MN",
-  },
-  {
-    name: "Bottle Green",
-    code: "BG",
-  },
-  {
-    name: "Olive Green",
-    code: "OL",
-  },
-  {
-    name: "Lemon Yellow",
-    code: "LY",
-  },
-  {
-    name: "Golden Yellow",
-    code: "GY",
-  },
-  {
-    name: "Gold",
-    code: "GD",
-  },
-  {
-    name: "Silver",
-    code: "SV",
-  },
-  {
-    name: "Champagne Silver",
-    code: "CS",
-  },
-  {
-    name: "Rose Gold",
-    code: "RG",
-  },
-  {
-    name: "Copper",
-    code: "CP",
-  },
-  {
-    name: "Beige",
-    code: "BE",
-  },
-  {
-    name: "Cream",
-    code: "CR",
-  },
-  {
-    name: "Off White",
-    code: "OW",
-  },
-  {
-    name: "White",
-    code: "WH",
-  },
-  {
-    name: "Black",
-    code: "BK",
-  },
-  {
-    name: "Grey",
-    code: "GY",
-  },
+  /* --- Basic & Primary Essentials --- */
+  { name: "Red", code: "RED" },
+  { name: "Crimson Red", code: "RD" },
+  { name: "Blue", code: "BLU" },
+  { name: "Navy Blue", code: "NB" },
+  { name: "Royal Blue", code: "RB" },
+  { name: "Sky Blue", code: "SB" },
+  { name: "Midnight Blue", code: "BL" },
+  { name: "Peacock Blue", code: "PB" },
+  { name: "Green", code: "GRN" },
+  { name: "Emerald Green", code: "GR" },
+  { name: "Bottle Green", code: "BG" },
+  { name: "Olive Green", code: "OL" },
+  { name: "Mint Green", code: "MN" },
+  { name: "Pista Green", code: "PI" },
+  { name: "Sea Green", code: "SG" },
+  { name: "Yellow", code: "YEL" },
+  { name: "Lemon Yellow", code: "LY" },
+  { name: "Golden Yellow", code: "GY" },
+  { name: "Mustard Yellow", code: "MY" },
+  { name: "Mustard Violet", code: "MV" },
+
+  /* --- Pinks, Corals & Peaches --- */
+  { name: "Pink", code: "PNK" },
+  { name: "Rose Pink", code: "PK" },
+  { name: "Hot Pink", code: "HP" },
+  { name: "Baby Pink", code: "BP" },
+  { name: "Magenta", code: "MA" },
+  { name: "Coral", code: "CO" },
+  { name: "Peach", code: "PC" },
+
+  /* --- Oranges & Warm Tones --- */
+  { name: "Orange", code: "OR" },
+  { name: "Rust Orange", code: "RO" },
+  { name: "Tangerine", code: "TG" },
+  { name: "Amber", code: "AM" },
+
+  /* --- Purples, Violets & Wine --- */
+  { name: "Purple", code: "PR" },
+  { name: "Violet", code: "VT" },
+  { name: "Lavender", code: "LV" },
+  { name: "Lilac", code: "LC" },
+  { name: "Wine", code: "WN" },
+  { name: "Maroon", code: "MR" },
+  { name: "Maroon Gold", code: "MG" },
+  { name: "Burgundy", code: "BU" },
+  { name: "Plum", code: "PL" },
+
+  /* --- Teals & Aquas --- */
+  { name: "Teal", code: "TE" },
+  { name: "Deep Teal", code: "TL" },
+  { name: "Aqua", code: "AQ" },
+  { name: "Turquoise", code: "TQ" },
+  { name: "Cyan", code: "CY" },
+
+  /* --- Neutrals, Earth & Monochromes --- */
+  { name: "Black", code: "BK" },
+  { name: "White", code: "WH" },
+  { name: "Off White", code: "OW" },
+  { name: "Grey", code: "GRY" },
+  { name: "Charcoal", code: "CH" },
+  { name: "Silver Grey", code: "SGY" },
+  { name: "Cream", code: "CR" },
+  { name: "Beige", code: "BE" },
+  { name: "Ivory", code: "IV" },
+  { name: "Brown", code: "BR" },
+  { name: "Chocolate Brown", code: "CB" },
+  { name: "Tan", code: "TN" },
+  { name: "Khaki", code: "KH" },
+  { name: "Coffee", code: "CF" },
+
+  /* --- Metallic & Festive Zari Accents --- */
+  { name: "Gold", code: "GD" },
+  { name: "Silver", code: "SV" },
+  { name: "Rose Gold", code: "RG" },
+  { name: "Copper", code: "CP" },
+  { name: "Bronze", code: "BZ" },
+  { name: "Champagne Silver", code: "CS" },
+  { name: "Antique Gold", code: "AG" },
 ];
 
 /* =========================================================
@@ -394,17 +308,11 @@ export const COLOR_CODES: ColorDefinition[] = [
 export interface ColorVariant {
   /**
    * Human-readable color name.
-   *
-   * Example:
-   * Crimson Red
    */
   color: string;
 
   /**
    * Short color code used in SKU.
-   *
-   * Example:
-   * RD
    */
   colorSlug: string;
 
@@ -415,9 +323,6 @@ export interface ColorVariant {
 
   /**
    * Complete SKU for this specific color variant.
-   *
-   * Example:
-   * RSF-VC-RD-001
    */
   sku: string;
 
@@ -434,25 +339,16 @@ export interface ColorVariant {
 export interface Product {
   /**
    * Primary product SKU / identifier.
-   *
-   * Example:
-   * RSF-VC-RD-001
    */
   id: string;
 
   /**
    * Design Title / Saree Pattern.
-   *
-   * Example:
-   * Vintage Checks
    */
   name: string;
 
   /**
    * Weave Category ID.
-   *
-   * Example:
-   * c1
    */
   categoryId: string;
 
@@ -478,8 +374,6 @@ export interface Product {
 
   /**
    * Optional product image.
-   *
-   * Can contain a normal URL or a data URL.
    */
   imageUrl?: string;
 }
@@ -505,16 +399,16 @@ export type OrderStage =
 
 export interface TrackedOrder {
   id: string;
-  trackingNumber: string; // e.g. RSF-TRK-9021 or AWB-BLUEDART-882190
+  trackingNumber: string;
   direction: OrderDirection;
-  title: string; // e.g. "Vintage Checks [VC-RD] Bridal Drape" or "Weaver Batch #42"
-  partyName: string; // Customer name or Master Weaver name
+  title: string;
+  partyName: string;
   partyContact: string;
   location: string;
   skuList: string[];
   totalPieces: number;
   totalValue: number;
-  courierOrLoomPartner: string; // "Blue Dart Express", "Gadwal Cluster Loom #4", etc.
+  courierOrLoomPartner: string;
   currentStage: OrderStage;
   estimatedCompletion: string;
   lastUpdate: string;
@@ -673,11 +567,12 @@ export type DashboardTab =
   | "sale"
   | "settings"
   | "devices"
-  | "categories";
+  | "categories"
+  | "reviews";
+
 /* =========================================================
    MOCK Customers
 ========================================================= */
-export type ClientTier = "Royal Patron" | "Heritage Club" | "Boutique Member";
 
 export interface CustomerProfile {
   id: string;
@@ -685,18 +580,20 @@ export interface CustomerProfile {
   phone: string;
   email?: string;
   city: string;
-  address?: string; // <--- Added address support for CRM
+  address?: string;
   state?: string;
-  tier: ClientTier;
   totalSpent: number;
   ordersCount: number;
-  birthday?: string; // Format: YYYY-MM-DD
-  anniversary?: string; // Format: YYYY-MM-DD
-  preferredWeave?: string; // e.g. "Ma Inti Bangaram"
+  birthday?: string;
+  anniversary?: string;
+  preferredWeave?: string;
   notes?: string;
   gstin?: string;
   authProvider?: "google" | "email" | "direct";
   joinedAt?: string;
+  lastActiveAt?: string;
+  status?: "active" | "inactive";
+  inactivityDays?: number;
 }
 
 export interface SaleTierOffer {
@@ -738,10 +635,9 @@ export const MOCK_CUSTOMERS: CustomerProfile[] = [
     email: "shailaja.reddy@gmail.com",
     city: "Banjara Hills, Hyderabad",
     address: "Plot 12, Road No. 2, Banjara Hills",
-    tier: "Royal Patron",
     totalSpent: 184500,
     ordersCount: 7,
-    birthday: "1982-09-14", // Upcoming
+    birthday: "1982-09-14",
     anniversary: "2006-11-28",
     preferredWeave: "Ma Inti Bangaram 3 Inch Borders",
     notes: "Prefers pure gold zari with Crimson Red or Maroon borders.",
@@ -753,11 +649,10 @@ export const MOCK_CUSTOMERS: CustomerProfile[] = [
     email: "ananya.rao@carehospitals.com",
     city: "Jubilee Hills, Hyderabad",
     address: "Door No. 8-2, Jubilee Hills",
-    tier: "Heritage Club",
     totalSpent: 92400,
     ordersCount: 4,
     birthday: "1988-12-05",
-    anniversary: "2015-09-12", // Upcoming
+    anniversary: "2015-09-12",
     preferredWeave: "Vintage Checks",
     notes: "Buys for family gifting and bridal weddings.",
   },
@@ -767,21 +662,18 @@ export const MOCK_CUSTOMERS: CustomerProfile[] = [
     phone: "9123456780",
     city: "Secunderabad",
     address: "M G Road, Secunderabad",
-    tier: "Boutique Member",
     totalSpent: 38000,
     ordersCount: 2,
-    birthday: "1994-09-16", // Upcoming
+    birthday: "1994-09-16",
     preferredWeave: "Gatti Borders",
     notes: "Loves lightweight SiCo Gadwal weaves.",
   },
 ];
+
 /* =========================================================
    MOCK CATEGORIES
 ========================================================= */
 
-/**
- * Current locked Weave Category.
- */
 export const MOCK_CATEGORIES: Category[] = [
   {
     id: "c1",
@@ -796,18 +688,6 @@ export const MOCK_CATEGORIES: Category[] = [
    MOCK INVENTORY
 ========================================================= */
 
-/**
- * Current mock inventory.
- *
- * Final SKU structure:
- *
- * RSF-{DESIGN_CODE}-{COLOR_CODE}-{SERIAL}
- *
- * Examples:
- *
- * RSF-VC-RD-001
- * RSF-VC-TL-001
- */
 export const MOCK_INVENTORY: Product[] = [
   {
     id: "RSF-VC-RD-001",
@@ -831,7 +711,6 @@ export const MOCK_INVENTORY: Product[] = [
       },
     ],
   },
-
   {
     id: "RSF-GB-GR-001",
     name: "Gatti Borders",
@@ -854,7 +733,6 @@ export const MOCK_INVENTORY: Product[] = [
       },
     ],
   },
-
   {
     id: "RSF-MIB3B-MG-001",
     name: "Ma Inti Bangaram 3 Inch Borders",
@@ -877,7 +755,6 @@ export const MOCK_INVENTORY: Product[] = [
       },
     ],
   },
-
   {
     id: "RSF-BKB-RG-001",
     name: "Big Kanchi Borders",
@@ -900,7 +777,6 @@ export const MOCK_INVENTORY: Product[] = [
       },
     ],
   },
-
   {
     id: "RSF-EKB-RG-001",
     name: "Equal Kanchi Borders",
@@ -923,7 +799,6 @@ export const MOCK_INVENTORY: Product[] = [
       },
     ],
   },
-
   {
     id: "RSF-CB-RG-001",
     name: "Chakra Border",
@@ -946,7 +821,6 @@ export const MOCK_INVENTORY: Product[] = [
       },
     ],
   },
-
   {
     id: "RSF-GAB-RG-001",
     name: "Gab Borders",
@@ -969,10 +843,9 @@ export const MOCK_INVENTORY: Product[] = [
       },
     ],
   },
-
   {
     id: "RSF-GCB-RG-001",
-    name: "Gab Checks Borders",
+    name: "Gap Border Checks",
     categoryId: "c1",
     purchasePrice: 6500,
     salePrice: 9800,
@@ -992,7 +865,6 @@ export const MOCK_INVENTORY: Product[] = [
       },
     ],
   },
-
   {
     id: "RSF-BGC-RG-001",
     name: "Box Gadwal Checks",
@@ -1037,7 +909,6 @@ export const MOCK_STOCK_HISTORY: StockMovement[] = [
     performedBy: "RS Fashions",
     note: "POS Counter #1 Sale",
   },
-
   {
     id: "mov-002",
     date: "10 Sep 2026, 01:30 PM",
@@ -1053,7 +924,6 @@ export const MOCK_STOCK_HISTORY: StockMovement[] = [
     performedBy: "Store Manager",
     note: "Bridal trousseau purchase",
   },
-
   {
     id: "mov-003",
     date: "09 Sep 2026, 11:00 AM",
@@ -1069,7 +939,6 @@ export const MOCK_STOCK_HISTORY: StockMovement[] = [
     performedBy: "RS Fashions",
     note: "Gadwal master weaver direct shipment batch #4",
   },
-
   {
     id: "mov-004",
     date: "08 Sep 2026, 05:45 PM",
@@ -1085,7 +954,6 @@ export const MOCK_STOCK_HISTORY: StockMovement[] = [
     performedBy: "RS Fashions",
     note: "Pre-festive fresh consignment",
   },
-
   {
     id: "mov-005",
     date: "07 Sep 2026, 03:20 PM",
@@ -1114,7 +982,6 @@ export const Category: any = undefined;
 export const CartItem: any = undefined;
 export const CustomerDetails: any = undefined;
 export const CustomerProfile: any = undefined;
-export const ClientTier: any = undefined;
 export const MovementType: any = undefined;
 export const BillingType: any = undefined;
 export const PaymentMethod: any = undefined;

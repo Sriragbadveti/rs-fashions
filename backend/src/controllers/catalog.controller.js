@@ -52,7 +52,7 @@ export async function getProducts(req, res) {
         name: p.name,
         category: p.category || "SiCo Gadwal Sarees",
         categoryId: "c1",
-        material: p.material || "Silk Cotton (SiCo)",
+        material: p.material || "SiCo",
         price: Number(p.price) || 0,
         salePrice: Number(p.price) || 0,
         originalPrice: p.original_price ? Number(p.original_price) : undefined,
@@ -151,7 +151,7 @@ export async function createProduct(req, res) {
       }
     }
     if (!resolvedCategory) resolvedCategory = material || "SiCo Gadwal Sarees";
-    const resolvedMaterial = material || resolvedCategory || "Silk Cotton (SiCo)";
+    const resolvedMaterial = material || resolvedCategory || "SiCo";
 
     if (supabase) {
       const { data, error } = await supabase.from("products").upsert({

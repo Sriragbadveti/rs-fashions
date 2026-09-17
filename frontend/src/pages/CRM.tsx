@@ -26,7 +26,7 @@ import {
   Mail,
   Clock,
 } from "lucide-react";
-import type { CustomerProfile, ClientTier } from "../types/inventory";
+import type { CustomerProfile } from "../types/inventory";
 import { MOCK_CUSTOMERS } from "../types/inventory";
 import { getSavedCrmCustomers } from "../types/useBilling";
 import { API_BASE } from "../config/api";
@@ -40,17 +40,11 @@ type MessageTemplateType =
   | "birthday"
   | "anniversary"
   | "festive_offer"
+  | "reactivation"
   | "custom";
 
 const STORE_NAME = "RS Fashions";
 const SHOWROOM_LOCATION = "Road No. 36, Jubilee Hills, Hyderabad";
-
-const TIER_FILTERS = [
-  { id: "ALL", label: "All Clients" },
-  { id: "Royal Patron", label: "Royal Patrons" },
-  { id: "Heritage Club", label: "Heritage Club" },
-  { id: "Boutique Member", label: "Boutique" },
-];
 
 const MESSAGE_TEMPLATES: {
   id: MessageTemplateType;
@@ -74,6 +68,12 @@ const MESSAGE_TEMPLATES: {
     id: "festive_offer",
     label: "VIP Loom Drop",
     shortLabel: "Loom Drop",
+    icon: Sparkles,
+  },
+  {
+    id: "reactivation",
+    label: "30-Day Welcome Back",
+    shortLabel: "Welcome Back (>30d)",
     icon: Sparkles,
   },
 ];
@@ -550,7 +550,6 @@ export default function CRM({
   }, [initialData]);
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [tierFilter, setTierFilter] = useState<string>("ALL");
 
   const [isNewCustomerModalOpen, setIsNewCustomerModalOpen] =
     useState(false);
@@ -583,7 +582,6 @@ export default function CRM({
     email: "",
     city: "Hyderabad",
     address: "",
-    tier: "Boutique Member" as ClientTier,
     birthday: "",
     anniversary: "",
     preferredWeave: "",
@@ -630,6 +628,31 @@ export default function CRM({
   }, [customers]);
 
   /* ---------------------------------------------------------------------- */
+  /* PATRON LIFECYCLE & ACTIVITY STATUS (Active vs Inactive > 30 Days)       */
+  /* ---------------------------------------------------------------------- */
+
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
+
+  const getCustomerActivityInfo = useCallback((customer: CustomerProfile) => {
+    const lastDate = customer.lastActiveAt || customer.joinedAt;
+    const now = Date.now();
+    const daysSince = lastDate ? Math.floor((now - new Date(lastDate).getTime()) / (1000 * 60 * 60 * 24)) : 0;
+    const isInactive = customer.status === "inactive" || daysSince >= 30;
+    return {
+      status: isInactive ? ("inactive" as const) : ("active" as const),
+      daysSince: Math.max(0, daysSince),
+    };
+  }, []);
+
+  const activeCount = useMemo(() => {
+    return customers.filter((c) => getCustomerActivityInfo(c).status === "active").length;
+  }, [customers, getCustomerActivityInfo]);
+
+  const inactiveCount = useMemo(() => {
+    return customers.filter((c) => getCustomerActivityInfo(c).status === "inactive").length;
+  }, [customers, getCustomerActivityInfo]);
+
+  /* ---------------------------------------------------------------------- */
   /* FILTERED CUSTOMERS                                                     */
   /* ---------------------------------------------------------------------- */
 
@@ -637,30 +660,21 @@ export default function CRM({
     const q = searchQuery.toLowerCase().trim();
 
     return customers.filter((customer) => {
-      const matchesTier =
-        tierFilter === "ALL" ||
-        customer.tier === tierFilter;
+      const activity = getCustomerActivityInfo(customer);
+      if (statusFilter === "active" && activity.status !== "active") return false;
+      if (statusFilter === "inactive" && activity.status !== "inactive") return false;
 
-      const matchesQuery =
-        !q ||
+      if (!q) return true;
+      return (
         customer.name.toLowerCase().includes(q) ||
         customer.phone.includes(q) ||
         Boolean(customer.email?.toLowerCase().includes(q)) ||
-        Boolean(
-          customer.city?.toLowerCase().includes(q)
-        ) ||
-        Boolean(
-          customer.address?.toLowerCase().includes(q)
-        ) ||
-        Boolean(
-          customer.preferredWeave
-            ?.toLowerCase()
-            .includes(q)
-        );
-
-      return matchesTier && matchesQuery;
+        Boolean(customer.city?.toLowerCase().includes(q)) ||
+        Boolean(customer.address?.toLowerCase().includes(q)) ||
+        Boolean(customer.preferredWeave?.toLowerCase().includes(q))
+      );
     });
-  }, [customers, tierFilter, searchQuery]);
+  }, [customers, searchQuery, statusFilter, getCustomerActivityInfo]);
 
   /* ---------------------------------------------------------------------- */
   /* MESSAGE GENERATOR                                                      */
@@ -678,7 +692,7 @@ export default function CRM({
           `✨ *Namaste ${client.name} Ji!* ✨\n\n` +
           `Wishing you a very Happy Birthday from all of us at *${STORE_NAME}*! 💐\n\n` +
           `May your year ahead be blessed with good health, grace, and timeless happiness.\n\n` +
-          `As a token of our appreciation for being our valued *${client.tier}*, we are delighted to offer you an *${offerText}* (Use code: *${discountCode}*) valid on our curated SiCo Gadwal & Heritage Handloom collections.\n\n` +
+          `As a token of our appreciation for being our valued patron, we are delighted to offer you an *${offerText}* (Use code: *${discountCode}*) valid on our curated SiCo Gadwal & Heritage Handloom collections.\n\n` +
           `We look forward to welcoming you at our Jubilee Hills showroom.\n\n` +
           `Warm regards,\n*${STORE_NAME} — Jubilee Hills, Hyderabad*`
         );
@@ -694,10 +708,21 @@ export default function CRM({
         );
       }
 
+      if (type === "reactivation") {
+        return (
+          `✨ *Namaste ${client.name} Ji! We Miss You at ${STORE_NAME}* ✨\n\n` +
+          `It has been a little while since your last visit to our boutique. We have recently arrived with a breathtaking new festive collection of authentic SiCo Gadwal handloom drapes woven by master artisans.\n\n` +
+          `As our esteemed patron, we would love to welcome you back with an exclusive welcome-back privilege: *${offerText}* (Code: *${discountCode}*).\n\n` +
+          `Explore our latest online gallery: https://rsfashions.in/shop\n` +
+          `Or visit our flagship showroom: *${SHOWROOM_LOCATION}*\n\n` +
+          `With sincere regards,\n*${STORE_NAME} Team*`
+        );
+      }
+
       return (
         `✨ *Exclusive Handloom Showcase for ${client.name} Ji* ✨\n\n` +
         `We have just unveiled our fresh weaver consignments directly from the artisan looms of Gadwal.\n\n` +
-        `As a *${client.tier}*, we cordially invite you for a private viewing of our newest *${
+        `As our valued patron, we cordially invite you for a private viewing of our newest *${
           client.preferredWeave ||
           "Pure Gadwal Silk & Zari"
         }* designs.\n\n` +
@@ -876,7 +901,6 @@ export default function CRM({
       email: "",
       city: "Hyderabad",
       address: "",
-      tier: "Boutique Member",
       birthday: "",
       anniversary: "",
       preferredWeave: "",
@@ -1203,28 +1227,42 @@ export default function CRM({
           )}
         </div>
 
-        <div className="flex items-center gap-1.5 overflow-x-auto w-full lg:w-auto pb-1 lg:pb-0 scrollbar-none">
-          <span className="text-[11px] text-stone-400 mr-1 flex items-center gap-1 shrink-0">
-            <Filter size={12} />
-            Tier:
-          </span>
-
-          {TIER_FILTERS.map((tier) => (
-            <button
-              key={tier.id}
-              type="button"
-              onClick={() =>
-                setTierFilter(tier.id)
-              }
-              className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold ${
-                tierFilter === tier.id
-                  ? "bg-[#2A0E20] text-amber-100 shadow-sm"
-                  : "bg-white/60 text-stone-600 hover:bg-stone-100 hover:text-stone-900"
-              }`}
-            >
-              {tier.label}
-            </button>
-          ))}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0 shrink-0">
+          <button
+            type="button"
+            onClick={() => setStatusFilter("all")}
+            className={`px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
+              statusFilter === "all"
+                ? "bg-[#2A0E20] text-amber-100 shadow-sm"
+                : "bg-white text-stone-600 hover:bg-stone-100 border border-stone-200/80"
+            }`}
+          >
+            All Patrons ({customers.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setStatusFilter("active")}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
+              statusFilter === "active"
+                ? "bg-emerald-700 text-white shadow-sm"
+                : "bg-white text-emerald-800 hover:bg-emerald-50 border border-emerald-200/80"
+            }`}
+          >
+            <span className="h-2 w-2 rounded-full bg-emerald-400" />
+            <span>Active ({activeCount})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setStatusFilter("inactive")}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
+              statusFilter === "inactive"
+                ? "bg-amber-700 text-white shadow-sm"
+                : "bg-white text-amber-800 hover:bg-amber-50 border border-amber-200/80"
+            }`}
+          >
+            <span className="h-2 w-2 rounded-full bg-amber-500" />
+            <span>Inactive &gt;30d ({inactiveCount})</span>
+          </button>
         </div>
       </section>
 
@@ -1249,17 +1287,13 @@ export default function CRM({
           </span>
         </div>
 
-        {searchQuery ||
-        tierFilter !== "ALL" ? (
+        {searchQuery ? (
           <button
             type="button"
-            onClick={() => {
-              setSearchQuery("");
-              setTierFilter("ALL");
-            }}
+            onClick={() => setSearchQuery("")}
             className="text-[11px] font-semibold text-brand-plum hover:text-stone-950 transition-colors"
           >
-            Clear filters
+            Clear search
           </button>
         ) : null}
       </div>
@@ -1269,14 +1303,6 @@ export default function CRM({
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {filteredCustomers.map(
             (client, index) => {
-              const isRoyal =
-                client.tier ===
-                "Royal Patron";
-
-              const isHeritage =
-                client.tier ===
-                "Heritage Club";
-
               return (
                 <article
                   key={client.id}
@@ -1291,19 +1317,7 @@ export default function CRM({
                   <div>
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <span
-                          className={`inline-flex text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border transition-transform duration-200 group-hover:scale-[1.02] ${
-                            isRoyal
-                              ? "bg-amber-100 text-amber-950 border-amber-300"
-                              : isHeritage
-                              ? "bg-purple-100 text-purple-900 border-purple-200"
-                              : "bg-stone-100 text-stone-700 border-stone-200"
-                          }`}
-                        >
-                          {client.tier}
-                        </span>
-
-                        <h3 className="font-display font-semibold text-base text-stone-950 mt-1.5 truncate group-hover:text-brand-plum transition-colors duration-200">
+                        <h3 className="font-display font-semibold text-base text-stone-950 mt-0.5 truncate group-hover:text-brand-plum transition-colors duration-200">
                           {client.name}
                         </h3>
 
@@ -1363,8 +1377,24 @@ export default function CRM({
                         </span>
                       </div>
 
-                      {/* Auth Provider & Joined Date Badges */}
+                      {/* Auth Provider, Activity Status & Joined Date Badges */}
                       <div className="flex items-center flex-wrap gap-1.5 pt-0.5">
+                        {/* 30-Day Active / Inactive CRM Status Pill */}
+                        {(() => {
+                          const act = getCustomerActivityInfo(client);
+                          return act.status === "active" ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200/80 text-[10px] font-semibold text-emerald-700">
+                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                              <span>Active Patron</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-300/80 text-[10px] font-semibold text-amber-800">
+                              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                              <span>Inactive ({act.daysSince}d)</span>
+                            </span>
+                          );
+                        })()}
+
                         {client.authProvider === "google" ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 border border-blue-200/80 text-[10px] font-medium text-blue-700">
                             <svg className="w-2.5 h-2.5 shrink-0" viewBox="0 0 24 24">
@@ -1535,15 +1565,13 @@ export default function CRM({
           </h3>
 
           <p className="text-xs text-stone-500 mt-1 max-w-sm mx-auto">
-            Try changing the search term or
-            membership filter.
+            Try changing your search query.
           </p>
 
           <button
             type="button"
             onClick={() => {
               setSearchQuery("");
-              setTierFilter("ALL");
             }}
             className="mt-4 px-4 py-2 rounded-xl bg-[#2A0E20] text-amber-100 text-xs font-semibold hover:bg-[#3D142E] transition-all duration-200 active:scale-[0.98]"
           >
@@ -1930,64 +1958,28 @@ export default function CRM({
                   </div>
                 </div>
 
-                {/* Tier + City */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label
-                      htmlFor="crm-client-tier"
-                      className="block font-semibold text-stone-700 mb-1.5"
-                    >
-                      Client Membership Tier
-                    </label>
+                {/* Location / City */}
+                <div>
+                  <label
+                    htmlFor="crm-client-city"
+                    className="block font-semibold text-stone-700 mb-1.5"
+                  >
+                    Location / City
+                  </label>
 
-                    <select
-                      id="crm-client-tier"
-                      value={formData.tier}
-                      onChange={(event) =>
-                        updateFormField(
-                          "tier",
-                          event.target
-                            .value as ClientTier
-                        )
-                      }
-                      className="w-full p-2.5 bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/10 transition-all duration-200 cursor-pointer"
-                    >
-                      <option value="Boutique Member">
-                        Boutique Member
-                      </option>
-
-                      <option value="Heritage Club">
-                        Heritage Club
-                      </option>
-
-                      <option value="Royal Patron">
-                        Royal Patron (VIP)
-                      </option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label
-                      htmlFor="crm-client-city"
-                      className="block font-semibold text-stone-700 mb-1.5"
-                    >
-                      Location / City
-                    </label>
-
-                    <input
-                      id="crm-client-city"
-                      type="text"
-                      placeholder="e.g. Banjara Hills, Hyderabad"
-                      value={formData.city}
-                      onChange={(event) =>
-                        updateFormField(
-                          "city",
-                          event.target.value
-                        )
-                      }
-                      className="w-full p-2.5 bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/10 transition-all duration-200"
-                    />
-                  </div>
+                  <input
+                    id="crm-client-city"
+                    type="text"
+                    placeholder="e.g. Banjara Hills, Hyderabad"
+                    value={formData.city}
+                    onChange={(event) =>
+                      updateFormField(
+                        "city",
+                        event.target.value
+                      )
+                    }
+                    className="w-full p-2.5 bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/10 transition-all duration-200"
+                  />
                 </div>
 
                 {/* Address */}

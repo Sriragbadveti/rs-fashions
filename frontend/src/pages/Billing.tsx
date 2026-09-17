@@ -642,15 +642,9 @@ const Billing: React.FC<BillingProps> = ({
                                 </div>
 
                                 <div className="min-w-0 flex-1">
-                                  <div className="flex items-center justify-between gap-2">
-                                    <p className="truncate text-xs font-semibold text-stone-800">
-                                      {existingCustomer.name}
-                                    </p>
-
-                                    <span className="shrink-0 rounded-full bg-amber-50 px-1.5 py-0.5 text-[8px] font-semibold text-amber-900">
-                                      {existingCustomer.tier}
-                                    </span>
-                                  </div>
+                                  <p className="truncate text-xs font-semibold text-stone-800">
+                                    {existingCustomer.name}
+                                  </p>
 
                                   <p className="mt-0.5 text-[10px] text-stone-500">
                                     {existingCustomer.phone} {" • "}

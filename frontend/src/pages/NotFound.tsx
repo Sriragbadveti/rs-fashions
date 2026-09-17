@@ -99,7 +99,7 @@ export default function NotFound() {
               <span className="text-xs font-semibold text-[#2A2421]">Explore Shop</span>
             </div>
             <p className="text-[11px] text-[#8C7A6B] leading-relaxed">
-              Browse our complete vault of authentic handloom Gadwal sarees.
+              Browse our store of authentic handloom Gadwal sarees.
             </p>
           </Link>
 

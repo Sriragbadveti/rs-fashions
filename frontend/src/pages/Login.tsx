@@ -1,7 +1,7 @@
-//E:\Coding\Private\RSFashions\rsfashions25\frontend\src\pages\Login.tsx
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Lock, Mail, ShieldCheck, Loader2, ArrowRight, Eye, EyeOff, Store } from "lucide-react";
+import { setUserSession } from "../utils/userSession";
 
 interface LoginProps {
   onLoginSuccess?: (user: { name: string; email: string; role: string }) => void;
@@ -10,7 +10,7 @@ interface LoginProps {
 export default function Login({ onLoginSuccess }: LoginProps) {
   const navigate = useNavigate();
   const [email, setEmail] = useState<string>("admin@rsfashions.in");
-  const [password, setPassword] = useState<string>("••••••••••••");
+  const [password, setPassword] = useState<string>("admin2026");
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
@@ -19,8 +19,13 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     e.preventDefault();
     setError("");
 
-    if (!email || !password) {
-      setError("Please enter your administrator email and security key.");
+    if (!email.trim()) {
+      setError("Please enter your administrator email.");
+      return;
+    }
+
+    if (password !== "admin2026") {
+      setError("Invalid administrator security key. Access denied.");
       return;
     }
 
@@ -30,22 +35,19 @@ export default function Login({ onLoginSuccess }: LoginProps) {
       setIsLoading(false);
       const sessionUser = {
         name: "Sindhu",
-        email: email,
-        role: "Superadmin",
+        email: email.trim().toLowerCase(),
+        role: "admin" as const,
+        phone: "+91 98480 12345",
       };
 
-      try {
-        localStorage.setItem("rs_admin_session", JSON.stringify(sessionUser));
-      } catch (err) {
-        console.warn("Storage session write error:", err);
-      }
+      setUserSession(sessionUser);
 
       if (onLoginSuccess) {
         onLoginSuccess(sessionUser);
       } else {
         navigate("/admin");
       }
-    }, 650);
+    }, 450);
   }
 
   return (

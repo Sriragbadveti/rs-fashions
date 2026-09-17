@@ -322,125 +322,26 @@ function OfferBanner() {
             ================================================== */}
 
             <div className="flex flex-col gap-4 sm:hidden">
-              {/* Voucher */}
-
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p
-                    className="
-                      text-[8px]
-                      font-semibold
-                      uppercase
-                      tracking-[0.22em]
-                      text-[#A89C8F]
-                    "
-                  >
-                    Your privilege code
-                  </p>
-
-                  <p
-                    className="
-                      mt-1
-                      text-[9px]
-                      text-[#A89C8F]/70
-                    "
-                  >
-                    Tap to copy
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleCopy}
-                  className="
-                    group
-                    flex
-                    items-center
-                    gap-2
-                    rounded-full
-                    border
-                    border-[#D4AF37]/40
-                    bg-[#D4AF37]/10
-                    px-4
-                    py-2.5
-                    font-mono
-                    text-[10px]
-                    font-medium
-                    tracking-[0.12em]
-                    text-[#F4E3D7]
-                    transition-transform
-                    duration-200
-                    active:scale-95
-                  "
-                >
-                  <span>
-                    {promoCode}
-                  </span>
-
-                  {copied ? (
-                    <FiCheck
-                      size={13}
-                      className="text-emerald-400"
-                    />
-                  ) : (
-                    <FiCopy
-                      size={13}
-                      className="
-                        opacity-70
-                        transition-opacity
-                        group-hover:opacity-100
-                      "
-                    />
-                  )}
-                </button>
+              {/* Bundle Deal Indicator */}
+              <div className="rounded-2xl border border-[#D4AF37]/30 bg-[#D4AF37]/10 p-3.5 text-center">
+                <span className="text-[8.5px] font-bold uppercase tracking-[0.25em] text-[#E5B869] block mb-1">
+                  Festive Multi-Piece Bundles
+                </span>
+                <p className="text-xs font-serif font-medium text-[#FAF7F2]">
+                  Buy 1 @ ₹2,500 · Buy 2 @ ₹4,900 · Buy 3 @ ₹4,800
+                </p>
+                <p className="text-[9px] text-[#DDD2C6]/70 mt-1">
+                  Tier discounts apply automatically in cart
+                </p>
               </div>
 
               {/* CTA */}
-
               <Link
-                to="/shop?offer=heritage20"
-                className="
-                  group
-                  flex
-                  min-h-14
-                  w-full
-                  items-center
-                  justify-center
-                  gap-3
-                  rounded-full
-                  bg-[#FAF7F2]
-                  px-5
-                  text-[9px]
-                  font-medium
-                  uppercase
-                  tracking-[0.18em]
-                  text-[#221C19]
-                  shadow-xl
-                  transition-transform
-                  duration-200
-                  active:scale-[0.98]
-                "
+                to="/offers"
+                className="group flex min-h-14 w-full items-center justify-center gap-3 rounded-full bg-[#FAF7F2] px-5 text-[9px] font-medium uppercase tracking-[0.18em] text-[#221C19] shadow-xl transition-transform duration-200 active:scale-[0.98]"
               >
-                <span>
-                  Shop The Festive Edit
-                </span>
-
-                <span
-                  className="
-                    flex
-                    h-7
-                    w-7
-                    shrink-0
-                    items-center
-                    justify-center
-                    rounded-full
-                    bg-[#221C19]
-                    text-white
-                    transition-transform
-                    duration-300
-                    group-hover:rotate-45
-                  "
-                >
+                <span>Shop Dedicated Offers Store</span>
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#221C19] text-white transition-transform duration-300 group-hover:rotate-45">
                   <FiArrowUpRight size={13} />
                 </span>
               </Link>
@@ -450,123 +351,24 @@ function OfferBanner() {
                 TABLET + DESKTOP
             ================================================== */}
 
-            <div
-              className="
-                hidden
-                items-center
-                justify-between
-                gap-5
-                sm:flex
-              "
-            >
-              {/* Promo */}
-
-              <div className="flex items-center gap-3">
-                <span
-                  className="
-                    text-[10px]
-                    font-semibold
-                    uppercase
-                    tracking-[0.22em]
-                    text-[#A89C8F]
-                  "
-                >
-                  Use Code:
+            <div className="hidden items-center justify-between gap-5 sm:flex">
+              {/* Bundle Tiers Pill */}
+              <div className="flex items-center gap-3 rounded-2xl border border-[#D4AF37]/30 bg-[#D4AF37]/10 px-5 py-3 backdrop-blur-md">
+                <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#E5B869]">
+                  Exclusive Bundles:
                 </span>
-
-                <button
-                  type="button"
-                  onClick={handleCopy}
-                  className="
-                    group
-                    flex
-                    items-center
-                    gap-2
-                    rounded-full
-                    border
-                    border-[#D4AF37]/40
-                    bg-[#D4AF37]/10
-                    px-4
-                    py-2
-                    font-mono
-                    text-xs
-                    font-medium
-                    tracking-wider
-                    text-[#F4E3D7]
-                    backdrop-blur-md
-                    transition-all
-                    duration-200
-                    hover:bg-[#D4AF37]/20
-                    active:scale-95
-                  "
-                >
-                  <span>
-                    {promoCode}
-                  </span>
-
-                  {copied ? (
-                    <FiCheck
-                      size={13}
-                      className="text-emerald-400"
-                    />
-                  ) : (
-                    <FiCopy
-                      size={13}
-                      className="
-                        opacity-70
-                        transition-opacity
-                        group-hover:opacity-100
-                      "
-                    />
-                  )}
-                </button>
+                <span className="text-xs font-serif text-[#FAF7F2]">
+                  Buy 1 @ ₹2,500 &nbsp;|&nbsp; Buy 2 @ ₹4,900 &nbsp;|&nbsp; Buy 3 @ ₹4,800
+                </span>
               </div>
 
               {/* CTA */}
-
               <Link
-                to="/shop?offer=heritage20"
-                className="
-                  group
-                  inline-flex
-                  items-center
-                  justify-center
-                  gap-3
-                  rounded-full
-                  bg-[#FAF7F2]
-                  px-6
-                  py-3
-                  text-xs
-                  font-medium
-                  uppercase
-                  tracking-[0.2em]
-                  text-[#221C19]
-                  shadow-xl
-                  transition-all
-                  duration-300
-                  hover:bg-white
-                  active:scale-95
-                "
+                to="/offers"
+                className="group inline-flex items-center justify-center gap-3 rounded-full bg-[#FAF7F2] px-6 py-3 text-xs font-medium uppercase tracking-[0.2em] text-[#221C19] shadow-xl transition-all duration-300 hover:bg-white active:scale-95"
               >
-                <span>
-                  Shop The Festive Edit
-                </span>
-
-                <span
-                  className="
-                    flex
-                    h-6
-                    w-6
-                    items-center
-                    justify-center
-                    rounded-full
-                    bg-[#221C19]
-                    text-white
-                    transition-transform
-                    duration-300
-                    group-hover:rotate-45
-                  "
-                >
+                <span>Shop Dedicated Offers Store</span>
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#221C19] text-white transition-transform duration-300 group-hover:rotate-45">
                   <FiArrowUpRight size={12} />
                 </span>
               </Link>

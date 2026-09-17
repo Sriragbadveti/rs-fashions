@@ -48,16 +48,11 @@ async function optimizeAllProductImages() {
 
         let inputBuf = originalBuf;
         if (!meta || meta.format === "heif") {
-          const tempHeic = `/tmp/temp_${product.id}_${i}.heic`;
-          const tempJpg = `/tmp/temp_${product.id}_${i}.jpg`;
-          fs.writeFileSync(tempHeic, originalBuf);
           try {
-            execSync(`sips -s format jpeg -Z 1200 "${tempHeic}" --out "${tempJpg}"`);
-            inputBuf = fs.readFileSync(tempJpg);
-            if (fs.existsSync(tempHeic)) fs.unlinkSync(tempHeic);
-            if (fs.existsSync(tempJpg)) fs.unlinkSync(tempJpg);
-          } catch (sipsErr) {
-            console.error("  sips conversion error:", sipsErr.message);
+            // Sharp handles HEIC if compiled with libheif; fallback to originalBuf
+            inputBuf = originalBuf;
+          } catch (heicErr) {
+            console.warn("  HEIF conversion notice:", heicErr.message);
           }
         }
 

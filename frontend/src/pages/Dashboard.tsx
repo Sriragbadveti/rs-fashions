@@ -19,6 +19,7 @@ import {
   X,
   Tag,
   ChevronRight,
+  Star,
 } from "lucide-react";
 import Overview from "./Overview";
 import Catalog from "./SareeStock";
@@ -30,6 +31,7 @@ import TransactionHistory from "./TransactionHistory";
 import Analysis from "./Analysis";
 import CRM from "./CRM";
 import TrackOrder from "./TrackOrder";
+import ReviewsManager from "./ReviewsManager";
 import AutomatedLowstock from "./AutomatedLowstock";
 import Notifications from "./Notifications";
 import { sound } from "../types/soundEngine";
@@ -170,7 +172,58 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
   const [salesHistory, setSalesHistory] = useState<CompletedSale[]>(() => {
     try {
       const saved = localStorage.getItem("rs_admin_sales_history");
-      if (saved) return JSON.parse(saved);
+      let list: CompletedSale[] = saved ? JSON.parse(saved) : [];
+      if (!Array.isArray(list)) list = [];
+
+      // Also merge any storefront customer orders from rs_fashions_orders
+      const rawStoreOrders = localStorage.getItem("rs_fashions_orders");
+      if (rawStoreOrders) {
+        const storeOrders = JSON.parse(rawStoreOrders);
+        if (Array.isArray(storeOrders)) {
+          const existingInvoices = new Set(list.map((s) => s.invoiceNumber));
+          storeOrders.forEach((o: any) => {
+            const invNum = o.orderNumber || o.invoiceNumber || o.id;
+            if (invNum && !existingInvoices.has(invNum)) {
+              existingInvoices.add(invNum);
+              list.unshift({
+                invoiceNumber: invNum,
+                date: o.createdAt || new Date().toISOString(),
+                customerName: o.customerName || "Customer",
+                customerPhone: o.phone || "",
+                customer: {
+                  name: o.customerName || "Customer",
+                  phone: o.phone || "",
+                  email: o.email || "",
+                  address: typeof o.address === "object" ? `${o.address.address || ""}, ${o.address.city || ""}, ${o.address.state || ""} ${o.address.pincode || ""}` : (o.address || ""),
+                  city: typeof o.address === "object" ? o.address.city : undefined,
+                  state: typeof o.address === "object" ? o.address.state : undefined,
+                  pincode: typeof o.address === "object" ? o.address.pincode : undefined,
+                },
+                items: (o.items || []).map((it: any) => ({
+                  cartId: it.id || `it-${Date.now()}-${Math.random()}`,
+                  productId: it.id || it.productId,
+                  sku: it.sku || `SKU-${it.id || "SAREE"}`,
+                  name: it.name || "Handcrafted SiCo Gadwal Saree",
+                  categoryName: "SiCo Gadwal Sarees",
+                  hsn: "5208",
+                  color: it.color || "Standard",
+                  colorSlug: (it.color || "standard").toLowerCase(),
+                  unitPrice: Number(it.price || it.unitPrice) || 0,
+                  qty: Number(it.quantity || it.qty) || 1,
+                  maxStock: 10,
+                })),
+                subtotal: Number(o.subtotal) || 0,
+                discount: Number(o.discount) || 0,
+                cgst: 0,
+                sgst: 0,
+                total: Number(o.total) || 0,
+                paymentMethod: (o.paymentMethod || "cash") as any,
+              });
+            }
+          });
+        }
+      }
+      return list;
     } catch { }
     return [];
   });
@@ -183,7 +236,13 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
     return MOCK_CUSTOMERS;
   });
 
-  const [initialFulfillments, setInitialFulfillments] = useState<Record<string, any>>({});
+  const [initialFulfillments, setInitialFulfillments] = useState<Record<string, any>>(() => {
+    try {
+      const saved = localStorage.getItem("rs_order_fulfillments");
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return {};
+  });
 
   const [devices, setDevices] = useState<Device[]>([
     {
@@ -285,7 +344,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
           id: p.id,
           name: p.name,
           category: "SiCo Gadwal Sarees",
-          material: "SiCo Gadwal / Silk Cotton",
+          material: "SiCo Gadwal",
           price,
           originalPrice,
           stock: totalStock,
@@ -777,6 +836,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
         items: [
           { id: "tracking", label: "Order Tracking", icon: Truck },
           { id: "crm", label: "Customer Profiles", icon: Users, badge: customers.length },
+          { id: "reviews" as DashboardTab, label: "Reviews", icon: Star },
           { id: "analytics", label: "Store Analytics", icon: BarChart2 },
           { id: "settings", label: "Settings", icon: Settings },
         ],
@@ -1126,6 +1186,10 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
 
               {activeTab === "tracking" && (
                 <TrackOrder salesHistory={salesHistory} />
+              )}
+
+              {activeTab === ("reviews" as DashboardTab) && (
+                <ReviewsManager inventory={inventory} />
               )}
             </div>
           </div>

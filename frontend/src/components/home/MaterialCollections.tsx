@@ -1,201 +1,275 @@
-import { useState } from "react";
-import { motion } from "framer-motion";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { motion, useMotionValue, animate } from "framer-motion";
 import { Link } from "react-router-dom";
-import { FiArrowUpRight } from "react-icons/fi";
+import { FiArrowUpRight, FiLayers } from "react-icons/fi";
 
-const materials = [
+export interface MaterialItem {
+  id: string;
+  name: string;
+  accent: string;
+  borderGlow: string;
+  link: string;
+  image: string;
+}
+
+const materials: MaterialItem[] = [
   {
     id: "sico",
-    name: "Silk Cotton (SiCo)",
-    origin: "Gadwal Handloom Cluster",
-    feel: "Lustrous Silk Body · Fine Cotton Warp · Light & Crisp Drape",
-    tag: "01 / Signature Weave",
-    link: "/shop?material=Silk+Cotton+(SiCo)",
+    name: "Maa Inti Bangaram",
+    accent: "from-rose-500/80 to-amber-500/80",
+    borderGlow: "hover:border-rose-400/60",
+    link: "/shop?material=SiCo",
     image:
       "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=1200&q=85",
   },
   {
     id: "gatti-border",
-    name: "Gatti Border Gadwal",
-    origin: "Gadwal Masterworks",
-    feel: "Solid Contrast Borders · Intricate Zari Buttas · Interlocked Weft",
-    tag: "02 / Heritage Border",
+    name: "Gatti Borders",
+    accent: "from-emerald-600/80 to-teal-500/80",
+    borderGlow: "hover:border-emerald-400/60",
     link: "/shop?search=Gatti+Borders",
     image:
       "https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?auto=format&fit=crop&w=1200&q=85",
   },
   {
     id: "checks-gadwal",
-    name: "Vintage Checks SiCo",
-    origin: "Traditional Gadwal Looms",
-    feel: "Geometric Micro-Checks · Breathable Handloom · Festive Zari Pallu",
-    tag: "03 / Artisanal Pattern",
+    name: "Vintage Checks",
+    accent: "from-amber-500/80 to-orange-600/80",
+    borderGlow: "hover:border-amber-400/60",
     link: "/shop?search=Vintage+Checks",
     image:
-      "https://cdn.corenexis.com/f/Gr2AsoVtVeK.png",
+      "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&w=1200&q=85",
   },
   {
     id: "kanchi-border",
-    name: "Big Kanchi Border SiCo",
-    origin: "Gadwal Temple Looms",
-    feel: "Heavy Pure Zari Border · Regal Pallu · Royal Festive Grandeur",
-    tag: "04 / Festive Heirloom",
+    name: "Kanchi Borders",
+    accent: "from-fuchsia-600/80 to-[#8E3D51]/80",
+    borderGlow: "hover:border-fuchsia-400/60",
     link: "/shop?search=Big+Kanchi",
     image:
       "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&w=1200&q=85",
   },
 ];
 
-function MaterialCollections() {
-  const [activeId, setActiveId] = useState<string>("sico");
+// Buffer size for smooth seamless wrap-around loop
+const CARD_BUFFER = 4;
+
+export default function MaterialCollections() {
+  const [internalCardIndex, setInternalCardIndex] = useState(CARD_BUFFER);
+  const [isHovered, setIsHovered] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const firstCardRef = useRef<HTMLDivElement>(null);
+  const isCardAnimating = useRef(false);
+  const x = useMotionValue(0);
+
+  // Multi-item clone buffers on both sides
+  const clonedMaterials = useMemo(() => {
+    const n = materials.length;
+    if (n === 0) return [];
+    const prefix: MaterialItem[] = [];
+    const suffix: MaterialItem[] = [];
+    for (let i = 0; i < CARD_BUFFER; i++) {
+      prefix.unshift(materials[n - 1 - (i % n)]);
+      suffix.push(materials[i % n]);
+    }
+    return [...prefix, ...materials, ...suffix];
+  }, []);
+
+  // Compute active pagination index (0 to materials.length - 1)
+  const activeDotIndex = useMemo(() => {
+    const n = materials.length;
+    if (n === 0) return 0;
+    return (((internalCardIndex - CARD_BUFFER) % n) + n) % n;
+  }, [internalCardIndex]);
+
+  // Compute full card step dynamically
+  const getCardStep = useCallback(() => {
+    if (!firstCardRef.current) return window.innerWidth >= 640 ? 294 : 256;
+    const cardWidth = firstCardRef.current.offsetWidth;
+    const gap = window.innerWidth >= 640 ? 24 : 16;
+    return cardWidth + gap;
+  }, []);
+
+  // Sync initial offset and handle resize
+  useEffect(() => {
+    const syncPosition = () => {
+      const step = getCardStep();
+      x.set(-internalCardIndex * step);
+    };
+    syncPosition();
+    window.addEventListener("resize", syncPosition);
+    return () => window.removeEventListener("resize", syncPosition);
+  }, [getCardStep, internalCardIndex, x]);
+
+  // Slide transition with silent buffer teleportation
+  const slideToCardIndex = (targetIdx: number) => {
+    const n = materials.length;
+    if (n <= 1) return;
+
+    isCardAnimating.current = true;
+    const step = getCardStep();
+    const targetX = -targetIdx * step;
+
+    animate(x, targetX, {
+      type: "spring",
+      stiffness: 260,
+      damping: 30,
+      onComplete: () => {
+        isCardAnimating.current = false;
+        let finalIdx = targetIdx;
+
+        if (targetIdx >= CARD_BUFFER + n) {
+          finalIdx = targetIdx - n;
+          x.set(-finalIdx * step);
+          setInternalCardIndex(finalIdx);
+        } else if (targetIdx < CARD_BUFFER) {
+          finalIdx = targetIdx + n;
+          x.set(-finalIdx * step);
+          setInternalCardIndex(finalIdx);
+        }
+      },
+    });
+    setInternalCardIndex(targetIdx);
+  };
+
+  // Automated step interval (pauses on hover)
+  useEffect(() => {
+    if (isHovered || isDragging || materials.length <= 1) return;
+    const interval = setInterval(() => {
+      if (isCardAnimating.current) return;
+      slideToCardIndex(internalCardIndex + 1);
+    }, 3200);
+    return () => clearInterval(interval);
+  }, [isHovered, isDragging, internalCardIndex]);
+
+  // Drag and flick handling
+  const handleCardDragEnd = (_: any, info: { offset: { x: number }; velocity: { x: number } }) => {
+    setIsDragging(false);
+    const step = getCardStep();
+    const currentX = x.get();
+    const dragOffset = info.offset.x;
+    const velocity = info.velocity.x;
+
+    let target = internalCardIndex;
+    if (dragOffset < -40 || velocity < -300) {
+      target = internalCardIndex + 1;
+    } else if (dragOffset > 40 || velocity > 300) {
+      target = internalCardIndex - 1;
+    } else {
+      target = Math.round(Math.abs(currentX) / step);
+    }
+    slideToCardIndex(target);
+  };
 
   return (
-    <section className="bg-[#FAF7F2] px-4 py-16 sm:px-6 sm:py-20 lg:px-10 lg:py-28 font-sans select-none">
-      <div className="mx-auto max-w-[1600px]">
+    <section className="relative overflow-hidden bg-[#FAF7F2] py-10 font-sans select-none sm:py-14">
+      {/* Jewel-Tone Background Light */}
+      <div className="pointer-events-none absolute -left-24 top-1/4 h-80 w-80 rounded-full bg-gradient-to-br from-[#8E3D51]/15 to-rose-400/10 blur-[120px]" />
+      <div className="pointer-events-none absolute -right-24 bottom-1/4 h-80 w-80 rounded-full bg-gradient-to-tl from-[#D47E37]/15 to-amber-300/10 blur-[120px]" />
+
+      <div className="mx-auto max-w-[1600px] px-3.5 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="mb-8 flex flex-col justify-between gap-4 border-b border-black/6 pb-6 sm:mb-12 md:flex-row md:items-end">
+        <div className="mb-6 flex flex-col gap-2 pb-5 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <span className="text-[10px] font-semibold uppercase tracking-[0.32em] text-[#8C7A6B]">
-              Textile Archive & Sensorial Library
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.26em] text-[#8E3D51]">
+              <FiLayers size={11} />
+              <span>Signature Weaves</span>
             </span>
-            <h2 className="mt-2 font-serif text-3xl font-light tracking-tight text-[#2A2421] sm:text-5xl lg:text-6xl">
-              Feel the <span className="italic font-normal">weave.</span>
+            <h2 className="mt-2 font-serif text-2xl font-light tracking-tight text-[#2B1B17] sm:text-4xl lg:text-5xl">
+              Feel the{" "}
+              <span className="bg-gradient-to-r from-[#8E3D51] via-[#C94A67] to-[#D47E37] bg-clip-text italic font-normal text-transparent">
+                weave
+              </span>
+              .
             </h2>
           </div>
-
-          <p className="max-w-xs text-xs font-light leading-relaxed text-[#756A60]">
-            Every drape carries slow artistry, geographic identity, and handcrafted elegance.
+          <p className="max-w-xs text-xs text-stone-600">
+            Handcrafted heritage weaves celebrating classic textures, heirloom pallus, and contrasting zari borders.
           </p>
         </div>
+      </div>
 
-        {/* =========================================================
-            MOBILE & IPAD / TABLET VIEW: 2-Column Grid Card Layout
-        ========================================================== */}
-        <div className="grid grid-cols-2 gap-3.5 sm:gap-5 lg:hidden">
-          {materials.map((mat) => (
-            <Link
-              key={mat.id}
-              to={mat.link}
-              className="group relative flex aspect-[0.76] flex-col justify-between overflow-hidden rounded-2xl bg-[#EFEAE2] p-4 shadow-sm transition-all active:scale-[0.98] sm:aspect-[0.82] sm:p-5"
+      {/* Snap-to-Card Carousel Container with vertical padding buffer to prevent hover clipping */}
+      <div
+        ref={containerRef}
+        className="relative w-full overflow-hidden cursor-grab active:cursor-grabbing px-3.5 sm:px-6 lg:px-8 py-4 -my-4"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
+        <motion.div
+          style={{ x }}
+          drag="x"
+          dragElastic={0.15}
+          onDragStart={() => setIsDragging(true)}
+          onDragEnd={handleCardDragEnd}
+          className="flex w-max gap-4 sm:gap-6 py-2"
+        >
+          {clonedMaterials.map((mat, idx) => (
+            <div
+              key={`material-card-${mat.id}-${idx}`}
+              ref={idx === 0 ? firstCardRef : null}
+              className="w-[240px] shrink-0 sm:w-[270px]"
             >
-              {/* Image */}
-              <img
-                src={mat.image}
-                alt={mat.name}
-                className="absolute inset-0 h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
-              />
-
-              {/* Top Tag */}
-              <div className="relative z-10 flex items-center justify-between">
-                <span className="rounded-full bg-black/25 px-2 py-0.5 text-[8.5px] font-medium uppercase tracking-widest text-white backdrop-blur-md">
-                  {mat.tag}
-                </span>
-
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-md">
-                  <FiArrowUpRight size={13} />
-                </span>
-              </div>
-
-              {/* Bottom Info */}
-              <div className="relative z-10">
-                <h3 className="font-serif text-lg font-light text-[#FAF7F2] sm:text-xl">
-                  {mat.name}
-                </h3>
-                <p className="mt-0.5 text-[10px] text-white/70 sm:text-[11px] line-clamp-1">
-                  {mat.origin}
-                </p>
-              </div>
-            </Link>
-          ))}
-        </div>
-
-        {/* =========================================================
-            DESKTOP / LAPTOP VIEW ONLY: Interactive Expanding Accordion
-        ========================================================== */}
-        <div className="hidden lg:flex lg:h-145 lg:gap-4">
-          {materials.map((mat) => {
-            const isActive = activeId === mat.id;
-
-            return (
-              <motion.div
-                key={mat.id}
-                layout
-                onMouseEnter={() => setActiveId(mat.id)}
-                transition={{
-                  layout: { duration: 0.55, ease: [0.16, 1, 0.3, 1] },
-                }}
-                className={`relative flex h-full cursor-pointer flex-col justify-between overflow-hidden rounded-4xl p-8 transition-all duration-500 ${isActive ? "flex-[3.2]" : "flex-1"
-                  }`}
+              {/* Borderless Card Frame */}
+              <Link
+                to={mat.link}
+                className="group relative flex aspect-[3/4.2] w-full flex-col justify-between overflow-hidden rounded-2xl sm:rounded-3xl bg-black p-4 shadow-sm transition-all duration-300 hover:shadow-xl hover:-translate-y-1 active:scale-[0.98]"
               >
-                {/* Background Image */}
-                <motion.img
+                {/* Saree Image */}
+                <img
                   src={mat.image}
                   alt={mat.name}
-                  className="absolute inset-0 h-full w-full object-cover object-center brightness-[0.85] transition-transform duration-700 ease-out"
-                  animate={{ scale: isActive ? 1.04 : 1 }}
+                  loading="lazy"
+                  draggable={false}
+                  className="absolute inset-0 h-full w-full object-cover object-center saturate-[1.2] contrast-[1.05] transition-transform duration-700 ease-out group-hover:scale-108 pointer-events-none"
                 />
 
-                {/* Shading */}
-                <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/30 to-white/1" />
+                {/* Dark Gradient Overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-transparent" />
 
-                {/* Top Badge */}
-                <div className="relative z-10 flex items-center justify-between">
-                  <span className="rounded-full border border-white/20 bg-white/10 px-3.5 py-1 text-[9px] font-medium uppercase tracking-[0.25em] text-[#FAF7F2] backdrop-blur-md">
-                    {mat.tag}
+                {/* Top Action Row */}
+                <div className="relative z-10 flex items-center justify-end">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-md transition-all duration-300 group-hover:bg-white group-hover:text-black group-hover:rotate-45">
+                    <FiArrowUpRight size={13} />
                   </span>
-
-                  {isActive && (
-                    <motion.span
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="text-[11px] uppercase tracking-[0.22em] text-[#FAF7F2]/80"
-                    >
-                      {mat.origin}
-                    </motion.span>
-                  )}
                 </div>
 
                 {/* Bottom Details */}
                 <div className="relative z-10">
-                  <h3 className="font-serif text-2xl font-light tracking-wide text-[#FAF7F2] xl:text-4xl">
+                  <h3 className="font-serif text-base sm:text-lg font-medium tracking-wide text-white drop-shadow-sm">
                     {mat.name}
                   </h3>
-
-                  {isActive ? (
-                    <motion.div
-                      initial={{ opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.35, delay: 0.1 }}
-                      className="mt-3.5 flex items-end justify-between gap-4"
-                    >
-                      <p className="text-xs font-light tracking-wider text-[#FAF7F2]/85">
-                        {mat.feel}
-                      </p>
-
-                      <Link
-                        to={mat.link}
-                        className="group inline-flex shrink-0 items-center gap-2 rounded-full bg-[#FAF7F2] px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#2A2421] shadow-lg transition-all hover:bg-white active:scale-95"
-                      >
-                        <span>View Sarees</span>
-                        <FiArrowUpRight
-                          size={14}
-                          className="transition-transform duration-300 group-hover:rotate-45"
-                        />
-                      </Link>
-                    </motion.div>
-                  ) : (
-                    <p className="mt-1 text-[11px] font-light text-[#FAF7F2]/60">
-                      Hover to explore
-                    </p>
-                  )}
+                  <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-amber-300 group-hover:underline">
+                    Explore Collection &rarr;
+                  </span>
                 </div>
-              </motion.div>
-            );
-          })}
-        </div>
+              </Link>
+            </div>
+          ))}
+        </motion.div>
+      </div>
+
+      {/* Pagination Indicator Dots */}
+      <div className="mt-6 flex items-center justify-center gap-2">
+        {materials.map((mat, idx) => {
+          const isActive = activeDotIndex === idx;
+          return (
+            <button
+              key={`dot-${mat.id}-${idx}`}
+              type="button"
+              aria-label={`Go to slide ${idx + 1}: ${mat.name}`}
+              onClick={() => slideToCardIndex(CARD_BUFFER + idx)}
+              className={`h-2 rounded-full transition-all duration-300 ease-out focus:outline-none ${
+                isActive
+                  ? "w-6 bg-[#8E3D51] shadow-xs"
+                  : "w-2 bg-[#8E3D51]/25 hover:bg-[#8E3D51]/50"
+              }`}
+            />
+          );
+        })}
       </div>
     </section>
   );
 }
-
-export default MaterialCollections;

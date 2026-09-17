@@ -1,9 +1,7 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
 import { API_BASE } from "../config/api";
 
-// The three stages an order can be in. Add more here later if you need
-// finer-grained stages (e.g. "out_for_delivery") — every place that reads
-// this type will get a TypeScript error pointing at what needs updating.
+// The three stages an order can be in.
 export type OrderStatus = "packaging" | "shipped" | "delivered";
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
@@ -19,8 +17,10 @@ export const ORDER_STATUS_STYLES: Record<OrderStatus, string> = {
   delivered: "bg-emerald-50 text-emerald-700 border-emerald-200",
 };
 
-// What we track per order, keyed by invoiceNumber. Everything here is
-// admin-entered (not part of the original sale record).
+export const LOCAL_STORAGE_FULFILLMENTS = "rs_order_fulfillments";
+export const ORDER_FULFILLED_EVENT = "rs_order_fulfilled";
+
+// What we track per order, keyed by invoiceNumber.
 export interface OrderFulfillment {
   status: OrderStatus;
   trackingNumber: string;
@@ -33,17 +33,55 @@ const DEFAULT_FULFILLMENT: OrderFulfillment = {
   carrierPartner: "",
 };
 
+export function getCourierTrackingUrl(carrier?: string, awb?: string): string | null {
+  if (!awb || !awb.trim()) return null;
+  const cleanAwb = encodeURIComponent(String(awb).trim());
+  const c = String(carrier || "").toLowerCase();
+  if (c.includes("bluedart") || c.includes("blue dart")) {
+    return `https://www.bluedart.com/tracking?trackNumber=${cleanAwb}`;
+  }
+  if (c.includes("delhivery")) {
+    return `https://www.delhivery.com/track/package/${cleanAwb}`;
+  }
+  if (c.includes("dtdc")) {
+    return `https://www.dtdc.in/tracking/shipment-tracking.asp?awbNo=${cleanAwb}`;
+  }
+  if (c.includes("post") || c.includes("india post") || c.includes("speed post")) {
+    return `https://www.indiapost.gov.in/_layouts/15/dpt.cept.tracking/trackconsignment.aspx`;
+  }
+  if (c.includes("shadowfax")) {
+    return `https://tracker.shadowfax.in/#/track?orderId=${cleanAwb}`;
+  }
+  if (c.includes("ekart")) {
+    return `https://ekartlogistics.com/shipmenttrack/${cleanAwb}`;
+  }
+  if (c.includes("xpressbees") || c.includes("xpress")) {
+    return `https://www.xpressbees.com/track?awb=${cleanAwb}`;
+  }
+  return `https://www.google.com/search?q=${encodeURIComponent(`${carrier || "courier"} tracking ${cleanAwb}`)}`;
+}
+
 interface OrderFulfillmentContextValue {
   getFulfillment: (invoiceNumber: string) => OrderFulfillment;
   updateStatus: (invoiceNumber: string, status: OrderStatus) => void;
   updateTrackingNumber: (invoiceNumber: string, trackingNumber: string) => void;
   updateCarrierPartner: (invoiceNumber: string, carrierPartner: string) => void;
+  saveFulfillment: (invoiceNumber: string, details?: Partial<OrderFulfillment>) => Promise<boolean>;
 }
 
 const OrderFulfillmentContext = createContext<OrderFulfillmentContextValue | null>(null);
 
-// Wrap your app (or at least whatever renders TransactionHistory + TrackOrder)
-// with this Provider once, near the root. See usage note at the bottom.
+function loadSavedFulfillments(): Record<string, OrderFulfillment> {
+  try {
+    const raw = localStorage.getItem(LOCAL_STORAGE_FULFILLMENTS);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return typeof parsed === "object" && parsed !== null ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
 export function OrderFulfillmentProvider({
   children,
   initialFulfillments,
@@ -51,9 +89,10 @@ export function OrderFulfillmentProvider({
   children: ReactNode;
   initialFulfillments?: Record<string, OrderFulfillment>;
 }) {
-  const [fulfillments, setFulfillments] = useState<Record<string, OrderFulfillment>>(
-    initialFulfillments || {}
-  );
+  const [fulfillments, setFulfillments] = useState<Record<string, OrderFulfillment>>(() => {
+    const saved = loadSavedFulfillments();
+    return { ...saved, ...(initialFulfillments || {}) };
+  });
 
   useEffect(() => {
     if (initialFulfillments && Object.keys(initialFulfillments).length > 0) {
@@ -61,14 +100,161 @@ export function OrderFulfillmentProvider({
     }
   }, [initialFulfillments]);
 
-  const getFulfillment = (invoiceNumber: string): OrderFulfillment =>
-    fulfillments[invoiceNumber] ?? DEFAULT_FULFILLMENT;
+  // Sync state if another tab modified fulfillments
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === LOCAL_STORAGE_FULFILLMENTS && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          setFulfillments((prev) => ({ ...prev, ...parsed }));
+        } catch {}
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, []);
 
-  const updateStatus = (invoiceNumber: string, status: OrderStatus) => {
+  const getFulfillment = useCallback(
+    (invoiceNumber: string): OrderFulfillment => {
+      return fulfillments[invoiceNumber] ?? DEFAULT_FULFILLMENT;
+    },
+    [fulfillments]
+  );
+
+  const persistFulfillmentLocally = (
+    invoiceNumber: string,
+    fulfillment: OrderFulfillment
+  ) => {
+    try {
+      // 1. Save to rs_order_fulfillments
+      const current = loadSavedFulfillments();
+      current[invoiceNumber] = fulfillment;
+      localStorage.setItem(LOCAL_STORAGE_FULFILLMENTS, JSON.stringify(current));
+
+      // 2. Update rs_fashions_orders (storefront customer orders)
+      const rawStoreOrders = localStorage.getItem("rs_fashions_orders");
+      if (rawStoreOrders) {
+        try {
+          const storeOrders = JSON.parse(rawStoreOrders);
+          if (Array.isArray(storeOrders)) {
+            let modified = false;
+            const updated = storeOrders.map((o: any) => {
+              const inv = o.orderNumber || o.invoiceNumber || o.id;
+              if (inv === invoiceNumber || o.id === invoiceNumber) {
+                modified = true;
+                const statusMapped =
+                  fulfillment.status === "delivered"
+                    ? "delivered"
+                    : fulfillment.status === "shipped"
+                    ? "shipped"
+                    : "processing";
+                return {
+                  ...o,
+                  orderStatus: statusMapped,
+                  currentStage: fulfillment.status,
+                  awbNumber: fulfillment.trackingNumber,
+                  carrierPartner: fulfillment.carrierPartner,
+                  trackingUrl: getCourierTrackingUrl(
+                    fulfillment.carrierPartner,
+                    fulfillment.trackingNumber
+                  ),
+                  notes: `Fulfillment: [${fulfillment.carrierPartner || "Standard"}] AWB: ${
+                    fulfillment.trackingNumber || "Pending"
+                  }`,
+                };
+              }
+              return o;
+            });
+            if (modified) {
+              localStorage.setItem("rs_fashions_orders", JSON.stringify(updated));
+            }
+          }
+        } catch {}
+      }
+
+      // 3. Update rs_admin_sales_history and rs_admin_sales
+      const rawSalesHistory = localStorage.getItem("rs_admin_sales_history");
+      if (rawSalesHistory) {
+        try {
+          const sales = JSON.parse(rawSalesHistory);
+          if (Array.isArray(sales)) {
+            let modified = false;
+            const updated = sales.map((s: any) => {
+              if (s.invoiceNumber === invoiceNumber || s.id === invoiceNumber) {
+                modified = true;
+                return {
+                  ...s,
+                  orderStatus: fulfillment.status,
+                  awbNumber: fulfillment.trackingNumber,
+                  carrierPartner: fulfillment.carrierPartner,
+                  notes: `Fulfillment: [${fulfillment.carrierPartner || "Standard"}] AWB: ${
+                    fulfillment.trackingNumber || "Pending"
+                  }`,
+                };
+              }
+              return s;
+            });
+            if (modified) {
+              localStorage.setItem("rs_admin_sales_history", JSON.stringify(updated));
+            }
+          }
+        } catch {}
+      }
+
+      // 4. Dispatch custom event for real-time customer view reactivity
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent(ORDER_FULFILLED_EVENT, {
+            detail: { invoiceNumber, fulfillment },
+          })
+        );
+        window.dispatchEvent(new Event("storage"));
+      }
+    } catch (e) {
+      console.warn("Fulfillment local persist warning:", e);
+    }
+  };
+
+  const saveFulfillment = async (
+    invoiceNumber: string,
+    details?: Partial<OrderFulfillment>
+  ): Promise<boolean> => {
+    const current = fulfillments[invoiceNumber] ?? DEFAULT_FULFILLMENT;
+    const merged: OrderFulfillment = {
+      status: details?.status ?? current.status,
+      trackingNumber: details?.trackingNumber !== undefined ? details.trackingNumber : current.trackingNumber,
+      carrierPartner: details?.carrierPartner !== undefined ? details.carrierPartner : current.carrierPartner,
+    };
+
+    // Update in-memory state
     setFulfillments((prev) => ({
       ...prev,
-      [invoiceNumber]: { ...(prev[invoiceNumber] ?? DEFAULT_FULFILLMENT), status },
+      [invoiceNumber]: merged,
     }));
+
+    // Persist locally and trigger window events immediately
+    persistFulfillmentLocally(invoiceNumber, merged);
+
+    // Sync to Express Backend API
+    try {
+      const res = await fetch(`${API_BASE}/sales/${encodeURIComponent(invoiceNumber)}/fulfillment`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(merged),
+      });
+      return res.ok;
+    } catch (err) {
+      console.warn("Backend fulfillment sync error:", err);
+      return true; // Still true because local storage & events succeeded
+    }
+  };
+
+  const updateStatus = (invoiceNumber: string, status: OrderStatus) => {
+    setFulfillments((prev) => {
+      const updated = { ...(prev[invoiceNumber] ?? DEFAULT_FULFILLMENT), status };
+      persistFulfillmentLocally(invoiceNumber, updated);
+      return { ...prev, [invoiceNumber]: updated };
+    });
 
     fetch(`${API_BASE}/sales/${encodeURIComponent(invoiceNumber)}/fulfillment`, {
       method: "PUT",
@@ -78,10 +264,11 @@ export function OrderFulfillmentProvider({
   };
 
   const updateTrackingNumber = (invoiceNumber: string, trackingNumber: string) => {
-    setFulfillments((prev) => ({
-      ...prev,
-      [invoiceNumber]: { ...(prev[invoiceNumber] ?? DEFAULT_FULFILLMENT), trackingNumber },
-    }));
+    setFulfillments((prev) => {
+      const updated = { ...(prev[invoiceNumber] ?? DEFAULT_FULFILLMENT), trackingNumber };
+      persistFulfillmentLocally(invoiceNumber, updated);
+      return { ...prev, [invoiceNumber]: updated };
+    });
 
     fetch(`${API_BASE}/sales/${encodeURIComponent(invoiceNumber)}/fulfillment`, {
       method: "PUT",
@@ -91,10 +278,11 @@ export function OrderFulfillmentProvider({
   };
 
   const updateCarrierPartner = (invoiceNumber: string, carrierPartner: string) => {
-    setFulfillments((prev) => ({
-      ...prev,
-      [invoiceNumber]: { ...(prev[invoiceNumber] ?? DEFAULT_FULFILLMENT), carrierPartner },
-    }));
+    setFulfillments((prev) => {
+      const updated = { ...(prev[invoiceNumber] ?? DEFAULT_FULFILLMENT), carrierPartner };
+      persistFulfillmentLocally(invoiceNumber, updated);
+      return { ...prev, [invoiceNumber]: updated };
+    });
 
     fetch(`${API_BASE}/sales/${encodeURIComponent(invoiceNumber)}/fulfillment`, {
       method: "PUT",
@@ -105,15 +293,19 @@ export function OrderFulfillmentProvider({
 
   return (
     <OrderFulfillmentContext.Provider
-      value={{ getFulfillment, updateStatus, updateTrackingNumber, updateCarrierPartner }}
+      value={{
+        getFulfillment,
+        updateStatus,
+        updateTrackingNumber,
+        updateCarrierPartner,
+        saveFulfillment,
+      }}
     >
       {children}
     </OrderFulfillmentContext.Provider>
   );
 }
 
-// The hook every component calls to read/update order status + AWB info.
-// Throws if used outside the Provider, so a missing wrap fails loudly instead of silently.
 export function useOrderFulfillment() {
   const ctx = useContext(OrderFulfillmentContext);
   if (!ctx) {

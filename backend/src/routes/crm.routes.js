@@ -4,10 +4,12 @@ import {
   createCustomer,
   updateCustomer,
   deleteCustomer,
+  checkCustomerExists,
 } from "../controllers/crm.controller.js";
 
 const router = Router();
 
+router.get("/check-exists", checkCustomerExists);
 router.get("/", getCustomers);
 router.get("/customers", getCustomers);
 router.post("/", createCustomer);

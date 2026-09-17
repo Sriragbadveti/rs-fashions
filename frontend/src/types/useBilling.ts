@@ -170,7 +170,6 @@ export const getSavedCrmCustomers = (): CustomerProfile[] => {
           city: u.city || "Hyderabad",
           address: u.address || (u.city ? `${u.city}, Telangana` : "Hyderabad, Telangana"),
           state: u.state || "Telangana",
-          tier: "Heritage Club",
           totalSpent: 0,
           ordersCount: 0,
           notes: u.authProvider === "google" ? "Google Auth Registered" : "Website Account",
@@ -562,7 +561,6 @@ export function useBilling({
         existingCustomer.address ?? "",
         existingCustomer.gstin ?? "",
         existingCustomer.preferredWeave ?? "",
-        existingCustomer.tier || "",
       ]
         .join(" ")
         .toLowerCase();

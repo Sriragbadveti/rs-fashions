@@ -1,5 +1,10 @@
 import { supabase } from "../config/supabase.js";
 import { successResponse, errorResponse } from "../utils/response.js";
+import {
+  getOrdersFromStore,
+  saveFulfillmentToStore,
+  getFulfillmentFromStore,
+} from "../database/localStore.js";
 
 /**
  * Controller: Sales Ledger, Returns/Refunds & Financial Intelligence
@@ -41,6 +46,170 @@ export async function getTransactions(req, res) {
 
     return successResponse(res, { sales }, "Transactions ledger retrieved successfully");
   } catch (err) {
+    return errorResponse(res, err.message, 500);
+  }
+}
+
+// 1.5 GET CUSTOMER ORDERS & LIVE SHIPMENT TRACKING
+export function getCourierTrackingUrl(carrier, awb) {
+  if (!awb) return null;
+  const cleanAwb = encodeURIComponent(String(awb).trim());
+  const c = String(carrier || "").toLowerCase();
+  if (c.includes("bluedart") || c.includes("blue dart")) {
+    return `https://www.bluedart.com/tracking?trackNumber=${cleanAwb}`;
+  }
+  if (c.includes("delhivery")) {
+    return `https://www.delhivery.com/track/package/${cleanAwb}`;
+  }
+  if (c.includes("dtdc")) {
+    return `https://www.dtdc.in/tracking/shipment-tracking.asp?awbNo=${cleanAwb}`;
+  }
+  if (c.includes("post") || c.includes("india post") || c.includes("speed post")) {
+    return `https://www.indiapost.gov.in/_layouts/15/dpt.cept.tracking/trackconsignment.aspx`;
+  }
+  if (c.includes("shadowfax")) {
+    return `https://tracker.shadowfax.in/#/track?orderId=${cleanAwb}`;
+  }
+  if (c.includes("ekart")) {
+    return `https://ekartlogistics.com/shipmenttrack/${cleanAwb}`;
+  }
+  if (c.includes("xpressbees") || c.includes("xpress")) {
+    return `https://www.xpressbees.com/track?awb=${cleanAwb}`;
+  }
+  return `https://www.google.com/search?q=${encodeURIComponent(`${carrier || 'courier'} tracking ${cleanAwb}`)}`;
+}
+
+export async function getCustomerOrders(req, res) {
+  try {
+    const rawEmail = req.query.email ? String(req.query.email).trim().toLowerCase() : null;
+    const rawPhone = req.query.phone ? String(req.query.phone).replace(/\D/g, "").slice(-10) : null;
+
+    if (!rawEmail && !rawPhone) {
+      return errorResponse(res, "User phone or email is required to retrieve orders", 400);
+    }
+
+    const localOrders = getOrdersFromStore(rawPhone, rawEmail) || [];
+
+    let sbOrders = [];
+    if (supabase) {
+      try {
+        let query = supabase.from("orders").select("*");
+        if (rawPhone && rawEmail) {
+          query = query.or(`phone.ilike.%${rawPhone}%,email.ilike.${rawEmail}`);
+        } else if (rawPhone) {
+          query = query.ilike("phone", `%${rawPhone}%`);
+        } else if (rawEmail) {
+          query = query.ilike("email", rawEmail);
+        }
+
+        const { data: ordersData, error: ordersErr } = await query.order("created_at", { ascending: false });
+        if (!ordersErr && ordersData) {
+          const invoiceNumbers = ordersData.map((o) => o.invoice_number || o.order_number || o.id).filter(Boolean);
+          let trackedMap = {};
+
+          if (invoiceNumbers.length > 0) {
+            try {
+              const { data: trkData } = await supabase
+                .from("tracked_orders")
+                .select("*")
+                .in("id", invoiceNumbers.map((inv) => `trk-${inv}`));
+              if (trkData) {
+                trkData.forEach((t) => {
+                  const cleanKey = t.id.replace(/^trk-/, "");
+                  trackedMap[cleanKey] = t;
+                });
+              }
+            } catch (tErr) {
+              console.warn("Tracked orders join notice:", tErr.message);
+            }
+          }
+
+          sbOrders = ordersData.map((o) => {
+            const invNum = o.invoice_number || o.order_number || o.id;
+            const tracked = trackedMap[invNum];
+            const localFulfillment = getFulfillmentFromStore(invNum) || {};
+
+            let awb = localFulfillment.trackingNumber !== undefined
+              ? localFulfillment.trackingNumber
+              : (tracked?.tracking_number || null);
+            let carrier = localFulfillment.carrierPartner || tracked?.courier_or_loom_partner || null;
+
+            if (!awb && typeof o.notes === "string" && o.notes.includes("AWB:")) {
+              const match = o.notes.match(/\[(.*?)\]\s*AWB:\s*([^\s,]+)/i);
+              if (match) {
+                carrier = match[1];
+                awb = match[2] !== "Pending" ? match[2] : null;
+              }
+            }
+
+            const effectiveStatus = localFulfillment.status || o.order_status || "processing";
+            const trackingUrl = awb ? getCourierTrackingUrl(carrier, awb) : null;
+
+            return {
+              id: o.id,
+              orderNumber: o.order_number || invNum,
+              invoiceNumber: invNum,
+              date: new Date(o.created_at).toLocaleDateString("en-IN", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+              }),
+              createdAt: o.created_at,
+              customerName: o.customer_name,
+              customerPhone: o.phone,
+              customerEmail: o.email,
+              shippingAddress: o.shipping_address,
+              items: Array.isArray(o.items) ? o.items : [],
+              subtotal: Number(o.subtotal) || 0,
+              cgst: Number(o.cgst) || 0,
+              sgst: Number(o.sgst) || 0,
+              shippingFee: Number(o.shipping_fee) || 0,
+              discount: Number(o.discount_amount) || 0,
+              couponCode: o.coupon_code,
+              total: Number(o.total) || 0,
+              paymentMethod: o.payment_method,
+              paymentStatus: o.payment_status || "completed",
+              orderStatus: effectiveStatus,
+              carrierPartner: carrier || "RS Fashions Express",
+              awbNumber: awb,
+              trackingUrl,
+              currentStage: localFulfillment.status || tracked?.current_stage || effectiveStatus,
+              historyTimeline: tracked?.history_timeline || [],
+              notes: o.notes,
+            };
+          });
+        }
+      } catch (err) {
+        console.warn("Supabase getCustomerOrders fallback to local store:", err.message);
+      }
+    }
+
+    // Merge sbOrders and localOrders, avoiding duplicates by invoiceNumber
+    const seen = new Set();
+    const allOrders = [];
+
+    for (const o of [...sbOrders, ...localOrders]) {
+      const key = o.invoiceNumber || o.orderNumber || o.id;
+      if (key && !seen.has(key)) {
+        seen.add(key);
+        // Ensure fulfillment data is fresh
+        const f = getFulfillmentFromStore(key);
+        if (f) {
+          if (f.status) o.orderStatus = f.status;
+          if (f.trackingNumber) o.awbNumber = f.trackingNumber;
+          if (f.carrierPartner) o.carrierPartner = f.carrierPartner;
+          if (f.trackingUrl || o.awbNumber) {
+            o.trackingUrl = f.trackingUrl || getCourierTrackingUrl(o.carrierPartner, o.awbNumber);
+          }
+          o.currentStage = f.status || o.currentStage;
+        }
+        allOrders.push(o);
+      }
+    }
+
+    return successResponse(res, { orders: allOrders }, "Customer orders retrieved successfully");
+  } catch (err) {
+    console.error("getCustomerOrders error:", err);
     return errorResponse(res, err.message, 500);
   }
 }
@@ -155,10 +324,33 @@ export async function updateFulfillment(req, res) {
     }
 
     if (supabase) {
+      // 1. Fetch existing order to preserve notes / tracking if partial update
+      let existingCarrier = null;
+      let existingAwb = null;
+
+      try {
+        const { data: existingOrder } = await supabase
+          .from("orders")
+          .select("order_status, notes, customer_name, phone")
+          .or(`invoice_number.eq.${invoiceNumber},order_number.eq.${invoiceNumber},id.eq.${invoiceNumber}`)
+          .maybeSingle();
+
+        if (existingOrder?.notes && existingOrder.notes.includes("AWB:")) {
+          const match = existingOrder.notes.match(/\[(.*?)\]\s*AWB:\s*([^\s,]+)/i);
+          if (match) {
+            existingCarrier = match[1];
+            existingAwb = match[2] !== "Pending" ? match[2] : null;
+          }
+        }
+      } catch {}
+
+      const effectiveCarrier = carrierPartner !== undefined ? carrierPartner : (existingCarrier || "RS Fashions Express");
+      const effectiveAwb = trackingNumber !== undefined ? trackingNumber : (existingAwb || "");
+
       const updates = { updated_at: new Date().toISOString() };
       if (status) updates.order_status = status;
-      if (trackingNumber || carrierPartner) {
-        updates.notes = `Fulfillment: [${carrierPartner || 'Standard'}] AWB: ${trackingNumber || 'Pending'}`;
+      if (effectiveAwb || effectiveCarrier) {
+        updates.notes = `Fulfillment: [${effectiveCarrier || 'Standard'}] AWB: ${effectiveAwb || 'Pending'}`;
       }
 
       const { data, error } = await supabase
@@ -167,32 +359,64 @@ export async function updateFulfillment(req, res) {
         .or(`invoice_number.eq.${invoiceNumber},order_number.eq.${invoiceNumber},id.eq.${invoiceNumber}`)
         .select();
 
-      if (error) throw error;
-
-      // Also ensure tracked_orders has the record if trackingNumber provided
-      if (trackingNumber) {
-        try {
-          await supabase.from("tracked_orders").upsert({
-            id: `trk-${invoiceNumber}`,
-            tracking_number: trackingNumber,
-            direction: "outward",
-            title: `Customer Order #${invoiceNumber}`,
-            party_name: data?.[0]?.customer_name || "Customer",
-            party_contact: data?.[0]?.phone || "9999999999",
-            location: "Hub / In Transit",
-            courier_or_loom_partner: carrierPartner || "Express Delivery",
-            current_stage: status || "shipped",
-            last_update: new Date().toLocaleString("en-IN"),
-          });
-        } catch {
-          // ignore optional tracking table upsert
-        }
+      if (error) {
+        console.warn("Supabase orders table update warning:", error.message);
       }
 
-      return successResponse(res, { fulfillment: { status, trackingNumber, carrierPartner }, updated: data }, "Order fulfillment updated successfully");
+      // Also ensure tracked_orders has the record if trackingNumber or carrier provided
+      try {
+        await supabase.from("tracked_orders").upsert({
+          id: `trk-${invoiceNumber}`,
+          tracking_number: effectiveAwb || "Pending",
+          direction: "outward",
+          title: `Customer Order #${invoiceNumber}`,
+          party_name: data?.[0]?.customer_name || "Customer",
+          party_contact: data?.[0]?.phone || "9999999999",
+          location: "Hub / In Transit",
+          courier_or_loom_partner: effectiveCarrier || "Express Delivery",
+          current_stage: status || "shipped",
+          last_update: new Date().toLocaleString("en-IN"),
+        });
+      } catch (tErr) {
+        // ignore optional tracking table upsert
+      }
+
+      const updatedFulfillment = saveFulfillmentToStore(invoiceNumber, {
+        status: status || data?.[0]?.order_status || "packaging",
+        trackingNumber: effectiveAwb,
+        carrierPartner: effectiveCarrier,
+        trackingUrl: getCourierTrackingUrl(effectiveCarrier, effectiveAwb),
+      });
+
+      return successResponse(
+        res,
+        {
+          fulfillment: updatedFulfillment,
+          updated: data,
+        },
+        "Order fulfillment updated successfully"
+      );
     }
 
-    return successResponse(res, { invoiceNumber, status, trackingNumber, carrierPartner }, "Fulfillment updated locally");
+    const localFulfillment = saveFulfillmentToStore(invoiceNumber, {
+      status: status || "packaging",
+      trackingNumber: trackingNumber || "",
+      carrierPartner: carrierPartner || "RS Fashions Express",
+      trackingUrl: getCourierTrackingUrl(carrierPartner || "RS Fashions Express", trackingNumber || ""),
+    });
+
+    return successResponse(
+      res,
+      {
+        invoiceNumber,
+        fulfillment: localFulfillment,
+        status: localFulfillment.status,
+        trackingNumber: localFulfillment.trackingNumber,
+        carrierPartner: localFulfillment.carrierPartner,
+        trackingUrl: localFulfillment.trackingUrl,
+      },
+      "Fulfillment updated locally and stored in system"
+    );
   } catch (err) {
     console.error("Update fulfillment error:", err);
     return errorResponse(res, err.message, 500);

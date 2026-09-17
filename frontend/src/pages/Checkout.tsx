@@ -14,6 +14,10 @@ import {
   FiAlertCircle,
   FiRefreshCw,
   FiScissors,
+  FiPlus,
+  FiHome,
+  FiBriefcase,
+  FiEdit2,
 } from "react-icons/fi";
 
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
@@ -21,6 +25,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { StoreService } from "../services/supabase";
 import { products, type Product } from "../data/products";
+import { getUserSession, saveAddress, getSavedAddresses, type SavedAddress } from "../utils/userSession";
 
 type CheckoutStep = "address" | "payment" | "success";
 type PaymentMethod = "phonepe" | "razorpay" | "upi" | "cod";
@@ -113,7 +118,7 @@ const loadRazorpayScript = (): Promise<boolean> => {
 function Checkout() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { items, subtotal, clearCart, addToCart } = useCart();
+  const { items, subtotal, clearCart, addToCart, removeFromCart } = useCart();
 
   const [step, setStep] = useState<CheckoutStep>("address");
   const [address, setAddress] = useState<AddressForm>(initialAddress);
@@ -126,33 +131,90 @@ function Checkout() {
   const [existingOrderNumber, setExistingOrderNumber] = useState<string | null>(null);
   const [existingOrderId, setExistingOrderId] = useState<string | null>(null);
 
-  // User Authentication Gate: user must be logged in to purchase
-  const [currentUser, setCurrentUser] = useState<any>(() => {
-    try {
-      const saved = localStorage.getItem("rs_fashions_current_user");
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
-  });
+  // User Authentication Gate: user must be logged in with a valid 30-day session
+  const [currentUser, setCurrentUser] = useState<any>(() => getUserSession());
+
+  // Interactive Saved Addresses Selection State
+  const [savedAddressesList, setSavedAddressesList] = useState<SavedAddress[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | "new">("new");
+  const [isEditingOrNew, setIsEditingOrNew] = useState<boolean>(false);
+  const [saveAddressToProfile, setSaveAddressToProfile] = useState<boolean>(true);
+  const [addressTag, setAddressTag] = useState<"Home" | "Work" | "Other">("Home");
+
+  const handleSelectAddress = (addr: SavedAddress) => {
+    setSelectedAddressId(addr.id);
+    setIsEditingOrNew(false);
+    setAddressTag(addr.tag || "Home");
+    setAddress({
+      firstName: addr.name.split(" ")[0] || "",
+      lastName: addr.name.split(" ").slice(1).join(" ") || "",
+      countryDial: "+91",
+      email: addr.email || currentUser?.email || "",
+      phone: addr.phone.replace(/\D/g, "").slice(-10) || "",
+      address: addr.address || "",
+      apartment: addr.apartment || "",
+      city: addr.city || "Hyderabad",
+      state: addr.state || "Telangana",
+      pincode: addr.pincode || "",
+    });
+    setErrors({});
+  };
+
+  const handleAddNewAddress = () => {
+    setSelectedAddressId("new");
+    setIsEditingOrNew(true);
+    setAddressTag("Home");
+    setAddress({
+      firstName: currentUser?.name ? currentUser.name.split(" ")[0] : "",
+      lastName: currentUser?.name ? currentUser.name.split(" ").slice(1).join(" ") : "",
+      countryDial: "+91",
+      email: currentUser?.email || "",
+      phone: currentUser?.phone ? currentUser.phone.replace(/\D/g, "").slice(-10) : "",
+      address: "",
+      apartment: "",
+      city: "Hyderabad",
+      state: "Telangana",
+      pincode: "",
+    });
+    setErrors({});
+  };
 
   useEffect(() => {
-    const userStr = localStorage.getItem("rs_fashions_current_user");
-    if (!userStr) {
+    const session = getUserSession();
+    if (!session) {
       navigate("/login?redirect=/checkout");
     } else {
-      try {
-        const u = JSON.parse(userStr);
-        setCurrentUser(u);
+      setCurrentUser(session);
+      const savedAddresses = getSavedAddresses(session.phone, session.email, session.id);
+      setSavedAddressesList(savedAddresses);
+      const defaultAddr = savedAddresses.find((a) => a.isDefault) || savedAddresses[0];
+
+      if (defaultAddr) {
+        setSelectedAddressId(defaultAddr.id);
+        setIsEditingOrNew(false);
+        setAddressTag(defaultAddr.tag || "Home");
+        setAddress({
+          firstName: defaultAddr.name.split(" ")[0] || "",
+          lastName: defaultAddr.name.split(" ").slice(1).join(" ") || "",
+          countryDial: "+91",
+          email: defaultAddr.email || session.email || "",
+          phone: defaultAddr.phone.replace(/\D/g, "").slice(-10) || "",
+          address: defaultAddr.address || "",
+          apartment: defaultAddr.apartment || "",
+          city: defaultAddr.city || "Hyderabad",
+          state: defaultAddr.state || "Telangana",
+          pincode: defaultAddr.pincode || "",
+        });
+      } else {
+        setSelectedAddressId("new");
+        setIsEditingOrNew(true);
         setAddress((prev) => ({
           ...prev,
-          firstName: prev.firstName || (u.name ? u.name.split(" ")[0] : ""),
-          lastName: prev.lastName || (u.name ? u.name.split(" ").slice(1).join(" ") : ""),
-          email: prev.email || u.email || "",
-          phone: prev.phone || (u.phone ? u.phone.replace("+91", "").trim() : ""),
+          firstName: prev.firstName || (session.name ? session.name.split(" ")[0] : ""),
+          lastName: prev.lastName || (session.name ? session.name.split(" ").slice(1).join(" ") : ""),
+          email: prev.email || session.email || "",
+          phone: prev.phone || (session.phone ? session.phone.replace("+91", "").trim() : ""),
         }));
-      } catch {
-        // ignore
       }
     }
   }, [navigate]);
@@ -238,7 +300,7 @@ function Checkout() {
                 description: "Handcrafted SiCo Gadwal drape.",
                 longDescription: "Handcrafted authentic SiCo Gadwal drape with heritage zari border.",
                 category: "SiCo Gadwal Sarees",
-                material: "Silk Cotton (SiCo)",
+                material: "SiCo",
                 images: [item.image || "/saree.png"],
                 colors: [item.color || "Standard"],
                 sizes: ["Standard Drape (5.5m + 0.8m Blouse)"],
@@ -301,66 +363,37 @@ function Checkout() {
 
 
   const [completedOrder, setCompletedOrder] = useState<OrderSnapshot | null>(null);
-  const [holdSecondsLeft, setHoldSecondsLeft] = useState<number | null>(null);
-  const [holdConflictMessage, setHoldConflictMessage] = useState<string | null>(null);
 
-  // Hybrid Stock Hold: Temporarily reserve cart items for 10 minutes
-  useEffect(() => {
-    if (items.length === 0 || step === "success") return;
+  // Real-time Out-of-Stock Guard at Payment Mode
+  const [stockConflict, setStockConflict] = useState<{
+    productId: string;
+    productName: string;
+    availableStock: number;
+  } | null>(null);
 
-    let isMounted = true;
-    const requestHolds = async () => {
-      let conflictFound = false;
-      let minRemaining = 600;
-
+  // Validate live inventory for every item in cart before initiating or accepting payment
+  const validateCartInventory = async (): Promise<boolean> => {
+    try {
+      const liveProducts = await StoreService.getProducts();
       for (const item of items) {
-        const res = await StoreService.holdInventory(item.product.id, item.quantity, 10);
-        if (!res.success && res.locked) {
-          conflictFound = true;
-          if (isMounted) {
-            setHoldConflictMessage(res.message || "An item in your cart is currently reserved by another patron.");
-            setHoldSecondsLeft(res.remainingSeconds || 600);
+        const matched = liveProducts.find((p) => String(p.id) === String(item.product.id));
+        if (matched) {
+          const currentStock = Number(matched.stock ?? 10);
+          if (currentStock <= 0 || currentStock < item.quantity) {
+            setStockConflict({
+              productId: item.product.id,
+              productName: item.product.name,
+              availableStock: Math.max(0, currentStock),
+            });
+            setIsProcessing(false);
+            return false;
           }
-          break;
-        } else if (res.remainingSeconds) {
-          minRemaining = Math.min(minRemaining, res.remainingSeconds);
         }
       }
-
-      if (!conflictFound && isMounted) {
-        setHoldConflictMessage(null);
-        setHoldSecondsLeft(minRemaining);
-      }
-    };
-
-    requestHolds();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [items, step]);
-
-  // Live 1-second countdown ticker for temporary reservation
-  useEffect(() => {
-    if (holdSecondsLeft === null || holdSecondsLeft <= 0 || step === "success") return;
-
-    const timer = setInterval(() => {
-      setHoldSecondsLeft((prev) => {
-        if (prev === null || prev <= 1) {
-          clearInterval(timer);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [holdSecondsLeft, step]);
-
-  const formatHoldTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+    } catch (err) {
+      console.warn("Live stock check warning:", err);
+    }
+    return true;
   };
 
   const activeCountry = useMemo(() => {
@@ -429,10 +462,42 @@ function Checkout() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const continueToPayment = () => {
+  const continueToPayment = async () => {
     if (!validateAddress()) {
       window.scrollTo({ top: 120, behavior: "smooth" });
       return;
+    }
+
+    const isStockAvailable = await validateCartInventory();
+    if (!isStockAvailable) {
+      return;
+    }
+
+    // Auto-save new address to profile if checked
+    if (isEditingOrNew && saveAddressToProfile) {
+      try {
+        const fullName = `${address.firstName} ${address.lastName}`.trim();
+        const updatedList = saveAddress(
+          {
+            name: fullName || currentUser?.name || "Patron",
+            phone: `${address.countryDial} ${address.phone}`.trim(),
+            email: address.email || currentUser?.email,
+            address: address.address,
+            apartment: address.apartment,
+            city: address.city,
+            state: address.state,
+            pincode: address.pincode,
+            tag: addressTag,
+            isDefault: savedAddressesList.length === 0,
+          },
+          address.phone || currentUser?.phone,
+          address.email || currentUser?.email,
+          currentUser?.id
+        );
+        setSavedAddressesList(updatedList);
+      } catch (e) {
+        console.warn("Could not save address to profile:", e);
+      }
     }
 
     setStep("payment");
@@ -487,6 +552,28 @@ function Checkout() {
       paymentMethod: "phonepe",
       recipient: { ...address },
     };
+
+    if (currentUser?.phone) {
+      try {
+        saveAddress(
+          {
+            name: `${address.firstName} ${address.lastName}`.trim(),
+            phone: `${address.countryDial} ${address.phone}`,
+            email: address.email,
+            address: address.address,
+            apartment: address.apartment,
+            city: address.city,
+            state: address.state,
+            pincode: address.pincode,
+            tag: "Home",
+            isDefault: true,
+          },
+          currentUser.phone
+        );
+      } catch (e) {
+        console.warn("Could not save address:", e);
+      }
+    }
 
     try {
       if (existingOrderId || existingOrderNumber) {
@@ -633,6 +720,15 @@ function Checkout() {
 
   const placeOrder = async () => {
     if (isProcessing) return;
+
+    // Real-time stock validation at the moment of payment:
+    // If any saree was purchased by another patron and is sold out, block payment!
+    const isStockAvailable = await validateCartInventory();
+    if (!isStockAvailable) {
+      setIsProcessing(false);
+      return;
+    }
+
     setIsProcessing(true);
 
     // If Razorpay is selected
@@ -1094,7 +1190,7 @@ function Checkout() {
   ========================================================== */
   return (
     <main className="min-h-screen bg-[#FAF7F2] font-sans text-[#2A2421] select-none px-3.5 pb-20 pt-6 sm:px-6 md:px-8 lg:px-12">
-      <div className="mx-auto max-w-[1300px]">
+      <div className="mx-auto max-w-325">
         {/* Navigation Bar */}
         <div className="mb-5 flex items-center justify-between border-b border-black/6 pb-3.5">
           <button
@@ -1148,60 +1244,47 @@ function Checkout() {
           </div>
         </div>
 
-        {/* Temporary Stock Reservation Banner */}
-        {holdSecondsLeft !== null && (
-          <div className={`mb-6 flex flex-col sm:flex-row items-center justify-between gap-3.5 rounded-2xl border p-4 shadow-sm transition-all duration-500 ${
-            holdSecondsLeft < 120
-              ? "border-amber-500/40 bg-amber-50/90 text-amber-950"
-              : "border-[#8E3D51]/20 bg-[#FAF4ED] text-[#2A2421]"
-          }`}>
-            <div className="flex items-center gap-3">
-              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white font-bold text-base shadow-sm ${
-                holdSecondsLeft < 120 ? "bg-amber-600 animate-pulse" : "bg-[#8E3D51]"
-              }`}>
-                ⏳
+        {/* Out-of-Stock Payment Guard Modal */}
+        {stockConflict && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-md rounded-3xl bg-white p-6 sm:p-7 shadow-2xl border border-red-100 animate-in fade-in zoom-in duration-200">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-100 text-rose-600 mb-4 font-bold text-xl">
+                ✕
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <p className="text-xs sm:text-sm font-semibold tracking-tight text-[#2A2421]">
-                    {holdSecondsLeft > 0
-                      ? "Exclusive Heirloom Piece Reserved For You"
-                      : "Reservation Window Expired"}
-                  </p>
-                  <span className="rounded-full bg-[#8E3D51]/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-[#8E3D51]">
-                    Protected
-                  </span>
-                </div>
-                <p className="text-[11px] text-[#6E6359] mt-0.5">
-                  {holdSecondsLeft > 0
-                    ? "Your selected saree is temporarily locked to prevent simultaneous booking by other patrons."
-                    : "Please complete your payment immediately or refresh before stock becomes available to others."}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-[#8C7A6B]">
-                Lock Expires:
+              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-rose-600">
+                Payment Blocked · Saree Sold Out
               </span>
-              <div className={`rounded-xl px-3.5 py-1.5 font-mono text-sm font-bold tracking-widest ${
-                holdSecondsLeft < 120
-                  ? "bg-amber-200 text-amber-950 ring-2 ring-amber-400 animate-pulse"
-                  : "bg-white text-[#8E3D51] border border-[#8E3D51]/20 shadow-xs"
-              }`}>
-                {formatHoldTime(holdSecondsLeft)}
+              <h3 className="font-serif text-xl font-bold text-[#2A2421] mt-1">
+                Drape Just Purchased
+              </h3>
+              <p className="mt-2.5 text-xs sm:text-sm text-[#544B44] leading-relaxed">
+                While you were checking out, <strong>"{stockConflict.productName}"</strong> was purchased by another customer and is now sold out (0 remaining).
+              </p>
+              <div className="mt-3 rounded-xl bg-amber-50 p-3 border border-amber-200/60 text-[11px] text-amber-900 leading-relaxed">
+                To protect your payment, orders cannot be processed for sold-out drapes. Please remove this saree from your bag to proceed, or choose another handloom drape from our boutique.
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* Hold Conflict Notice */}
-        {holdConflictMessage && (
-          <div className="mb-6 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-900 shadow-sm">
-            <FiAlertCircle className="mt-0.5 text-red-600 shrink-0" size={18} />
-            <div>
-              <h4 className="font-serif text-sm font-semibold text-red-950">Piece Reserved in Another Cart</h4>
-              <p className="text-xs text-red-800 mt-0.5 leading-relaxed">{holdConflictMessage}</p>
+              <div className="mt-6 flex flex-col sm:flex-row gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    removeFromCart(stockConflict.productId);
+                    setStockConflict(null);
+                  }}
+                  className="flex-1 rounded-full bg-[#8E3D51] py-3 text-xs font-semibold uppercase tracking-wider text-white shadow-md hover:bg-[#783144] transition-all"
+                >
+                  Remove Saree &amp; Continue
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStockConflict(null);
+                    navigate("/shop");
+                  }}
+                  className="rounded-full border border-black/15 bg-white px-5 py-3 text-xs font-semibold uppercase tracking-wider text-[#2A2421] hover:bg-black/5 transition-all"
+                >
+                  Choose Another
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -1332,137 +1415,340 @@ function Checkout() {
                     </div>
                   </div>
 
-                  <div className="grid gap-3.5 sm:gap-4 sm:grid-cols-2">
-                    <InputField
-                      label="First Name"
-                      value={address.firstName}
-                      onChange={(val) => updateAddress("firstName", val)}
-                      error={errors.firstName}
-                    />
-                    <InputField
-                      label="Last Name"
-                      value={address.lastName}
-                      onChange={(val) => updateAddress("lastName", val)}
-                      error={errors.lastName}
-                    />
-
-                    {/* Strict International Phone Selector */}
-                    <div className="sm:col-span-2">
-                      <label className="block">
-                        <span className="mb-1 flex items-center justify-between text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8C7A6B]">
-                          <span>Phone Number <span className="text-[#8E3D51]">*</span></span>
-                          <span className="font-mono text-[8px] sm:text-[9px] font-normal text-[#A89C8F]">
-                            {address.phone.length} / {activeCountry.length} digits
-                          </span>
+                  {/* SAVED ADDRESS SELECTION (Amazon/Flipkart Style) */}
+                  {savedAddressesList.length > 0 && (
+                    <div className="mb-6 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.16em] text-[#8C7A6B]">
+                          Saved Delivery Addresses ({savedAddressesList.length})
                         </span>
+                        {isEditingOrNew && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const first = savedAddressesList.find((a) => a.id === selectedAddressId) || savedAddressesList[0];
+                              if (first) handleSelectAddress(first);
+                            }}
+                            className="text-[11px] font-semibold text-[#8E3D51] hover:underline cursor-pointer"
+                          >
+                            Cancel &amp; use saved address
+                          </button>
+                        )}
+                      </div>
 
-                        <div className={`flex items-center rounded-xl sm:rounded-2xl border transition-all ${errors.phone
-                            ? "border-red-500 bg-red-50/20"
-                            : "border-black/10 bg-[#FAF7F2] focus-within:border-[#8E3D51]/60 focus-within:bg-white focus-within:shadow-[0_4px_14px_rgba(142,61,81,0.05)]"
-                          }`}>
-                          <div className="relative border-r border-black/10 bg-white rounded-l-xl sm:rounded-l-2xl">
-                            <select
-                              value={address.countryDial}
-                              onChange={(e) => {
-                                updateAddress("countryDial", e.target.value);
-                                updateAddress("phone", "");
-                              }}
-                              className="h-11 sm:h-12 appearance-none bg-transparent pl-2.5 sm:pl-3 pr-6 text-xs font-medium text-[#2A2421] outline-none cursor-pointer"
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {savedAddressesList.map((addr) => {
+                          const isSelected = selectedAddressId === addr.id && !isEditingOrNew;
+                          return (
+                            <div
+                              key={addr.id}
+                              onClick={() => handleSelectAddress(addr)}
+                              className={`group relative rounded-2xl p-4 cursor-pointer transition-all border text-left flex flex-col justify-between ${
+                                isSelected
+                                  ? "border-[#8E3D51] bg-[#FAF4ED] shadow-[0_4px_16px_rgba(142,61,81,0.08)] ring-2 ring-[#8E3D51]/40"
+                                  : "border-black/10 bg-white hover:border-[#8E3D51]/40 hover:bg-[#FDFBF7]"
+                              }`}
                             >
-                              {COUNTRIES.map((c) => (
-                                <option key={c.code} value={c.dialCode}>
-                                  {c.code} ({c.dialCode})
-                                </option>
-                              ))}
-                            </select>
-                            <FiChevronDown size={11} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[#8C7A6B]" />
-                          </div>
+                              <div>
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="flex items-center gap-1.5">
+                                    <span
+                                      className={`inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${
+                                        addr.tag === "Home"
+                                          ? "bg-amber-100 text-amber-900 border border-amber-200"
+                                          : addr.tag === "Work"
+                                          ? "bg-blue-100 text-blue-900 border border-blue-200"
+                                          : "bg-stone-100 text-stone-800 border border-stone-200"
+                                      }`}
+                                    >
+                                      {addr.tag === "Home" ? <FiHome size={10} /> : <FiBriefcase size={10} />}
+                                      {addr.tag}
+                                    </span>
+                                    {addr.isDefault && (
+                                      <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                        Default
+                                      </span>
+                                    )}
+                                  </div>
 
-                          <input
-                            type="tel"
-                            inputMode="numeric"
-                            value={address.phone}
-                            onChange={(e) => handlePhoneChange(e.target.value)}
-                            placeholder={activeCountry.placeholder}
-                            className="h-11 sm:h-12 w-full bg-transparent px-3 sm:px-4 text-xs font-mono tracking-wide text-[#2A2421] placeholder-[#A89C8F] outline-none"
+                                  <div
+                                    className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${
+                                      isSelected
+                                        ? "border-[#8E3D51] bg-[#8E3D51] text-white"
+                                        : "border-stone-300 group-hover:border-[#8E3D51]"
+                                    }`}
+                                  >
+                                    {isSelected && <FiCheck size={10} strokeWidth={3} />}
+                                  </div>
+                                </div>
+
+                                <h4 className="font-serif font-bold text-xs sm:text-sm text-[#2A2421] line-clamp-1">
+                                  {addr.name}
+                                </h4>
+                                <p className="text-[11px] text-stone-600 mt-1 leading-relaxed line-clamp-2">
+                                  {addr.address}
+                                  {addr.apartment ? `, ${addr.apartment}` : ""}, {addr.city}, {addr.state} - {addr.pincode}
+                                </p>
+                                <p className="text-[10px] font-mono font-semibold text-stone-500 mt-1.5">
+                                  Ph: {addr.phone}
+                                </p>
+                              </div>
+
+                              <div className="mt-3 pt-2 border-t border-black/5 flex items-center justify-between">
+                                <span className={`text-[10px] font-bold ${isSelected ? "text-[#8E3D51]" : "text-stone-400 group-hover:text-stone-700"}`}>
+                                  {isSelected ? "Selected for Delivery" : "Click to select"}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+
+                        {/* + Add New Address Card */}
+                        <div
+                          onClick={handleAddNewAddress}
+                          className={`rounded-2xl p-4 cursor-pointer transition-all border border-dashed flex flex-col items-center justify-center text-center min-h-[140px] ${
+                            isEditingOrNew
+                              ? "border-[#8E3D51] bg-[#FAF4ED] ring-2 ring-[#8E3D51]/40"
+                              : "border-stone-300 hover:border-[#8E3D51] hover:bg-[#FDFBF7]"
+                          }`}
+                        >
+                          <div className={`w-9 h-9 rounded-full flex items-center justify-center mb-2 transition-colors ${
+                            isEditingOrNew ? "bg-[#8E3D51] text-white" : "bg-stone-100 text-stone-600"
+                          }`}>
+                            <FiPlus size={16} />
+                          </div>
+                          <span className="font-serif font-bold text-xs text-[#2A2421]">
+                            + Deliver to a New Address
+                          </span>
+                          <span className="text-[10px] text-stone-500 mt-0.5">
+                            Enter different address coordinates
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ACTIVE ADDRESS CONFIRMATION (WHEN A SAVED CARD IS SELECTED) */}
+                  {!isEditingOrNew && savedAddressesList.length > 0 ? (
+                    <div className="mt-4 pt-4 border-t border-black/5 space-y-4">
+                      <div className="rounded-2xl bg-[#FAF8F5] border border-stone-200 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-[#8E3D51] flex items-center gap-1.5">
+                            <FiCheck size={12} className="text-emerald-600" />
+                            Dispatching To: {address.firstName} {address.lastName} ({addressTag})
+                          </span>
+                          <p className="text-xs text-stone-700 font-medium mt-1">
+                            {address.address}{address.apartment ? `, ${address.apartment}` : ""}, {address.city}, {address.state} - {address.pincode}
+                          </p>
+                          <p className="text-[11px] text-stone-500 font-mono mt-0.5">
+                            Contact: {address.countryDial} {address.phone} {address.email ? `• ${address.email}` : ""}
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingOrNew(true)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-stone-300 text-xs font-semibold text-stone-700 hover:bg-white transition-all self-start sm:self-center shrink-0 cursor-pointer"
+                        >
+                          <FiEdit2 size={12} />
+                          <span>Edit Address</span>
+                        </button>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={continueToPayment}
+                        className="group flex w-full items-center justify-center gap-2.5 rounded-full bg-[#2A2421] py-3.5 sm:py-4 text-[11px] sm:text-xs font-semibold uppercase tracking-[0.18em] text-[#FAF7F2] shadow-md transition-all hover:bg-[#8E3D51] active:scale-95 cursor-pointer"
+                      >
+                        <span>Deliver to This Address &amp; Continue to Payment</span>
+                        <FiArrowRight
+                          size={13}
+                          className="transition-transform duration-300 group-hover:translate-x-1"
+                        />
+                      </button>
+                    </div>
+                  ) : (
+                    /* MANUAL ADDRESS ENTRY / EDIT FORM */
+                    <div>
+                      {savedAddressesList.length > 0 && (
+                        <div className="mb-4 pb-3 border-b border-black/5 flex items-center justify-between">
+                          <span className="text-xs font-serif font-bold text-[#2A2421]">
+                            {selectedAddressId === "new" ? "Add New Delivery Address" : "Edit Delivery Address"}
+                          </span>
+                          <span className="text-[11px] text-stone-500">
+                            Fill in complete details below
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Tag Selector: Home / Work / Other */}
+                      <div className="mb-4">
+                        <label className="block text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8C7A6B] mb-1.5">
+                          Address Type / Tag
+                        </label>
+                        <div className="flex items-center gap-2">
+                          {(["Home", "Work", "Other"] as const).map((tag) => (
+                            <button
+                              key={tag}
+                              type="button"
+                              onClick={() => setAddressTag(tag)}
+                              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                                addressTag === tag
+                                  ? "bg-[#2A0E20] text-amber-100 shadow-sm"
+                                  : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+                              }`}
+                            >
+                              {tag === "Home" ? <FiHome size={12} /> : tag === "Work" ? <FiBriefcase size={12} /> : null}
+                              <span>{tag}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="grid gap-3.5 sm:gap-4 sm:grid-cols-2">
+                        <InputField
+                          label="First Name"
+                          value={address.firstName}
+                          onChange={(val) => updateAddress("firstName", val)}
+                          error={errors.firstName}
+                        />
+                        <InputField
+                          label="Last Name"
+                          value={address.lastName}
+                          onChange={(val) => updateAddress("lastName", val)}
+                          error={errors.lastName}
+                        />
+
+                        {/* Strict International Phone Selector */}
+                        <div className="sm:col-span-2">
+                          <label className="block">
+                            <span className="mb-1 flex items-center justify-between text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8C7A6B]">
+                              <span>Phone Number <span className="text-[#8E3D51]">*</span></span>
+                              <span className="font-mono text-[8px] sm:text-[9px] font-normal text-[#A89C8F]">
+                                {address.phone.length} / {activeCountry.length} digits
+                              </span>
+                            </span>
+
+                            <div className={`flex items-center rounded-xl sm:rounded-2xl border transition-all ${errors.phone
+                                ? "border-red-500 bg-red-50/20"
+                                : "border-black/10 bg-[#FAF7F2] focus-within:border-[#8E3D51]/60 focus-within:bg-white focus-within:shadow-[0_4px_14px_rgba(142,61,81,0.05)]"
+                              }`}>
+                              <div className="relative border-r border-black/10 bg-white rounded-l-xl sm:rounded-l-2xl">
+                                <select
+                                  value={address.countryDial}
+                                  onChange={(e) => {
+                                    updateAddress("countryDial", e.target.value);
+                                    updateAddress("phone", "");
+                                  }}
+                                  className="h-11 sm:h-12 appearance-none bg-transparent pl-2.5 sm:pl-3 pr-6 text-xs font-medium text-[#2A2421] outline-none cursor-pointer"
+                                >
+                                  {COUNTRIES.map((c) => (
+                                    <option key={c.code} value={c.dialCode}>
+                                      {c.code} ({c.dialCode})
+                                    </option>
+                                  ))}
+                                </select>
+                                <FiChevronDown size={11} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[#8C7A6B]" />
+                              </div>
+
+                              <input
+                                type="tel"
+                                inputMode="numeric"
+                                value={address.phone}
+                                onChange={(e) => handlePhoneChange(e.target.value)}
+                                placeholder={activeCountry.placeholder}
+                                className="h-11 sm:h-12 w-full bg-transparent px-3 sm:px-4 text-xs font-mono tracking-wide text-[#2A2421] placeholder-[#A89C8F] outline-none"
+                              />
+                            </div>
+
+                            {errors.phone && (
+                              <span className="mt-1 flex items-center gap-1 text-[10px] text-red-600 font-medium">
+                                <FiAlertCircle size={12} className="shrink-0 text-red-500" />
+                                {errors.phone}
+                              </span>
+                            )}
+                          </label>
+                        </div>
+
+                        <div className="sm:col-span-2">
+                          <InputField
+                            label="Email Address (Invoice & Tracking)"
+                            type="email"
+                            value={address.email}
+                            onChange={(val) => updateAddress("email", val)}
+                            error={errors.email}
                           />
                         </div>
 
-                        {errors.phone && (
-                          <span className="mt-1 flex items-center gap-1 text-[10px] text-red-600 font-medium">
-                            <FiAlertCircle size={12} className="shrink-0 text-red-500" />
-                            {errors.phone}
-                          </span>
-                        )}
+                        <div className="sm:col-span-2">
+                          <InputField
+                            label="Street Address / Door No."
+                            value={address.address}
+                            onChange={(val) => updateAddress("address", val)}
+                            error={errors.address}
+                          />
+                        </div>
+
+                        <div className="sm:col-span-2">
+                          <InputField
+                            label="Apartment, Landmark (Optional)"
+                            value={address.apartment}
+                            onChange={(val) => updateAddress("apartment", val)}
+                            required={false}
+                          />
+                        </div>
+
+                        <InputField
+                          label="City"
+                          value={address.city}
+                          onChange={(val) => updateAddress("city", val)}
+                          error={errors.city}
+                        />
+
+                        <InputField
+                          label="State"
+                          value={address.state}
+                          onChange={(val) => updateAddress("state", val)}
+                          error={errors.state}
+                        />
+
+                        <div className="sm:col-span-2">
+                          <InputField
+                            label="PIN / Postal Code"
+                            inputMode="numeric"
+                            maxLength={6}
+                            placeholder="6-digit postal code (numbers only, e.g. 560001)"
+                            value={address.pincode}
+                            onChange={handlePincodeChange}
+                            error={errors.pincode}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Save address to profile checkbox */}
+                      <label className="mt-4 flex items-center gap-2 text-xs text-stone-700 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={saveAddressToProfile}
+                          onChange={(e) => setSaveAddressToProfile(e.target.checked)}
+                          className="w-4 h-4 rounded border-stone-300 text-[#8E3D51] focus:ring-[#8E3D51]"
+                        />
+                        <span>Save this address to my profile for faster 1-click future checkouts</span>
                       </label>
+
+                      <button
+                        type="button"
+                        onClick={continueToPayment}
+                        className="group mt-6 sm:mt-8 flex w-full items-center justify-center gap-2.5 rounded-full bg-[#2A2421] py-3.5 sm:py-4 text-[11px] sm:text-xs font-semibold uppercase tracking-[0.18em] text-[#FAF7F2] shadow-md transition-all hover:bg-[#8E3D51] active:scale-95 cursor-pointer"
+                      >
+                        <span>Continue to Payment</span>
+                        <FiArrowRight
+                          size={13}
+                          className="transition-transform duration-300 group-hover:translate-x-1"
+                        />
+                      </button>
                     </div>
-
-                    <div className="sm:col-span-2">
-                      <InputField
-                        label="Email Address (Invoice & Tracking)"
-                        type="email"
-                        value={address.email}
-                        onChange={(val) => updateAddress("email", val)}
-                        error={errors.email}
-                      />
-                    </div>
-
-                    <div className="sm:col-span-2">
-                      <InputField
-                        label="Street Address / Door No."
-                        value={address.address}
-                        onChange={(val) => updateAddress("address", val)}
-                        error={errors.address}
-                      />
-                    </div>
-
-                    <div className="sm:col-span-2">
-                      <InputField
-                        label="Apartment, Landmark (Optional)"
-                        value={address.apartment}
-                        onChange={(val) => updateAddress("apartment", val)}
-                        required={false}
-                      />
-                    </div>
-
-                    <InputField
-                      label="City"
-                      value={address.city}
-                      onChange={(val) => updateAddress("city", val)}
-                      error={errors.city}
-                    />
-
-                    <InputField
-                      label="State"
-                      value={address.state}
-                      onChange={(val) => updateAddress("state", val)}
-                      error={errors.state}
-                    />
-
-                    <div className="sm:col-span-2">
-                      <InputField
-                        label="PIN / Postal Code"
-                        inputMode="numeric"
-                        maxLength={6}
-                        placeholder="6-digit postal code (numbers only, e.g. 560001)"
-                        value={address.pincode}
-                        onChange={handlePincodeChange}
-                        error={errors.pincode}
-                      />
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={continueToPayment}
-                    className="group mt-6 sm:mt-8 flex w-full items-center justify-center gap-2.5 rounded-full bg-[#2A2421] py-3.5 sm:py-4 text-[11px] sm:text-xs font-semibold uppercase tracking-[0.18em] text-[#FAF7F2] shadow-md transition-all hover:bg-[#8E3D51] active:scale-95"
-                  >
-                    <span>Continue to Payment</span>
-                    <FiArrowRight
-                      size={13}
-                      className="transition-transform duration-300 group-hover:translate-x-1"
-                    />
-                  </button>
+                  )}
                 </div>
               </div>
             )}

@@ -1,4 +1,4 @@
-﻿import {
+import {
   Routes,
   Route,
   useLocation,
@@ -16,8 +16,13 @@ import OurStory from "./pages/OurStory";
 import Admin from "./pages/Admin";
 import Login from "./pages/Login";
 import Auth from "./pages/Auth";
+import Account from "./pages/Account";
 import NotFound from "./pages/NotFound";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsAndConditions from "./pages/TermsAndConditions";
+import ReturnPolicy from "./pages/ReturnPolicy";
+import ShippingPolicy from "./pages/ShippingPolicy";
+import OffersStore from "./pages/OffersStore";
 
 function AppContent() {
   const location = useLocation();
@@ -46,6 +51,12 @@ function AppContent() {
           element={<Shop />}
         />
 
+        {/* EXCLUSIVE OFFERS STORE (Bundle Deals) */}
+        <Route
+          path="/offers"
+          element={<OffersStore />}
+        />
+
         {/* PRODUCT */}
         <Route
           path="/product/:id"
@@ -58,11 +69,15 @@ function AppContent() {
           element={<OurStory />}
         />
 
-        {/* PRIVACY POLICY */}
-        <Route
-          path="/privacy-policy"
-          element={<PrivacyPolicy />}
-        />
+        {/* POLICIES & LEGAL CHARTER */}
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/terms" element={<TermsAndConditions />} />
+        <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
+        <Route path="/returns" element={<ReturnPolicy />} />
+        <Route path="/return-policy" element={<ReturnPolicy />} />
+        <Route path="/shipping" element={<ShippingPolicy />} />
+        <Route path="/shipping-policy" element={<ShippingPolicy />} />
 
         {/* CART */}
         <Route
@@ -74,6 +89,16 @@ function AppContent() {
         <Route
           path="/checkout"
           element={<Checkout />}
+        />
+
+        {/* CUSTOMER ACCOUNT & ORDERS HUB */}
+        <Route
+          path="/account"
+          element={<Account />}
+        />
+        <Route
+          path="/orders"
+          element={<Account />}
         />
       </Route>
 

@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS public.products (
     id TEXT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     category VARCHAR(100) NOT NULL DEFAULT 'SiCo Gadwal Sarees',
-    material VARCHAR(100) NOT NULL DEFAULT 'Silk Cotton (SiCo)',
+    material VARCHAR(100) NOT NULL DEFAULT 'SiCo',
     price NUMERIC(10, 2) NOT NULL CHECK (price >= 0),
     original_price NUMERIC(10, 2),
     stock INTEGER NOT NULL DEFAULT 0 CHECK (stock >= 0),
@@ -108,7 +108,7 @@ CREATE TABLE IF NOT EXISTS public.customers (
     phone VARCHAR(50) UNIQUE NOT NULL,
     email VARCHAR(255),
     city VARCHAR(100) DEFAULT 'Hyderabad',
-    tier VARCHAR(50) NOT NULL DEFAULT 'Heritage Club',
+    tier VARCHAR(50) DEFAULT NULL,
     total_spent NUMERIC(12, 2) NOT NULL DEFAULT 0,
     orders_count INTEGER NOT NULL DEFAULT 0,
     birthday VARCHAR(50),
@@ -121,7 +121,6 @@ CREATE TABLE IF NOT EXISTS public.customers (
 );
 
 CREATE INDEX IF NOT EXISTS idx_customers_phone ON public.customers(phone);
-CREATE INDEX IF NOT EXISTS idx_customers_tier ON public.customers(tier);
 
 -- ------------------------------------------------------------------------------
 -- 6. TRACKED ORDERS & PRODUCTION PIPELINE
@@ -189,7 +188,7 @@ VALUES
         'midnight-sico-gadwal',
         'Midnight SiCo Gadwal Saree',
         'SiCo Gadwal Sarees',
-        'Silk Cotton (SiCo)',
+        'SiCo',
         7999,
         9999,
         8,
@@ -199,13 +198,13 @@ VALUES
         4.9,
         18,
         true,
-        'Authentic temple-border SiCo Gadwal saree woven with pure silk cotton and fine gold zari.'
+        'Authentic temple-border SiCo Gadwal saree woven with pure SiCo and fine gold zari.'
     ),
     (
         'emerald-sico-gadwal',
         'Emerald SiCo Gadwal Saree',
         'SiCo Gadwal Sarees',
-        'Silk Cotton (SiCo)',
+        'SiCo',
         8499,
         11200,
         8,
@@ -221,7 +220,7 @@ VALUES
         'rose-sico-gadwal',
         'Rose Pink SiCo Gadwal Saree',
         'SiCo Gadwal Sarees',
-        'Silk Cotton (SiCo)',
+        'SiCo',
         4999,
         6499,
         9,
@@ -237,7 +236,7 @@ VALUES
         'ivory-sico-gadwal',
         'Ivory Gold SiCo Gadwal Saree',
         'SiCo Gadwal Sarees',
-        'Silk Cotton (SiCo)',
+        'SiCo',
         5899,
         7800,
         20,
@@ -253,7 +252,7 @@ VALUES
         'crimson-sico-gadwal',
         'Crimson Temple SiCo Gadwal Saree',
         'SiCo Gadwal Sarees',
-        'Silk Cotton (SiCo)',
+        'SiCo',
         6499,
         8500,
         11,

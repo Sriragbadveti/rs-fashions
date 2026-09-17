@@ -49,7 +49,7 @@ export const DEFAULT_TRENDING_ITEMS: TrendingItem[] = [
     id: "midnight-sico-gadwal",
     name: "Midnight Royal SiCo Gadwal",
     category: "SiCo Gadwal Sarees",
-    material: "Silk Cotton (SiCo)",
+    material: "SiCo",
     price: 7999,
     originalPrice: 9999,
     badge: "Trending Now",
@@ -65,7 +65,7 @@ export const DEFAULT_TRENDING_ITEMS: TrendingItem[] = [
     id: "emerald-sico-gadwal",
     name: "Emerald Gatti Border SiCo Gadwal",
     category: "SiCo Gadwal Sarees",
-    material: "Silk Cotton (SiCo)",
+    material: "SiCo",
     price: 8499,
     originalPrice: 11200,
     badge: "Signature Border",
@@ -75,13 +75,13 @@ export const DEFAULT_TRENDING_ITEMS: TrendingItem[] = [
       "https://medias.utsavfashion.com/media/catalog/product/cache/1/image/1000x/040ec09b1e35df139433887a97daa66f/w/o/woven-art-silk-saree-in-emerald-green-v1-ssf833_2.jpg",
       "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=900&auto=format&fit=crop&q=80",
     ],
-    description: "Opulent emerald green silk cotton with authentic gatti border and gold buttas.",
+    description: "Opulent emerald green SiCo with authentic gatti border and gold buttas.",
   },
   {
     id: "crimson-sico-gadwal",
     name: "Crimson Temple SiCo Gadwal",
     category: "SiCo Gadwal Sarees",
-    material: "Silk Cotton (SiCo)",
+    material: "SiCo",
     price: 6499,
     originalPrice: 8500,
     badge: "Festive Favorite",
@@ -97,7 +97,7 @@ export const DEFAULT_TRENDING_ITEMS: TrendingItem[] = [
     id: "ivory-sico-gadwal",
     name: "Ivory Gold SiCo Gadwal",
     category: "SiCo Gadwal Sarees",
-    material: "Silk Cotton (SiCo)",
+    material: "SiCo",
     price: 5899,
     originalPrice: 7800,
     badge: "Most Loved",
@@ -107,7 +107,7 @@ export const DEFAULT_TRENDING_ITEMS: TrendingItem[] = [
       "https://images.pexels.com/photos/33328181/pexels-photo-33328181.jpeg?auto=compress&cs=tinysrgb&w=1200",
       "https://cdn.corenexis.com/f/Gr2AsoVtVeK.png",
     ],
-    description: "Sublime ivory silk cotton drape with pure woven gold zari border.",
+    description: "Sublime ivory SiCo drape with pure woven gold zari border.",
   },
 ];
 
@@ -263,7 +263,7 @@ export default function TrendingManager({ inventory }: TrendingManagerProps) {
       id: product.id,
       name: product.name,
       category: "SiCo Gadwal Sarees",
-      material: "Silk Cotton (SiCo)",
+      material: "SiCo",
       price: product.salePrice || 7999,
       originalPrice: Math.round((product.salePrice || 7999) * 1.25),
       badge: "Trending Now",
@@ -589,7 +589,7 @@ export default function TrendingManager({ inventory }: TrendingManagerProps) {
                             type="text"
                             value={item.description}
                             onChange={(e) => handleUpdateItemField(item.id, "description", e.target.value)}
-                            placeholder="Fine silk cotton body with zari border..."
+                            placeholder="Fine SiCo body with zari border..."
                             className="w-full rounded-lg border border-stone-200 px-2.5 py-1 text-xs text-stone-600 outline-none focus:border-[#8E3D51]"
                           />
                         </div>

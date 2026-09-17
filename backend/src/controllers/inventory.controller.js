@@ -141,7 +141,7 @@ export async function handleBulkIntake(req, res) {
           id: prodId,
           name: p.name,
           category: p.category || "SiCo Gadwal Sarees",
-          material: p.material || "Silk Cotton (SiCo)",
+          material: p.material || "SiCo",
           price: priceVal,
           original_price: origPriceVal,
           stock: stockTotal,

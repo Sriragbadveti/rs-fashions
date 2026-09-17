@@ -2,7 +2,7 @@ import { useState } from "react";
 import { FiMessageCircle, FiMail } from "react-icons/fi";
 import ProductAccordion from "./ProductAccordion";
 
-const faqCategories = ["All", "Draping & Fit", "Care & Silk Mark", "Delivery"];
+const faqCategories = ["All", "Draping & Fit", "Care & SiCo Craft", "Delivery"];
 
 const faqData = [
   {
@@ -12,16 +12,16 @@ const faqData = [
       "All our sarees come with complimentary pre-stitched Fall and hand-finished Pico roll edges. Each drape measures 5.5 meters and includes an attached unstitched 0.8-meter matching blouse piece.",
   },
   {
-    category: "Care & Silk Mark",
-    title: "Are these authentic handloom silks certified by Silk Mark?",
+    category: "Care & SiCo Craft",
+    title: "Are these authentic handloom sarees certified for genuine SiCo?",
     content:
       "Yes. Every authentic SiCo Gadwal saree carries an authorized handloom authenticity card and certified weave verification inside your package.",
   },
   {
-    category: "Care & Silk Mark",
+    category: "Care & SiCo Craft",
     title: "How should I clean and preserve the zari embroidery?",
     content:
-      "We strictly recommend professional dry cleaning for all zari and pure silk textiles. Store folded in a breathable unbleached muslin/cotton saree bag, away from direct sunlight and humidity.",
+      "We strictly recommend professional dry cleaning for all zari and handloom textiles. Store folded in a breathable unbleached muslin saree bag, away from direct sunlight and humidity.",
   },
   {
     category: "Delivery",
@@ -62,7 +62,7 @@ function ProductFAQ() {
             </h2>
 
             <p className="mt-4 max-w-sm text-xs sm:text-sm font-light leading-relaxed text-[#756A60]">
-              Everything you need to know regarding pure silk certification, fall/pico finishes, care rituals, and insured deliveries.
+              Everything you need to know regarding authentic SiCo certification, fall/pico finishes, care rituals, and insured deliveries.
             </p>
 
             {/* Category Filter Chips */}

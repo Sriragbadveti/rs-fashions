@@ -10,6 +10,7 @@ import trackingRoutes from "./tracking.routes.js";
 import salesRoutes from "./sales.routes.js";
 import settingsRoutes from "./settings.routes.js";
 import uploadRoutes from "./upload.routes.js";
+import reviewsRoutes from "./reviews.routes.js";
 
 const apiRouter = Router();
 
@@ -54,6 +55,10 @@ apiRouter.use("/", salesRoutes);
 apiRouter.use("/settings", settingsRoutes);
 apiRouter.use("/admin", settingsRoutes);
 apiRouter.use("/", settingsRoutes);
+
+// Product Reviews (Admin & Storefront)
+apiRouter.use("/reviews", reviewsRoutes);
+apiRouter.use("/admin/reviews", reviewsRoutes);
 
 // File & Image Storage (Supabase 'sarees' bucket)
 apiRouter.use("/upload", uploadRoutes);

@@ -115,7 +115,7 @@ export const WEAVE_DESIGN_PRESETS: DesignOption[] = [
   { name: "Equal Kanchi Borders", slug: "EKB" },
   { name: "Chakra Border", slug: "CB" },
   { name: "Gab Borders", slug: "GAB" },
-  { name: "Gab Checks Borders", slug: "GCB" },
+  { name: "Gap Border Checks", slug: "GBC" },
   { name: "Box Gadwal Checks", slug: "BGC" },
 ];
 
@@ -237,9 +237,8 @@ export type DashboardTab =
   | "sale"
   | "trending"
   | "settings"
-  | "categories";
-
-export type ClientTier = "Royal Patron" | "Heritage Club" | "Boutique Member";
+  | "categories"
+  | "reviews";
 
 export interface CustomerProfile {
   id: string;
@@ -247,7 +246,6 @@ export interface CustomerProfile {
   phone: string;
   email?: string;
   city: string;
-  tier: ClientTier;
   totalSpent: number;
   ordersCount: number;
   birthday?: string;
@@ -255,6 +253,9 @@ export interface CustomerProfile {
   preferredWeave?: string;
   notes?: string;
   gstin?: string;
+  status?: "active" | "inactive";
+  lastActiveAt?: string;
+  inactivityDays?: number;
 }
 
 export interface UserSession {
@@ -270,7 +271,6 @@ export const MOCK_CUSTOMERS: CustomerProfile[] = [
     phone: "9849012345",
     email: "shailaja.reddy@gmail.com",
     city: "Banjara Hills, Hyderabad",
-    tier: "Royal Patron",
     totalSpent: 184500,
     ordersCount: 7,
     birthday: "1982-09-14",
@@ -284,7 +284,6 @@ export const MOCK_CUSTOMERS: CustomerProfile[] = [
     phone: "9988776655",
     email: "ananya.rao@carehospitals.com",
     city: "Jubilee Hills, Hyderabad",
-    tier: "Heritage Club",
     totalSpent: 92400,
     ordersCount: 4,
     birthday: "1988-12-05",
@@ -297,7 +296,6 @@ export const MOCK_CUSTOMERS: CustomerProfile[] = [
     name: "Vani Prasanna",
     phone: "9123456780",
     city: "Secunderabad",
-    tier: "Boutique Member",
     totalSpent: 38000,
     ordersCount: 2,
     birthday: "1994-09-16",
@@ -509,7 +507,7 @@ export const MOCK_INVENTORY: DashboardProduct[] = [
   },
   {
     id: "RSF-GCB-RG-001",
-    name: "Gab Checks Borders",
+    name: "Gap Border Checks",
     categoryId: "c1",
     purchasePrice: 6500,
     salePrice: 9800,

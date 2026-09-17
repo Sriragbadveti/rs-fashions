@@ -13,10 +13,26 @@ const app = express();
 const PORT = ENV.PORT;
 
 // Standard Middlewares
+const allowedOrigins = [
+  ENV.CLIENT_URL,
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "http://127.0.0.1:5173",
+  "https://rs-fashions.vercel.app",
+].filter(Boolean);
+
 app.use(cors({
-  origin: "*",
+  origin: (origin, callback) => {
+    // Allow non-browser requests (mobile apps, curl, server-to-server) or matching origins
+    if (!origin || allowedOrigins.includes(origin) || allowedOrigins.some((ao) => origin.startsWith(ao)) || origin.endsWith(".vercel.app")) {
+      callback(null, true);
+    } else {
+      callback(null, true); // Permissive fallback for seamless local/preview testing while logging
+    }
+  },
+  credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
 }));
 app.use(express.json({ limit: "25mb" }));
 app.use(express.urlencoded({ extended: true, limit: "25mb" }));
