@@ -36,7 +36,10 @@ function Home() {
 
       <OfferBanner />
 
-      <HomeFooter />
+      {/* Footer temporarily hidden — remove display:none to restore */}
+      <div style={{ display: "none" }}>
+        <HomeFooter />
+      </div>
     </motion.div>
   );
 }

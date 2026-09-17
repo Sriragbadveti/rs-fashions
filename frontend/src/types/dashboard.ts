@@ -309,9 +309,45 @@ export const MOCK_CATEGORIES: Category[] = [
     hsn: "5208",
     nextSequence: 1,
   },
+  {
+    id: "c2",
+    name: "Pure Silk Kanjivaram",
+    slug: "PSK",
+    hsn: "5007",
+    nextSequence: 1,
+  },
+  {
+    id: "c3",
+    name: "Banarasi Silk Heritage",
+    slug: "BSH",
+    hsn: "5007",
+    nextSequence: 1,
+  },
+  {
+    id: "c4",
+    name: "Handloom Cotton",
+    slug: "HLC",
+    hsn: "5208",
+    nextSequence: 1,
+  },
+  {
+    id: "c5",
+    name: "Pochampally Ikat",
+    slug: "PIK",
+    hsn: "5208",
+    nextSequence: 1,
+  },
+  {
+    id: "c6",
+    name: "Paithani Silk",
+    slug: "PAI",
+    hsn: "5007",
+    nextSequence: 1,
+  },
 ];
 
 export const MOCK_INVENTORY: DashboardProduct[] = [
+  // ── SiCo Gadwal Sarees (c1) ───────────────────────────────────────────────
   {
     id: "RSF-VC-RD-001",
     name: "Vintage Checks",
@@ -507,6 +543,132 @@ export const MOCK_INVENTORY: DashboardProduct[] = [
         colorSlug: "CS",
         stock: 4,
         sku: "RSF-BGC-CS-001",
+      },
+    ],
+  },
+
+  // ── Pure Silk Kanjivaram (c2) ─────────────────────────────────────────────
+  {
+    id: "RSF-KBH-PK-001",
+    name: "Kanjivaram Bridal Heritage",
+    categoryId: "c2",
+    purchasePrice: 18500,
+    salePrice: 28000,
+    tags: ["kanjivaram", "bridal", "pure-silk", "zari"],
+    imageUrl:
+      "https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=800&auto=format&fit=crop",
+    variants: [
+      {
+        color: "Rani Pink",
+        colorSlug: "PK",
+        stock: 4,
+        sku: "RSF-KBH-PK-001",
+      },
+      {
+        color: "Gold",
+        colorSlug: "GD",
+        stock: 2,
+        sku: "RSF-KBH-GD-001",
+      },
+    ],
+  },
+
+  // ── Banarasi Silk Heritage (c3) ───────────────────────────────────────────
+  {
+    id: "RSF-EBN-GR-001",
+    name: "Emerald Banarasi Drape",
+    categoryId: "c3",
+    purchasePrice: 11000,
+    salePrice: 16500,
+    tags: ["banarasi", "zari", "festive", "heritage"],
+    imageUrl:
+      "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?q=80&w=800&auto=format&fit=crop",
+    variants: [
+      {
+        color: "Emerald Green",
+        colorSlug: "GR",
+        stock: 5,
+        sku: "RSF-EBN-GR-001",
+      },
+      {
+        color: "Gold Zari",
+        colorSlug: "GD",
+        stock: 3,
+        sku: "RSF-EBN-GD-001",
+      },
+    ],
+  },
+
+  // ── Handloom Cotton (c4) ──────────────────────────────────────────────────
+  {
+    id: "RSF-ICT-CR-001",
+    name: "Ivory Handloom Cotton",
+    categoryId: "c4",
+    purchasePrice: 2200,
+    salePrice: 3600,
+    tags: ["cotton", "handloom", "daily", "summer"],
+    imageUrl:
+      "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?q=80&w=800&auto=format&fit=crop",
+    variants: [
+      {
+        color: "Cream",
+        colorSlug: "CR",
+        stock: 12,
+        sku: "RSF-ICT-CR-001",
+      },
+      {
+        color: "Beige",
+        colorSlug: "BE",
+        stock: 8,
+        sku: "RSF-ICT-BE-001",
+      },
+    ],
+  },
+
+  // ── Pochampally Ikat (c5) ─────────────────────────────────────────────────
+  {
+    id: "RSF-PIK-NB-001",
+    name: "Pochampally Double Ikat",
+    categoryId: "c5",
+    purchasePrice: 5800,
+    salePrice: 8900,
+    tags: ["pochampally", "ikat", "handwoven", "geometric"],
+    variants: [
+      {
+        color: "Navy Blue",
+        colorSlug: "NB",
+        stock: 7,
+        sku: "RSF-PIK-NB-001",
+      },
+      {
+        color: "Mustard Yellow",
+        colorSlug: "MY",
+        stock: 5,
+        sku: "RSF-PIK-MY-001",
+      },
+    ],
+  },
+
+  // ── Paithani Silk (c6) ────────────────────────────────────────────────────
+  {
+    id: "RSF-PAI-PR-001",
+    name: "Paithani Peacock Motif",
+    categoryId: "c6",
+    purchasePrice: 14500,
+    salePrice: 22000,
+    tags: ["paithani", "peacock", "pure-silk", "maharashtra"],
+    variants: [
+      {
+        color: "Purple",
+        colorSlug: "PR",
+        stock: 3,
+        sku: "RSF-PAI-PR-001",
+      },
+      {
+        color: "Gold",
+        colorSlug: "GD",
+        stock: 2,
+        sku: "RSF-PAI-GD-001",
       },
     ],
   },
