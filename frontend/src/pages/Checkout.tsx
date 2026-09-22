@@ -118,7 +118,7 @@ const loadCashfreeScript = (): Promise<boolean> => {
 function Checkout() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { items, subtotal, clearCart, addToCart, removeFromCart } = useCart();
+  const { items, subtotal, offerDiscount, tierOffer, finalSubtotal, clearCart, addToCart, removeFromCart } = useCart();
 
   const [step, setStep] = useState<CheckoutStep>("address");
   const [address, setAddress] = useState<AddressForm>(initialAddress);
@@ -398,8 +398,8 @@ function Checkout() {
     return COUNTRIES.find((c) => c.dialCode === address.countryDial) || COUNTRIES[0];
   }, [address.countryDial]);
 
-  const shipping = subtotal >= 1999 || subtotal === 0 ? 0 : 99;
-  const total = subtotal + shipping;
+  const shipping = finalSubtotal >= 1999 || finalSubtotal === 0 ? 0 : 99;
+  const total = finalSubtotal + shipping;
 
   const itemCount = useMemo(() => {
     return items.reduce((sum, item) => sum + item.quantity, 0);
@@ -1214,6 +1214,13 @@ function Checkout() {
                     </span>
                   </div>
 
+                  {offerDiscount > 0 && (
+                    <div className="flex justify-between text-emerald-700 font-medium bg-emerald-50 px-2 py-0.5 rounded">
+                      <span>Special Offer ({tierOffer.percent}% Off)</span>
+                      <span className="font-mono font-semibold">-₹{offerDiscount.toLocaleString("en-IN")}</span>
+                    </div>
+                  )}
+
                   <div className="flex justify-between text-[#756A60]">
                     <span>Shipping</span>
                     <span className="text-emerald-700 font-medium">
@@ -1842,6 +1849,13 @@ function Checkout() {
                       ₹{subtotal.toLocaleString("en-IN")}
                     </span>
                   </div>
+
+                  {offerDiscount > 0 && (
+                    <div className="flex justify-between text-emerald-700 font-medium bg-emerald-50 px-2.5 py-1 rounded-lg">
+                      <span>Special Offer ({tierOffer.percent}% Off)</span>
+                      <span className="font-mono font-semibold">-₹{offerDiscount.toLocaleString("en-IN")}</span>
+                    </div>
+                  )}
 
                   <div className="flex justify-between text-[#756A60]">
                     <span>Shipping</span>

@@ -23,6 +23,9 @@ function CartDrawer({ open, onClose }: CartDrawerProps) {
   const {
     items,
     subtotal,
+    offerDiscount,
+    tierOffer,
+    finalSubtotal,
     updateQuantity,
     removeFromCart,
   } = useCart();
@@ -243,17 +246,34 @@ function CartDrawer({ open, onClose }: CartDrawerProps) {
             {/* Footer Summary & Checkout */}
             {items.length > 0 && (
               <div className="shrink-0 border-t border-black/6 bg-white p-5 sm:p-6 pb-[max(1.2rem,env(safe-area-inset-bottom))]">
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-[#8C7A6B]">
-                    Bag Subtotal
-                  </span>
+                <div className="space-y-1.5 mb-3">
+                  <div className="flex items-center justify-between text-stone-600 text-xs">
+                    <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-[#8C7A6B]">
+                      Subtotal
+                    </span>
+                    <span className="font-sans font-medium text-stone-700">
+                      ₹{subtotal.toLocaleString("en-IN")}
+                    </span>
+                  </div>
 
-                  <span className="font-sans text-base sm:text-lg font-bold text-[#2A2421]">
-                    ₹{subtotal.toLocaleString("en-IN")}
-                  </span>
+                  {offerDiscount > 0 && (
+                    <div className="flex items-center justify-between text-xs text-emerald-700 font-medium bg-emerald-50 px-2 py-1 rounded-lg">
+                      <span className="text-[10.5px]">Special Offer ({tierOffer.percent}% Off)</span>
+                      <span className="font-mono font-bold">-₹{offerDiscount.toLocaleString("en-IN")}</span>
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between pt-1 border-t border-stone-100">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-stone-900">
+                      Final Payable
+                    </span>
+                    <span className="font-sans text-base sm:text-lg font-bold text-[#8E3D51]">
+                      ₹{finalSubtotal.toLocaleString("en-IN")}
+                    </span>
+                  </div>
                 </div>
 
-                <p className="mb-4 text-[9.5px] leading-4 text-[#8C7A6B]">
+                <p className="mb-3 text-[9.5px] leading-4 text-[#8C7A6B]">
                   Complimentary express insured delivery on this order.
                 </p>
 

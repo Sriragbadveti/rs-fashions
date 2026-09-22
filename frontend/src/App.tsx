@@ -25,14 +25,18 @@ import ShippingPolicy from "./pages/ShippingPolicy";
 import OffersStore from "./pages/OffersStore";
 import AuthCallback from "./pages/AuthCallback";
 
+import { ADMIN_SECRET_PATH, ADMIN_LOGIN_PATH } from "./config/routes";
+
 function AppContent() {
   const location = useLocation();
 
   return (
     <Routes location={location}>
-      {/* ADMIN PORTAL (Stand-alone Layout) */}
-      <Route path="/admin" element={<Admin />} />
-      <Route path="/admin/login" element={<Login />} />
+      {/* CRYPTOGRAPHIC ADMIN PORTAL (Stand-alone Layout) */}
+      <Route path={ADMIN_SECRET_PATH} element={<Admin />} />
+      <Route path={ADMIN_LOGIN_PATH} element={<Login />} />
+      <Route path="/admin" element={<NotFound />} />
+      <Route path="/admin/login" element={<NotFound />} />
 
       {/* AUTHENTICATION / LOGIN */}
       <Route path="/login" element={<Auth />} />

@@ -11,6 +11,7 @@ import { getUserSession, clearUserSession, USER_SESSION_EVENT, type UserSession 
 import CartDrawer from "../cart/CartDrawer";
 import MobileMenu from "./MobileMenu";
 import logo from "../../assets/logo/logo1.png";
+import { ADMIN_SECRET_PATH } from "../../config/routes";
 
 function Navbar() {
   const location = useLocation();
@@ -319,7 +320,7 @@ function Navbar() {
                               {currentUser.role === "admin" && (
                                 <>
                                   <div className="my-1 border-t border-stone-100" />
-                                  <Link to="/admin" onClick={() => setIsUserDropdownOpen(false)} className="flex items-center gap-2.5 rounded-xl bg-amber-50 px-3 py-2 font-semibold text-amber-950 transition-colors hover:bg-amber-100">
+                                  <Link to={ADMIN_SECRET_PATH} onClick={() => setIsUserDropdownOpen(false)} className="flex items-center gap-2.5 rounded-xl bg-amber-50 px-3 py-2 font-semibold text-amber-950 transition-colors hover:bg-amber-100">
                                     <Sparkles size={15} className="text-amber-700" />
                                     <span>Admin Dashboard</span>
                                   </Link>

@@ -9,7 +9,10 @@ import {
   FiShield,
   FiTruck,
   FiCheckCircle,
+  FiTag,
+  FiGift,
 } from "react-icons/fi";
+import { Sparkles } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 
@@ -18,16 +21,20 @@ function Cart() {
 
   const {
     items,
+    itemCount,
     subtotal,
+    offerDiscount,
+    tierOffer,
+    finalSubtotal,
     updateQuantity,
     removeFromCart,
     clearCart,
   } = useCart();
 
   const FREE_SHIPPING_THRESHOLD = 1999;
-  const shipping = subtotal >= FREE_SHIPPING_THRESHOLD || subtotal === 0 ? 0 : 99;
-  const total = subtotal + shipping;
-  const shippingProgress = Math.min((subtotal / FREE_SHIPPING_THRESHOLD) * 100, 100);
+  const shipping = finalSubtotal >= FREE_SHIPPING_THRESHOLD || finalSubtotal === 0 ? 0 : 99;
+  const total = finalSubtotal + shipping;
+  const shippingProgress = Math.min((finalSubtotal / FREE_SHIPPING_THRESHOLD) * 100, 100);
 
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat("en-IN", {
@@ -45,7 +52,7 @@ function Cart() {
         {/* =====================================================
             EDITORIAL HEADER
         ====================================================== */}
-        <header className="mb-10 flex flex-col gap-4 border-b border-stone-300/60 pb-7 sm:flex-row sm:items-end sm:justify-between">
+        <header className="mb-8 flex flex-col gap-4 border-b border-stone-300/60 pb-7 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
             <h1 className="font-serif text-3xl sm:text-5xl lg:text-6xl font-normal tracking-tight text-stone-900 leading-[1.05]">
               Your Shopping Bag
@@ -55,7 +62,7 @@ function Cart() {
           {items.length > 0 && (
             <div className="flex items-center gap-4 self-start sm:self-auto">
               <span className="text-[11px] text-stone-400 font-mono tracking-wide">
-                {items.length} {items.length === 1 ? "Drape" : "Drapes"} Chosen
+                {itemCount} {itemCount === 1 ? "Drape" : "Drapes"} Chosen
               </span>
               <button
                 type="button"
@@ -67,6 +74,63 @@ function Cart() {
             </div>
           )}
         </header>
+
+        {/* =====================================================
+            SPECIAL TIERED OFFER PROGRESS BANNER
+        ====================================================== */}
+        {items.length > 0 && (
+          <div className="mb-8 overflow-hidden rounded-2xl sm:rounded-3xl border border-amber-200/90 bg-linear-to-r from-amber-50/90 via-[#FDF9F2] to-amber-50/90 p-4 sm:p-5 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-start sm:items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-linear-to-br from-[#8E3D51] to-[#692637] text-white shadow-xs">
+                  <Sparkles size={18} className="text-amber-300" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-full bg-[#8E3D51] px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-white">
+                      Special Offer
+                    </span>
+                    <span className="text-xs sm:text-sm font-semibold text-stone-900">
+                      {tierOffer.tier > 0 ? tierOffer.label : "Tiered Bundle Savings Active"}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-xs text-stone-600">
+                    {!tierOffer.isMaxTier ? (
+                      <>
+                        Add{" "}
+                        <strong className="text-[#8E3D51] font-bold">
+                          {tierOffer.nextTierNeeded} more saree
+                        </strong>{" "}
+                        to unlock{" "}
+                        <strong className="text-stone-900 font-bold">
+                          {tierOffer.nextTierPercent}% Instant Order Discount!
+                        </strong>
+                      </>
+                    ) : (
+                      <span className="text-emerald-700 font-medium">
+                        🎉 Maximum Tier Unlocked: Extra 15% discount automatically subtracted!
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 self-start sm:self-auto">
+                <div className="flex gap-1.5 text-[10px] font-bold">
+                  <span className={`px-2.5 py-1 rounded-full border transition-all ${itemCount >= 1 ? "bg-amber-100 border-amber-300 text-amber-900" : "bg-white/60 border-stone-200 text-stone-400"}`}>
+                    Buy 1: 5% Off
+                  </span>
+                  <span className={`px-2.5 py-1 rounded-full border transition-all ${itemCount >= 2 ? "bg-amber-200 border-amber-400 text-amber-950 font-extrabold shadow-2xs" : "bg-white/60 border-stone-200 text-stone-400"}`}>
+                    Buy 2: 10% Off
+                  </span>
+                  <span className={`px-2.5 py-1 rounded-full border transition-all ${itemCount >= 3 ? "bg-[#8E3D51] border-[#8E3D51] text-white shadow-xs" : "bg-white/60 border-stone-200 text-stone-400"}`}>
+                    Buy 3+: 15% Off
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* =====================================================
             EMPTY BAG STATE
@@ -87,7 +151,7 @@ function Cart() {
             </h2>
 
             <p className="mt-2 max-w-md text-xs sm:text-sm leading-relaxed text-stone-500 font-light">
-              Explore our SiCo Gadwal sarees.
+              Explore our handcrafted SiCo Gadwal sarees and exclusive bundle offers.
             </p>
 
             <Link
@@ -119,64 +183,82 @@ function Cart() {
                       layout
                       initial={{ opacity: 0, y: 15 }}
                       animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.98, y: -10 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
                       transition={{ duration: 0.3 }}
-                      className="group relative overflow-hidden rounded-3xl border border-stone-200/80 bg-white/80 p-4 sm:p-5 backdrop-blur-xl shadow-xs transition-all duration-300 hover:border-stone-300 hover:shadow-md"
+                      className="group relative overflow-hidden rounded-3xl border border-stone-200/80 bg-white/90 p-4 sm:p-5 shadow-xs backdrop-blur-md transition-all duration-300 hover:border-stone-300 hover:shadow-md"
                     >
                       <div className="flex gap-4 sm:gap-6">
-                        {/* DRAPE THUMBNAIL */}
-                        <Link
-                          to={`/product/${item.product.id}`}
-                          className="relative h-36 w-28 sm:h-44 sm:w-34 shrink-0 overflow-hidden rounded-2xl bg-stone-100 border border-stone-200/60"
-                        >
+                        {/* SAREE VISUAL CONTAINER */}
+                        <div className="relative aspect-[3/4] w-24 sm:w-32 shrink-0 overflow-hidden rounded-2xl bg-[#F4EFEA]">
                           <img
                             src={item.product.images?.[0]}
                             alt={item.product.name}
-                            className="h-full w-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-105"
+                            className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
                           />
-                        </Link>
+                          <span className="absolute left-1.5 top-1.5 rounded-full bg-[#8E3D51] px-2 py-0.5 text-[8px] font-bold uppercase tracking-wider text-white shadow-xs">
+                            Special Offer
+                          </span>
+                        </div>
 
-                        {/* DRAPE SPECIFICATIONS */}
-                        <div className="flex min-w-0 flex-1 flex-col justify-between pr-8">
+                        {/* EDITORIAL SPECIFICATION */}
+                        <div className="flex flex-1 flex-col justify-between min-w-0">
                           <div>
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-[#8E3D51]">
-                                {item.product.category || "SiCo Gadwal"}
-                              </span>
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#8E3D51]">
+                                  {item.product.material || "SiCo Gadwal"}
+                                </span>
+                                <h3 className="font-serif text-base sm:text-lg font-normal text-stone-900 leading-snug truncate">
+                                  {item.product.name}
+                                </h3>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  removeFromCart(
+                                    item.product.id,
+                                    item.selectedColor,
+                                    item.selectedSize
+                                  )
+                                }
+                                aria-label="Remove item"
+                                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-stone-400 transition-colors duration-200 hover:bg-rose-50 hover:text-rose-600 active:scale-95"
+                              >
+                                <FiTrash2 size={15} />
+                              </button>
                             </div>
 
-                            <Link to={`/product/${item.product.id}`}>
-                              <h3 className="font-serif text-lg sm:text-xl text-stone-900 line-clamp-2 hover:text-[#8E3D51] transition-colors leading-snug">
-                                {item.product.name}
-                              </h3>
-                            </Link>
-
-                            {/* ATTRIBUTES */}
-                            <div className="mt-2.5 flex flex-wrap gap-2 text-[11px]">
+                            <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-stone-500">
                               {item.selectedColor && (
-                                <span className="inline-flex items-center gap-1.5 rounded-lg border border-stone-200 bg-[#FAF8F5] px-2.5 py-1 text-stone-700 font-medium">
-                                  <span className="text-[9px] uppercase tracking-wider text-stone-400">
-                                    Shade
-                                  </span>
-                                  <span>{item.selectedColor}</span>
+                                <span className="inline-flex items-center gap-1.5 rounded-full bg-stone-100/90 px-2.5 py-1 text-stone-700">
+                                  <span className="h-1.5 w-1.5 rounded-full bg-[#8E3D51]" />
+                                  {item.selectedColor}
                                 </span>
                               )}
-
-                              <span className="inline-flex items-center gap-1.5 rounded-lg border border-stone-200 bg-[#FAF8F5] px-2.5 py-1 text-stone-700 font-medium">
-                                <span className="text-[9px] uppercase tracking-wider text-stone-400">
-                                  Cut
-                                </span>
-                                <span>{item.selectedSize || "Free Size (6.3m)"}</span>
+                              <span className="rounded-full bg-stone-100/90 px-2.5 py-1 text-stone-700">
+                                {item.selectedSize || "Standard 6.3m"}
                               </span>
                             </div>
                           </div>
 
-                          {/* QUANTITY DIAL & PRICING */}
-                          <div className="mt-4 flex flex-wrap items-end justify-between gap-3 pt-3 border-t border-stone-100">
-                            <div className="inline-flex h-9 items-center rounded-xl border border-stone-200 bg-[#FAF8F5] shadow-2xs">
+                          {/* PRICE & QUANTITY STEPPER */}
+                          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-stone-100 pt-3">
+                            <div className="flex items-baseline gap-2">
+                              <span className="font-serif text-lg sm:text-xl font-bold text-stone-900">
+                                {formatCurrency(drapePrice * item.quantity)}
+                              </span>
+                              {item.quantity > 1 && (
+                                <span className="text-[11px] text-stone-400 font-mono">
+                                  ({formatCurrency(drapePrice)} / drape)
+                                </span>
+                              )}
+                            </div>
+
+                            {/* QUANTITY CONTROLLER */}
+                            <div className="flex items-center rounded-full border border-stone-200 bg-stone-50/80 p-1">
                               <button
                                 type="button"
-                                aria-label="Decrease quantity"
                                 onClick={() =>
                                   updateQuantity(
                                     item.product.id,
@@ -185,18 +267,16 @@ function Cart() {
                                     item.selectedSize
                                   )
                                 }
-                                className="flex h-9 w-8 items-center justify-center text-stone-400 hover:text-stone-900 transition-colors"
+                                aria-label="Decrease quantity"
+                                className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-stone-700 shadow-2xs transition-transform active:scale-90"
                               >
-                                <FiMinus size={12} />
+                                <FiMinus size={11} />
                               </button>
-
-                              <span className="w-8 text-center font-mono text-xs font-bold text-stone-800">
+                              <span className="w-8 text-center text-xs font-bold font-mono text-stone-900">
                                 {item.quantity}
                               </span>
-
                               <button
                                 type="button"
-                                aria-label="Increase quantity"
                                 onClick={() =>
                                   updateQuantity(
                                     item.product.id,
@@ -205,48 +285,22 @@ function Cart() {
                                     item.selectedSize
                                   )
                                 }
-                                className="flex h-9 w-8 items-center justify-center text-stone-400 hover:text-stone-900 transition-colors"
+                                aria-label="Increase quantity"
+                                className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-stone-700 shadow-2xs transition-transform active:scale-90"
                               >
-                                <FiPlus size={12} />
+                                <FiPlus size={11} />
                               </button>
-                            </div>
-
-                            <div className="text-right">
-                              <p className="font-serif text-xl sm:text-2xl font-bold text-stone-950 leading-none">
-                                {formatCurrency(drapePrice * item.quantity)}
-                              </p>
-                              {item.quantity > 1 && (
-                                <p className="text-[10px] text-stone-400 mt-1 font-mono">
-                                  {formatCurrency(drapePrice)} each
-                                </p>
-                              )}
                             </div>
                           </div>
                         </div>
                       </div>
-
-                      {/* REMOVE TRIGGER */}
-                      <button
-                        type="button"
-                        onClick={() =>
-                          removeFromCart(
-                            item.product.id,
-                            item.selectedColor,
-                            item.selectedSize
-                          )
-                        }
-                        aria-label={`Remove ${item.product.name}`}
-                        className="absolute right-3.5 top-3.5 flex h-8 w-8 items-center justify-center rounded-xl border border-stone-200/80 bg-white/90 text-stone-400 shadow-2xs transition-all duration-200 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 active:scale-90"
-                      >
-                        <FiTrash2 size={13} />
-                      </button>
                     </motion.article>
                   );
                 })}
               </AnimatePresence>
 
-              {/* CONTINUE BROWSING */}
-              <div className="pt-3">
+              {/* BACK TO SHOP ACTION */}
+              <div className="pt-2">
                 <Link
                   to="/shop"
                   className="group inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-stone-600 hover:text-[#8E3D51] transition-colors"
@@ -271,7 +325,7 @@ function Cart() {
                       Summary & Taxes
                     </h2>
                     <p className="text-[11px] text-stone-400 font-light">
-                      Official showroom price calculation
+                      Automatic special offer discount applied
                     </p>
                   </div>
                   <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#F7EFE9] text-[#8E3D51]">
@@ -281,7 +335,7 @@ function Cart() {
 
                 {/* COMPLIMENTARY SHIPPING MILESTONE */}
                 <div className="rounded-2xl border border-stone-200/70 bg-[#FAF8F5] p-4 text-xs">
-                  {subtotal >= FREE_SHIPPING_THRESHOLD ? (
+                  {finalSubtotal >= FREE_SHIPPING_THRESHOLD ? (
                     <div className="flex items-center gap-2 text-emerald-700 font-medium">
                       <FiCheckCircle size={15} className="shrink-0" />
                       <span>Complimentary insured shipping unlocked</span>
@@ -291,7 +345,7 @@ function Cart() {
                       <p className="text-stone-600 leading-relaxed text-[11.5px]">
                         Add{" "}
                         <strong className="text-stone-900 font-bold">
-                          {formatCurrency(FREE_SHIPPING_THRESHOLD - subtotal)}
+                          {formatCurrency(FREE_SHIPPING_THRESHOLD - finalSubtotal)}
                         </strong>{" "}
                         more to qualify for complimentary shipping.
                       </p>
@@ -314,6 +368,18 @@ function Cart() {
                     </span>
                   </div>
 
+                  {offerDiscount > 0 && (
+                    <div className="flex items-center justify-between rounded-xl bg-emerald-50/80 px-3 py-2 text-emerald-800 border border-emerald-200/60">
+                      <span className="flex items-center gap-1.5 font-semibold text-xs">
+                        <FiTag size={13} className="text-emerald-600" />
+                        <span>{tierOffer.percent}% Special Offer Discount</span>
+                      </span>
+                      <span className="font-mono font-bold text-emerald-700">
+                        -{formatCurrency(offerDiscount)}
+                      </span>
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between text-stone-600">
                     <span className="flex items-center gap-1.5">
                       <FiTruck size={13} className="text-stone-400" />
@@ -335,7 +401,7 @@ function Cart() {
                     <span className="text-xs font-bold uppercase tracking-wider text-stone-500 block">
                       Net Payable
                     </span>
-                    <span className="text-[10px] text-stone-400">Prices inclusive of tax</span>
+                    <span className="text-[10px] text-stone-400">Prices inclusive of GST</span>
                   </div>
                   <span className="font-serif text-3xl font-bold text-stone-950">
                     {formatCurrency(total)}
@@ -364,8 +430,8 @@ function Cart() {
 
                 {/* LUXURY TRUST HALLMARKS */}
                 <div className="pt-2 border-t border-stone-100 flex items-center justify-around text-[10px] uppercase font-bold tracking-wider text-stone-400">
-                  <span className="flex items-center gap-4">
-                    {/* <FiShield size={12} className="text-[#8E3D51]" /> */}
+                  <span className="flex items-center gap-1">
+                    <FiShield size={11} className="text-[#8E3D51]" />
                     SiCo Certified
                   </span>
                   <span>•</span>

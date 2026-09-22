@@ -27,6 +27,16 @@ export interface AddToCartOptions {
   selectedSize?: string;
 }
 
+export interface TierOfferInfo {
+  tier: number;
+  percent: number;
+  discountAmount: number;
+  label: string;
+  nextTierNeeded: number;
+  nextTierPercent: number;
+  isMaxTier: boolean;
+}
+
 /* ============================================================
    CART CONTEXT TYPE
 ============================================================ */
@@ -35,6 +45,9 @@ interface CartContextType {
   items: CartItem[];
   itemCount: number;
   subtotal: number;
+  offerDiscount: number;
+  tierOffer: TierOfferInfo;
+  finalSubtotal: number;
   totalSavings: number;
   freeShippingThreshold: number;
   progressToFreeShipping: number;
@@ -173,25 +186,85 @@ export function CartProvider({ children }: { children: ReactNode }) {
     [items]
   );
 
+  /* Tiered Offer Calculation (Buy 1 get 5%, Buy 2 get 10%, Buy 3+ get 15%) */
+  const tierOffer: TierOfferInfo = useMemo(() => {
+    if (itemCount === 0) {
+      return {
+        tier: 0,
+        percent: 0,
+        discountAmount: 0,
+        label: "Buy 1 Get 5% Off • Buy 2 Get 10% Off • Buy 3+ Get 15% Off",
+        nextTierNeeded: 1,
+        nextTierPercent: 5,
+        isMaxTier: false,
+      };
+    }
+
+    if (itemCount === 1) {
+      const discount = Math.round(subtotal * 0.05);
+      return {
+        tier: 1,
+        percent: 5,
+        discountAmount: discount,
+        label: "Tier 1 Unlocked: 5% Special Offer Discount",
+        nextTierNeeded: 1,
+        nextTierPercent: 10,
+        isMaxTier: false,
+      };
+    }
+
+    if (itemCount === 2) {
+      const discount = Math.round(subtotal * 0.10);
+      return {
+        tier: 2,
+        percent: 10,
+        discountAmount: discount,
+        label: "Tier 2 Unlocked: 10% Bundle Offer Discount",
+        nextTierNeeded: 1,
+        nextTierPercent: 15,
+        isMaxTier: false,
+      };
+    }
+
+    // 3 or more sarees
+    const discount = Math.round(subtotal * 0.15);
+    return {
+      tier: 3,
+      percent: 15,
+      discountAmount: discount,
+      label: "VIP Tier 3 Unlocked: 15% Mega Special Offer Discount",
+      nextTierNeeded: 0,
+      nextTierPercent: 15,
+      isMaxTier: true,
+    };
+  }, [itemCount, subtotal]);
+
+  const offerDiscount = tierOffer.discountAmount;
+  const finalSubtotal = Math.max(0, subtotal - offerDiscount);
+
   /* Total Original Savings Calculation */
   const totalSavings = useMemo(() => {
-    return items.reduce((total, item) => {
+    const rawSavings = items.reduce((total, item) => {
       if (item.product.originalPrice && item.product.originalPrice > item.product.price) {
         return total + (item.product.originalPrice - item.product.price) * item.quantity;
       }
       return total;
     }, 0);
-  }, [items]);
+    return rawSavings + offerDiscount;
+  }, [items, offerDiscount]);
 
   /* Free Shipping Progress (0 to 100) */
   const progressToFreeShipping = useMemo(() => {
-    return Math.min(100, Math.round((subtotal / FREE_SHIPPING_LIMIT) * 100));
-  }, [subtotal]);
+    return Math.min(100, Math.round((finalSubtotal / FREE_SHIPPING_LIMIT) * 100));
+  }, [finalSubtotal]);
 
   const contextValue: CartContextType = {
     items,
     itemCount,
     subtotal,
+    offerDiscount,
+    tierOffer,
+    finalSubtotal,
     totalSavings,
     freeShippingThreshold: FREE_SHIPPING_LIMIT,
     progressToFreeShipping,

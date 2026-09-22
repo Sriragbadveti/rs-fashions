@@ -89,6 +89,13 @@ function ProductCard({ product }: { product: CardProduct }) {
           )}
         </Link>
 
+        {/* Special Offer Badge */}
+        <div className="pointer-events-none absolute left-2 top-2 z-10 flex flex-col gap-1">
+          <span className="rounded-full bg-[#8E3D51] px-2 py-0.5 text-[8px] font-bold uppercase tracking-wider text-white shadow-xs backdrop-blur-xs">
+            Special Offer
+          </span>
+        </div>
+
         <div className="absolute bottom-2.5 inset-x-2.5 transition-all duration-200 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 hidden sm:block">
           <button type="button" onClick={handleQuickAdd} className={`w-full h-9 rounded-xl text-xs font-semibold uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md transition-all ${inCart ? "bg-emerald-600 text-white cursor-default scale-95" : "bg-[#2A2421]/90 text-[#FAF7F2] hover:bg-[#8E3D51] active:scale-95 cursor-pointer"}`}>
             {inCart ? (<><FiCheck size={13} className="stroke-[2.5]" /><span>Added</span></>) : (<><FiShoppingBag size={13} /><span>Quick Add</span></>)}

@@ -181,8 +181,8 @@ export const MOCK_DESIGNS: DesignOption[] = [
     slug: "CB",
   },
   {
-    name: "Gab Borders",
-    slug: "GAB",
+    name: "Gap Borders",
+    slug: "GAP",
   },
   {
     name: "Gap Border Checks",
@@ -828,8 +828,8 @@ export const MOCK_INVENTORY: Product[] = [
     ],
   },
   {
-    id: "RSF-GAB-RG-001",
-    name: "Gab Borders",
+    id: "RSF-GAP-RG-001",
+    name: "Gap Borders",
     categoryId: "c1",
     purchasePrice: 6500,
     salePrice: 9800,
@@ -839,13 +839,13 @@ export const MOCK_INVENTORY: Product[] = [
         color: "Rose Gold",
         colorSlug: "RG",
         stock: 6,
-        sku: "RSF-GAB-RG-001",
+        sku: "RSF-GAP-RG-001",
       },
       {
         color: "Champagne Silver",
         colorSlug: "CS",
         stock: 4,
-        sku: "RSF-GAB-CS-001",
+        sku: "RSF-GAP-CS-001",
       },
     ],
   },

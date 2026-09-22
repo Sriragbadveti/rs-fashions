@@ -14,6 +14,7 @@ import {
   type UserSession,
 } from "../../utils/userSession";
 import logo from "../../assets/logo/logo1.png";
+import { ADMIN_SECRET_PATH } from "../../config/routes";
 
 interface MobileMenuProps {
   onClose: () => void;
@@ -39,7 +40,7 @@ const sareeSubcategories = [
   { label: "Big Kanchi borders", path: "/shop?search=Big+Kanchi" },
   { label: "Equal Kanchi borders", path: "/shop?search=Equal+Kanchi" },
   { label: "Chakra border", path: "/shop?search=Chakra+border" },
-  { label: "Gab borders", path: "/shop?search=Gab+borders" },
+  { label: "Gap borders", path: "/shop?search=Gap+borders" },
   { label: "Gap Border Checks", path: "/shop?search=Gap+checks" },
   { label: "Box Gadwal Checks", path: "/shop?search=Box+Gadwal+Checks" },
 ];
@@ -543,7 +544,7 @@ function MobileMenu({ onClose }: MobileMenuProps) {
 
                     {currentUser.role === "admin" && (
                       <Link
-                        to="/admin"
+                        to={ADMIN_SECRET_PATH}
                         onClick={handleDismiss}
                         className="flex items-center justify-between rounded-xl bg-amber-100/70 border border-amber-300 p-3 text-xs font-bold text-amber-950"
                       >

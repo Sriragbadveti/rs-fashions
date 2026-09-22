@@ -4,7 +4,6 @@ import {
   FiLock,
   FiMail,
   FiArrowRight,
-  FiShield,
   FiUser,
   FiEye,
   FiEyeOff,
@@ -12,14 +11,13 @@ import {
   FiCheckCircle,
   FiGift,
   FiHeart,
-  FiCalendar,
 } from "react-icons/fi";
 import { API_BASE } from "../config/api";
 import { setUserSession } from "../utils/userSession";
 import { StoreService } from "../services/supabase";
+import { ADMIN_SECRET_PATH } from "../config/routes";
 import logo from "../assets/logo/logo1.png";
 
-type AuthRole = "user" | "admin";
 type AuthMode = "signin" | "signup";
 
 /* ---------------------------------------------------------
@@ -107,7 +105,6 @@ export default function Auth() {
   const [searchParams] = useSearchParams();
   const redirectUrl = searchParams.get("redirect");
 
-  const [role, setRole] = useState<AuthRole>("user");
   const [authMode, setAuthMode] = useState<AuthMode>("signin");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -122,19 +119,6 @@ export default function Auth() {
   const [birthday, setBirthday] = useState("");
   const [anniversary, setAnniversary] = useState("");
 
-  const handleRoleSwitch = (selectedRole: AuthRole) => {
-    setRole(selectedRole);
-    setError(null);
-    if (selectedRole === "admin") {
-      setAuthMode("signin");
-      setEmail("admin@rsfashion.com");
-      setPassword("admin2026");
-    } else {
-      setEmail("");
-      setPassword("");
-    }
-  };
-
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const cleaned = e.target.value.replace(/\D/g, "").slice(0, 10);
     setPhoneDigits(cleaned);
@@ -144,46 +128,60 @@ export default function Auth() {
     e.preventDefault();
     setError(null);
 
-    // ---- ADMIN PATH ----
-    if (role === "admin") {
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPhone = phoneDigits.trim();
+    const formattedPhone = cleanPhone ? `+91 ${cleanPhone}` : "";
+    const isAdminEmail = cleanEmail === "admin@rsfashion.com" || cleanEmail === "admin@rsfashions.com";
+
+    // ---- ADMIN AUTHENTICATION DETECTED ----
+    if (isAdminEmail) {
       if (password !== "admin2026") {
-        setError("Invalid administrator security key. Access denied.");
+        setError("Invalid credentials. Access denied.");
         return;
       }
+
+      setLoading(true);
+      setUserSession({
+        name: "Store Admin",
+        email: cleanEmail,
+        phone: "+91 9876543210",
+        role: "admin",
+        authProvider: "email",
+      });
+
+      setTimeout(() => {
+        setLoading(false);
+        navigate(ADMIN_SECRET_PATH);
+      }, 400);
+      return;
     }
 
-    // ---- USER PATH ----
-    if (role === "user") {
-      const emailError = validateEmail(email);
-      if (emailError) {
-        setError(emailError);
+    // ---- CUSTOMER USER VALIDATION ----
+    const emailError = validateEmail(email);
+    if (emailError) {
+      setError(emailError);
+      return;
+    }
+
+    if (authMode === "signup") {
+      const nameError = validateName(fullName);
+      if (nameError) {
+        setError(nameError);
         return;
       }
 
-      if (authMode === "signup") {
-        const nameError = validateName(fullName);
-        if (nameError) {
-          setError(nameError);
-          return;
-        }
-
-        const phoneError = validatePhone(phoneDigits);
-        if (phoneError) {
-          setError(phoneError);
-          return;
-        }
+      const phoneError = validatePhone(phoneDigits);
+      if (phoneError) {
+        setError(phoneError);
+        return;
       }
     }
 
     setLoading(true);
 
     try {
-      const cleanPhone = phoneDigits.trim();
-      const cleanEmail = email.trim().toLowerCase();
-      const formattedPhone = cleanPhone ? `+91 ${cleanPhone}` : "";
-
       // Duplicate Check on Signup
-      if (role === "user" && authMode === "signup") {
+      if (authMode === "signup") {
         const check = await StoreService.checkUserExists(cleanEmail, cleanPhone);
         if (check.exists) {
           if (check.emailExists) {
@@ -197,13 +195,11 @@ export default function Auth() {
       }
 
       let displayName =
-        role === "admin"
-          ? "Store Admin"
-          : authMode === "signup"
-            ? fullName.trim()
-            : fullName || "Valued Customer";
+        authMode === "signup"
+          ? fullName.trim()
+          : fullName || "Valued Customer";
 
-      if (role === "user" && authMode === "signin") {
+      if (authMode === "signin") {
         try {
           const check = await StoreService.checkUserExists(cleanEmail, cleanPhone);
           if (check.existingName) {
@@ -220,81 +216,76 @@ export default function Auth() {
         name: displayName,
         email: cleanEmail,
         phone: formattedPhone,
-        role,
+        role: "user",
         authProvider: "email",
         birthday: birthday || undefined,
       });
 
-      if (role === "user") {
-        try {
-          const adminCustStr = localStorage.getItem("rs_admin_customers");
-          const adminCusts = adminCustStr ? JSON.parse(adminCustStr) : [];
-          const existingIdx = adminCusts.findIndex(
-            (c: any) =>
-              (c.email && c.email.toLowerCase() === cleanEmail) ||
-              (c.phone && c.phone.replace(/\D/g, "") === cleanPhone)
-          );
-          const existing = existingIdx >= 0 ? adminCusts[existingIdx] : null;
-          const nowIso = new Date().toISOString();
-          const newCust = {
-            id: existing?.id || session.id,
-            name: displayName || existing?.name,
-            email: cleanEmail || existing?.email,
-            phone: formattedPhone || existing?.phone,
-            city: existing?.city || "Hyderabad",
-            address: existing?.address || "Hyderabad, Telangana",
-            state: existing?.state || "Telangana",
-            totalSpent: existing?.totalSpent ?? 0,
-            ordersCount: existing?.ordersCount ?? 0,
-            birthday: birthday || existing?.birthday,
-            anniversary: anniversary || existing?.anniversary,
-            preferredWeave: existing?.preferredWeave,
-            notes: existing?.notes || (authMode === "signup" ? "Registered via Website Account" : "Signed in via Email"),
-            authProvider: "email",
-            status: "active",
-            lastActiveAt: nowIso,
-            joinedAt: existing?.joinedAt || nowIso,
-          };
-          if (existingIdx >= 0) {
-            adminCusts[existingIdx] = newCust;
-          } else {
-            adminCusts.unshift(newCust);
-          }
-          localStorage.setItem("rs_admin_customers", JSON.stringify(adminCusts));
-        } catch {}
+      // Synchronize into CRM customers list
+      try {
+        const adminCustStr = localStorage.getItem("rs_admin_customers");
+        const adminCusts = adminCustStr ? JSON.parse(adminCustStr) : [];
+        const existingIdx = adminCusts.findIndex(
+          (c: any) =>
+            (c.email && c.email.toLowerCase() === cleanEmail) ||
+            (c.phone && c.phone.replace(/\D/g, "") === cleanPhone)
+        );
+        const existing = existingIdx >= 0 ? adminCusts[existingIdx] : null;
+        const nowIso = new Date().toISOString();
+        const newCust = {
+          id: existing?.id || session.id,
+          name: displayName || existing?.name,
+          email: cleanEmail || existing?.email,
+          phone: formattedPhone || existing?.phone,
+          city: existing?.city || "Hyderabad",
+          address: existing?.address || "Hyderabad, Telangana",
+          state: existing?.state || "Telangana",
+          totalSpent: existing?.totalSpent ?? 0,
+          ordersCount: existing?.ordersCount ?? 0,
+          birthday: birthday || existing?.birthday,
+          anniversary: anniversary || existing?.anniversary,
+          preferredWeave: existing?.preferredWeave,
+          notes: existing?.notes || (authMode === "signup" ? "Registered via Website Account" : "Signed in via Email"),
+          authProvider: "email",
+          status: "active",
+          lastActiveAt: nowIso,
+          joinedAt: existing?.joinedAt || nowIso,
+        };
+        if (existingIdx >= 0) {
+          adminCusts[existingIdx] = newCust;
+        } else {
+          adminCusts.unshift(newCust);
+        }
+        localStorage.setItem("rs_admin_customers", JSON.stringify(adminCusts));
+      } catch {}
 
-        try {
-          await fetch(`${API_BASE}/crm/customers`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              id: session.id,
-              name: displayName,
-              email: cleanEmail,
-              phone: formattedPhone,
-              city: "Hyderabad",
-              address: "Hyderabad, Telangana",
-              birthday: birthday || null,
-              anniversary: anniversary || null,
-              isNewRegistration: authMode === "signup",
-              notes:
-                authMode === "signup"
-                  ? "Registered via Website Account"
-                  : "Signed in via Email",
-              authProvider: "email",
-            }),
-          });
-        } catch {}
-      }
+      try {
+        await fetch(`${API_BASE}/crm/customers`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: session.id,
+            name: displayName,
+            email: cleanEmail,
+            phone: formattedPhone,
+            city: "Hyderabad",
+            address: "Hyderabad, Telangana",
+            birthday: birthday || null,
+            anniversary: anniversary || null,
+            isNewRegistration: authMode === "signup",
+            notes:
+              authMode === "signup"
+                ? "Registered via Website Account"
+                : "Signed in via Email",
+            authProvider: "email",
+          }),
+        });
+      } catch {}
 
       setTimeout(() => {
         setLoading(false);
-        if (role === "admin") {
-          navigate("/admin");
-        } else {
-          const destination = redirectUrl && redirectUrl !== "/account" ? redirectUrl : "/shop";
-          navigate(destination, { replace: true });
-        }
+        const destination = redirectUrl && redirectUrl !== "/account" ? redirectUrl : "/shop";
+        navigate(destination, { replace: true });
       }, 400);
     } catch (err: any) {
       setLoading(false);
@@ -442,105 +433,72 @@ export default function Auth() {
               </div>
             )}
 
-            {/* Role Toggle (Customer vs Admin) */}
-            <div className="mb-5 flex rounded-2xl bg-[#EFECE6]/70 p-1.5 border border-stone-200/60 backdrop-blur-xs">
+            {/* Google Sign-in */}
+            <div className="mb-5">
               <button
                 type="button"
-                onClick={() => handleRoleSwitch("user")}
-                className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-[11px] font-semibold uppercase tracking-wider transition-all duration-300 ${
-                  role === "user"
-                    ? "bg-[#2A2421] text-white shadow-md"
-                    : "text-[#7A6B5D] hover:text-[#2A2421]"
-                }`}
+                onClick={handleGoogleSignIn}
+                disabled={googleLoading || loading}
+                className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-2xl border border-stone-200/90 bg-white hover:bg-stone-50/80 text-stone-800 text-xs font-medium tracking-wide shadow-xs hover:shadow-md transition-all duration-300 active:scale-[0.98] disabled:opacity-60"
               >
-                <FiUser size={14} />
-                <span>Customer</span>
+                {googleLoading ? (
+                  <div className="w-4 h-4 border-2 border-stone-400 border-t-[#8E3D51] rounded-full animate-spin" />
+                ) : (
+                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                  </svg>
+                )}
+                <span>{googleLoading ? "Connecting to Google..." : "Continue with Google"}</span>
               </button>
 
+              <div className="relative my-5">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-stone-200/80" />
+                </div>
+                <div className="relative flex justify-center text-[10px] uppercase tracking-widest">
+                  <span className="bg-[#FAF7F2] px-3 text-stone-400 font-medium">Or continue with email</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Mode Toggle (Sign In vs Create Account) */}
+            <div className="mb-5 flex border-b border-stone-200/80">
               <button
                 type="button"
-                onClick={() => handleRoleSwitch("admin")}
-                className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-[11px] font-semibold uppercase tracking-wider transition-all duration-300 ${
-                  role === "admin"
-                    ? "bg-[#8E3D51] text-white shadow-md"
-                    : "text-[#7A6B5D] hover:text-[#8E3D51]"
+                onClick={() => {
+                  setAuthMode("signin");
+                  setError(null);
+                }}
+                className={`flex-1 pb-2.5 text-xs font-semibold uppercase tracking-wider transition-all border-b-2 ${
+                  authMode === "signin"
+                    ? "border-[#8E3D51] text-[#8E3D51]"
+                    : "border-transparent text-[#7A6B5D] hover:text-[#2A2421]"
                 }`}
               >
-                <FiShield size={14} />
-                <span>Store Admin</span>
+                Sign In
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMode("signup");
+                  setError(null);
+                }}
+                className={`flex-1 pb-2.5 text-xs font-semibold uppercase tracking-wider transition-all border-b-2 ${
+                  authMode === "signup"
+                    ? "border-[#8E3D51] text-[#8E3D51]"
+                    : "border-transparent text-[#7A6B5D] hover:text-[#2A2421]"
+                }`}
+              >
+                Create Account
               </button>
             </div>
 
-            {/* Google Sign-in */}
-            {role === "user" && (
-              <div className="mb-5">
-                <button
-                  type="button"
-                  onClick={handleGoogleSignIn}
-                  disabled={googleLoading || loading}
-                  className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-2xl border border-stone-200/90 bg-white hover:bg-stone-50/80 text-stone-800 text-xs font-medium tracking-wide shadow-xs hover:shadow-md transition-all duration-300 active:scale-[0.98] disabled:opacity-60"
-                >
-                  {googleLoading ? (
-                    <div className="w-4 h-4 border-2 border-stone-400 border-t-[#8E3D51] rounded-full animate-spin" />
-                  ) : (
-                    <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-                    </svg>
-                  )}
-                  <span>{googleLoading ? "Connecting to Google..." : "Continue with Google"}</span>
-                </button>
-
-                <div className="relative my-5">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-stone-200/80" />
-                  </div>
-                  <div className="relative flex justify-center text-[10px] uppercase tracking-widest">
-                    <span className="bg-[#FAF7F2] px-3 text-stone-400 font-medium">Or continue with email</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Customer Mode Toggle (Sign In vs Create Account) */}
-            {role === "user" && (
-              <div className="mb-5 flex border-b border-stone-200/80">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAuthMode("signin");
-                    setError(null);
-                  }}
-                  className={`flex-1 pb-2.5 text-xs font-semibold uppercase tracking-wider transition-all border-b-2 ${
-                    authMode === "signin"
-                      ? "border-[#8E3D51] text-[#8E3D51]"
-                      : "border-transparent text-[#7A6B5D] hover:text-[#2A2421]"
-                  }`}
-                >
-                  Sign In
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAuthMode("signup");
-                    setError(null);
-                  }}
-                  className={`flex-1 pb-2.5 text-xs font-semibold uppercase tracking-wider transition-all border-b-2 ${
-                    authMode === "signup"
-                      ? "border-[#8E3D51] text-[#8E3D51]"
-                      : "border-transparent text-[#7A6B5D] hover:text-[#2A2421]"
-                  }`}
-                >
-                  Create Account
-                </button>
-              </div>
-            )}
-
             {/* Form */}
             <form onSubmit={handleAuthSubmit} className="space-y-3">
-              {role === "user" && authMode === "signup" && (
+              {authMode === "signup" && (
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-widest text-[#7A6B5D] mb-1.5">
                     Full Name
@@ -561,7 +519,7 @@ export default function Auth() {
 
               <div>
                 <label className="block text-[10px] font-bold uppercase tracking-widest text-[#7A6B5D] mb-1.5">
-                  {role === "admin" ? "Admin Corporate Email" : "Email Address"}
+                  Email Address
                 </label>
                 <div className="relative">
                   <FiMail className="absolute left-4 top-1/2 -translate-y-1/2 text-[#7A6B5D]" size={15} />
@@ -570,18 +528,18 @@ export default function Auth() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Email Id"
+                    placeholder="Email address"
                     className="w-full rounded-2xl border border-stone-200/90 bg-white/90 py-2.5 pl-11 pr-4 text-xs font-light text-[#2A2421] outline-none transition-all focus:border-[#8E3D51] focus:bg-white focus:ring-2 focus:ring-[#8E3D51]/10"
                   />
                 </div>
-                {role === "user" && authMode === "signup" && (
+                {authMode === "signup" && (
                   <p className="mt-1 text-[10px] text-[#7A6B5D]">
                     Temporary or disposable email addresses aren't accepted.
                   </p>
                 )}
               </div>
 
-              {role === "user" && authMode === "signup" && (
+              {authMode === "signup" && (
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-widest text-[#7A6B5D] mb-1.5">
                     Mobile Number
@@ -605,7 +563,7 @@ export default function Auth() {
                 </div>
               )}
 
-              {role === "user" && authMode === "signup" && (
+              {authMode === "signup" && (
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="mb-1.5 flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-[#7A6B5D]">
@@ -637,10 +595,10 @@ export default function Auth() {
                 </div>
               )}
 
-              {role === "user" && authMode === "signup" && (
+              {authMode === "signup" && (
                 <div className="flex items-center gap-1.5 text-[10.5px] text-[#8E3D51] bg-[#8E3D51]/5 px-3 py-2 rounded-xl border border-[#8E3D51]/10">
                   <FiGift size={13} className="shrink-0" />
-                  <span>We'll send you a little surprise on these days.</span>
+                  <span>We'll send you a personalized surprise gift on these special days.</span>
                 </div>
               )}
 
@@ -679,53 +637,45 @@ export default function Auth() {
               <button
                 type="submit"
                 disabled={loading || googleLoading}
-                className={`rsf-shimmer-btn group mt-5 flex w-full items-center justify-center gap-2.5 rounded-full py-3.5 text-xs font-semibold uppercase tracking-[0.2em] text-white shadow-lg transition-all duration-300 hover:-translate-y-0.5 active:scale-[0.98] ${
-                  role === "admin"
-                    ? "bg-[#8E3D51] hover:bg-[#722F40] shadow-[#8E3D51]/20"
-                    : "bg-[#2A2421] hover:bg-[#8E3D51] shadow-[#2A2421]/15"
-                }`}
+                className="rsf-shimmer-btn group mt-5 flex w-full items-center justify-center gap-2.5 rounded-full py-3.5 text-xs font-semibold uppercase tracking-[0.2em] text-white shadow-lg transition-all duration-300 hover:-translate-y-0.5 active:scale-[0.98] bg-[#2A2421] hover:bg-[#8E3D51] shadow-[#2A2421]/15"
               >
                 <span>
                   {loading
                     ? "Please wait..."
-                    : role === "admin"
-                      ? "Open Admin Portal"
-                      : authMode === "signup"
-                        ? "Create Account & Go to Shop"
-                        : "Sign In to Shop"}
+                    : authMode === "signup"
+                      ? "Create Account & Go to Shop"
+                      : "Sign In to Shop"}
                 </span>
                 <FiArrowRight size={14} className="transition-transform duration-300 group-hover:translate-x-1" />
               </button>
             </form>
 
             {/* Toggle link between Sign In & Sign Up */}
-            {role === "user" && (
-              <div className="mt-5 text-center">
-                {authMode === "signin" ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAuthMode("signup");
-                      setError(null);
-                    }}
-                    className="text-xs text-[#7A6B5D] hover:text-[#8E3D51] font-medium transition-colors"
-                  >
-                    Don't have an account? <span className="underline font-semibold text-[#2A2421]">Create an account</span>
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAuthMode("signin");
-                      setError(null);
-                    }}
-                    className="text-xs text-[#7A6B5D] hover:text-[#8E3D51] font-medium transition-colors"
-                  >
-                    Already have an account? <span className="underline font-semibold text-[#2A2421]">Sign In</span>
-                  </button>
-                )}
-              </div>
-            )}
+            <div className="mt-5 text-center">
+              {authMode === "signin" ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode("signup");
+                    setError(null);
+                  }}
+                  className="text-xs text-[#7A6B5D] hover:text-[#8E3D51] font-medium transition-colors"
+                >
+                  Don't have an account? <span className="underline font-semibold text-[#2A2421]">Create an account</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode("signin");
+                    setError(null);
+                  }}
+                  className="text-xs text-[#7A6B5D] hover:text-[#8E3D51] font-medium transition-colors"
+                >
+                  Already have an account? <span className="underline font-semibold text-[#2A2421]">Sign In</span>
+                </button>
+              )}
+            </div>
 
             {/* Quick Direct Link to Catalog */}
             <div className="mt-5 border-t border-stone-200/60 pt-4 text-center">
