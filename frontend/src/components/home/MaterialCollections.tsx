@@ -210,7 +210,7 @@ export default function MaterialCollections() {
             <div
               key={`material-card-${mat.id}-${idx}`}
               ref={idx === 0 ? firstCardRef : null}
-              className="w-[240px] shrink-0 sm:w-[270px]"
+              className="w-60 shrink-0 sm:w-67.5"
             >
               {/* Borderless Card Frame */}
               <Link

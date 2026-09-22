@@ -53,9 +53,9 @@ function OfferBanner() {
           relative
           isolate
           mx-auto
-          max-w-[1600px]
+          max-w-400
           overflow-hidden
-          rounded-[2rem]
+          rounded-4xl
           bg-[#221C19]
           text-[#FAF7F2]
           shadow-[0_16px_45px_rgba(34,28,25,0.14)]
@@ -136,13 +136,13 @@ function OfferBanner() {
             relative
             z-10
             flex
-            min-h-[500px]
+            min-h-125
             flex-col
             justify-between
             p-5
-            sm:min-h-[560px]
+            sm:min-h-140
             sm:p-10
-            lg:min-h-[600px]
+            lg:min-h-150
             lg:p-16
           "
         >
@@ -226,7 +226,7 @@ function OfferBanner() {
                 ease,
               }}
               className="
-                max-w-[340px]
+                max-w-85
                 font-serif
                 text-[3.25rem]
                 font-light
@@ -272,7 +272,7 @@ function OfferBanner() {
               }}
               className="
                 mt-5
-                max-w-[310px]
+                max-w-77.5
                 text-[11px]
                 font-light
                 leading-6
@@ -384,13 +384,13 @@ function OfferBanner() {
           className="
             pointer-events-none
             absolute
-            right-[-45px]
+            -right-11.25
             top-[42%]
             h-28
             w-28
             rounded-full
             border
-            border-white/[0.08]
+            border-white/8
             sm:hidden
           "
         />
@@ -399,7 +399,7 @@ function OfferBanner() {
           className="
             pointer-events-none
             absolute
-            right-[-25px]
+            -right-6.25
             top-[45%]
             h-16
             w-16
