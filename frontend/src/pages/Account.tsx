@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import {
   getUserSession,
+  setUserSession,
   clearUserSession,
   getSavedAddresses,
   saveAddress,
@@ -40,6 +41,7 @@ import {
   type SavedAddress,
   type SavedPayment,
 } from "../utils/userSession";
+import { API_BASE } from "../config/api";
 import { StoreService } from "../services/supabase";
 import { ORDER_FULFILLED_EVENT, getCourierTrackingUrl } from "../context/OrderFulfillmentContext";
 import { useCart } from "../context/CartContext";
@@ -93,6 +95,11 @@ export default function Account() {
   const [selectedInvoice, setSelectedInvoice] = useState<any | null>(null);
   const [reorderSuccess, setReorderSuccess] = useState<string | null>(null);
 
+  // Profile Edit State
+  const [profileDob, setProfileDob] = useState<string>(() => currentUser?.birthday || "");
+  const [profileSuccess, setProfileSuccess] = useState<string | null>(null);
+  const [profileError, setProfileError] = useState<string | null>(null);
+
   // Authentication check: locks redirection to Account upon login instead of home or shop
   useEffect(() => {
     const session = getUserSession();
@@ -100,10 +107,49 @@ export default function Account() {
       navigate("/login?redirect=/account", { replace: true });
     } else {
       setCurrentUser(session);
+      if (session.birthday) setProfileDob(session.birthday);
       setAddresses(getSavedAddresses(session.phone, session.email, session.id));
       setPayments(getSavedPayments(session.phone));
     }
   }, [navigate]);
+
+  const handleSaveProfileDob = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser) return;
+    setProfileError(null);
+    setProfileSuccess(null);
+    if (profileDob) {
+      const birthDate = new Date(profileDob);
+      const today = new Date();
+      if (isNaN(birthDate.getTime()) || birthDate >= today) {
+        setProfileError("Please enter a valid past Date of Birth.");
+        return;
+      }
+    }
+
+    const updatedSession = setUserSession({
+      ...currentUser,
+      birthday: profileDob || undefined,
+    });
+    setCurrentUser(updatedSession);
+
+    try {
+      await fetch(`${API_BASE}/crm/customers`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: updatedSession.id,
+          name: updatedSession.name,
+          email: updatedSession.email,
+          phone: updatedSession.phone,
+          birthday: profileDob || undefined,
+        }),
+      });
+    } catch {}
+
+    setProfileSuccess("Profile updated successfully!");
+    setTimeout(() => setProfileSuccess(null), 3000);
+  };
 
   // Sync tab with URL
   const handleTabChange = (tab: AccountTab) => {
@@ -938,7 +984,7 @@ export default function Account() {
               </p>
             </div>
 
-            <div className="space-y-4 text-sm">
+            <form onSubmit={handleSaveProfileDob} className="space-y-4 text-sm">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-semibold text-stone-600 uppercase tracking-wider block mb-1">Full Name</label>
@@ -960,14 +1006,27 @@ export default function Account() {
                 </div>
               </div>
 
-              <div>
-                <label className="text-xs font-semibold text-stone-600 uppercase tracking-wider block mb-1">Email Address</label>
-                <input
-                  type="email"
-                  readOnly
-                  value={currentUser.email || "Not specified"}
-                  className="w-full px-4 py-2.5 rounded-xl border border-stone-200 bg-stone-50 font-mono text-stone-800"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-semibold text-stone-600 uppercase tracking-wider block mb-1">Email Address</label>
+                  <input
+                    type="email"
+                    readOnly
+                    value={currentUser.email || "Not specified"}
+                    className="w-full px-4 py-2.5 rounded-xl border border-stone-200 bg-stone-50 font-mono text-stone-800"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-stone-600 uppercase tracking-wider block mb-1">Date of Birth</label>
+                  <input
+                    type="date"
+                    max={new Date().toISOString().split("T")[0]}
+                    value={profileDob}
+                    onChange={(e) => setProfileDob(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-stone-200 bg-white font-mono text-stone-800 focus:border-[#38152B] outline-none"
+                  />
+                  <p className="mt-1 text-[10px] text-stone-400">Used for birthday privileges &amp; gifts.</p>
+                </div>
               </div>
 
               <div>
@@ -980,18 +1039,40 @@ export default function Account() {
                 />
               </div>
 
+              {profileError && (
+                <p className="text-xs text-red-600 font-medium bg-red-50 p-2.5 rounded-xl border border-red-200">
+                  {profileError}
+                </p>
+              )}
+
+              {profileSuccess && (
+                <p className="text-xs text-emerald-700 font-medium bg-emerald-50 p-2.5 rounded-xl border border-emerald-200">
+                  {profileSuccess}
+                </p>
+              )}
+
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-[#38152B] text-white text-xs font-semibold hover:bg-[#4E1D3D] transition-colors cursor-pointer"
+                >
+                  Save Profile Details
+                </button>
+              </div>
+
               <div className="pt-4 border-t border-stone-200 flex items-center justify-between">
                 <p className="text-xs text-stone-400">
                   Account session active for 30 days of inactivity.
                 </p>
                 <button
+                  type="button"
                   onClick={handleLogout}
                   className="px-5 py-2.5 rounded-xl bg-red-50 text-red-700 border border-red-200 text-xs font-bold hover:bg-red-100 transition-colors cursor-pointer"
                 >
                   Log Out from Account
                 </button>
               </div>
-            </div>
+            </form>
           </div>
         )}
       </div>

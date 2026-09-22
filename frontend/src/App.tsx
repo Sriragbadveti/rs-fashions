@@ -23,6 +23,7 @@ import TermsAndConditions from "./pages/TermsAndConditions";
 import ReturnPolicy from "./pages/ReturnPolicy";
 import ShippingPolicy from "./pages/ShippingPolicy";
 import OffersStore from "./pages/OffersStore";
+import AuthCallback from "./pages/AuthCallback";
 
 function AppContent() {
   const location = useLocation();
@@ -36,6 +37,7 @@ function AppContent() {
       {/* AUTHENTICATION / LOGIN */}
       <Route path="/login" element={<Auth />} />
       <Route path="/auth" element={<Auth />} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
 
       {/* STOREFRONT ROUTES (Site Layout) */}
       <Route element={<SiteLayout />}>

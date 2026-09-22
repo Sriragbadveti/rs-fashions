@@ -27,16 +27,22 @@ import {
   MOCK_CUSTOMERS,
 } from "../types/inventory";
 
-// -----------------------------------------------------------------
-// STORE / INVOICE CONSTANTS
-// These describe "our" store and never change at runtime.
-// -----------------------------------------------------------------
-export const STORE_GSTIN = "36AAAAA0000A1Z5";
-export const STORE_LEGAL_NAME = "RS Fashions";
-export const STORE_ADDRESS =
-  "Hyderabad, Telangana ( 500055 )";
+import { loadSettings } from "./settings";
 
-export const STORE_WHATSAPP_NUMBER = "9876543210";
+// -----------------------------------------------------------------
+// STORE / INVOICE CONSTANTS & DYNAMIC GETTERS
+// Dynamically sourced from Showroom Settings (Single Source of Truth)
+// -----------------------------------------------------------------
+export const getStoreLegalName = () => loadSettings().storeName || "RS Fashions";
+export const getStoreGstin = () => loadSettings().gstin || "36AAAAA0000A1Z5";
+export const getStoreAddress = () => loadSettings().storeAddress || "Plot No. 42, Jubilee Hills Road No. 36, Hyderabad, Telangana 500033";
+export const getStorePhone = () => loadSettings().storePhone || "+91 98765 43210";
+export const getStoreEmail = () => loadSettings().storeEmail || "concierge@rsfashions.in";
+
+export const STORE_GSTIN = loadSettings().gstin || "36AAAAA0000A1Z5";
+export const STORE_LEGAL_NAME = loadSettings().storeName || "RS Fashions";
+export const STORE_ADDRESS = loadSettings().storeAddress || "Plot No. 42, Jubilee Hills Road No. 36, Hyderabad, Telangana 500033";
+export const STORE_WHATSAPP_NUMBER = (loadSettings().storePhone || "9876543210").replace(/\D/g, "").slice(-10);
 export const INDIA_COUNTRY_CODE = "91";
 
 // localStorage key used to persist the "last invoice number" so it
@@ -954,6 +960,10 @@ export function useBilling({
   // ---------------------------------------------------------------
   const whatsappInvoice = () => {
     if (!completedSale) return;
+    const settings = loadSettings();
+    const liveStoreName = settings.storeName || "RS Fashions";
+    const liveStoreGstin = settings.gstin || "36AAAAA0000A1Z5";
+    const livePhone = (settings.storePhone || "9876543210").replace(/\D/g, "").slice(-10);
 
     const lines = completedSale.items.map(
       (item) =>
@@ -963,7 +973,7 @@ export function useBilling({
     );
 
     const message = [
-      `✨ *${STORE_LEGAL_NAME} — HYDERABAD* ✨`,
+      `✨ *${liveStoreName} — HYDERABAD* ✨`,
       "SiCo Gadwal Sarees & Curated Silks",
       "━━━━━━━━━━━━━━━━━━",
       `*${
@@ -973,7 +983,7 @@ export function useBilling({
       }*`,
       `*Invoice #:* ${completedSale.invoiceNumber}`,
       completedSale.billingType === "gst"
-        ? `*Store GSTIN:* ${STORE_GSTIN}`
+        ? `*Store GSTIN:* ${liveStoreGstin}`
         : null,
       `*Date:* ${formatDate(completedSale.date)}`,
       `*Customer:* ${completedSale.customerName} (${completedSale.customerPhone})`,
@@ -996,13 +1006,13 @@ export function useBilling({
       `*Total Amount Paid:* ${currency(completedSale.total)}`,
       `*Payment Mode:* ${completedSale.paymentMethod.toUpperCase()}`,
       "━━━━━━━━━━━━━━━━━━",
-      "Thank you for choosing RS Fashions.",
+      `Thank you for choosing ${liveStoreName}.`,
     ]
       .filter(Boolean)
       .join("\n");
 
     window.open(
-      `https://wa.me/${INDIA_COUNTRY_CODE}${STORE_WHATSAPP_NUMBER}?text=${encodeURIComponent(
+      `https://wa.me/${INDIA_COUNTRY_CODE}${livePhone}?text=${encodeURIComponent(
         message
       )}`,
       "_blank",

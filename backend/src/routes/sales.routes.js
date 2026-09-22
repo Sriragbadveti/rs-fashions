@@ -9,6 +9,7 @@ import {
 
 const router = Router();
 
+router.get("/", getTransactions);
 router.get("/customer-orders", getCustomerOrders);
 router.get("/orders", getCustomerOrders);
 router.get("/transactions", getTransactions);

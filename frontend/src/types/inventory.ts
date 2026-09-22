@@ -51,6 +51,7 @@ export interface StockMovement {
 export type BillingType = "gst" | "non-gst";
 
 export type PaymentMethod =
+  | "cashfree"
   | "upi"
   | "card"
   | "cash"
@@ -376,6 +377,11 @@ export interface Product {
    * Optional product image.
    */
   imageUrl?: string;
+
+  /**
+   * Optional multiple product images.
+   */
+  images?: string[];
 }
 
 /* =========================================================

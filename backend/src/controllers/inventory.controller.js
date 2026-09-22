@@ -7,9 +7,24 @@ import { uploadImageToSupabaseStorage } from "./upload.controller.js";
  * Controller: Stock Movements Audit Trail, Bulk Loom Intake & Low Stock Alerts
  */
 
+// In-memory micro-cache for stock movements
+let cachedMovements = null;
+let lastMovementsFetch = 0;
+const CACHE_TTL_MS = 60 * 1000;
+
+export function invalidateInventoryCache() {
+  cachedMovements = null;
+  lastMovementsFetch = 0;
+}
+
 // 1. GET ALL STOCK MOVEMENTS
 export async function getMovements(req, res) {
   try {
+    const now = Date.now();
+    if (cachedMovements && now - lastMovementsFetch < CACHE_TTL_MS) {
+      return successResponse(res, { movements: cachedMovements }, "Stock movements audit trail retrieved (cached)");
+    }
+
     if (!supabase) return successResponse(res, { movements: [] });
 
     const { data, error } = await supabase
@@ -35,6 +50,9 @@ export async function getMovements(req, res) {
       performedBy: m.performed_by || "Store Manager",
       note: m.note || "",
     }));
+
+    cachedMovements = movements;
+    lastMovementsFetch = now;
 
     return successResponse(res, { movements }, "Stock movements audit trail retrieved");
   } catch (err) {
@@ -92,9 +110,11 @@ export async function createMovement(req, res) {
       }]).select().single();
 
       if (error) throw error;
+      invalidateInventoryCache();
       return successResponse(res, { movement: data }, "Stock movement logged successfully", 201);
     }
 
+    invalidateInventoryCache();
     return successResponse(res, { movement: req.body }, "Stock movement recorded locally", 201);
   } catch (err) {
     return errorResponse(res, err.message, 500);
@@ -181,6 +201,7 @@ export async function handleBulkIntake(req, res) {
       }
 
       invalidateCatalogCache();
+      invalidateInventoryCache();
       return successResponse(res, {
         count: insertedProducts.length,
         products: insertedProducts,
@@ -189,6 +210,7 @@ export async function handleBulkIntake(req, res) {
     }
 
     invalidateCatalogCache();
+    invalidateInventoryCache();
     return successResponse(res, { count: products.length }, "Bulk intake recorded locally", 201);
   } catch (err) {
     console.error("Bulk intake error:", err);

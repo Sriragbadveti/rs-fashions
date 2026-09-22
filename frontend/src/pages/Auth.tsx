@@ -11,6 +11,7 @@ import {
   FiKey,
   FiPhone,
   FiCheckCircle,
+  FiCalendar,
 } from "react-icons/fi";
 import { API_BASE } from "../config/api";
 import { setUserSession } from "../utils/userSession";
@@ -30,6 +31,7 @@ export default function Auth() {
   const [fullName, setFullName] = useState("Ananya Sharma");
   const [email, setEmail] = useState("ananya.sharma@example.com");
   const [phoneDigits, setPhoneDigits] = useState("9876543210");
+  const [dob, setDob] = useState("1996-08-15");
   const [password, setPassword] = useState("pass123");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -68,9 +70,25 @@ export default function Auth() {
 
     // 2. User Input Validation
     if (role === "user") {
-      if (authMode === "signup" && phoneDigits.length < 10) {
-        setError("Please enter a valid 10-digit mobile number.");
-        return;
+      if (authMode === "signup") {
+        if (phoneDigits.length < 10) {
+          setError("Please enter a valid 10-digit mobile number.");
+          return;
+        }
+        if (!dob || dob.trim() === "") {
+          setError("Please provide your Date of Birth.");
+          return;
+        }
+        const birthDate = new Date(dob);
+        const today = new Date();
+        if (isNaN(birthDate.getTime()) || birthDate >= today) {
+          setError("Please enter a valid past Date of Birth.");
+          return;
+        }
+        if (today.getFullYear() - birthDate.getFullYear() > 120) {
+          setError("Please enter a valid Date of Birth.");
+          return;
+        }
       }
       if (!email.includes("@")) {
         setError("Please enter a valid email address.");
@@ -126,6 +144,7 @@ export default function Auth() {
         phone: formattedPhone,
         role,
         authProvider: "email",
+        birthday: authMode === "signup" ? dob : undefined,
       });
 
       // Register into CRM backend & local admin store
@@ -150,7 +169,7 @@ export default function Auth() {
             state: existing?.state || "Telangana",
             totalSpent: existing?.totalSpent ?? 0,
             ordersCount: existing?.ordersCount ?? 0,
-            birthday: existing?.birthday,
+            birthday: dob || existing?.birthday,
             anniversary: existing?.anniversary,
             preferredWeave: existing?.preferredWeave,
             notes: existing?.notes || (authMode === "signup" ? "Registered via Website Account" : "Signed in via Email"),
@@ -178,6 +197,7 @@ export default function Auth() {
               phone: formattedPhone,
               city: "Hyderabad",
               address: "Hyderabad, Telangana",
+              birthday: dob || undefined,
               isNewRegistration: authMode === "signup",
               notes:
                 authMode === "signup"
@@ -205,15 +225,12 @@ export default function Auth() {
   };
 
   // Google Sign-in Trigger
-  const handleGoogleSignIn = () => {
+  const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     setError(null);
 
     const destination = redirectUrl && redirectUrl !== "/account" ? redirectUrl : "/shop";
-    sessionStorage.setItem("rs_auth_redirect", destination);
-
-    const backendOAuthUrl = `${API_BASE}/auth/google?redirect=${encodeURIComponent(destination)}`;
-    window.location.href = backendOAuthUrl;
+    await StoreService.signInWithGoogle(destination);
   };
 
   return (
@@ -459,6 +476,27 @@ export default function Auth() {
                   />
                 </div>
                 <p className="mt-1 text-[10px] text-[#8C7A6B]">We will send your order updates &amp; parcel tracking via WhatsApp.</p>
+              </div>
+            )}
+
+            {/* Date of Birth (Sign Up only) */}
+            {role === "user" && authMode === "signup" && (
+              <div>
+                <label className="block text-[10.5px] font-semibold uppercase tracking-wider text-[#8C7A6B] mb-1">
+                  Date of Birth
+                </label>
+                <div className="relative">
+                  <FiCalendar className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8C7A6B]" size={15} />
+                  <input
+                    type="date"
+                    required
+                    max={new Date().toISOString().split("T")[0]}
+                    value={dob}
+                    onChange={(e) => setDob(e.target.value)}
+                    className="w-full rounded-xl border border-stone-200/90 bg-white/80 py-2.5 pl-10 pr-4 text-xs font-light text-[#2A2421] outline-none transition-all focus:border-[#8E3D51] focus:bg-white backdrop-blur-xs"
+                  />
+                </div>
+                <p className="mt-1 text-[10px] text-[#8C7A6B]">For personalized anniversary &amp; birthday surprise gifts.</p>
               </div>
             )}
 

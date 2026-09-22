@@ -23,6 +23,7 @@ import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Mail,
   Clock,
 } from "lucide-react";
@@ -30,6 +31,7 @@ import type { CustomerProfile } from "../types/inventory";
 import { MOCK_CUSTOMERS } from "../types/inventory";
 import { getSavedCrmCustomers } from "../types/useBilling";
 import { API_BASE } from "../config/api";
+import { useShowroomSettings } from "../types/settings";
 
 interface CRMProps {
   customers?: CustomerProfile[];
@@ -42,9 +44,6 @@ type MessageTemplateType =
   | "festive_offer"
   | "reactivation"
   | "custom";
-
-const STORE_NAME = "RS Fashions";
-const SHOWROOM_LOCATION = "Road No. 36, Jubilee Hills, Hyderabad";
 
 const MESSAGE_TEMPLATES: {
   id: MessageTemplateType;
@@ -549,6 +548,7 @@ export default function CRM({
     };
   }, [initialData]);
 
+  const showroom = useShowroomSettings();
   const [searchQuery, setSearchQuery] = useState("");
 
   const [isNewCustomerModalOpen, setIsNewCustomerModalOpen] =
@@ -677,6 +677,22 @@ export default function CRM({
   }, [customers, searchQuery, statusFilter, getCustomerActivityInfo]);
 
   /* ---------------------------------------------------------------------- */
+  /* PAGINATION (LOAD MORE)                                                 */
+  /* ---------------------------------------------------------------------- */
+
+  const PAGE_SIZE = 9;
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
+  // Reset pagination window when search query or filter changes
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [searchQuery, statusFilter]);
+
+  const displayedCustomers = useMemo(() => {
+    return filteredCustomers.slice(0, visibleCount);
+  }, [filteredCustomers, visibleCount]);
+
+  /* ---------------------------------------------------------------------- */
   /* MESSAGE GENERATOR                                                      */
   /* ---------------------------------------------------------------------- */
 
@@ -687,14 +703,17 @@ export default function CRM({
       discountCode: string,
       offerText: string
     ) => {
+      const storeName = showroom.storeName || "RS Fashions";
+      const showroomLocation = showroom.storeAddress || "Road No. 36, Jubilee Hills, Hyderabad";
+
       if (type === "birthday") {
         return (
           `✨ *Namaste ${client.name} Ji!* ✨\n\n` +
-          `Wishing you a very Happy Birthday from all of us at *${STORE_NAME}*! 💐\n\n` +
+          `Wishing you a very Happy Birthday from all of us at *${storeName}*! 💐\n\n` +
           `May your year ahead be blessed with good health, grace, and timeless happiness.\n\n` +
           `As a token of our appreciation for being our valued patron, we are delighted to offer you an *${offerText}* (Use code: *${discountCode}*) valid on our curated SiCo Gadwal & Heritage Handloom collections.\n\n` +
-          `We look forward to welcoming you at our Jubilee Hills showroom.\n\n` +
-          `Warm regards,\n*${STORE_NAME} — Jubilee Hills, Hyderabad*`
+          `We look forward to welcoming you at our showroom.\n\n` +
+          `Warm regards,\n*${storeName}*`
         );
       }
 
@@ -703,19 +722,19 @@ export default function CRM({
           `✨ *Warmest Wedding Anniversary Greetings to ${client.name} Ji & Family!* 💍\n\n` +
           `May your bond of love and togetherness grow more radiant with every passing year, woven with grace just like our finest heritage silks.\n\n` +
           `To celebrate your milestone, enjoy an *${offerText}* on our Bridal & Gadwal collections using privilege code: *${discountCode}*.\n\n` +
-          `Showroom: *${SHOWROOM_LOCATION}*\n\n` +
-          `With sincere wishes,\n*${STORE_NAME}*`
+          `Showroom: *${showroomLocation}*\n\n` +
+          `With sincere wishes,\n*${storeName}*`
         );
       }
 
       if (type === "reactivation") {
         return (
-          `✨ *Namaste ${client.name} Ji! We Miss You at ${STORE_NAME}* ✨\n\n` +
+          `✨ *Namaste ${client.name} Ji! We Miss You at ${storeName}* ✨\n\n` +
           `It has been a little while since your last visit to our boutique. We have recently arrived with a breathtaking new festive collection of authentic SiCo Gadwal handloom drapes woven by master artisans.\n\n` +
           `As our esteemed patron, we would love to welcome you back with an exclusive welcome-back privilege: *${offerText}* (Code: *${discountCode}*).\n\n` +
           `Explore our latest online gallery: https://rsfashions.in/shop\n` +
-          `Or visit our flagship showroom: *${SHOWROOM_LOCATION}*\n\n` +
-          `With sincere regards,\n*${STORE_NAME} Team*`
+          `Or visit our flagship showroom: *${showroomLocation}*\n\n` +
+          `With sincere regards,\n*${storeName} Team*`
         );
       }
 
@@ -727,11 +746,11 @@ export default function CRM({
           "Pure Gadwal Silk & Zari"
         }* designs.\n\n` +
         `Enjoy an exclusive privilege offer (*${discountCode}*) on your next drape selection.\n\n` +
-        `📍 *${STORE_NAME} — ${SHOWROOM_LOCATION}*\n` +
+        `📍 *${storeName} — ${showroomLocation}*\n` +
         `Reserve a private preview: Reply to this message.`
       );
     },
-    []
+    [showroom]
   );
 
   /* ---------------------------------------------------------------------- */
@@ -1277,11 +1296,11 @@ export default function CRM({
           <span>
             Showing{" "}
             <strong className="text-stone-800">
-              {filteredCustomers.length}
+              {displayedCustomers.length}
             </strong>{" "}
             of{" "}
             <strong className="text-stone-800">
-              {customers.length}
+              {filteredCustomers.length}
             </strong>{" "}
             clients
           </span>
@@ -1299,9 +1318,10 @@ export default function CRM({
       </div>
 
       {/* CLIENT CARDS */}
-      {filteredCustomers.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {filteredCustomers.map(
+      {displayedCustomers.length > 0 ? (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {displayedCustomers.map(
             (client, index) => {
               return (
                 <article
@@ -1554,6 +1574,27 @@ export default function CRM({
             }
           )}
         </div>
+
+        {/* LOAD MORE BUTTON */}
+        {visibleCount < filteredCustomers.length && (
+          <div className="mt-8 flex flex-col items-center justify-center gap-2">
+            <button
+              type="button"
+              onClick={() => setVisibleCount((prev) => prev + PAGE_SIZE)}
+              className="inline-flex items-center gap-2.5 px-6 py-3 rounded-2xl bg-white border border-stone-200/90 hover:border-brand-gold text-stone-800 hover:text-brand-plum font-semibold text-xs shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.98] group"
+            >
+              <Users className="h-4 w-4 text-brand-gold group-hover:scale-110 transition-transform" />
+              <span>
+                Load More Clients ({filteredCustomers.length - visibleCount} remaining)
+              </span>
+              <ChevronDown className="h-4 w-4 text-stone-400 group-hover:translate-y-0.5 transition-transform" />
+            </button>
+            <p className="text-[11px] text-stone-400">
+              Showing {displayedCustomers.length} of {filteredCustomers.length} total patron profiles
+            </p>
+          </div>
+        )}
+      </>
       ) : (
         <div className="glass-panel rounded-3xl py-16 px-6 text-center animate-[crmFadeIn_0.35s_ease-out]">
           <div className="mx-auto w-12 h-12 rounded-2xl bg-stone-100 flex items-center justify-center text-stone-400 mb-4">

@@ -94,6 +94,23 @@ export async function checkCustomerExists(req, res) {
   }
 }
 
+function validateAndFormatDOB(val) {
+  if (!val) return null;
+  const str = String(val).trim();
+  if (!str) return null;
+  const d = new Date(str);
+  if (isNaN(d.getTime())) {
+    throw new Error("Invalid Date of Birth format. Please provide a valid date.");
+  }
+  if (d.getTime() > Date.now()) {
+    throw new Error("Date of Birth cannot be in the future.");
+  }
+  if (d.getFullYear() < 1900) {
+    throw new Error("Date of Birth must be after year 1900.");
+  }
+  return d.toISOString().split("T")[0];
+}
+
 // 2. CREATE / SYNC CUSTOMER (Email or Google Signup)
 export async function createCustomer(req, res) {
   try {
@@ -107,6 +124,8 @@ export async function createCustomer(req, res) {
       totalSpent = 0,
       ordersCount = 0,
       birthday,
+      dob,
+      date_of_birth,
       anniversary,
       preferredWeave,
       notes,
@@ -115,6 +134,13 @@ export async function createCustomer(req, res) {
       isNewRegistration = false,
       strictDuplicateCheck = false,
     } = req.body;
+
+    let cleanBirthday = null;
+    try {
+      cleanBirthday = validateAndFormatDOB(birthday || dob || date_of_birth);
+    } catch (dateErr) {
+      return errorResponse(res, dateErr.message, 400);
+    }
 
     const customerName = (name || (email ? email.split("@")[0] : "Valued Patron")).trim();
     const customerEmail = email ? email.trim().toLowerCase() : null;
@@ -184,7 +210,7 @@ export async function createCustomer(req, res) {
         address: address ? address.trim() : (city ? `${city.trim()}, Telangana` : "Hyderabad, Telangana"),
         total_spent: finalSpent || 0,
         orders_count: finalOrders || 0,
-        birthday: birthday || null,
+        birthday: cleanBirthday,
         anniversary: anniversary || null,
         preferred_weave: preferredWeave || null,
         notes: customerNotes,
@@ -205,6 +231,7 @@ export async function createCustomer(req, res) {
             email: customerEmail,
             city,
             address: address || (city ? `${city}, Telangana` : "Hyderabad, Telangana"),
+            birthday: cleanBirthday,
             notes: customerNotes,
             authProvider,
             joinedAt: new Date().toISOString(),
@@ -230,6 +257,7 @@ export async function createCustomer(req, res) {
         email: customerEmail,
         city,
         address: address || (city ? `${city}, Telangana` : "Hyderabad, Telangana"),
+        birthday: cleanBirthday,
         notes: customerNotes,
         authProvider,
         joinedAt: new Date().toISOString(),
@@ -254,11 +282,22 @@ export async function updateCustomer(req, res) {
       totalSpent,
       ordersCount,
       birthday,
+      dob,
+      date_of_birth,
       anniversary,
       preferredWeave,
       notes,
       gstin,
     } = req.body;
+
+    let cleanBirthday = undefined;
+    if (birthday !== undefined || dob !== undefined || date_of_birth !== undefined) {
+      try {
+        cleanBirthday = validateAndFormatDOB(birthday || dob || date_of_birth);
+      } catch (dateErr) {
+        return errorResponse(res, dateErr.message, 400);
+      }
+    }
 
     if (supabase) {
       const updates = { updated_at: new Date().toISOString() };
@@ -269,7 +308,7 @@ export async function updateCustomer(req, res) {
       if (address !== undefined) updates.address = address ? address.trim() : null;
       if (totalSpent !== undefined) updates.total_spent = Number(totalSpent);
       if (ordersCount !== undefined) updates.orders_count = Number(ordersCount);
-      if (birthday !== undefined) updates.birthday = birthday || null;
+      if (cleanBirthday !== undefined) updates.birthday = cleanBirthday;
       if (anniversary !== undefined) updates.anniversary = anniversary || null;
       if (preferredWeave !== undefined) updates.preferred_weave = preferredWeave || null;
       if (notes !== undefined) updates.notes = notes || null;

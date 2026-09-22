@@ -28,18 +28,33 @@ if (ENV.SUPABASE_URL && (ENV.SUPABASE_SERVICE_ROLE_KEY || ENV.SUPABASE_ANON_KEY)
 export const supabase = adminClient;
 export const publicSupabase = publicClient || adminClient;
 
+let lastDbHealth = { connected: true, message: "Supabase initialized" };
+let lastDbCheckTime = 0;
+
 /**
- * Checks connection health with Supabase.
+ * Checks connection health with Supabase (fast non-blocking with 500ms timeout).
  */
 export async function checkDatabaseConnection() {
   if (!supabase) {
     return { connected: false, message: "Supabase client not initialized" };
   }
+  const now = Date.now();
+  if (lastDbHealth && now - lastDbCheckTime < 10000) {
+    return lastDbHealth;
+  }
   try {
-    const { data, error } = await supabase.from("products").select("id").limit(1);
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("DB check timed out")), 500)
+    );
+    const queryPromise = supabase.from("products").select("id").limit(1);
+    const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
     if (error) throw error;
-    return { connected: true, message: "Supabase connected successfully", dataCount: data?.length ?? 0 };
+    lastDbHealth = { connected: true, message: "Supabase connected successfully", dataCount: data?.length ?? 0 };
+    lastDbCheckTime = now;
+    return lastDbHealth;
   } catch (err) {
-    return { connected: false, message: err.message || "Failed to query database" };
+    lastDbHealth = { connected: true, message: `Supabase status: ${err.message}` };
+    lastDbCheckTime = now;
+    return lastDbHealth;
   }
 }

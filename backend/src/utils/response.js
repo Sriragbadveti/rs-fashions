@@ -3,10 +3,12 @@
  */
 
 export function successResponse(res, data = {}, message = "Success", statusCode = 200) {
+  const payload = typeof data === "object" && data !== null ? data : { value: data };
   return res.status(statusCode).json({
     success: true,
     message,
-    ...data,
+    ...payload,
+    data: payload,
   });
 }
 

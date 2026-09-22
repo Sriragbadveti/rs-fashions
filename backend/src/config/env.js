@@ -10,15 +10,16 @@ export const ENV = {
   SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || "",
   CLIENT_URL: process.env.CLIENT_URL || "http://localhost:5173",
   BACKEND_URL: process.env.BACKEND_URL || "http://localhost:5001",
-  PHONEPE: {
-    MERCHANT_ID: process.env.PHONEPE_MERCHANT_ID || "",
-    SALT_KEY: process.env.PHONEPE_SALT_KEY || "",
-    SALT_INDEX: process.env.PHONEPE_SALT_INDEX || "1",
-    HOST_URL: process.env.PHONEPE_HOST_URL || "https://api-preprod.phonepe.com/apis/pg-sandbox",
-  },
-  RAZORPAY: {
-    KEY_ID: process.env.RAZORPAY_KEY_ID || "",
-    KEY_SECRET: process.env.RAZORPAY_KEY_SECRET || "",
+  CASHFREE: {
+    APP_ID: process.env.CASHFREE_APP_ID || process.env.CASHFREE_CLIENT_ID || "",
+    SECRET_KEY: process.env.CASHFREE_SECRET_KEY || "",
+    ENV: (process.env.CASHFREE_ENVIRONMENT || process.env.CASHFREE_ENV || "SANDBOX").toUpperCase(),
+    API_VERSION: process.env.CASHFREE_API_VERSION || "2023-08-01",
+    get BASE_URL() {
+      return (process.env.CASHFREE_ENVIRONMENT || process.env.CASHFREE_ENV || "SANDBOX").toUpperCase() === "PRODUCTION"
+        ? "https://api.cashfree.com/pg"
+        : "https://sandbox.cashfree.com/pg";
+    },
   },
 };
 

@@ -384,75 +384,108 @@ function ColorInput({
 }
 
 // ============================================================
-// SUB-COMPONENT: IMAGE UPLOADER
+// SUB-COMPONENT: MULTI-IMAGE UPLOADER
 // ============================================================
-function ImageUploadInput({
-  value,
+function MultiImageUploadInput({
+  images,
   onChange,
 }: {
-  value: string;
-  onChange: (value: string) => void;
+  images: string[];
+  onChange: (images: string[]) => void;
 }) {
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [urlInput, setUrlInput] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  function handleFile(file: File | undefined) {
-    if (!file) return;
+  async function handleFiles(fileList: FileList | null | undefined) {
+    if (!fileList || fileList.length === 0) return;
 
-    if (!file.type.startsWith("image/")) {
-      setUploadError("Please provide a valid image file (JPG, PNG, or WebP).");
+    const files = Array.from(fileList).filter((f) => f.type.startsWith("image/"));
+    if (files.length === 0) {
+      setUploadError("Please provide valid image files (JPG, PNG, or WebP).");
       return;
     }
 
     setUploadError(null);
     setIsUploading(true);
-    setUploadProgress(25);
+    setUploadProgress(15);
 
-    const reader = new FileReader();
-    reader.onload = async () => {
-      if (typeof reader.result === "string") {
-        const dataUrl = reader.result;
-        try {
-          setUploadProgress(60);
-          const res = await StoreService.uploadImage(dataUrl, (pct) => setUploadProgress(pct));
-          if (res && res.success && res.url) {
-            onChange(res.url);
-          } else {
-            onChange(dataUrl);
-          }
-        } catch (err) {
-          console.warn("Upload fallback to local cache:", err);
-          onChange(dataUrl);
-        } finally {
-          setIsUploading(false);
-          setUploadProgress(0);
-        }
+    try {
+      const readPromises = files.map(
+        (file) =>
+          new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.readAsDataURL(file);
+          })
+      );
+
+      const dataUrls = await Promise.all(readPromises);
+      setUploadProgress(50);
+
+      // Upload via backend batch API if available
+      try {
+        const uploadedUrls = await StoreService.uploadImages(dataUrls, (pct) => setUploadProgress(pct));
+        const merged = Array.from(new Set([...images, ...uploadedUrls]));
+        onChange(merged);
+      } catch (err) {
+        console.warn("Fallback to local data URLs:", err);
+        const merged = Array.from(new Set([...images, ...dataUrls]));
+        onChange(merged);
       }
-    };
-    reader.readAsDataURL(file);
+    } catch (err: any) {
+      setUploadError(err.message || "Failed to process images.");
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(0);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   }
 
-  const isUploadedImage = value.startsWith("data:");
-  const isCloudImage = value.includes("supabase.co") || value.startsWith("http");
+  function handleAddUrl() {
+    const trimmed = urlInput.trim();
+    if (!trimmed) return;
+    if (!images.includes(trimmed)) {
+      onChange([...images, trimmed]);
+    }
+    setUrlInput("");
+  }
+
+  function handleRemoveImage(index: number) {
+    const next = images.filter((_, i) => i !== index);
+    onChange(next);
+  }
+
+  function handleSetPrimary(index: number) {
+    if (index === 0 || index >= images.length) return;
+    const selected = images[index];
+    const rest = images.filter((_, i) => i !== index);
+    onChange([selected, ...rest]);
+  }
+
+  const cloudSyncedCount = images.filter(
+    (url) => url.includes("supabase.co") || (url.startsWith("http") && !url.startsWith("data:"))
+  ).length;
 
   return (
-    <div className="w-full space-y-2">
+    <div className="w-full space-y-3">
       <div className="flex items-center justify-between">
         <label className="flex items-center gap-2 text-[10.5px] font-bold uppercase tracking-[0.14em] text-stone-500">
           <ImageIcon size={12} className="text-[#8E3D51]" />
-          <span>Signature Saree Photograph</span>
+          <span>Saree Photograph Gallery ({images.length} Image{images.length !== 1 ? "s" : ""})</span>
         </label>
-        {isCloudImage && (
+        {cloudSyncedCount > 0 && (
           <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200/60 shadow-2xs">
             <CheckCircle2 size={11} />
-            Cloud Vault Synced
+            {cloudSyncedCount} Cloud Synced
           </span>
         )}
       </div>
 
+      {/* Upload Dropzone */}
       <div
         onDragOver={(e) => {
           e.preventDefault();
@@ -462,19 +495,20 @@ function ImageUploadInput({
         onDrop={(e) => {
           e.preventDefault();
           setIsDragging(false);
-          handleFile(e.dataTransfer.files?.[0]);
+          handleFiles(e.dataTransfer.files);
         }}
         onClick={() => !isUploading && fileInputRef.current?.click()}
-        className={`flex min-h-[140px] cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-4 text-center transition-all duration-200 ${isDragging
+        className={`flex min-h-[110px] cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-4 text-center transition-all duration-200 ${
+          isDragging
             ? "border-[#D4A373] bg-amber-50/40 shadow-xs"
             : "border-stone-200/80 bg-white/60 hover:border-stone-300 hover:bg-stone-50/80"
-          }`}
+        }`}
       >
         {isUploading ? (
           <div className="space-y-2 py-2 w-full max-w-xs">
             <div className="flex items-center justify-center gap-2 text-stone-800 text-xs font-semibold">
               <Loader2 size={16} className="animate-spin text-[#D4A373]" />
-              <span>Securing drape photo to vault...</span>
+              <span>Uploading saree photos to cloud vault...</span>
             </div>
             <div className="w-full bg-stone-200 h-1.5 rounded-full overflow-hidden">
               <div
@@ -482,33 +516,18 @@ function ImageUploadInput({
                 style={{ width: `${uploadProgress}%` }}
               />
             </div>
-            <span className="text-[10px] text-stone-400 font-mono block">
-              {uploadProgress}%
-            </span>
-          </div>
-        ) : value ? (
-          <div className="relative group">
-            <img
-              src={value}
-              alt="Drape Visual Preview"
-              loading="lazy"
-              decoding="async"
-              className="h-28 w-28 rounded-2xl object-cover shadow-sm transition-transform duration-300 group-hover:scale-105 border border-stone-200/80"
-            />
-            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl flex items-center justify-center text-white text-[11px] font-semibold backdrop-blur-2xs">
-              Change Drape
-            </div>
+            <span className="text-[10px] text-stone-400 font-mono block">{uploadProgress}%</span>
           </div>
         ) : (
           <>
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white shadow-xs text-[#D4A373] border border-stone-200/60">
-              <UploadCloud size={20} />
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white shadow-xs text-[#D4A373] border border-stone-200/60">
+              <UploadCloud size={18} />
             </div>
             <p className="text-xs font-semibold text-stone-700">
-              Drop high-res drape photograph here
+              Drop multiple drape photographs here
             </p>
             <p className="text-[10px] text-stone-400">
-              or click to browse from device (JPG, PNG, WebP)
+              or click to browse from device &bull; Select multiple files at once (JPG, PNG, WebP)
             </p>
           </>
         )}
@@ -516,35 +535,97 @@ function ImageUploadInput({
         <input
           ref={fileInputRef}
           type="file"
+          multiple
           accept="image/*"
           className="hidden"
-          onChange={(e) => handleFile(e.target.files?.[0])}
+          onChange={(e) => handleFiles(e.target.files)}
         />
       </div>
 
-      {uploadError && (
-        <p className="text-[11px] text-rose-600 font-medium px-1">{uploadError}</p>
-      )}
+      {uploadError && <p className="text-[11px] text-rose-600 font-medium px-1">{uploadError}</p>}
 
-      <div className="flex items-center gap-2 pt-0.5">
+      {/* Direct URL Input */}
+      <div className="flex items-center gap-2">
         <Link2 size={13} className="shrink-0 text-stone-400 ml-1" />
         <input
           type="text"
-          placeholder="...or paste a direct image URL"
-          value={isUploadedImage ? "" : value}
-          onChange={(e) => onChange(e.target.value)}
+          placeholder="...or paste an image URL and click Add"
+          value={urlInput}
+          onChange={(e) => setUrlInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              handleAddUrl();
+            }
+          }}
           className="h-9 min-w-0 flex-1 rounded-xl border border-stone-200/80 bg-white/90 px-3 text-xs text-stone-900 outline-none transition-all focus:border-[#D4A373] focus:ring-2 focus:ring-[#D4A373]/10"
         />
-        {value && (
-          <button
-            type="button"
-            onClick={() => onChange("")}
-            className="shrink-0 rounded-lg px-2.5 py-1 text-[11px] font-semibold text-rose-600 hover:bg-rose-50 transition-colors"
-          >
-            Clear
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={handleAddUrl}
+          disabled={!urlInput.trim()}
+          className="shrink-0 rounded-xl bg-[#2A0E20] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#3E1630] disabled:opacity-40 transition-colors"
+        >
+          Add Image
+        </button>
       </div>
+
+      {/* Image Preview Grid */}
+      {images.length > 0 && (
+        <div className="pt-2">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400 mb-2">
+            Gallery Previews ({images.length} item{images.length !== 1 ? "s" : ""}) &bull; First item is primary
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {images.map((imgUrl, index) => (
+              <div
+                key={`${imgUrl}-${index}`}
+                className={`relative group rounded-2xl border p-1 bg-white transition-all shadow-xs ${
+                  index === 0 ? "border-[#D4A373] ring-2 ring-[#D4A373]/30" : "border-stone-200/80 hover:border-stone-300"
+                }`}
+              >
+                <div className="relative aspect-square rounded-xl overflow-hidden bg-stone-100">
+                  <img
+                    src={imgUrl}
+                    alt={`Saree View ${index + 1}`}
+                    loading="lazy"
+                    decoding="async"
+                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                  {index === 0 && (
+                    <span className="absolute top-1.5 left-1.5 rounded-md bg-[#2A0E20]/90 text-brand-gold px-1.5 py-0.5 text-[8.5px] font-bold tracking-wider uppercase shadow-xs backdrop-blur-2xs border border-brand-gold/30">
+                      ★ Primary
+                    </span>
+                  )}
+                </div>
+
+                <div className="mt-1 flex items-center justify-between px-1 py-0.5">
+                  {index !== 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => handleSetPrimary(index)}
+                      className="text-[10px] font-semibold text-stone-600 hover:text-[#8E3D51] transition-colors"
+                    >
+                      Set Primary
+                    </button>
+                  ) : (
+                    <span className="text-[10px] font-semibold text-brand-gold">Main Cover</span>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveImage(index)}
+                    className="text-stone-400 hover:text-rose-600 p-0.5 transition-colors"
+                    title="Remove Photo"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1174,6 +1255,7 @@ export default function Catalog({
   const [primaryColor, setPrimaryColor] = useState("");
   const [primaryStock, setPrimaryStock] = useState("");
   const [formImageUrl, setFormImageUrl] = useState("");
+  const [formImages, setFormImages] = useState<string[]>([]);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -1329,6 +1411,7 @@ export default function Catalog({
     setPrimaryColor("");
     setPrimaryStock("");
     setFormImageUrl("");
+    setFormImages([]);
     setFormSerialNumber("001");
     setIsModalOpen(true);
   }
@@ -1344,7 +1427,13 @@ export default function Catalog({
     setFormVariants((product.variants || []).map((v) => ({ ...v })));
     setPrimaryColor(product.variants?.[0]?.color || "");
     setPrimaryStock(product.variants?.[0] ? String(product.variants[0].stock) : "");
-    setFormImageUrl(product.imageUrl || "");
+    const initialImgs = Array.isArray(product.images) && product.images.length > 0
+      ? product.images
+      : product.imageUrl
+      ? [product.imageUrl]
+      : [];
+    setFormImages(initialImgs);
+    setFormImageUrl(initialImgs[0] || product.imageUrl || "");
     setIsModalOpen(true);
   }
 
@@ -1369,7 +1458,13 @@ export default function Catalog({
     }));
 
     const finalCategory = formCategory || sicoCategoryId;
-    const effectiveImageUrl = formImageUrl || finalVariants[0]?.imageUrl || undefined;
+    const effectiveImages = formImages.length > 0
+      ? formImages
+      : formImageUrl
+      ? [formImageUrl]
+      : (finalVariants.map((v) => v.imageUrl).filter(Boolean) as string[]);
+
+    const effectiveImageUrl = effectiveImages[0] || undefined;
 
     const payload: Product = {
       id:
@@ -1386,6 +1481,7 @@ export default function Catalog({
         .filter(Boolean),
       variants: finalVariants,
       imageUrl: effectiveImageUrl,
+      images: effectiveImages.length > 0 ? effectiveImages : (effectiveImageUrl ? [effectiveImageUrl] : undefined),
     };
 
     if (editingProductId) {
@@ -1819,10 +1915,13 @@ export default function Catalog({
                 </div>
               </div>
 
-              {/* Master Photograph */}
-              <ImageUploadInput
-                value={formImageUrl}
-                onChange={setFormImageUrl}
+              {/* Master Photograph Gallery */}
+              <MultiImageUploadInput
+                images={formImages}
+                onChange={(imgs) => {
+                  setFormImages(imgs);
+                  setFormImageUrl(imgs[0] || "");
+                }}
               />
 
               {/* Per-Color Variant Shade Manager with Photo Upload */}

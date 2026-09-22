@@ -28,13 +28,11 @@ import {
   ORDER_STATUS_STYLES,
 } from "../context/OrderFulfillmentContext";
 import type { OrderStatus } from "../context/OrderFulfillmentContext";
+import { useShowroomSettings } from "../types/settings";
 
 interface TransactionHistoryProps {
   salesHistory: CompletedSale[];
 }
-import { STORE_ADDRESS, STORE_WHATSAPP_NUMBER } from "../types/useBilling";
-
-const STORE_LEGAL_NAME = "Fashions";
 
 const currency = (value: number) =>
   new Intl.NumberFormat("en-IN", {
@@ -74,7 +72,9 @@ const formatDate = (date: string) => {
 };
 
 const getPaymentLabel = (method: string) => {
-  switch (method) {
+  switch (method?.toLowerCase()) {
+    case "cashfree":
+      return "Cashfree";
     case "upi":
       return "UPI / QR";
     case "card":
@@ -87,8 +87,10 @@ const getPaymentLabel = (method: string) => {
       return "PhonePe";
     case "razorpay":
       return "Razorpay";
+    case "cod":
+      return "Cash on Delivery";
     default:
-      return method.toUpperCase();
+      return method ? method.toUpperCase() : "N/A";
   }
 };
 
@@ -99,19 +101,23 @@ const PaymentIcon = ({
   method: string;
   size?: number;
 }) => {
-  if (method === "upi") return <QrCode size={size} />;
-  if (method === "card") return <CreditCard size={size} />;
-  if (method === "cash") return <Banknote size={size} />;
-  if (method === "phonepe") return <Smartphone size={size} className="text-purple-600" />;
-  if (method === "razorpay") return <CreditCard size={size} className="text-blue-600" />;
+  const m = (method || "").toLowerCase();
+  if (m === "cashfree") return <CreditCard size={size} className="text-[#8E3D51]" />;
+  if (m === "upi") return <QrCode size={size} />;
+  if (m === "card") return <CreditCard size={size} />;
+  if (m === "cash" || m === "cod") return <Banknote size={size} />;
+  if (m === "phonepe") return <Smartphone size={size} className="text-purple-600" />;
+  if (m === "razorpay") return <CreditCard size={size} className="text-blue-600" />;
   return <ReceiptIndianRupee size={size} />;
 };
 
 const PaymentBadge = ({ method }: { method: string }) => {
   const styles: Record<string, string> = {
+    cashfree: "bg-rose-50 text-rose-800 border-rose-200",
     upi: "bg-violet-50 text-violet-700 border-violet-100",
     card: "bg-blue-50 text-blue-700 border-blue-100",
     cash: "bg-emerald-50 text-emerald-700 border-emerald-100",
+    cod: "bg-emerald-50 text-emerald-700 border-emerald-100",
     split: "bg-amber-50 text-amber-700 border-amber-100",
     phonepe: "bg-purple-50 text-purple-700 border-purple-200",
     razorpay: "bg-blue-50 text-blue-700 border-blue-200",
@@ -131,6 +137,7 @@ const PaymentBadge = ({ method }: { method: string }) => {
 export default function TransactionHistory({
   salesHistory,
 }: TransactionHistoryProps) {
+  const showroom = useShowroomSettings();
   const [searchQuery, setSearchQuery] = useState("");
   const [paymentFilter, setPaymentFilter] = useState<string>("ALL");
   const [inspectInvoice, setInspectInvoice] = useState<CompletedSale | null>(null);
@@ -251,7 +258,7 @@ export default function TransactionHistory({
     );
 
     const message = [
-      `✨ *${STORE_LEGAL_NAME} — HYDERABAD* ✨`,
+      `✨ *${showroom.storeName} — HYDERABAD* ✨`,
       "SiCo Gadwal Sarees & Curated Silks",
       "━━━━━━━━━━━━━━━━━━",
       `*RETAIL SALES RECEIPT*`,
@@ -267,7 +274,7 @@ export default function TransactionHistory({
       `*Net Payable:* ${currency(trueNetPayable)}`,
       `*Payment Mode:* ${getPaymentLabel(sale.paymentMethod).toUpperCase()}`,
       "━━━━━━━━━━━━━━━━━━",
-      "Thank you for choosing RS Fashions.",
+      `Thank you for choosing ${showroom.storeName}.`,
     ]
       .filter(Boolean)
       .join("\n");
@@ -628,6 +635,7 @@ export default function TransactionHistory({
 
             {[
               { id: "ALL", label: "All Sales" },
+              { id: "cashfree", label: "Cashfree" },
               { id: "upi", label: "UPI" },
               { id: "razorpay", label: "Razorpay" },
               { id: "phonepe", label: "PhonePe" },
@@ -781,7 +789,7 @@ export default function TransactionHistory({
                 </div>
 
                 <h2 className="font-mona text-2xl font-bold tracking-wide text-[#2A0E20]">
-                  {STORE_LEGAL_NAME}
+                  {showroom.storeName}
                 </h2>
 
                 <p className="text-xs font-medium text-stone-500 mt-0.5">
@@ -789,11 +797,13 @@ export default function TransactionHistory({
                 </p>
 
                 <p className="mx-auto mt-1 max-w-sm text-[10px] text-stone-600">
-                  {STORE_ADDRESS} | {STORE_WHATSAPP_NUMBER}
+                  {showroom.storeAddress} | {showroom.storePhone}
                 </p>
-                <p className="mx-auto mt-1 max-w-sm text-[10px] text-stone-600">
-                  {STORE_WHATSAPP_NUMBER}
-                </p>
+                {showroom.gstin && (
+                  <p className="mx-auto mt-0.5 text-[10px] text-stone-500 font-mono">
+                    GSTIN: {showroom.gstin}
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-1 gap-2.5 rounded-2xl border border-stone-100 bg-stone-50/70 p-3 sm:grid-cols-2 text-xs">

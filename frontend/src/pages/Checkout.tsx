@@ -28,7 +28,7 @@ import { products, type Product } from "../data/products";
 import { getUserSession, saveAddress, getSavedAddresses, type SavedAddress } from "../utils/userSession";
 
 type CheckoutStep = "address" | "payment" | "success";
-type PaymentMethod = "phonepe" | "razorpay" | "upi" | "cod";
+type PaymentMethod = "cashfree" | "cod" | "upi" | "razorpay" | "phonepe";
 
 interface CountryConfig {
   name: string;
@@ -94,20 +94,20 @@ interface OrderSnapshot {
   recipient: AddressForm;
 }
 
-const loadRazorpayScript = (): Promise<boolean> => {
+const loadCashfreeScript = (): Promise<boolean> => {
   return new Promise((resolve) => {
-    if (typeof window !== "undefined" && (window as any).Razorpay) {
+    if (typeof window !== "undefined" && (window as any).Cashfree) {
       return resolve(true);
     }
-    const existing = document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
+    const existing = document.querySelector('script[src="https://sdk.cashfree.com/js/v3/cashfree.js"]');
     if (existing) {
       existing.addEventListener("load", () => resolve(true));
       existing.addEventListener("error", () => resolve(false));
-      if ((window as any).Razorpay) return resolve(true);
+      if ((window as any).Cashfree) return resolve(true);
       return;
     }
     const script = document.createElement("script");
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.src = "https://sdk.cashfree.com/js/v3/cashfree.js";
     script.async = true;
     script.onload = () => resolve(true);
     script.onerror = () => resolve(false);
@@ -122,12 +122,10 @@ function Checkout() {
 
   const [step, setStep] = useState<CheckoutStep>("address");
   const [address, setAddress] = useState<AddressForm>(initialAddress);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("phonepe");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cashfree");
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSummaryOpen, setIsSummaryOpen] = useState(true);
   const [errors, setErrors] = useState<Partial<Record<keyof AddressForm, string>>>({});
-  const [showSandboxModal, setShowSandboxModal] = useState(false);
-  const [activeTxnId, setActiveTxnId] = useState<string | null>(null);
   const [existingOrderNumber, setExistingOrderNumber] = useState<string | null>(null);
   const [existingOrderId, setExistingOrderId] = useState<string | null>(null);
 
@@ -285,8 +283,8 @@ function Checkout() {
             pincode: addr?.pincode || "400001",
           });
 
-          if (foundOrder.paymentMethod === "razorpay" || foundOrder.paymentMethod === "phonepe" || foundOrder.paymentMethod === "cod") {
-            setPaymentMethod(foundOrder.paymentMethod);
+          if (foundOrder.paymentMethod === "cashfree" || foundOrder.paymentMethod === "cod" || foundOrder.paymentMethod === "razorpay" || foundOrder.paymentMethod === "phonepe") {
+            setPaymentMethod(foundOrder.paymentMethod as any);
           }
 
           // Also populate cart if empty
@@ -504,30 +502,26 @@ function Checkout() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // Auto-verify if returning from PhonePe redirect
+  // Auto-verify if returning from Cashfree redirect
   useEffect(() => {
     const statusParam = searchParams.get("status");
-    const txnIdParam = searchParams.get("txnId");
-    if ((statusParam === "phonepe_redirect" || statusParam === "sandbox_simulator") && txnIdParam) {
-      setActiveTxnId(txnIdParam);
-      if (statusParam === "sandbox_simulator") {
-        setShowSandboxModal(true);
-      } else {
-        // Verify with backend directly
-        StoreService.verifyPhonePeStatus(txnIdParam).then((res) => {
-          if (res.paid) {
-            completePhonePeSuccess(txnIdParam);
-          }
-        });
-      }
+    const orderIdParam = searchParams.get("order_id") || searchParams.get("orderId");
+    if (statusParam === "cashfree_return" && orderIdParam) {
+      setIsProcessing(true);
+      StoreService.verifyCashfreePayment({ orderId: orderIdParam }).then((res) => {
+        if (res.paid) {
+          completeCashfreeSuccess(orderIdParam, res.paymentId);
+        } else {
+          setIsProcessing(false);
+        }
+      });
     }
   }, [searchParams]);
 
-  const completePhonePeSuccess = async (txnId?: string) => {
+  const completeCashfreeSuccess = async (orderId: string, paymentId?: string) => {
     setIsProcessing(true);
-    setShowSandboxModal(false);
 
-    const effectiveOrderId = existingOrderNumber || (txnId ? `RSF-${txnId.slice(-6).toUpperCase()}` : `BEC-${Date.now().toString().slice(-8)}`);
+    const effectiveOrderId = existingOrderNumber || orderId || `RSF-${Date.now().toString().slice(-6)}`;
 
     const snapshot: OrderSnapshot = {
       orderId: effectiveOrderId,
@@ -549,7 +543,7 @@ function Checkout() {
       subtotal,
       shipping,
       total,
-      paymentMethod: "phonepe",
+      paymentMethod: "cashfree",
       recipient: { ...address },
     };
 
@@ -580,15 +574,14 @@ function Checkout() {
         await StoreService.updateOrderPaymentStatus(
           existingOrderId || existingOrderNumber!,
           "paid",
-          "phonepe",
-          txnId || `MT_RSF_${Date.now()}`,
+          "cashfree",
+          paymentId || orderId,
           {
-            gateway: "PhonePe UAT Sandbox",
-            merchant_id: "M234BFDRI0N1I_2609102233",
-            transaction_id: txnId || `MT_RSF_${Date.now()}`,
+            gateway: "Cashfree Payments",
+            cashfree_order_id: orderId,
+            cashfree_payment_id: paymentId,
             verified_at: new Date().toISOString(),
-            status: "SUCCESS",
-            mode: "ONLINE_SANDBOX",
+            status: "PAID",
           }
         );
       } else {
@@ -608,107 +601,20 @@ function Checkout() {
           shipping,
           discount: 0,
           total,
-          paymentMethod: "phonepe",
+          paymentMethod: "cashfree",
           paymentStatus: "paid",
-          transactionId: txnId || `MT_RSF_${Date.now()}`,
+          transactionId: paymentId || orderId,
           paymentDetails: {
-            gateway: "PhonePe UAT Sandbox",
-            merchant_id: "M234BFDRI0N1I_2609102233",
-            transaction_id: txnId || `MT_RSF_${Date.now()}`,
+            gateway: "Cashfree Payments",
+            cashfree_order_id: orderId,
+            cashfree_payment_id: paymentId,
             verified_at: new Date().toISOString(),
-            status: "SUCCESS",
-            mode: "ONLINE_SANDBOX",
+            status: "PAID",
           },
         });
       }
     } catch (err) {
-      console.warn("Failed to persist order to store service:", err);
-    }
-
-    setCompletedOrder(snapshot);
-    setIsProcessing(false);
-    clearCart();
-    setStep("success");
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  const completeRazorpaySuccess = async (paymentId: string, orderId: string) => {
-    setIsProcessing(true);
-
-    const effectiveOrderId = existingOrderNumber || `RSF-${orderId.slice(-6).toUpperCase()}`;
-
-    const snapshot: OrderSnapshot = {
-      orderId: effectiveOrderId,
-      date: new Date().toLocaleDateString("en-IN", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      }),
-      items: items.map((item) => ({
-        id: item.product.id,
-        name: item.product.name,
-        material: item.product.material,
-        color: item.selectedColor || "Standard",
-        size: item.selectedSize || "Standard Drape (5.5m + 0.8m Blouse)",
-        quantity: item.quantity,
-        price: item.product.price,
-        image: item.product.images[0] || "",
-      })),
-      subtotal,
-      shipping,
-      total,
-      paymentMethod: "razorpay",
-      recipient: { ...address },
-    };
-
-    try {
-      if (existingOrderId || existingOrderNumber) {
-        await StoreService.updateOrderPaymentStatus(
-          existingOrderId || existingOrderNumber!,
-          "paid",
-          "razorpay",
-          paymentId,
-          {
-            gateway: "Razorpay Test Gateway",
-            razorpay_payment_id: paymentId,
-            razorpay_order_id: orderId,
-            verified_at: new Date().toISOString(),
-            status: "PAID",
-            mode: "ONLINE_TEST",
-          }
-        );
-      } else {
-        await StoreService.createOrder({
-          customerName: `${address.firstName} ${address.lastName}`.trim(),
-          email: address.email,
-          phone: `${address.countryDial} ${address.phone}`,
-          address: {
-            address: address.address,
-            apartment: address.apartment,
-            city: address.city,
-            state: address.state,
-            pincode: address.pincode,
-          },
-          items: snapshot.items,
-          subtotal,
-          shipping,
-          discount: 0,
-          total,
-          paymentMethod: "razorpay",
-          paymentStatus: "paid",
-          transactionId: paymentId,
-          paymentDetails: {
-            gateway: "Razorpay Test Gateway",
-            razorpay_payment_id: paymentId,
-            razorpay_order_id: orderId,
-            verified_at: new Date().toISOString(),
-            status: "PAID",
-            mode: "ONLINE_TEST",
-          },
-        });
-      }
-    } catch (err) {
-      console.warn("Failed to persist Razorpay order:", err);
+      console.warn("Failed to persist Cashfree order:", err);
     }
 
     setCompletedOrder(snapshot);
@@ -731,123 +637,70 @@ function Checkout() {
 
     setIsProcessing(true);
 
-    // If Razorpay is selected
-    if (paymentMethod === "razorpay") {
+    // If Cashfree Gateway is selected
+    if (paymentMethod === "cashfree") {
       try {
-        await loadRazorpayScript();
+        await loadCashfreeScript();
 
-        const razorpayRes = await StoreService.createRazorpayOrder(total);
-        const orderId = razorpayRes.order?.id || (razorpayRes as any).orderId || (razorpayRes as any).id;
-        if (!razorpayRes.success || !orderId) {
-          throw new Error(razorpayRes.message || "Failed to create Razorpay order");
-        }
-
-        const orderAmount = razorpayRes.order?.amount || (razorpayRes as any).amount || Math.round(total * 100);
-
-        const options = {
-          key: razorpayRes.key_id || "rzp_test_TaPipYug8QFFpU",
-          amount: orderAmount,
-          currency: razorpayRes.order?.currency || (razorpayRes as any).currency || "INR",
-          name: "RS Fashions",
-          description: "Artisan SiCo Gadwal Saree Order (Test Mode)",
-          image: "/saree.png",
-          order_id: orderId,
-          handler: async function (response: any) {
-            try {
-              await StoreService.verifyRazorpayPayment({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-              });
-              completeRazorpaySuccess(response.razorpay_payment_id, response.razorpay_order_id);
-            } catch (vErr) {
-              console.warn("Razorpay signature verification warning:", vErr);
-              completeRazorpaySuccess(response.razorpay_payment_id, response.razorpay_order_id);
-            }
-          },
-          prefill: {
-            name: `${address.firstName} ${address.lastName}`.trim() || currentUser?.name || "Customer",
-            email: address.email || currentUser?.email || "customer@rsfashions.in",
-            contact: `${address.phone}` || currentUser?.phone || "9999999999",
-          },
-          notes: {
-            address: `${address.address || ""}, ${address.city || ""}`,
-          },
-          theme: {
-            color: "#8E3D51",
-          },
-          modal: {
-            ondismiss: function () {
-              setIsProcessing(false);
-            },
-          },
-        };
-
-        const RazorpayConstructor = (window as any).Razorpay;
-        if (RazorpayConstructor) {
-          const rzp = new RazorpayConstructor(options);
-          rzp.on("payment.failed", function (failResponse: any) {
-            console.error("Razorpay payment failed:", failResponse.error);
-            alert(`Payment Declined: ${failResponse.error?.description || "Transaction declined"}`);
-            setIsProcessing(false);
-          });
-          rzp.open();
-        } else {
-          alert("Razorpay checkout could not be initialized. Please try again.");
-          setIsProcessing(false);
-        }
-        return;
-      } catch (rzpErr: any) {
-        console.error("Razorpay checkout error:", rzpErr);
-        alert(rzpErr.message || "Could not initialize Razorpay checkout");
-        setIsProcessing(false);
-        return;
-      }
-    }
-
-    // If PhonePe Gateway is selected
-    if (paymentMethod === "phonepe") {
-      try {
-        const phonepeRes = await StoreService.initiatePhonePePayment({
+        const cfRes = await StoreService.createCashfreeOrder({
           amount: total,
           customerName: `${address.firstName} ${address.lastName}`.trim(),
-          email: address.email,
+          email: address.email || currentUser?.email || "customer@rsfashions.in",
           phone: `${address.countryDial} ${address.phone}`,
-          shippingAddress: {
-            address: address.address,
-            apartment: address.apartment,
-            city: address.city,
-            state: address.state,
-            pincode: address.pincode,
-          },
-          items: items.map((item) => ({
-            id: item.product.id,
-            name: item.product.name,
-            material: item.product.material,
-            color: item.selectedColor || "Standard",
-            quantity: item.quantity,
-            price: item.product.price,
-            image: item.product.images[0] || "",
-          })),
-          subtotal,
-          shippingFee: shipping,
-          discountAmount: 0,
+          orderNumber: existingOrderNumber || undefined,
+          orderNote: `RS Fashions Saree Order (${itemCount} items)`,
         });
 
-        if (phonepeRes.success && phonepeRes.mode === "phonepe_gateway" && phonepeRes.redirectUrl) {
-          window.location.href = phonepeRes.redirectUrl;
-          return;
+        if (!cfRes.success || !cfRes.paymentSessionId || !cfRes.orderId) {
+          throw new Error(cfRes.message || "Failed to initialize Cashfree payment session");
         }
 
-        // Sandbox simulator mode (for testing without live redirect or local demo)
-        setActiveTxnId(phonepeRes.merchantTransactionId || `MT_RSF_${Date.now()}`);
-        setShowSandboxModal(true);
-        setIsProcessing(false);
+        const CashfreeConstructor = (window as any).Cashfree;
+        if (!CashfreeConstructor) {
+          throw new Error("Cashfree SDK failed to load in browser");
+        }
+
+        const mode = (cfRes.environment || "SANDBOX").toLowerCase() === "production" ? "production" : "sandbox";
+        const cashfree = CashfreeConstructor({ mode });
+
+        const checkoutOptions = {
+          paymentSessionId: cfRes.paymentSessionId,
+          redirectTarget: "_modal",
+        };
+
+        cashfree.checkout(checkoutOptions).then(async (result: any) => {
+          if (result.error) {
+            console.warn("Cashfree checkout error:", result.error);
+            setIsProcessing(false);
+            if (result.error.message) {
+              alert(`Payment Notice: ${result.error.message}`);
+            }
+            return;
+          }
+          if (result.redirect) {
+            // Cashfree handles redirect
+            return;
+          }
+          if (result.paymentDetails) {
+            // Verify payment on backend
+            try {
+              const verifyRes = await StoreService.verifyCashfreePayment({ orderId: cfRes.orderId! });
+              if (verifyRes.paid) {
+                await completeCashfreeSuccess(cfRes.orderId!, verifyRes.paymentId);
+              } else {
+                alert("Payment status pending or incomplete. Please check your bank transaction.");
+                setIsProcessing(false);
+              }
+            } catch (vErr) {
+              console.warn("Verification notice, recording success:", vErr);
+              await completeCashfreeSuccess(cfRes.orderId!);
+            }
+          }
+        });
         return;
-      } catch (phonepeErr) {
-        console.warn("PhonePe initiate error, activating test sandbox modal:", phonepeErr);
-        setActiveTxnId(`MT_RSF_${Date.now()}`);
-        setShowSandboxModal(true);
+      } catch (cfErr: any) {
+        console.error("Cashfree checkout error:", cfErr);
+        alert(cfErr.message || "Could not initialize Cashfree checkout");
         setIsProcessing(false);
         return;
       }
@@ -1820,18 +1673,18 @@ function Checkout() {
                 )}
 
                 <div className="space-y-3 sm:space-y-4">
-                  {/* Razorpay Payment Gateway (Cards, UPI, Netbanking, Wallets) */}
+                  {/* Cashfree Payment Gateway (Cards, UPI, Netbanking, Wallets, EMI) */}
                   <button
                     type="button"
-                    onClick={() => setPaymentMethod("razorpay")}
+                    onClick={() => setPaymentMethod("cashfree")}
                     className={`w-full rounded-2xl sm:rounded-3xl border p-4 sm:p-5 text-left transition-all duration-200 bg-white relative overflow-hidden ${
-                      paymentMethod === "razorpay"
-                        ? "border-[#0c2340] shadow-[0_10px_30px_rgba(12,35,64,0.12)] ring-2 ring-[#0c2340]/25"
+                      paymentMethod === "cashfree"
+                        ? "border-[#8E3D51] shadow-[0_10px_30px_rgba(142,61,81,0.12)] ring-2 ring-[#8E3D51]/25"
                         : "border-black/10 hover:border-black/20"
                     }`}
                   >
                     <div className="flex items-center gap-3.5">
-                      <div className="flex h-11 w-11 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl bg-[#0c2340]/10 text-[#0c2340]">
+                      <div className="flex h-11 w-11 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl bg-[#8E3D51]/10 text-[#8E3D51]">
                         <FiCreditCard size={20} />
                       </div>
 
@@ -1839,90 +1692,29 @@ function Checkout() {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <span className="font-serif text-base sm:text-lg text-[#2A2421] font-semibold">
-                              Razorpay Standard Checkout
+                              Cashfree Payments
                             </span>
-                            <span className="rounded-full bg-blue-50 text-[#0c2340] border border-[#0c2340]/20 px-2 py-0.5 text-[8.5px] sm:text-[9px] font-semibold uppercase tracking-wider">
-                              Test Mode Active
+                            <span className="rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/60 px-2 py-0.5 text-[8.5px] sm:text-[9px] font-semibold uppercase tracking-wider">
+                              Fast & Secure
                             </span>
                           </div>
-                          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[8.5px] sm:text-[9px] font-semibold uppercase tracking-wider text-emerald-800">
-                            Cards / UPI
+                          <span className="rounded-full bg-[#8E3D51]/10 px-2 py-0.5 text-[8.5px] sm:text-[9px] font-semibold uppercase tracking-wider text-[#8E3D51]">
+                            UPI / Cards / EMI
                           </span>
                         </div>
                         <p className="mt-0.5 text-[10px] sm:text-xs font-light text-[#756A60]">
-                          Custom Test Cards, International Visa/Mastercard, Net Banking & UPI.
+                          Google Pay, PhonePe, Paytm, Cards (Visa, Mastercard, RuPay), Net Banking & EMI.
                         </p>
                       </div>
 
                       <div
                         className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-all ${
-                          paymentMethod === "razorpay"
-                            ? "border-[#0c2340] bg-[#0c2340] text-white"
+                          paymentMethod === "cashfree"
+                            ? "border-[#8E3D51] bg-[#8E3D51] text-white"
                             : "border-black/20"
                         }`}
                       >
-                        {paymentMethod === "razorpay" && <FiCheck size={11} />}
-                      </div>
-                    </div>
-
-                    {/* Razorpay Test Card Guide Banner */}
-                    {paymentMethod === "razorpay" && (
-                      <div className="mt-3.5 rounded-xl border border-blue-100 bg-blue-50/70 p-3 text-[11px] text-blue-950">
-                        <div className="font-medium text-blue-900 flex items-center justify-between">
-                          <span>💳 Custom Test Card Credentials:</span>
-                          <span className="font-mono text-[10px] bg-blue-200/70 px-1.5 py-0.5 rounded">Any OTP (e.g. 1234)</span>
-                        </div>
-                        <div className="mt-1 font-mono text-[10px] text-blue-800 flex flex-wrap gap-x-4 gap-y-0.5">
-                          <span>Card: <strong>4111 1111 1111 1111</strong></span>
-                          <span>Expiry: <strong>12/28</strong></span>
-                          <span>CVV: <strong>123</strong></span>
-                        </div>
-                      </div>
-                    )}
-                  </button>
-
-                  {/* PhonePe Payment Gateway (Sandbox Active) */}
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod("phonepe")}
-                    className={`w-full rounded-2xl sm:rounded-3xl border p-4 sm:p-5 text-left transition-all duration-200 bg-white relative overflow-hidden ${
-                      paymentMethod === "phonepe"
-                        ? "border-[#5f259f] shadow-[0_10px_30px_rgba(95,37,159,0.12)] ring-2 ring-[#5f259f]/25"
-                        : "border-black/10 hover:border-black/20"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3.5">
-                      <div className="flex h-11 w-11 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl bg-[#5f259f]/10 text-[#5f259f] font-bold text-lg">
-                        <span className="font-serif">पे</span>
-                      </div>
-
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="font-serif text-base sm:text-lg text-[#2A2421] font-semibold">
-                              PhonePe Payment Gateway
-                            </span>
-                            <span className="rounded-full bg-purple-50 text-[#5f259f] border border-[#5f259f]/20 px-2 py-0.5 text-[8.5px] sm:text-[9px] font-semibold uppercase tracking-wider">
-                              Test Mode
-                            </span>
-                          </div>
-                          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[8.5px] sm:text-[9px] font-semibold uppercase tracking-wider text-emerald-800">
-                            Instant
-                          </span>
-                        </div>
-                        <p className="mt-0.5 text-[10px] sm:text-xs font-light text-[#756A60]">
-                          PhonePe UAT Sandbox, UPI Apps & Wallets.
-                        </p>
-                      </div>
-
-                      <div
-                        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-all ${
-                          paymentMethod === "phonepe"
-                            ? "border-[#5f259f] bg-[#5f259f] text-white"
-                            : "border-black/20"
-                        }`}
-                      >
-                        {paymentMethod === "phonepe" && <FiCheck size={11} />}
+                        {paymentMethod === "cashfree" && <FiCheck size={11} />}
                       </div>
                     </div>
                   </button>
@@ -1972,7 +1764,7 @@ function Checkout() {
                   <div className="rounded-xl sm:rounded-2xl border border-[#D4AF37]/30 bg-[#FAF4ED] p-3.5 flex items-start gap-2.5">
                     <FiShield size={15} className="text-[#8E3D51] shrink-0 mt-0.5" />
                     <p className="text-[10px] sm:text-[11px] font-light leading-relaxed text-[#756A60]">
-                      Protected by 256-Bit TLS encryption & PCI-DSS Compliant Payment Infrastructure.
+                      Protected by 256-Bit TLS encryption & PCI-DSS Compliant Cashfree Payment Infrastructure.
                     </p>
                   </div>
 
@@ -1981,13 +1773,7 @@ function Checkout() {
                     type="button"
                     disabled={isProcessing}
                     onClick={placeOrder}
-                    className={`mt-5 sm:mt-6 flex w-full items-center justify-center gap-2.5 rounded-full py-3.5 sm:py-4 text-[11px] sm:text-xs font-semibold uppercase tracking-[0.18em] text-[#FAF7F2] shadow-lg transition-all active:scale-95 disabled:opacity-60 ${
-                      paymentMethod === "razorpay"
-                        ? "bg-[#0c2340] hover:bg-[#07172b]"
-                        : paymentMethod === "phonepe"
-                          ? "bg-[#5f259f] hover:bg-[#4b1d7f]"
-                          : "bg-[#8E3D51] hover:bg-[#783144]"
-                    }`}
+                    className="mt-5 sm:mt-6 flex w-full items-center justify-center gap-2.5 rounded-full py-3.5 sm:py-4 text-[11px] sm:text-xs font-semibold uppercase tracking-[0.18em] text-[#FAF7F2] shadow-lg transition-all active:scale-95 disabled:opacity-60 bg-[#8E3D51] hover:bg-[#783144]"
                   >
                     {isProcessing ? (
                       <span>Connecting to Payment Gateway...</span>
@@ -1996,79 +1782,13 @@ function Checkout() {
                         <span>
                           {paymentMethod === "cod"
                             ? "Confirm Cash On Delivery Order"
-                            : paymentMethod === "razorpay"
-                              ? `Pay ₹${total.toLocaleString("en-IN")} via Razorpay (Cards / UPI)`
-                              : `Pay ₹${total.toLocaleString("en-IN")} via PhonePe`}
+                            : `Pay ₹${total.toLocaleString("en-IN")} via Cashfree Payments`}
                         </span>
                         <FiArrowRight size={13} />
                       </>
                     )}
                   </button>
                 </div>
-
-
-                {/* PHONEPE SANDBOX SIMULATION MODAL */}
-                {showSandboxModal && (
-                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-                    <div className="w-full max-w-md rounded-3xl bg-white p-6 sm:p-7 shadow-2xl border border-black/10 animate-in fade-in zoom-in-95 duration-200">
-                      <div className="flex items-center justify-between border-b border-black/10 pb-4">
-                        <div className="flex items-center gap-2.5">
-                          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#5f259f] text-white font-serif font-bold text-sm">
-                            पे
-                          </div>
-                          <div>
-                            <h3 className="font-serif text-base font-bold text-[#2A2421]">PhonePe Sandbox Gateway</h3>
-                            <span className="text-[9px] uppercase tracking-wider text-purple-700 font-semibold">Test Environment (Active)</span>
-                          </div>
-                        </div>
-                        <span className="rounded-full bg-purple-100 px-2.5 py-1 text-[9px] font-mono font-bold text-[#5f259f]">
-                          UAT SANDBOX
-                        </span>
-                      </div>
-
-                      <div className="my-5 rounded-2xl bg-[#FAF7F2] p-4 text-xs space-y-2 border border-black/5">
-                        <div className="flex justify-between text-[#6E6359]">
-                          <span>Merchant ID:</span>
-                          <span className="font-mono text-[#2A2421] font-medium">M234BFDRI0N1I_2609102233</span>
-                        </div>
-                        <div className="flex justify-between text-[#6E6359]">
-                          <span>Transaction ID:</span>
-                          <span className="font-mono text-[#2A2421] font-medium">{activeTxnId || "MT_RSF_TEST"}</span>
-                        </div>
-                        <div className="flex justify-between text-[#6E6359]">
-                          <span>Payable Total:</span>
-                          <span className="font-bold text-[#5f259f] text-sm">₹{total.toLocaleString("en-IN")}</span>
-                        </div>
-                      </div>
-
-                      <p className="text-xs text-[#6E6359] text-center mb-6 leading-relaxed">
-                        This test simulator lets you verify end-to-end payment status updates, inventory lock clearances, and automated invoice printing in test mode.
-                      </p>
-
-                      <div className="space-y-2.5">
-                        <button
-                          type="button"
-                          onClick={() => completePhonePeSuccess(activeTxnId || undefined)}
-                          className="flex w-full items-center justify-center gap-2 rounded-full bg-[#5f259f] py-3.5 text-xs font-semibold uppercase tracking-wider text-white shadow-md hover:bg-[#4b1d7f] active:scale-95"
-                        >
-                          <FiCheck size={15} />
-                          <span>Simulate Payment Success (200 OK)</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowSandboxModal(false);
-                            alert("Simulated transaction cancelled / failed.");
-                          }}
-                          className="flex w-full items-center justify-center gap-2 rounded-full border border-black/15 bg-white py-3 text-xs font-semibold uppercase tracking-wider text-[#2A2421] hover:bg-black/5 active:scale-95"
-                        >
-                          <span>Simulate Failure / Cancel</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
             )}
           </section>

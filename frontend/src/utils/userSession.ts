@@ -1,7 +1,4 @@
-/**
- * RS Fashions User Session & Profile Management
- * Enforces 30-day inactivity timeout, session renewal, and saved addresses/payment methods.
- */
+import { API_BASE } from "../config/api";
 
 export interface UserSession {
   id: string;
@@ -49,9 +46,77 @@ export interface SavedPayment {
 export const USER_SESSION_KEY = "rs_fashions_current_user";
 export const ADMIN_SESSION_KEY = "rs_admin_session";
 export const USER_SESSION_EVENT = "rs_user_session_changed";
+export const DEVICE_UUID_KEY = "rs_device_uuid_v2";
 
 // 30 Days in Milliseconds: 30 * 24 * 60 * 60 * 1000 = 2,592,000,000 ms
 export const INACTIVITY_LIMIT_MS = 30 * 24 * 60 * 60 * 1000;
+
+export function getDeviceUUID(): string {
+  try {
+    let uuid = localStorage.getItem(DEVICE_UUID_KEY);
+    if (!uuid) {
+      const platformCode = typeof navigator !== "undefined" && /mac/i.test(navigator.userAgent) ? "mac" : "win";
+      const randomHex = Math.random().toString(16).slice(2, 6) + "-" + Math.random().toString(16).slice(2, 6);
+      uuid = `${randomHex}-${platformCode}-${Date.now().toString().slice(-4)}`;
+      localStorage.setItem(DEVICE_UUID_KEY, uuid);
+    }
+    return uuid;
+  } catch {
+    return `dev-${Date.now().toString(36)}`;
+  }
+}
+
+export function getDeviceMetadata(): { deviceName: string; platform: string; userAgent: string } {
+  if (typeof navigator === "undefined") {
+    return { deviceName: "Web Terminal", platform: "windows", userAgent: "" };
+  }
+  const ua = navigator.userAgent;
+  let platform = "windows";
+  let deviceName = "Billing Terminal (Web)";
+
+  if (/mac/i.test(ua)) {
+    platform = "macos";
+    deviceName = "MacBook Pro / iMac";
+  } else if (/iphone|ipad|ipod/i.test(ua)) {
+    platform = "ios";
+    deviceName = /ipad/i.test(ua) ? "Showroom iPad Terminal" : "iPhone Mobile Counter";
+  } else if (/android/i.test(ua)) {
+    platform = "android";
+    deviceName = "Android POS Terminal";
+  } else if (/windows/i.test(ua)) {
+    platform = "windows";
+    deviceName = "Showroom PC Terminal (Windows)";
+  } else if (/linux/i.test(ua)) {
+    platform = "linux";
+    deviceName = "Linux Workstation";
+  }
+
+  return { deviceName, platform, userAgent: ua };
+}
+
+export async function syncDeviceSessionToBackend(session: UserSession): Promise<void> {
+  try {
+    const sessionId = getDeviceUUID();
+    const meta = getDeviceMetadata();
+
+    await fetch(`${API_BASE}/auth/session`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sessionId,
+        userId: session.id,
+        userName: session.name,
+        userEmail: session.email,
+        role: session.role,
+        deviceName: `${meta.deviceName} (${session.name || "Counter Staff"})`,
+        platform: meta.platform,
+        userAgent: meta.userAgent,
+      }),
+    });
+  } catch (err) {
+    console.warn("[UserSession] Auth session registration note:", err);
+  }
+}
 
 /**
  * Retrieve active user session.
@@ -205,6 +270,9 @@ export function setUserSession(data: Partial<UserSession> & { name: string; emai
     if (typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent(USER_SESSION_EVENT, { detail: session }));
     }
+
+    // Sync active session device to backend
+    syncDeviceSessionToBackend(session);
   } catch (err) {
     console.error("[UserSession] Failed to persist session:", err);
   }
@@ -235,8 +303,15 @@ export function touchUserSession(): void {
  */
 export function clearUserSession(): void {
   try {
+    const sessionId = getDeviceUUID();
     localStorage.removeItem(USER_SESSION_KEY);
     localStorage.removeItem(ADMIN_SESSION_KEY);
+
+    fetch(`${API_BASE}/auth/logout`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId }),
+    }).catch(() => {});
 
     if (typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent(USER_SESSION_EVENT, { detail: null }));

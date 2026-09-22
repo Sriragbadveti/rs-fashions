@@ -9,11 +9,19 @@ import { invalidateBootstrapCache } from "./bootstrap.controller.js";
 
 let cachedProducts = null;
 let lastProductsFetch = 0;
+let inFlightProductsPromise = null;
+
+let cachedCategories = null;
+let lastCategoriesFetch = 0;
+let inFlightCategoriesPromise = null;
+
 const CACHE_TTL_MS = 60 * 1000; // 60 seconds TTL
 
 export function invalidateCatalogCache() {
   cachedProducts = null;
+  cachedCategories = null;
   lastProductsFetch = 0;
+  lastCategoriesFetch = 0;
   invalidateBootstrapCache();
 }
 
@@ -26,60 +34,112 @@ export async function getProducts(req, res) {
 
     if (!supabase) return successResponse(res, { products: [] });
 
-    const { data, error } = await supabase
-      .from("products")
-      .select("*")
-      .order("created_at", { ascending: false });
+    if (!inFlightProductsPromise) {
+      inFlightProductsPromise = (async () => {
+        const { data, error } = await supabase
+          .from("products")
+          .select("*")
+          .order("created_at", { ascending: false });
 
-    if (error) throw error;
+        if (error) throw error;
 
-    const products = (data || []).map((p) => {
-      const colorList = Array.isArray(p.colors) && p.colors.length > 0 ? p.colors : ["Standard"];
-      const stockTotal = Number(p.stock) || 0;
-      const images = Array.isArray(p.images) && p.images.length > 0 
-        ? p.images 
-        : ["https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1200&auto=format&fit=crop"];
+        const products = (data || []).map((p) => {
+          const colorList = Array.isArray(p.colors) && p.colors.length > 0 ? p.colors : ["Standard"];
+          const stockTotal = Number(p.stock) || 0;
+          const images = Array.isArray(p.images) && p.images.length > 0 
+            ? p.images 
+            : ["https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1200&auto=format&fit=crop"];
 
-      const variants = colorList.map((col, idx) => ({
-        color: col,
-        colorSlug: col.slice(0, 3).toUpperCase(),
-        stock: idx === 0 ? stockTotal : 0,
-        sku: `${p.id}-${col.slice(0, 3).toUpperCase()}`,
-      }));
+          const variants = colorList.map((col, idx) => ({
+            color: col,
+            colorSlug: col.slice(0, 3).toUpperCase(),
+            stock: idx === 0 ? stockTotal : 0,
+            sku: `${p.id}-${col.slice(0, 3).toUpperCase()}`,
+          }));
 
-      return {
-        id: p.id,
-        name: p.name,
-        category: p.category || "SiCo Gadwal Sarees",
-        categoryId: "c1",
-        material: p.material || "SiCo",
-        price: Number(p.price) || 0,
-        salePrice: Number(p.price) || 0,
-        originalPrice: p.original_price ? Number(p.original_price) : undefined,
-        stock: stockTotal,
-        variants,
-        images,
-        imageUrl: images[0],
-        colors: colorList,
-        tags: Array.isArray(p.tags) ? p.tags : [],
-        rating: Number(p.rating) || 4.8,
-        reviewCount: Number(p.review_count) || 0,
-        featured: Boolean(p.featured),
-        description: p.description || "",
-      };
-    });
+          return {
+            id: p.id,
+            name: p.name,
+            category: p.category || "SiCo Gadwal Sarees",
+            categoryId: "c1",
+            material: p.material || "SiCo",
+            price: Number(p.price) || 0,
+            originalPrice: Number(p.original_price) || Math.round((Number(p.price) || 0) * 1.25),
+            stock: stockTotal,
+            variants,
+            images,
+            imageUrl: images[0],
+            colors: colorList,
+            tags: Array.isArray(p.tags) ? p.tags : ["handloom", "sico"],
+            description: p.description || `${p.name} - Handcrafted Gadwal saree.`,
+          };
+        });
 
-    cachedProducts = products;
-    lastProductsFetch = Date.now();
+        cachedProducts = products;
+        lastProductsFetch = Date.now();
+        return products;
+      })().finally(() => {
+        inFlightProductsPromise = null;
+      });
+    }
 
+    const products = await inFlightProductsPromise;
     return successResponse(res, { products }, "Products retrieved successfully");
   } catch (err) {
-    console.error("Get products error:", err);
+    if (cachedProducts) {
+      return successResponse(res, { products: cachedProducts }, "Products retrieved successfully (fallback)");
+    }
     return errorResponse(res, err.message, 500);
   }
 }
 
-// 2. CREATE PRODUCT
+// 2. GET ALL CATEGORIES
+export async function getCategories(req, res) {
+  try {
+    if (cachedCategories && Date.now() - lastCategoriesFetch < CACHE_TTL_MS) {
+      return successResponse(res, { categories: cachedCategories }, "Categories retrieved successfully (cached)");
+    }
+
+    if (!supabase) return successResponse(res, { categories: [] });
+
+    if (!inFlightCategoriesPromise) {
+      inFlightCategoriesPromise = (async () => {
+        const { data, error } = await supabase
+          .from("categories")
+          .select("*")
+          .order("name", { ascending: true });
+
+        if (error) throw error;
+
+        const categories = (data || []).map((c) => ({
+          id: c.id,
+          name: c.name,
+          slug: c.slug,
+          description: c.description || "",
+          imageUrl: c.image_url || "",
+          hsn: c.hsn || "5208",
+          sortOrder: Number(c.sort_order || c.next_sequence) || 0,
+        }));
+
+        cachedCategories = categories;
+        lastCategoriesFetch = Date.now();
+        return categories;
+      })().finally(() => {
+        inFlightCategoriesPromise = null;
+      });
+    }
+
+    const categories = await inFlightCategoriesPromise;
+    return successResponse(res, { categories }, "Categories retrieved successfully");
+  } catch (err) {
+    if (cachedCategories) {
+      return successResponse(res, { categories: cachedCategories }, "Categories retrieved successfully (fallback)");
+    }
+    return errorResponse(res, err.message, 500);
+  }
+}
+
+// 3. CREATE PRODUCT
 export async function createProduct(req, res) {
   try {
     const {
@@ -388,33 +448,7 @@ export async function deleteProduct(req, res) {
   }
 }
 
-// 5. GET CATEGORIES
-export async function getCategories(req, res) {
-  try {
-    if (!supabase) return successResponse(res, { categories: [] });
-
-    const { data, error } = await supabase
-      .from("categories")
-      .select("*")
-      .order("name", { ascending: true });
-
-    if (error) throw error;
-
-    const categories = (data || []).map((c) => ({
-      id: c.id,
-      name: c.name,
-      slug: c.slug,
-      hsn: c.hsn || "5208",
-      nextSequence: Number(c.next_sequence) || 1,
-    }));
-
-    return successResponse(res, { categories }, "Categories retrieved successfully");
-  } catch (err) {
-    return errorResponse(res, err.message, 500);
-  }
-}
-
-// 6. CREATE CATEGORY
+// 5. CREATE CATEGORY
 export async function createCategory(req, res) {
   try {
     const { id, name, slug, hsn, nextSequence } = req.body;

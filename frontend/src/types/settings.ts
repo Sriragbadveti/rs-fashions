@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Device, Product, CompletedSale, StockMovement } from "../types/inventory";
 
 export type AppTheme = "light-luxury" | "dark-midnight" | "peach-blush" | "emerald-jade" | "royal-sapphire";
@@ -68,9 +69,34 @@ export function loadSettings(): ShowroomSettings {
   return DEFAULT_SETTINGS;
 }
 
+export function getShowroomSettings(): ShowroomSettings {
+  return loadSettings();
+}
+
 export function saveSettingsToStorage(settings: ShowroomSettings) {
   localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
   applyTheme(settings.theme);
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("rs_showroom_settings_changed", { detail: settings }));
+  }
+}
+
+export function useShowroomSettings() {
+  const [settings, setSettings] = useState<ShowroomSettings>(loadSettings);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setSettings(loadSettings());
+    };
+    window.addEventListener("rs_showroom_settings_changed", handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+    return () => {
+      window.removeEventListener("rs_showroom_settings_changed", handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
+    };
+  }, []);
+
+  return settings;
 }
 
 export function applyTheme(theme: AppTheme) {

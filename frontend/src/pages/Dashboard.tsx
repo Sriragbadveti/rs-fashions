@@ -55,6 +55,7 @@ import {
   MOCK_CUSTOMERS,
 } from "../types/inventory";
 import { getSavedCrmCustomers } from "../types/useBilling";
+import { getDeviceUUID, getDeviceMetadata } from "../utils/userSession";
 
 interface DashboardProps {
   user: { name: string; email: string; role: string };
@@ -244,26 +245,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
     return {};
   });
 
-  const [devices, setDevices] = useState<Device[]>([
-    {
-      id: "d1",
-      uuid: "8f3a-9c21-win-0001",
-      name: "Main Billing Terminal (This PC)",
-      platform: "windows",
-      lastActive: "Active now",
-      isCurrentDevice: true,
-      ipAddress: "192.168.1.101",
-    },
-    {
-      id: "d2",
-      uuid: "2b7e-4410-win-0002",
-      name: "Showroom Floor iPad",
-      platform: "windows",
-      lastActive: "15 mins ago",
-      isCurrentDevice: false,
-      ipAddress: "192.168.1.108",
-    },
-  ]);
+  const [devices, setDevices] = useState<Device[]>([]);
 
   // Dot is displayed ONLY when there are genuinely unseen notifications
   const hasUnreadNotifications = useMemo(() => {
@@ -437,6 +419,42 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
         }
         if (Object.keys(fulfillMap).length > 0) {
           setInitialFulfillments((prev) => ({ ...prev, ...fulfillMap }));
+        }
+
+        // Fetch Real Authorized Terminal Sessions
+        try {
+          const sessRes = await fetch(`${API_BASE}/auth/sessions`);
+          if (sessRes.ok) {
+            const sessJson = await sessRes.json();
+            const rawList = sessJson?.data?.devices || sessJson?.devices || [];
+            const curUuid = getDeviceUUID();
+            const formatted: Device[] = rawList.map((d: any) => ({
+              id: d.id || d.uuid,
+              uuid: d.uuid || d.id,
+              name: d.name || "Showroom Terminal",
+              platform: d.platform || "windows",
+              lastActive: d.lastActive || "Active now",
+              isCurrentDevice: d.uuid === curUuid || d.id === curUuid,
+              ipAddress: d.ipAddress || "127.0.0.1",
+            }));
+
+            // If current device not yet in list, ensure current device is represented
+            if (!formatted.some((d) => d.isCurrentDevice)) {
+              const meta = getDeviceMetadata();
+              formatted.unshift({
+                id: `sess-${curUuid.slice(-8)}`,
+                uuid: curUuid,
+                name: `${meta.deviceName} (Current Terminal)`,
+                platform: meta.platform as any,
+                lastActive: "Active now",
+                isCurrentDevice: true,
+                ipAddress: "127.0.0.1",
+              });
+            }
+            setDevices(formatted);
+          }
+        } catch (sessErr) {
+          console.warn("Sessions fetch notice:", sessErr);
         }
       }
     } catch (err) {
@@ -662,7 +680,10 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
 
   function revokeDevice(id: string) {
     sound.playClick();
-    setDevices((prev) => prev.filter((d) => d.id !== id));
+    setDevices((prev) => prev.filter((d) => d.id !== id && d.uuid !== id));
+    fetch(`${API_BASE}/auth/sessions/${id}`, {
+      method: "DELETE",
+    }).catch((err) => console.warn("Revoke device error:", err));
   }
 
   function handleCompleteSale(sale: CompletedSale) {

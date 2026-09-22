@@ -1,22 +1,152 @@
-import Razorpay from "razorpay";
-import crypto from "crypto";
+import {
+  createCashfreeOrder as createCFOrderService,
+  getCashfreeOrder,
+  getCashfreeOrderPayments,
+  createCashfreePaymentLink as createCFLinkService,
+  verifyCashfreeWebhookSignature,
+} from "../services/cashfree.service.js";
+import { supabase } from "../config/supabase.js";
 import { ENV } from "../config/env.js";
 import { successResponse, errorResponse } from "../utils/response.js";
-
-let razorpay = null;
-if (ENV.RAZORPAY.KEY_ID && ENV.RAZORPAY.KEY_SECRET) {
-  razorpay = new Razorpay({
-    key_id: ENV.RAZORPAY.KEY_ID,
-    key_secret: ENV.RAZORPAY.KEY_SECRET,
-  });
-}
+import { invalidateBootstrapCache } from "./bootstrap.controller.js";
 
 /**
- * Controller: Razorpay & PhonePe Payments
+ * Controller: Cashfree Payments (PG v2023-08-01)
  */
 
-// 1. CREATE RAZORPAY PAYMENT LINK (SMS/WhatsApp/QR)
-export async function createPaymentLink(req, res) {
+// 1. CREATE CASHFREE PAYMENT ORDER (Session for Web & App Checkout)
+export async function createCashfreeOrder(req, res) {
+  try {
+    const {
+      amount,
+      currency = "INR",
+      customerName = "Valued Customer",
+      customerPhone = "9999999999",
+      customerEmail = "customer@rsfashions.in",
+      customerId,
+      orderNumber,
+      orderNote = "RS Fashions Saree Order",
+      returnUrl,
+    } = req.body;
+
+    const amountInRupees = Number(amount) || 0;
+    if (amountInRupees <= 0) {
+      return errorResponse(res, "Valid payment amount is required", 400);
+    }
+
+    const cleanPhone = String(customerPhone).replace(/[^0-9]/g, "").slice(-10);
+    if (!cleanPhone || cleanPhone.length < 10) {
+      return errorResponse(res, "Valid 10-digit customer phone number is required", 400);
+    }
+
+    const cfOrderId = orderNumber
+      ? `RSF_${orderNumber.replace(/[^a-zA-Z0-9_-]/g, "")}_${Date.now().toString().slice(-4)}`
+      : `RSF_CF_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+
+    const isBenchmarkMock = req.headers["x-benchmark-mock"] === "true" || process.env.CASHFREE_MOCK_BENCHMARK === "true";
+
+    const cfOrder = await createCFOrderService({
+      orderId: cfOrderId,
+      orderAmount: amountInRupees,
+      orderCurrency: currency,
+      customerDetails: {
+        customerId: customerId || `cust_${cleanPhone}`,
+        customerName: customerName.trim(),
+        customerEmail: customerEmail.trim(),
+        customerPhone: cleanPhone,
+      },
+      orderMeta: {
+        returnUrl: returnUrl || `${ENV.CLIENT_URL}/checkout?order_id=${cfOrderId}&status=cashfree_return`,
+        notifyUrl: `${ENV.BACKEND_URL}/api/payments/cashfree/webhook`,
+      },
+      orderNote,
+      orderTags: {
+        source: "RS_Fashions_WebStore",
+      },
+      isMock: isBenchmarkMock,
+    });
+
+    return successResponse(
+      res,
+      {
+        orderId: cfOrder.order_id || cfOrderId,
+        paymentSessionId: cfOrder.payment_session_id,
+        orderAmount: cfOrder.order_amount || amountInRupees,
+        orderCurrency: cfOrder.order_currency || currency,
+        orderStatus: cfOrder.order_status || "ACTIVE",
+        environment: cfOrder.environment || ENV.CASHFREE.ENV,
+      },
+      "Cashfree payment order created successfully"
+    );
+  } catch (err) {
+    console.error("[Cashfree Controller] Create Order Error:", err);
+    return errorResponse(res, err.message || "Failed to create Cashfree order", 500);
+  }
+}
+
+// 2. VERIFY CASHFREE PAYMENT STATUS (Server-Side Official Check)
+export async function verifyCashfreePayment(req, res) {
+  try {
+    const { orderId } = req.body;
+    if (!orderId) {
+      return errorResponse(res, "Missing orderId for Cashfree verification", 400);
+    }
+
+    // 1. Fetch Order & Payments from Cashfree API
+    const orderData = await getCashfreeOrder(orderId);
+    const payments = await getCashfreeOrderPayments(orderId);
+
+    const isPaid =
+      orderData.order_status === "PAID" ||
+      payments.some(
+        (p) => String(p.payment_status).toUpperCase() === "SUCCESS"
+      );
+
+    const successfulPayment = payments.find(
+      (p) => String(p.payment_status).toUpperCase() === "SUCCESS"
+    ) || payments[0] || {};
+
+    const paymentId = successfulPayment.payment_id || `cf_pay_${Date.now()}`;
+    const paymentMethod = successfulPayment.payment_group || "cashfree";
+
+    // 2. If paid and Supabase is configured, ensure order record is updated
+    if (isPaid && supabase) {
+      try {
+        await supabase
+          .from("orders")
+          .update({
+            payment_status: "paid",
+            payment_method: "cashfree",
+            updated_at: new Date().toISOString(),
+          })
+          .or(`order_number.eq.${orderId},id.eq.${orderId}`);
+
+        invalidateBootstrapCache();
+      } catch (dbErr) {
+        console.warn("[Cashfree Verify] DB update notice:", dbErr.message);
+      }
+    }
+
+    return successResponse(
+      res,
+      {
+        verified: isPaid,
+        paid: isPaid,
+        orderId,
+        paymentId,
+        orderStatus: orderData.order_status || (isPaid ? "PAID" : "ACTIVE"),
+        paymentDetails: successfulPayment,
+      },
+      isPaid ? "Cashfree payment verified successfully" : "Payment not completed or pending"
+    );
+  } catch (err) {
+    console.error("[Cashfree Controller] Verify Payment Error:", err);
+    return errorResponse(res, err.message || "Failed to verify Cashfree payment", 500);
+  }
+}
+
+// 3. CREATE CASHFREE PAYMENT LINK (For Counter POS Billing & WhatsApp Share)
+export async function createCashfreePaymentLink(req, res) {
   try {
     const {
       amount,
@@ -31,200 +161,82 @@ export async function createPaymentLink(req, res) {
       return errorResponse(res, "Valid payment amount is required", 400);
     }
 
-    const amountInPaise = Math.round(amountInRupees * 100);
+    const cleanPhone = String(customerPhone).replace(/[^0-9]/g, "").slice(-10);
+    const linkId = `plink_${invoiceNumber.replace(/[^a-zA-Z0-9_-]/g, "")}_${Date.now().toString().slice(-4)}`;
 
-    if (razorpay) {
-      const paymentLinkPayload = {
-        amount: amountInPaise,
-        currency: "INR",
-        accept_partial: false,
-        description: `RS Fashions Saree admin Billing #${invoiceNumber}`,
-        customer: {
-          name: customerName,
-          email: customerEmail,
-          contact: customerPhone.startsWith("+91") ? customerPhone : `+91${customerPhone.replace(/^0+/, "")}`,
-        },
-        notify: { sms: true, email: true },
-        reminder_enable: true,
-        notes: { invoice_number: invoiceNumber, merchant: "RS Fashions Hyderabad" },
-        callback_url: `${ENV.CLIENT_URL}/payment-success?invoice=${encodeURIComponent(invoiceNumber)}`,
-        callback_method: "get",
-      };
+    const linkResult = await createCFLinkService({
+      linkId,
+      linkAmount: amountInRupees,
+      linkPurpose: `RS Fashions Saree Billing #${invoiceNumber}`,
+      customerDetails: {
+        customerPhone: cleanPhone,
+        customerName: customerName.trim(),
+        customerEmail: customerEmail.trim(),
+      },
+      linkNotify: {
+        send_sms: true,
+        send_email: Boolean(customerEmail && customerEmail.includes("@")),
+      },
+      linkMeta: {
+        returnUrl: `${ENV.CLIENT_URL}/payment-success?invoice=${encodeURIComponent(invoiceNumber)}&link_id=${linkId}`,
+      },
+    });
 
-      const paymentLink = await razorpay.paymentLink.create(paymentLinkPayload);
-
-      return successResponse(res, {
-        paymentLink: paymentLink.short_url,
-        paymentLinkId: paymentLink.id,
+    return successResponse(
+      res,
+      {
+        paymentLink: linkResult.link_url,
+        linkUrl: linkResult.link_url,
+        paymentLinkId: linkResult.link_id || linkId,
         amount: amountInRupees,
         invoiceNumber,
-        status: paymentLink.status,
-      }, "Razorpay payment link generated successfully");
-    }
-
-    // Fallback Mock link
-    const mockLink = `https://rzp.io/i/rsf-${Date.now().toString(36)}`;
-    return successResponse(res, {
-      paymentLink: mockLink,
-      paymentLinkId: `plink_${Date.now()}`,
-      amount: amountInRupees,
-      invoiceNumber,
-      status: "created",
-    }, "Demo payment link generated");
-  } catch (err) {
-    console.error("Razorpay payment link error:", err);
-    return errorResponse(res, err.error?.description || err.message, 500);
-  }
-}
-
-// 2. CREATE RAZORPAY MODAL ORDER
-export async function createRazorpayOrder(req, res) {
-  try {
-    const { amount, receipt, notes = {} } = req.body;
-    const amountInRupees = Number(amount) || 0;
-
-    if (amountInRupees <= 0) {
-      return errorResponse(res, "Valid amount is required", 400);
-    }
-
-    const amountInPaise = Math.round(amountInRupees * 100);
-
-    if (razorpay) {
-      const order = await razorpay.orders.create({
-        amount: amountInPaise,
-        currency: "INR",
-        receipt: receipt || `rcpt_${Date.now().toString().slice(-6)}`,
-        notes,
-      });
-
-      return successResponse(res, {
-        orderId: order.id,
-        id: order.id,
-        amount: order.amount,
-        currency: order.currency,
-        key: ENV.RAZORPAY.KEY_ID,
-        key_id: ENV.RAZORPAY.KEY_ID,
-        order: {
-          id: order.id,
-          amount: order.amount,
-          currency: order.currency,
-          receipt: order.receipt,
-          status: order.status,
-        },
-      }, "Razorpay order created");
-    }
-
-    const demoId = `order_demo_${Date.now()}`;
-    return successResponse(res, {
-      orderId: demoId,
-      id: demoId,
-      amount: amountInPaise,
-      currency: "INR",
-      key: ENV.RAZORPAY.KEY_ID || "rzp_test_TaPipYug8QFFpU",
-      key_id: ENV.RAZORPAY.KEY_ID || "rzp_test_TaPipYug8QFFpU",
-      order: {
-        id: demoId,
-        amount: amountInPaise,
-        currency: "INR",
-        receipt: receipt || `rcpt_${Date.now().toString().slice(-6)}`,
-        status: "created",
+        status: linkResult.link_status || "ACTIVE",
       },
-    }, "Demo order created");
+      "Cashfree payment link generated successfully"
+    );
   } catch (err) {
-    console.error("Razorpay create order error:", err);
-    return errorResponse(res, err.message, 500);
+    console.error("[Cashfree Controller] Payment Link Error:", err);
+    return errorResponse(res, err.message || "Failed to generate Cashfree payment link", 500);
   }
 }
 
-// 3. VERIFY RAZORPAY SIGNATURE
-export function verifyRazorpaySignature(req, res) {
+// 4. CASHFREE WEBHOOK HANDLER (Secure Asynchronous Notifications)
+export async function handleCashfreeWebhook(req, res) {
   try {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+    const signature = req.headers["x-webhook-signature"];
+    const timestamp = req.headers["x-webhook-timestamp"];
 
-    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
-      return errorResponse(res, "Missing payment verification parameters", 400);
+    const isValid = verifyCashfreeWebhookSignature(req.body, timestamp, signature);
+    if (!isValid) {
+      console.warn("[Cashfree Webhook] Invalid webhook signature received.");
+      return errorResponse(res, "Invalid webhook signature", 401);
     }
 
-    const body = `${razorpay_order_id}|${razorpay_payment_id}`;
-    const expectedSignature = crypto
-      .createHmac("sha256", ENV.RAZORPAY.KEY_SECRET || "default_secret")
-      .update(body.toString())
-      .digest("hex");
+    const event = req.body;
+    const eventType = event.type || event.event;
+    const orderData = event.data?.order || {};
+    const paymentData = event.data?.payment || {};
 
-    if (expectedSignature === razorpay_signature) {
-      return successResponse(res, {
-        verified: true,
-        orderId: razorpay_order_id,
-        paymentId: razorpay_payment_id,
-      }, "Payment signature verified successfully");
-    } else {
-      return errorResponse(res, "Invalid payment signature", 400);
+    const orderId = orderData.order_id || paymentData.order_id;
+    const paymentStatus = paymentData.payment_status || orderData.order_status;
+
+    if (orderId && String(paymentStatus).toUpperCase() === "SUCCESS" && supabase) {
+      await supabase
+        .from("orders")
+        .update({
+          payment_status: "paid",
+          payment_method: "cashfree",
+          updated_at: new Date().toISOString(),
+        })
+        .or(`order_number.eq.${orderId},id.eq.${orderId}`);
+
+      invalidateBootstrapCache();
+      console.log(`[Cashfree Webhook] Order ${orderId} marked as PAID via webhook event ${eventType}`);
     }
+
+    return successResponse(res, { received: true }, "Webhook processed successfully");
   } catch (err) {
-    return errorResponse(res, err.message, 500);
-  }
-}
-
-// 4. PHONEPE INITIALIZE ORDER
-export async function createPhonePeOrder(req, res) {
-  try {
-    const { amount } = req.body;
-    const customerPhone = (req.body.customerPhone || req.body.phone || req.body.mobileNumber || "9999999999").toString();
-    const amountInRupees = Number(amount) || 0;
-
-    if (amountInRupees <= 0) {
-      return errorResponse(res, "Valid amount is required", 400);
-    }
-
-    const merchantTransactionId = `MT_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
-    const payload = {
-      merchantId: ENV.PHONEPE.MERCHANT_ID,
-      merchantTransactionId,
-      merchantUserId: `MUID_${customerPhone.replace(/[^0-9]/g, "")}`,
-      amount: Math.round(amountInRupees * 100),
-      redirectUrl: `${ENV.CLIENT_URL}/payment-success?txn=${merchantTransactionId}`,
-      redirectMode: "POST",
-      callbackUrl: `${ENV.BACKEND_URL}/api/payments/phonepe/callback`,
-      mobileNumber: customerPhone.replace(/[^0-9]/g, ""),
-      paymentInstrument: { type: "PAY_PAGE" },
-    };
-
-    const base64Payload = Buffer.from(JSON.stringify(payload)).toString("base64");
-    const stringToHash = base64Payload + "/pg/v1/pay" + ENV.PHONEPE.SALT_KEY;
-    const sha256Hash = crypto.createHash("sha256").update(stringToHash).digest("hex");
-    const xVerifyChecksum = `${sha256Hash}###${ENV.PHONEPE.SALT_INDEX}`;
-
-    try {
-      const response = await fetch(`${ENV.PHONEPE.HOST_URL}/pg/v1/pay`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-VERIFY": xVerifyChecksum,
-          accept: "application/json",
-        },
-        body: JSON.stringify({ request: base64Payload }),
-      });
-
-      const json = await response.json();
-      if (json.success && json.data?.instrumentResponse?.redirectInfo?.url) {
-        return successResponse(res, {
-          paymentUrl: json.data.instrumentResponse.redirectInfo.url,
-          transactionId: merchantTransactionId,
-        }, "PhonePe payment initialized");
-      }
-    } catch {
-      // Fallback
-    }
-
-    return successResponse(res, {
-      paymentLink: `https://phonepe.com/pay?pa=rsfashions@ybl&pn=RS%20Fashions&am=${amountInRupees}&cu=INR`,
-      paymentUrl: `https://phonepe.com/pay?pa=rsfashions@ybl&pn=RS%20Fashions&am=${amountInRupees}&cu=INR`,
-      redirectUrl: `https://phonepe.com/pay?pa=rsfashions@ybl&pn=RS%20Fashions&am=${amountInRupees}&cu=INR`,
-      transactionId: merchantTransactionId,
-      provider: "PhonePe",
-    }, "PhonePe payment link generated");
-  } catch (err) {
-    console.error("PhonePe order error:", err);
-    return errorResponse(res, err.message, 500);
+    console.error("[Cashfree Webhook Error]:", err);
+    return errorResponse(res, err.message || "Webhook processing error", 500);
   }
 }

@@ -1,0 +1,93 @@
+[
+  {
+    "id": "inv-mu7lz088-ba09",
+    "order_number": "5",
+    "invoice_number": "5",
+    "customer_name": "Shailaja Reddy",
+    "email": null,
+    "phone": "9849012345",
+    "shipping_address": null,
+    "items": [
+      {
+        "cartId": "RSF-BC-PK-002-ROS-1789775226576",
+        "productId": "RSF-BC-PK-002",
+        "sku": "RSF-BC-PK-002-ROS",
+        "name": "Broad checks",
+        "categoryName": "SiCo Gadwal Sarees",
+        "hsn": "5208",
+        "color": "Rose Pink",
+        "colorSlug": "ROS",
+        "unitPrice": 2900,
+        "qty": 1,
+        "maxStock": 2
+      }
+    ],
+    "subtotal": 2900,
+    "cgst": 174,
+    "sgst": 174,
+    "shipping_fee": 0,
+    "discount_amount": 0,
+    "coupon_code": null,
+    "total": 3248,
+    "payment_method": "cashfree",
+    "payment_status": "completed",
+    "order_status": "completed",
+    "billing_type": "gst",
+    "notes": null,
+    "created_at": "2026-09-18T23:47:28.908248+00:00",
+    "updated_at": "2026-09-18T23:47:28.908248+00:00",
+    "invoiceNumber": "5",
+    "customerName": "Shailaja Reddy",
+    "customerPhone": "9849012345",
+    "customerEmail": null,
+    "orderNumber": "5",
+    "updatedAt": "2026-09-18T23:47:30.050Z"
+  },
+  {
+    "id": "inv-mu7jzpbh-tfl1",
+    "order_number": "RSF-921901",
+    "invoice_number": "RSF-921901",
+    "customer_name": "Ananya Sharma",
+    "email": "ananya.sharma@example.com",
+    "phone": "+91 9876543210",
+    "shipping_address": {
+      "city": "tbilisi",
+      "state": "GUJARAT",
+      "address": "h no 4-413 plot no 46b/2 kalyaninagar balanagar",
+      "pincode": "390010",
+      "apartment": ""
+    },
+    "items": [
+      {
+        "id": "RSF-GCB-RD-014",
+        "name": "Gap Border Checks",
+        "material": "Silk Cotton (SiCo)",
+        "color": "Crimson Red",
+        "size": "Free Size (5.5m + 0.8m Blouse)",
+        "quantity": 1,
+        "price": 2999,
+        "image": "https://rrxcepcwkurxksoongce.supabase.co/storage/v1/object/public/sarees/uploads/saree-1789477172769-2ajfg.jpg"
+      }
+    ],
+    "subtotal": 2999,
+    "cgst": 0,
+    "sgst": 0,
+    "shipping_fee": 0,
+    "discount_amount": 0,
+    "coupon_code": null,
+    "total": 2999,
+    "payment_method": "cashfree",
+    "payment_status": "paid",
+    "order_status": "completed",
+    "billing_type": "gst",
+    "notes": null,
+    "created_at": "2026-09-18T22:52:01.997178+00:00",
+    "updated_at": "2026-09-18T22:52:01.997178+00:00",
+    "invoiceNumber": "RSF-921901",
+    "customerName": "Ananya Sharma",
+    "customerPhone": "+91 9876543210",
+    "customerEmail": "ananya.sharma@example.com",
+    "orderNumber": "RSF-921901",
+    "updatedAt": "2026-09-18T22:52:02.954Z"
+  }
+]

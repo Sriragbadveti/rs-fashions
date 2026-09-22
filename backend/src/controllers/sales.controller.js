@@ -10,9 +10,24 @@ import {
  * Controller: Sales Ledger, Returns/Refunds & Financial Intelligence
  */
 
+// In-memory micro-cache for sales transactions
+let cachedSales = null;
+let lastSalesFetch = 0;
+const CACHE_TTL_MS = 60 * 1000;
+
+export function invalidateSalesCache() {
+  cachedSales = null;
+  lastSalesFetch = 0;
+}
+
 // 1. GET ALL TRANSACTIONS
 export async function getTransactions(req, res) {
   try {
+    const now = Date.now();
+    if (cachedSales && now - lastSalesFetch < CACHE_TTL_MS) {
+      return successResponse(res, { sales: cachedSales }, "Transactions ledger retrieved successfully (cached)");
+    }
+
     if (!supabase) return successResponse(res, { sales: [] });
 
     const { data, error } = await supabase
@@ -43,6 +58,9 @@ export async function getTransactions(req, res) {
       billType: o.billing_type || "gst",
       orderStatus: o.order_status || "completed",
     }));
+
+    cachedSales = sales;
+    lastSalesFetch = now;
 
     return successResponse(res, { sales }, "Transactions ledger retrieved successfully");
   } catch (err) {

@@ -10,10 +10,69 @@ import {
  * Controller: Product Reviews Management
  */
 
+let cachedReviews = null;
+let lastReviewsFetch = 0;
+let inFlightReviewsPromise = null;
+const REVIEWS_CACHE_TTL_MS = 60 * 1000;
+
+export function invalidateReviewsCache() {
+  cachedReviews = null;
+  lastReviewsFetch = 0;
+}
+
 // 1. GET REVIEWS
 export async function getReviews(req, res) {
   try {
     const { productId } = req.query;
+
+    if (!productId && cachedReviews && Date.now() - lastReviewsFetch < REVIEWS_CACHE_TTL_MS) {
+      return successResponse(res, { reviews: cachedReviews }, "Reviews retrieved successfully (cached)");
+    }
+
+    if (!productId && !inFlightReviewsPromise) {
+      inFlightReviewsPromise = (async () => {
+        if (supabase) {
+          try {
+            const { data, error } = await supabase.from("reviews").select("*").order("created_at", { ascending: false });
+            if (!error && data && data.length > 0) {
+              const formatted = data.map((r) => ({
+                id: r.id,
+                productId: r.product_id,
+                productName: r.product_name,
+                reviewerName: r.reviewer_name,
+                reviewerLocation: r.reviewer_location,
+                rating: Number(r.rating) || 5,
+                title: r.title,
+                content: r.content,
+                verifiedBuyer: r.verified_buyer !== false,
+                date: r.date || new Date(r.created_at).toLocaleDateString("en-IN", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric"
+                }),
+                createdAt: r.created_at,
+              }));
+              cachedReviews = formatted;
+              lastReviewsFetch = Date.now();
+              return formatted;
+            }
+          } catch (e) {
+            console.warn("Supabase reviews fetch error:", e.message);
+          }
+        }
+        const local = getReviewsFromStore();
+        cachedReviews = local;
+        lastReviewsFetch = Date.now();
+        return local;
+      })().finally(() => {
+        inFlightReviewsPromise = null;
+      });
+    }
+
+    if (!productId && inFlightReviewsPromise) {
+      const reviews = await inFlightReviewsPromise;
+      return successResponse(res, { reviews }, "Reviews retrieved successfully");
+    }
 
     if (supabase) {
       try {
@@ -42,15 +101,17 @@ export async function getReviews(req, res) {
           }));
           return successResponse(res, { reviews: formatted }, "Reviews retrieved successfully");
         }
-      } catch (sbErr) {
-        console.warn("Supabase getReviews fallback to local store:", sbErr.message);
+      } catch (err) {
+        console.warn("Reviews fetch error:", err.message);
       }
     }
 
-    const reviews = getReviewsFromStore(productId);
-    return successResponse(res, { reviews }, "Reviews retrieved from local store");
+    const localReviews = getReviewsFromStore(productId);
+    return successResponse(res, { reviews: localReviews }, "Reviews retrieved from store");
   } catch (err) {
-    console.error("getReviews error:", err);
+    if (cachedReviews) {
+      return successResponse(res, { reviews: cachedReviews }, "Reviews retrieved successfully (fallback)");
+    }
     return errorResponse(res, err.message, 500);
   }
 }

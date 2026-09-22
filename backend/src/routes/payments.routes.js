@@ -1,21 +1,17 @@
 import { Router } from "express";
 import {
-  createPaymentLink,
-  createRazorpayOrder,
-  verifyRazorpaySignature,
-  createPhonePeOrder,
+  createCashfreeOrder,
+  verifyCashfreePayment,
+  createCashfreePaymentLink,
+  handleCashfreeWebhook,
 } from "../controllers/payments.controller.js";
 
 const router = Router();
 
-// Razorpay Routes
-router.post("/razorpay/create-payment-link", createPaymentLink);
-router.post("/razorpay/create-order", createRazorpayOrder);
-router.post("/razorpay/verify", verifyRazorpaySignature);
-
-// PhonePe Routes
-router.post("/phonepe/create-order", createPhonePeOrder);
-router.post("/phonepe/initiate", createPhonePeOrder);
-router.post("/phonepe/create-payment-link", createPhonePeOrder);
+// Cashfree PG Routes
+router.post("/cashfree/create-order", createCashfreeOrder);
+router.post("/cashfree/verify", verifyCashfreePayment);
+router.post("/cashfree/create-payment-link", createCashfreePaymentLink);
+router.post("/cashfree/webhook", handleCashfreeWebhook);
 
 export default router;

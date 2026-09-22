@@ -76,11 +76,36 @@ export async function uploadImageToSupabaseStorage(base64OrDataUrl, customFilena
  */
 export async function uploadImage(req, res) {
   try {
-    const { image, file, filename } = req.body;
+    const { image, file, filename, images, files } = req.body;
+
+    // Handle multiple images batch upload if array provided
+    const targetImages = images || files;
+    if (Array.isArray(targetImages) && targetImages.length > 0) {
+      const results = await Promise.all(
+        targetImages.map(async (img, idx) => {
+          if (!img) return null;
+          if (typeof img === "string" && (img.startsWith("http://") || img.startsWith("https://"))) {
+            return { url: img, publicUrl: img };
+          }
+          const uploadRes = await uploadImageToSupabaseStorage(img, `${Date.now()}-${idx + 1}.jpg`);
+          return { url: uploadRes.publicUrl, publicUrl: uploadRes.publicUrl, path: uploadRes.path };
+        })
+      );
+
+      const validUrls = results.filter(Boolean).map((r) => r.publicUrl);
+      return res.status(201).json({
+        success: true,
+        urls: validUrls,
+        images: validUrls,
+        data: results.filter(Boolean),
+        message: `${validUrls.length} images uploaded successfully`,
+      });
+    }
+
     const targetImage = image || file;
 
     if (!targetImage) {
-      return errorResponse(res, "No image payload provided (must send 'image' as base64 string or data URL)", 400);
+      return errorResponse(res, "No image payload provided (must send 'image' as base64 string, data URL, or 'images' array)", 400);
     }
 
     // If it's already an http(s) URL, no need to re-upload
@@ -115,4 +140,11 @@ export async function uploadImage(req, res) {
     console.error("Image upload to Supabase Storage error:", err);
     return errorResponse(res, err.message || "Failed to upload image to Supabase Storage", 500);
   }
+}
+
+/**
+ * Controller endpoint: POST /api/upload/multiple
+ */
+export async function uploadMultipleImages(req, res) {
+  return uploadImage(req, res);
 }

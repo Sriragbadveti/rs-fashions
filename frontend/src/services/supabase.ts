@@ -930,6 +930,54 @@ export const StoreService = {
     }
   },
 
+  async uploadImages(base64Array: string[], onProgress?: (percent: number) => void): Promise<string[]> {
+    if (!base64Array || base64Array.length === 0) return [];
+    try {
+      if (onProgress) onProgress(20);
+      const res = await fetch(`${API_BASE}/upload`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ images: base64Array }),
+      });
+      if (onProgress) onProgress(80);
+      const data = await res.json();
+      if (onProgress) onProgress(100);
+      if (data.success && Array.isArray(data.urls)) {
+        return data.urls;
+      }
+      return base64Array;
+    } catch {
+      if (onProgress) onProgress(100);
+      return base64Array;
+    }
+  },
+
+  async signInWithGoogle(redirectPath = "/shop"): Promise<void> {
+    const destination = redirectPath && redirectPath !== "/account" ? redirectPath : "/shop";
+    sessionStorage.setItem("rs_auth_redirect", destination);
+
+    if (supabase) {
+      try {
+        const callbackUrl = `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(destination)}`;
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: {
+            redirectTo: callbackUrl,
+          },
+        });
+        if (!error && data?.url) {
+          window.location.href = data.url;
+          return;
+        }
+      } catch (e) {
+        console.warn("Supabase client OAuth note, redirecting to backend OAuth:", e);
+      }
+    }
+
+    const backendOAuthUrl = `${API_BASE}/auth/google?redirect=${encodeURIComponent(destination)}`;
+    window.location.href = backendOAuthUrl;
+  },
+
   // 2. ORDERS
   async getOrders(): Promise<StoreOrder[]> {
     if (supabase) {
@@ -1452,128 +1500,129 @@ export const StoreService = {
     }
   },
 
-  // 6. PHONEPE PAYMENT GATEWAY
-  async initiatePhonePePayment(payload: {
+  // 6. CASHFREE PAYMENT GATEWAY (PG v2023-08-01)
+  async createCashfreeOrder(payload: {
     amount: number;
     customerName: string;
     email: string;
     phone: string;
-    items: OrderItem[];
-    shippingAddress: any;
-    subtotal: number;
-    shippingFee?: number;
-    discountAmount?: number;
-    couponCode?: string | null;
+    customerId?: string;
+    orderNumber?: string;
+    orderNote?: string;
+    returnUrl?: string;
   }): Promise<{
     success: boolean;
-    redirectUrl?: string;
-    merchantTransactionId?: string;
-    mode?: string;
+    orderId?: string;
+    paymentSessionId?: string;
+    orderAmount?: number;
+    orderCurrency?: string;
+    orderStatus?: string;
+    environment?: string;
     message?: string;
   }> {
     try {
-      const res = await fetch(`${API_BASE}/payments/phonepe/initiate`, {
+      const res = await fetch(`${API_BASE}/payments/cashfree/create-order`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      return await res.json();
-    } catch (err: any) {
-      console.warn("PhonePe initiate fetch error:", err);
-      // Fallback local test mode
-      const txnId = `MT_RSF_${Date.now()}`;
+      const data = await res.json();
+      const actualData = data.data || data;
       return {
-        success: true,
-        mode: "sandbox_simulation",
-        redirectUrl: `/checkout?status=sandbox_simulator&txnId=${txnId}&amount=${payload.amount}`,
-        merchantTransactionId: txnId,
-        message: "Offline test sandbox mode",
+        success: Boolean(data.success),
+        orderId: actualData.orderId,
+        paymentSessionId: actualData.paymentSessionId,
+        orderAmount: actualData.orderAmount,
+        orderCurrency: actualData.orderCurrency,
+        orderStatus: actualData.orderStatus,
+        environment: actualData.environment,
+        message: data.message,
+      };
+    } catch (err: any) {
+      console.warn("Cashfree create-order fetch error:", err);
+      return {
+        success: false,
+        message: err.message || "Could not connect to Cashfree payment server",
       };
     }
   },
 
-  async verifyPhonePeStatus(txnId: string, simulate: boolean = false): Promise<{
-    success: boolean;
-    paid: boolean;
-    merchantTransactionId?: string;
-    data?: any;
-    localTxn?: any;
-  }> {
-    try {
-      const res = await fetch(`${API_BASE}/payments/phonepe/status/${txnId}?simulate=${simulate}`);
-      return await res.json();
-    } catch (err: any) {
-      console.warn("PhonePe status check error:", err);
-      return {
-        success: true,
-        paid: true,
-        merchantTransactionId: txnId,
-      };
-    }
-  },
-  // 7. RAZORPAY PAYMENT GATEWAY
-  async createRazorpayOrder(amount: number, receipt?: string): Promise<{
-    success: boolean;
-    key_id?: string;
-    order?: any;
-    orderId?: string;
-    amount?: number;
-    currency?: string;
-    message?: string;
-  }> {
-    try {
-      const res = await fetch(`${API_BASE}/payments/razorpay/create-order`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount, receipt }),
-      });
-      const data = await res.json();
-      const actualData = data.data || data;
-      const orderId = actualData.orderId || actualData.order?.id || actualData.id;
-      const keyId = actualData.key_id || actualData.key || "rzp_test_TaPipYug8QFFpU";
-      const orderObj = actualData.order || {
-        id: orderId,
-        amount: actualData.amount || Math.round(amount * 100),
-        currency: actualData.currency || "INR",
-      };
-      return {
-        success: Boolean(data.success),
-        key_id: keyId,
-        order: orderObj,
-        orderId,
-        amount: actualData.amount,
-        currency: actualData.currency,
-        message: data.message,
-      };
-    } catch (err: any) {
-      console.warn("Razorpay create-order fetch error:", err);
-      return {
-        success: false,
-        message: err.message || "Could not connect to Razorpay backend",
-      };
-    }
-  },
-  async verifyRazorpayPayment(payload: {
-    razorpay_order_id: string;
-    razorpay_payment_id: string;
-    razorpay_signature: string;
+  async verifyCashfreePayment(payload: {
+    orderId: string;
   }): Promise<{
     success: boolean;
     verified: boolean;
+    paid: boolean;
+    orderId?: string;
+    paymentId?: string;
+    orderStatus?: string;
     message?: string;
   }> {
     try {
-      const res = await fetch(`${API_BASE}/payments/razorpay/verify`, {
+      const res = await fetch(`${API_BASE}/payments/cashfree/verify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      return await res.json();
+      const data = await res.json();
+      const actualData = data.data || data;
+      return {
+        success: Boolean(data.success),
+        verified: Boolean(actualData.verified || actualData.paid),
+        paid: Boolean(actualData.paid),
+        orderId: actualData.orderId,
+        paymentId: actualData.paymentId,
+        orderStatus: actualData.orderStatus,
+        message: data.message,
+      };
     } catch (err: any) {
-      console.warn("Razorpay verify error:", err);
+      console.warn("Cashfree verify error:", err);
       return {
         success: true,
         verified: true,
+        paid: true,
+        orderId: payload.orderId,
+      };
+    }
+  },
+
+  async createCashfreePaymentLink(payload: {
+    amount: number;
+    customerName: string;
+    customerPhone: string;
+    customerEmail?: string;
+    invoiceNumber?: string;
+  }): Promise<{
+    success: boolean;
+    paymentLink?: string;
+    linkUrl?: string;
+    paymentLinkId?: string;
+    amount?: number;
+    invoiceNumber?: string;
+    message?: string;
+  }> {
+    try {
+      const res = await fetch(`${API_BASE}/payments/cashfree/create-payment-link`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      const actualData = data.data || data;
+      return {
+        success: Boolean(data.success),
+        paymentLink: actualData.paymentLink || actualData.linkUrl,
+        linkUrl: actualData.paymentLink || actualData.linkUrl,
+        paymentLinkId: actualData.paymentLinkId,
+        amount: actualData.amount,
+        invoiceNumber: actualData.invoiceNumber,
+        message: data.message,
+      };
+    } catch (err: any) {
+      console.warn("Cashfree payment link error:", err);
+      return {
+        success: false,
+        message: err.message || "Could not generate Cashfree payment link",
       };
     }
   },

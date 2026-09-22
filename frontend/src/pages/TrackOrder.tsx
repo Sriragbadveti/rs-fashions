@@ -25,12 +25,12 @@ import {
 import type { OrderStatus } from "../context/OrderFulfillmentContext";
 import { sound } from "../types/soundEngine";
 import { products as fallbackCatalog } from "../data/products";
+import { useShowroomSettings } from "../types/settings";
 
 interface TrackOrderProps {
   salesHistory: CompletedSale[];
 }
 
-const STORE_NAME = "RS Fashions";
 const INDIA_COUNTRY_CODE = "91";
 
 const currency = (val: number) =>
@@ -52,6 +52,7 @@ const formatDate = (date: string) => {
 };
 
 export default function TrackOrder({ salesHistory }: TrackOrderProps) {
+  const showroom = useShowroomSettings();
   const {
     getFulfillment,
     updateStatus,
@@ -196,7 +197,7 @@ export default function TrackOrder({ salesHistory }: TrackOrderProps) {
       .join("\n");
 
     const message = [
-      `✨ *${STORE_NAME} — DISPATCH & TRACKING UPDATE* ✨`,
+      `✨ *${showroom.storeName} — DISPATCH & TRACKING UPDATE* ✨`,
       "SiCo Gadwal Sarees & Heritage Handlooms",
       "━━━━━━━━━━━━━━━━━━",
       `*Invoice:* ${sale.invoiceNumber}`,

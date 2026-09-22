@@ -11,8 +11,13 @@ import salesRoutes from "./sales.routes.js";
 import settingsRoutes from "./settings.routes.js";
 import uploadRoutes from "./upload.routes.js";
 import reviewsRoutes from "./reviews.routes.js";
+import authRoutes from "./auth.routes.js";
 
 const apiRouter = Router();
+
+// Authentication & Device Sessions
+apiRouter.use("/auth", authRoutes);
+apiRouter.use("/admin/auth", authRoutes);
 
 // Single-Shot Hydration
 apiRouter.use("/", bootstrapRoutes);
