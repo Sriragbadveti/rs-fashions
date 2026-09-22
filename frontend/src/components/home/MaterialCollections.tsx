@@ -166,8 +166,8 @@ export default function MaterialCollections() {
   return (
     <section className="relative overflow-hidden bg-[#FAF7F2] py-10 font-sans select-none sm:py-14">
       {/* Jewel-Tone Background Light */}
-      <div className="pointer-events-none absolute -left-24 top-1/4 h-80 w-80 rounded-full bg-gradient-to-br from-[#8E3D51]/15 to-rose-400/10 blur-[120px]" />
-      <div className="pointer-events-none absolute -right-24 bottom-1/4 h-80 w-80 rounded-full bg-gradient-to-tl from-[#D47E37]/15 to-amber-300/10 blur-[120px]" />
+      <div className="pointer-events-none absolute -left-24 top-1/4 h-80 w-80 rounded-full bg-linear-to-br from-[#8E3D51]/15 to-rose-400/10 blur-[120px]" />
+      <div className="pointer-events-none absolute -right-24 bottom-1/4 h-80 w-80 rounded-full bg-linear-to-tl from-[#D47E37]/15 to-amber-300/10 blur-[120px]" />
 
       <div className="mx-auto max-w-[1600px] px-3.5 sm:px-6 lg:px-8">
         {/* Header */}
@@ -179,7 +179,7 @@ export default function MaterialCollections() {
             </span>
             <h2 className="mt-2 font-serif text-2xl font-light tracking-tight text-[#2B1B17] sm:text-4xl lg:text-5xl">
               Feel the{" "}
-              <span className="bg-gradient-to-r from-[#8E3D51] via-[#C94A67] to-[#D47E37] bg-clip-text italic font-normal text-transparent">
+              <span className="bg-linear-to-r from-[#8E3D51] via-[#C94A67] to-[#D47E37] bg-clip-text italic font-normal text-transparent">
                 weave
               </span>
               .
@@ -210,7 +210,7 @@ export default function MaterialCollections() {
             <div
               key={`material-card-${mat.id}-${idx}`}
               ref={idx === 0 ? firstCardRef : null}
-              className="w-[240px] shrink-0 sm:w-[270px]"
+              className="w-60 shrink-0 sm:w-67.5"
             >
               {/* Borderless Card Frame */}
               <Link
@@ -227,7 +227,7 @@ export default function MaterialCollections() {
                 />
 
                 {/* Dark Gradient Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-transparent" />
+                <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/25 to-transparent" />
 
                 {/* Top Action Row */}
                 <div className="relative z-10 flex items-center justify-end">

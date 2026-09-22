@@ -39,7 +39,7 @@ function Cart() {
   return (
     <main className="relative min-h-screen bg-[#FAF8F5] px-4 pb-32 pt-8 sm:px-6 sm:pt-12 md:px-10 lg:px-16 selection:bg-[#8E3D51] selection:text-white font-sans">
       {/* Ambient background glow */}
-      <div className="pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 h-[500px] w-full max-w-7xl rounded-full bg-gradient-to-b from-[#8E3D51]/[0.03] to-transparent blur-3xl" />
+      <div className="pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 h-[500px] w-full max-w-7xl rounded-full bg-linear-to-b from-[#8E3D51]/[0.03] to-transparent blur-3xl" />
 
       <div className="relative mx-auto w-full max-w-6xl">
         {/* =====================================================
@@ -78,7 +78,7 @@ function Cart() {
             transition={{ duration: 0.5 }}
             className="flex min-h-[50vh] flex-col items-center justify-center rounded-3xl border border-stone-200/80 bg-white/50 p-8 text-center backdrop-blur-xl shadow-xs"
           >
-            <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-stone-100 to-[#F0EAE3] text-[#8E3D51] shadow-xs">
+            <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-linear-to-br from-stone-100 to-[#F0EAE3] text-[#8E3D51] shadow-xs">
               <FiShoppingBag size={30} strokeWidth={1.2} />
             </div>
 
@@ -297,7 +297,7 @@ function Cart() {
                       </p>
                       <div className="mt-2.5 h-1.5 w-full rounded-full bg-stone-200/80 overflow-hidden">
                         <div
-                          className="h-full bg-gradient-to-r from-[#8E3D51] to-[#D4AF37] transition-all duration-500 rounded-full"
+                          className="h-full bg-linear-to-r from-[#8E3D51] to-[#D4AF37] transition-all duration-500 rounded-full"
                           style={{ width: `${shippingProgress}%` }}
                         />
                       </div>

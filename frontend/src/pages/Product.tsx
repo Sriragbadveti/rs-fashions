@@ -81,7 +81,6 @@ export default function Product() {
   const [quantity, setQuantity] = useState(1);
   const [copied, setCopied] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
-  const [showAddedToast, setShowAddedToast] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
 
   // Real-time IST Status Check
@@ -192,8 +191,6 @@ export default function Product() {
       selectedColor,
       selectedSize: "Free Size (5.5m + 0.8m Blouse)",
     });
-    setShowAddedToast(true);
-    setTimeout(() => setShowAddedToast(false), 2200);
   };
 
   const handleBuyNow = () => {
@@ -279,21 +276,6 @@ export default function Product() {
 
   return (
     <main className="min-h-screen bg-[#FAF7F2] font-sans text-[#2A2421] select-none pb-24 sm:pb-16">
-      {/* Toast Notification */}
-      <AnimatePresence>
-        {showAddedToast && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="fixed top-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-full bg-[#2A2421] px-5 py-2.5 text-xs font-medium text-white shadow-xl"
-          >
-            <Check size={14} className="text-emerald-400 stroke-[3]" />
-            <span>Added to your bag!</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* Social Share Drawer Modal */}
       <AnimatePresence>
         {showShareModal && (
@@ -443,7 +425,7 @@ export default function Product() {
                 >
                   {copied ? (
                     <>
-                      <Check size={12} className="stroke-[3]" />
+                      <Check size={12} className="stroke-3" />
                       <span>Copied!</span>
                     </>
                   ) : (
@@ -460,7 +442,7 @@ export default function Product() {
       </AnimatePresence>
 
       {/* Breadcrumbs */}
-      <div className="mx-auto max-w-[1500px] px-4 pt-6 sm:px-6 lg:px-10">
+      <div className="mx-auto max-w-375 px-4 pt-6 sm:px-6 lg:px-10">
         <nav className="flex items-center gap-2 text-xs text-[#8C7A6B]">
           <Link to="/" className="hover:text-[#2A2421] transition-colors">Home</Link>
           <span>/</span>
@@ -471,7 +453,7 @@ export default function Product() {
       </div>
 
       {/* Main Section */}
-      <section className="mx-auto max-w-[1500px] px-4 pt-6 sm:px-6 lg:px-10">
+      <section className="mx-auto max-w-375 px-4 pt-6 sm:px-6 lg:px-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
           
           {/* LEFT: Photo Gallery */}
@@ -484,7 +466,7 @@ export default function Product() {
                     key={idx}
                     type="button"
                     onClick={() => setSelectedImage(idx)}
-                    className={`relative aspect-[3/4] w-full overflow-hidden rounded-xl border-2 transition-all ${
+                    className={`relative aspect-3/4 w-full overflow-hidden rounded-xl border-2 transition-all ${
                       selectedImage === idx
                         ? "border-[#8E3D51] shadow-sm scale-102"
                         : "border-transparent opacity-70 hover:opacity-100"
@@ -496,7 +478,7 @@ export default function Product() {
               </div>
 
               {/* Big Stage Image */}
-              <div className="relative aspect-[3/4] w-full overflow-hidden rounded-3xl bg-[#EDE8E0] shadow-sm">
+              <div className="relative aspect-3/4 w-full overflow-hidden rounded-3xl bg-[#EDE8E0] shadow-sm">
                 <img
                   src={enrichedImages[selectedImage] || enrichedImages[0]}
                   alt={product.name}
@@ -542,7 +524,7 @@ export default function Product() {
                 className="flex w-full snap-x snap-mandatory overflow-x-auto scrollbar-none"
               >
                 {enrichedImages.map((img: string, idx: number) => (
-                  <div key={idx} className="relative aspect-[3/4] w-full shrink-0 snap-center bg-[#EDE8E0]">
+                  <div key={idx} className="relative aspect-3/4 w-full shrink-0 snap-center bg-[#EDE8E0]">
                     <img src={img} alt={`View ${idx + 1}`} className="h-full w-full object-cover" />
                   </div>
                 ))}
@@ -581,28 +563,19 @@ export default function Product() {
               <h1 className="mt-2 font-serif text-3xl sm:text-4xl font-normal leading-snug text-[#2A2421]">
                 {product.name}
               </h1>
-
-              <div className="mt-3 flex items-center gap-2 text-sm text-stone-600">
-                <div className="flex items-center gap-1 text-amber-500">
-                  <Star size={14} className="fill-amber-400 text-amber-400" />
-                  <span className="font-semibold text-stone-900">{product.rating || 4.8}</span>
-                </div>
-                <span>&bull;</span>
-                <span className="text-xs">{product.reviewCount || 24} Verified Buyer Ratings</span>
-              </div>
-
+              
               <div className="mt-4 flex items-baseline gap-3">
                 <span className="text-3xl font-bold text-[#2A2421]">
                   ₹{product.price.toLocaleString("en-IN")}
                 </span>
                 {product.originalPrice && product.originalPrice > product.price && (
                   <>
-                   
+                     
                   </>
                 )}
               </div>
 
-              <p className="mt-1 text-xs text-stone-500">Inclusive of all taxes &middot; Free express delivery</p>
+              <p className="mt-1 text-xs text-stone-500">&middot; Free express delivery</p>
 
               <p className="mt-4 text-xs sm:text-sm text-stone-600 font-light leading-relaxed border-t border-stone-200/80 pt-4">
                 {product.description || "Authentic handwoven SiCo Gadwal drape crafted with heritage interlocked contrast zari border and pure silk warp."}
@@ -749,7 +722,7 @@ export default function Product() {
       </section>
 
       {/* WHY CHOOSE THIS WEAVE */}
-      <section className="mx-auto max-w-[1500px] px-4 sm:px-6 lg:px-10 mt-16 sm:mt-24">
+      <section className="mx-auto max-w-375 px-4 sm:px-6 lg:px-10 mt-16 sm:mt-24">
         <div className="rounded-3xl border border-stone-200 bg-white p-6 sm:p-10 shadow-xs">
           <div className="max-w-2xl">
             <span className="text-[10px] font-bold uppercase tracking-widest text-[#8E3D51]">The Artisan Difference</span>
@@ -786,7 +759,7 @@ export default function Product() {
       </section>
 
       {/* FREQUENTLY ASKED QUESTIONS */}
-      <section className="mx-auto max-w-[1500px] px-4 sm:px-6 lg:px-10 mt-12 sm:mt-16">
+      <section className="mx-auto max-w-375 px-4 sm:px-6 lg:px-10 mt-12 sm:mt-16">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           <div className="lg:col-span-4">
             <span className="text-[10px] font-bold uppercase tracking-widest text-[#8E3D51]">Got Questions?</span>
@@ -894,7 +867,7 @@ export default function Product() {
 
       {/* RELATED PRODUCTS */}
       {relatedProducts.length > 0 && (
-        <section className="mx-auto max-w-[1500px] px-4 sm:px-6 lg:px-10 mt-16 sm:mt-24">
+        <section className="mx-auto max-w-375 px-4 sm:px-6 lg:px-10 mt-16 sm:mt-24">
           <div className="flex items-end justify-between border-b border-stone-200 pb-4 mb-6">
             <div>
               <span className="text-[10px] font-bold uppercase tracking-widest text-[#8E3D51]">More In Store</span>
@@ -915,7 +888,7 @@ export default function Product() {
                 onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
                 className="group flex flex-col"
               >
-                <div className="aspect-[3/4] w-full overflow-hidden rounded-2xl bg-stone-100">
+                <div className="aspect-3/4 w-full overflow-hidden rounded-2xl bg-stone-100">
                   <img
                     src={rel.images[0]}
                     alt={rel.name}

@@ -363,8 +363,8 @@ export default function ForSaleProducts() {
   if (!saleConfig || !saleConfig.isEnabled || displayItems.length === 0) return null;
 
   return (
-    <section className="border-b border-[#8E3D51]/10 bg-gradient-to-b from-[#FAF7F2] via-[#F4EDE4] to-[#FAF7F2] py-10 font-sans select-none sm:py-14">
-      <div className="mx-auto max-w-[1600px] px-3.5 sm:px-6 lg:px-8">
+    <section className="border-b border-[#8E3D51]/10 bg-linear-to-b from-[#FAF7F2] via-[#F4EDE4] to-[#FAF7F2] py-10 font-sans select-none sm:py-14">
+      <div className="mx-auto max-w-400 px-3.5 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-6 flex flex-col gap-2 border-b border-black/8 pb-5 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -381,10 +381,10 @@ export default function ForSaleProducts() {
         </div>
 
         {/* Tier Bundle Banner with Seamless Looping Carousel & Dots */}
-        <div className="mb-8 rounded-2xl border border-amber-400/20 bg-gradient-to-r from-[#2A0E20] via-[#3B152E] to-[#2A0E20] p-4 text-white shadow-md sm:rounded-3xl sm:p-6">
+        <div className="mb-8 rounded-2xl border border-amber-400/20 bg-linear-to-r from-[#2A0E20] via-[#3B152E] to-[#2A0E20] p-4 text-white shadow-md sm:rounded-3xl sm:p-6">
           <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-center">
             <Link to="/offers" className="group flex items-center gap-3.5 transition-opacity hover:opacity-95 shrink-0">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-stone-950 shadow-sm transition-transform group-hover:scale-105">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-amber-400 to-amber-600 text-stone-950 shadow-sm transition-transform group-hover:scale-105">
                 <FiGift size={20} />
               </div>
               <div>
@@ -407,7 +407,7 @@ export default function ForSaleProducts() {
               onMouseEnter={() => setIsTierHovered(true)}
               onMouseLeave={() => setIsTierHovered(false)}
             >
-              <div className="w-full max-w-full overflow-hidden cursor-grab active:cursor-grabbing lg:max-w-[480px]">
+              <div className="w-full max-w-full overflow-hidden cursor-grab active:cursor-grabbing lg:max-w-120">
                 <motion.div
                   style={{ x: tierX }}
                   drag="x"
@@ -420,7 +420,7 @@ export default function ForSaleProducts() {
                     <div
                       key={`tier-clone-${tier.id || idx}-${idx}`}
                       ref={idx === 0 ? firstTierRef : null}
-                      className="flex w-[210px] sm:w-[230px] shrink-0 flex-col justify-center rounded-xl border border-amber-300/30 bg-white/10 px-4 py-2.5 text-center backdrop-blur-sm transition-all hover:bg-white/15 select-none"
+                      className="flex w-52.5 sm:w-57.5 shrink-0 flex-col justify-center rounded-xl border border-amber-300/30 bg-white/10 px-4 py-2.5 text-center backdrop-blur-sm transition-all hover:bg-white/15 select-none"
                     >
                       <span className="text-xs font-bold tracking-wide text-amber-300">{tier.label}</span>
                       {tier.savingsText && (
@@ -479,7 +479,7 @@ export default function ForSaleProducts() {
               <div
                 key={`card-clone-${item.id}-${idx}`}
                 ref={idx === 0 ? firstCardRef : null}
-                className="group relative flex w-60 shrink-0 flex-col overflow-hidden rounded-2xl border border-stone-200/90 bg-white p-2.5 shadow-xs transition-all duration-300 hover:shadow-md sm:w-[270px] sm:p-3"
+                className="group relative flex w-60 shrink-0 flex-col overflow-hidden rounded-2xl border border-stone-200/90 bg-white p-2.5 shadow-xs transition-all duration-300 hover:shadow-md sm:w-67.5 sm:p-3"
               >
                 <div className="relative aspect-3/4 w-full overflow-hidden rounded-xl bg-stone-100">
                   <img
@@ -543,7 +543,7 @@ export default function ForSaleProducts() {
                     >
                       {inCart ? (
                         <>
-                          <FiCheck size={12} className="stroke-[2.5]" />
+                          <FiCheck size={12} className="stroke-2.5" />
                           <span>Added</span>
                         </>
                       ) : (

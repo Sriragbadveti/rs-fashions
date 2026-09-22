@@ -142,8 +142,8 @@ export default function TrendingProducts() {
   return (
     <section className="relative overflow-hidden bg-[#FAF7F2] py-14 sm:py-24 font-sans select-none">
       {/* Ambient Lighting Accents */}
-      <div className="pointer-events-none absolute -top-20 left-1/4 h-80 w-80 rounded-full bg-gradient-to-br from-[#E8D4C8]/35 to-[#8E3D51]/8 blur-3xl" />
-      <div className="pointer-events-none absolute bottom-0 right-10 h-96 w-96 rounded-full bg-gradient-to-tl from-[#F0E6DD]/60 to-transparent blur-3xl" />
+      <div className="pointer-events-none absolute -top-20 left-1/4 h-80 w-80 rounded-full bg-linear-to-br from-[#E8D4C8]/35 to-[#8E3D51]/8 blur-3xl" />
+      <div className="pointer-events-none absolute bottom-0 right-10 h-96 w-96 rounded-full bg-linear-to-tl from-[#F0E6DD]/60 to-transparent blur-3xl" />
 
       {/* Header Container */}
       <div className="relative mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-10">
@@ -180,8 +180,8 @@ export default function TrendingProducts() {
       {/* Marquee Track Container with Fade Edges */}
       <div className="group/track relative w-full overflow-hidden">
         {/* Soft edge gradients */}
-        <div className="pointer-events-none absolute inset-y-0 left-0 z-20 w-16 bg-gradient-to-r from-[#FAF7F2] to-transparent sm:w-28" />
-        <div className="pointer-events-none absolute inset-y-0 right-0 z-20 w-16 bg-gradient-to-l from-[#FAF7F2] to-transparent sm:w-28" />
+        <div className="pointer-events-none absolute inset-y-0 left-0 z-20 w-16 bg-linear-to-r from-[#FAF7F2] to-transparent sm:w-28" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 z-20 w-16 bg-linear-to-l from-[#FAF7F2] to-transparent sm:w-28" />
 
         {/* Moving Track: Right to Left (0% to -50%) */}
         <motion.div
@@ -201,7 +201,7 @@ export default function TrendingProducts() {
             return (
               <div
                 key={`${item.id}-${idx}`}
-                className="group relative flex w-[280px] shrink-0 flex-col sm:w-[320px] lg:w-[340px]"
+                className="group relative flex w-70 shrink-0 flex-col sm:w-[320px] lg:w-85"
               >
                 {/* Saree Card Frame */}
                 <div className="relative block aspect-[0.74] w-full overflow-hidden rounded-[26px] bg-[#EDE8E0] shadow-[0_8px_30px_rgba(42,36,33,0.04)] border border-stone-200/60 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(142,61,81,0.14)] hover:-translate-y-1">
@@ -248,7 +248,7 @@ export default function TrendingProducts() {
                     )}
 
                     {/* Ambient Dark Gradient Layer */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-stone-950/70 via-stone-950/15 to-black/10 opacity-70 transition-opacity duration-300 group-hover:opacity-85" />
+                    <div className="absolute inset-0 bg-linear-to-t from-stone-950/70 via-stone-950/15 to-black/10 opacity-70 transition-opacity duration-300 group-hover:opacity-85" />
                   </Link>
 
                   {/* Floating Glassmorphic Details Plate */}

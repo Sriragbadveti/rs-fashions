@@ -169,13 +169,13 @@ export const ModalProvider: React.FC<{ children: React.ReactNode }> = ({
       {confirmState &&
         createPortal(
           <div
-            className="fixed inset-0 z-[99999] flex items-center justify-center bg-stone-950/60 p-4 backdrop-blur-sm select-none animate-modal-overlay"
+            className="fixed inset-0 z-99999 flex items-center justify-center bg-stone-950/60 p-4 backdrop-blur-sm select-none animate-modal-overlay"
             onClick={() => confirmState.resolve(false)}
           >
             <div
               role="dialog"
               aria-modal="true"
-              className="relative w-full max-w-[420px] overflow-hidden rounded-[26px] border border-white/80 bg-white p-6 shadow-2xl backdrop-blur-2xl animate-modal-enter"
+              className="relative w-full max-w-105 overflow-hidden rounded-[26px] border border-white/80 bg-white p-6 shadow-2xl backdrop-blur-2xl animate-modal-enter"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Top Accent Highlight */}
@@ -239,7 +239,7 @@ export const ModalProvider: React.FC<{ children: React.ReactNode }> = ({
       {/* =================================================================== */}
       {toasts.length > 0 &&
         createPortal(
-          <div className="fixed top-5 right-5 z-[99999] flex flex-col gap-2.5 max-w-sm w-full pointer-events-none">
+          <div className="fixed top-5 right-5 z-99999 flex flex-col gap-2.5 max-w-sm w-full pointer-events-none">
             {toasts.map((t) => {
               const Icon =
                 t.type === "error"

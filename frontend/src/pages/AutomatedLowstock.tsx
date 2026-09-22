@@ -159,7 +159,7 @@ export default function AutomatedLowstock({
               value={weaverName}
               placeholder="e.g. Master Weaver K. Narayana"
               onChange={(e) => setWeaverName(e.target.value)}
-              className="w-full h-11 pl-10 pr-3 text-xs bg-[var(--input-bg)] border border-stone-500/30 rounded-xl focus:outline-none focus:border-brand-gold font-semibold"
+              className="w-full h-11 pl-10 pr-3 text-xs bg-(--input-bg)] border border-stone-500/30 rounded-xl focus:outline-none focus:border-brand-gold font-semibold"
             />
           </div>
         </div>
@@ -180,7 +180,7 @@ export default function AutomatedLowstock({
                 const numericVal = e.target.value.replace(/\D/g, "");
                 setWeaverPhone(numericVal);
               }}
-              className="w-full h-11 pl-20 pr-3 text-xs font-mono bg-[var(--input-bg)] border border-stone-500/30 rounded-xl focus:outline-none focus:border-brand-gold font-semibold"
+              className="w-full h-11 pl-20 pr-3 text-xs font-mono bg-(--input-bg)] border border-stone-500/30 rounded-xl focus:outline-none focus:border-brand-gold font-semibold"
             />
           </div>
         </div>
@@ -210,7 +210,7 @@ export default function AutomatedLowstock({
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px] text-left text-xs">
+            <table className="w-full min-w-225 text-left text-xs">
               <thead className="bg-stone-500/5 border-b border-stone-500/20 text-[10px] uppercase font-bold tracking-wider opacity-70">
                 <tr>
                   <th className="px-5 py-3 w-10 text-center">Select</th>
@@ -254,7 +254,7 @@ export default function AutomatedLowstock({
                           min="1"
                           value={bufferQty}
                           onChange={(e) => handleQtyChange(variant.sku, e.target.value)}
-                          className="w-16 h-8 text-center font-mono font-bold bg-[var(--input-bg)] border border-stone-500/30 rounded-lg text-xs outline-none"
+                          className="w-16 h-8 text-center font-mono font-bold bg-(--input-bg)] border border-stone-500/30 rounded-lg text-xs outline-none"
                         />
                       </td>
                       <td className="px-5 py-3.5 text-right">

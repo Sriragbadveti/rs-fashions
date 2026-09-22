@@ -512,7 +512,7 @@ function MultiImageUploadInput({
             </div>
             <div className="w-full bg-stone-200 h-1.5 rounded-full overflow-hidden">
               <div
-                className="bg-gradient-to-r from-[#D4A373] to-[#8E3D51] h-full rounded-full transition-all duration-200"
+                className="bg-linear-to-r from-[#D4A373] to-[#8E3D51] h-full rounded-full transition-all duration-200"
                 style={{ width: `${uploadProgress}%` }}
               />
             </div>
