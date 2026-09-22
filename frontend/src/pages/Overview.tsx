@@ -135,7 +135,7 @@ export default function Overview({
 
       {/* ONBOARDING CHECKLIST BANNER */}
       {!isOnboardingDismissed && (
-        <div className="relative overflow-hidden rounded-3xl border border-amber-200/80 bg-gradient-to-r from-amber-50/80 via-white to-amber-50/40 p-6 shadow-[0_8px_30px_rgba(212,163,115,0.08)] space-y-5">
+        <div className="relative overflow-hidden rounded-3xl border border-amber-200/80 bg-linear-to-r from-amber-50/80 via-white to-amber-50/40 p-6 shadow-[0_8px_30px_rgba(212,163,115,0.08)] space-y-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-amber-200/50 pb-4">
             <div className="flex items-center gap-3">
               <div className="w-11 h-11 rounded-2xl bg-[#2A0E20] text-[#D4A373] flex items-center justify-center shadow-xs shrink-0">

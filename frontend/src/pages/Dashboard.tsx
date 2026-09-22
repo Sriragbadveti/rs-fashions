@@ -849,8 +849,8 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
     <OrderFulfillmentProvider initialFulfillments={initialFulfillments}>
       <div className="relative h-screen w-screen overflow-hidden bg-[#FBF9F5] flex select-none font-sans text-stone-800 antialiased">
         {/* Ambient Glows */}
-        <div className="pointer-events-none absolute -top-48 -left-48 h-[650px] w-[650px] rounded-full bg-gradient-to-br from-[#EEDFD5]/60 via-[#E4CEBD]/30 to-transparent blur-3xl opacity-70" />
-        <div className="pointer-events-none absolute -bottom-48 -right-48 h-[750px] w-[750px] rounded-full bg-gradient-to-tl from-[#E5D7E2]/50 via-[#F3EAE3]/40 to-transparent blur-3xl opacity-70" />
+        <div className="pointer-events-none absolute -top-48 -left-48 h-[650px] w-[650px] rounded-full bg-linear-to-br from-[#EEDFD5]/60 via-[#E4CEBD]/30 to-transparent blur-3xl opacity-70" />
+        <div className="pointer-events-none absolute -bottom-48 -right-48 h-[750px] w-[750px] rounded-full bg-linear-to-tl from-[#E5D7E2]/50 via-[#F3EAE3]/40 to-transparent blur-3xl opacity-70" />
 
         {isSidebarOpen && (
           <button
@@ -870,7 +870,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
           {/* Brand Header */}
           <div className="flex h-20 shrink-0 items-center justify-between border-b border-stone-200/50 px-5">
             <div className="flex items-center gap-3">
-              <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-white to-[#F7F2EB] p-1.5 shadow-[0_4px_16px_rgba(42,14,32,0.08)] border border-white">
+              <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-linear-to-br from-white to-[#F7F2EB] p-1.5 shadow-[0_4px_16px_rgba(42,14,32,0.08)] border border-white">
                 <img
                   src={logo}
                   alt="RS Fashions Emblem"
@@ -945,10 +945,10 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
           </div>
 
           {/* User Profile Footer */}
-          <div className="border-t border-stone-200/60 p-3.5 bg-gradient-to-t from-white/90 to-transparent">
+          <div className="border-t border-stone-200/60 p-3.5 bg-linear-to-t from-white/90 to-transparent">
             <div className="flex items-center justify-between rounded-2xl border border-stone-200/70 bg-white/80 p-2.5 shadow-xs backdrop-blur-md">
               <div className="flex items-center gap-2.5 min-w-0">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#2A0E20] to-[#431534] font-serif text-xs font-bold text-amber-200 shadow-xs">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-[#2A0E20] to-[#431534] font-serif text-xs font-bold text-amber-200 shadow-xs">
                   {user.name.charAt(0).toUpperCase()}
                 </div>
                 <div className="min-w-0">

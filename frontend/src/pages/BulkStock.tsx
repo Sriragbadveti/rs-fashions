@@ -733,7 +733,7 @@ export default function BulkStock({
 
         {/* MULTI-PHOTO DROPZONE */}
         <div className="px-6 pb-6">
-          <div className="group relative overflow-hidden rounded-3xl border-2 border-dashed border-amber-300/80 bg-gradient-to-br from-amber-50/50 via-white to-amber-50/20 p-7 text-center transition-all hover:border-amber-400 hover:bg-amber-50/40">
+          <div className="group relative overflow-hidden rounded-3xl border-2 border-dashed border-amber-300/80 bg-linear-to-br from-amber-50/50 via-white to-amber-50/20 p-7 text-center transition-all hover:border-amber-400 hover:bg-amber-50/40">
             <input
               type="file"
               multiple
@@ -989,7 +989,7 @@ export default function BulkStock({
         </div>
 
         {/* SUMMARY DASH & COMMIT BUTTON */}
-        <div className="border-t border-stone-200/60 bg-gradient-to-t from-stone-50/90 to-stone-50/40 p-6">
+        <div className="border-t border-stone-200/60 bg-linear-to-t from-stone-50/90 to-stone-50/40 p-6">
           <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-4">
             <div className="rounded-2xl border border-stone-200/80 bg-white/90 p-4 shadow-2xs">
               <div className="flex items-center gap-1.5 text-stone-400">

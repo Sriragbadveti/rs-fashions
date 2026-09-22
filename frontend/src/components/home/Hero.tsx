@@ -41,7 +41,7 @@ export default function Hero() {
         />
 
         {/* Cinematic Vignette */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/15" />
+        <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/35 to-black/15" />
         <div className="absolute -left-20 top-0 h-96 w-96 rounded-full bg-[#8E3D51]/20 blur-[130px]" />
 
         {/* Hero Content */}
@@ -58,7 +58,7 @@ export default function Hero() {
             >
               <h1 className="font-serif text-3xl font-light tracking-tight text-white sm:text-5xl lg:text-6xl leading-[1.1]">
                 Draped in timeless{" "}
-                <span className="italic font-normal bg-gradient-to-r from-rose-200 via-amber-200 to-amber-100 bg-clip-text text-transparent">
+                <span className="italic font-normal bg-linear-to-r from-rose-200 via-amber-200 to-amber-100 bg-clip-text text-transparent">
                   grace
                 </span>
                 .

@@ -310,7 +310,7 @@ const Billing: React.FC<BillingProps> = ({
     <div className="min-h-full w-full select-none bg-transparent font-sans text-stone-800 relative">
       {/* GLOBAL TOAST NOTIFICATION CONTAINER */}
       {toastMessage && (
-        <div className="fixed top-6 right-6 z-[99999] flex items-center gap-2.5 rounded-2xl bg-[#2A0E20] px-4 py-3 text-xs font-semibold text-amber-100 shadow-2xl border border-brand-gold/30 animate-bounce">
+        <div className="fixed top-6 right-6 z-99999 flex items-center gap-2.5 rounded-2xl bg-[#2A0E20] px-4 py-3 text-xs font-semibold text-amber-100 shadow-2xl border border-brand-gold/30 animate-bounce">
           <Bell size={15} className="text-brand-gold shrink-0" />
           <span>{toastMessage}</span>
         </div>
@@ -557,9 +557,9 @@ const Billing: React.FC<BillingProps> = ({
                 onClick={() => setShowCustomer((prev) => !prev)}
                 className="flex w-full items-center justify-between p-4 text-left transition-colors hover:bg-stone-50/70 md:p-5"
               >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#2A0E20] text-brand-gold">
-                    <User className="h-4 w-4" />
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-9 w-18 sm:w-9 items-center justify-center rounded-xl bg-[#2A0E20] text-brand-gold">
+                    <User className="h-4 w-4 text-amber-100" />
                   </div>
 
                   <div>
@@ -780,7 +780,7 @@ const Billing: React.FC<BillingProps> = ({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
                     <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#2A0E20] text-brand-gold">
-                      <ShoppingBag className="h-4 w-4" />
+                      <ShoppingBag className="h-4 w-4 text-amber-100" />
                     </div>
 
                     <div>
@@ -1669,8 +1669,8 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-stone-900/60 p-4 backdrop-blur-md select-none w-screen h-screen overflow-hidden" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', margin: 0 }}>
-      <div className="flex max-h-[100vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl z-[10000]">
+    <div className="fixed inset-0 z-9999 flex items-center justify-center bg-stone-900/60 p-4 backdrop-blur-md select-none w-screen h-screen overflow-hidden" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', margin: 0 }}>
+      <div className="flex max-h-[100vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl z-10000">
         <div className="flex items-center justify-between border-b border-stone-200 bg-stone-50 px-6 py-4 no-print">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">
@@ -1749,7 +1749,7 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({
                 </span>
                 <p className="text-[11px] text-stone-500">Method: <strong>{sale.paymentMethod.toUpperCase()}</strong></p>
                 {modalActiveLink && (
-                  <p className="font-mono text-[10px] text-purple-700 font-semibold truncate max-w-[240px] ml-auto">
+                  <p className="font-mono text-[10px] text-purple-700 font-semibold truncate max-w-60 ml-auto">
                     Link: {modalActiveLink}
                   </p>
                 )}

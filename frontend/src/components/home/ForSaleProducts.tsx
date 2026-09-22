@@ -363,7 +363,7 @@ export default function ForSaleProducts() {
   if (!saleConfig || !saleConfig.isEnabled || displayItems.length === 0) return null;
 
   return (
-    <section className="border-b border-[#8E3D51]/10 bg-gradient-to-b from-[#FAF7F2] via-[#F4EDE4] to-[#FAF7F2] py-10 font-sans select-none sm:py-14">
+    <section className="border-b border-[#8E3D51]/10 bg-linear-to-b from-[#FAF7F2] via-[#F4EDE4] to-[#FAF7F2] py-10 font-sans select-none sm:py-14">
       <div className="mx-auto max-w-[1600px] px-3.5 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-6 flex flex-col gap-2 border-b border-black/8 pb-5 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
@@ -381,10 +381,10 @@ export default function ForSaleProducts() {
         </div>
 
         {/* Tier Bundle Banner with Seamless Looping Carousel & Dots */}
-        <div className="mb-8 rounded-2xl border border-amber-400/20 bg-gradient-to-r from-[#2A0E20] via-[#3B152E] to-[#2A0E20] p-4 text-white shadow-md sm:rounded-3xl sm:p-6">
+        <div className="mb-8 rounded-2xl border border-amber-400/20 bg-linear-to-r from-[#2A0E20] via-[#3B152E] to-[#2A0E20] p-4 text-white shadow-md sm:rounded-3xl sm:p-6">
           <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-center">
             <Link to="/offers" className="group flex items-center gap-3.5 transition-opacity hover:opacity-95 shrink-0">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-stone-950 shadow-sm transition-transform group-hover:scale-105">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-amber-400 to-amber-600 text-stone-950 shadow-sm transition-transform group-hover:scale-105">
                 <FiGift size={20} />
               </div>
               <div>
