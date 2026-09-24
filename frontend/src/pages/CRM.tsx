@@ -497,23 +497,18 @@ function DatePicker({
 /* -------------------------------------------------------------------------- */
 
 export default function CRM({
-  customers: initialData = MOCK_CUSTOMERS,
+  customers: initialData = [],
   onAddCustomer,
 }: CRMProps) {
   const [customers, setCustomers] =
     useState<CustomerProfile[]>(() => {
-      const list = (initialData && initialData.length > 0) ? [...initialData] : getSavedCrmCustomers();
-      return list;
+      if (initialData && Array.isArray(initialData)) return initialData;
+      return getSavedCrmCustomers();
     });
 
   useEffect(() => {
-    if (initialData && initialData.length > 0) {
-      setCustomers((prev) => {
-        const map = new Map<string, CustomerProfile>();
-        initialData.forEach((c) => map.set(c.id || c.phone, c));
-        prev.forEach((c) => map.set(c.id || c.phone, c));
-        return Array.from(map.values());
-      });
+    if (initialData && Array.isArray(initialData)) {
+      setCustomers(initialData);
     }
   }, [initialData]);
 
@@ -525,18 +520,11 @@ export default function CRM({
         if (!res.ok) return;
         const json = await res.json();
         const serverCustomers = json?.data?.customers || json?.customers;
-        if (isMounted && Array.isArray(serverCustomers) && serverCustomers.length > 0) {
-          setCustomers((prev) => {
-            const map = new Map<string, CustomerProfile>();
-            (initialData || []).forEach((c) => map.set(c.id || c.phone, c));
-            serverCustomers.forEach((c: CustomerProfile) => map.set(c.id || c.phone, c));
-            prev.forEach((c) => map.set(c.id || c.phone, c));
-            const merged = Array.from(map.values());
-            try {
-              localStorage.setItem("rs_admin_customers", JSON.stringify(merged));
-            } catch {}
-            return merged;
-          });
+        if (isMounted && Array.isArray(serverCustomers)) {
+          setCustomers(serverCustomers);
+          try {
+            localStorage.setItem("rs_admin_customers", JSON.stringify(serverCustomers));
+          } catch {}
         }
       } catch (err) {
         console.warn("Could not load live CRM customers:", err);
@@ -546,7 +534,7 @@ export default function CRM({
     return () => {
       isMounted = false;
     };
-  }, [initialData]);
+  }, []);
 
   const showroom = useShowroomSettings();
   const [searchQuery, setSearchQuery] = useState("");

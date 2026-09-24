@@ -128,22 +128,10 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       const saved = localStorage.getItem("rs_admin_categories");
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          const filtered = parsed.filter(
-            (c) => c.name === "SiCo Gadwal Sarees" || c.id === "c1"
-          );
-          if (filtered.length > 0) {
-            return filtered.map((c) => ({
-              ...c,
-              name: "SiCo Gadwal Sarees",
-              slug: "SGS",
-              hsn: "5208",
-            }));
-          }
-        }
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch { }
-    return MOCK_CATEGORIES;
+    return [];
   });
 
   const [inventory, setInventory] = useState<Product[]>(() => {
@@ -151,90 +139,43 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       const saved = localStorage.getItem("rs_admin_inventory");
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.map((p) => ({
-            ...p,
-            categoryId: "c1",
-          }));
-        }
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch { }
-    return MOCK_INVENTORY;
+    return [];
   });
 
   const [stockHistory, setStockHistory] = useState<StockMovement[]>(() => {
     try {
       const saved = localStorage.getItem("rs_admin_stock_history");
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
     } catch { }
-    return MOCK_STOCK_HISTORY;
+    return [];
   });
 
   const [salesHistory, setSalesHistory] = useState<CompletedSale[]>(() => {
     try {
       const saved = localStorage.getItem("rs_admin_sales_history");
-      let list: CompletedSale[] = saved ? JSON.parse(saved) : [];
-      if (!Array.isArray(list)) list = [];
-
-      // Also merge any storefront customer orders from rs_fashions_orders
-      const rawStoreOrders = localStorage.getItem("rs_fashions_orders");
-      if (rawStoreOrders) {
-        const storeOrders = JSON.parse(rawStoreOrders);
-        if (Array.isArray(storeOrders)) {
-          const existingInvoices = new Set(list.map((s) => s.invoiceNumber));
-          storeOrders.forEach((o: any) => {
-            const invNum = o.orderNumber || o.invoiceNumber || o.id;
-            if (invNum && !existingInvoices.has(invNum)) {
-              existingInvoices.add(invNum);
-              list.unshift({
-                invoiceNumber: invNum,
-                date: o.createdAt || new Date().toISOString(),
-                customerName: o.customerName || "Customer",
-                customerPhone: o.phone || "",
-                customer: {
-                  name: o.customerName || "Customer",
-                  phone: o.phone || "",
-                  email: o.email || "",
-                  address: typeof o.address === "object" ? `${o.address.address || ""}, ${o.address.city || ""}, ${o.address.state || ""} ${o.address.pincode || ""}` : (o.address || ""),
-                  city: typeof o.address === "object" ? o.address.city : undefined,
-                  state: typeof o.address === "object" ? o.address.state : undefined,
-                  pincode: typeof o.address === "object" ? o.address.pincode : undefined,
-                },
-                items: (o.items || []).map((it: any) => ({
-                  cartId: it.id || `it-${Date.now()}-${Math.random()}`,
-                  productId: it.id || it.productId,
-                  sku: it.sku || `SKU-${it.id || "SAREE"}`,
-                  name: it.name || "Handcrafted SiCo Gadwal Saree",
-                  categoryName: "SiCo Gadwal Sarees",
-                  hsn: "5208",
-                  color: it.color || "Standard",
-                  colorSlug: (it.color || "standard").toLowerCase(),
-                  unitPrice: Number(it.price || it.unitPrice) || 0,
-                  qty: Number(it.quantity || it.qty) || 1,
-                  maxStock: 10,
-                })),
-                subtotal: Number(o.subtotal) || 0,
-                discount: Number(o.discount) || 0,
-                cgst: 0,
-                sgst: 0,
-                total: Number(o.total) || 0,
-                paymentMethod: (o.paymentMethod || "cash") as any,
-              });
-            }
-          });
-        }
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
       }
-      return list;
     } catch { }
     return [];
   });
 
   const [customers, setCustomers] = useState<CustomerProfile[]>(() => {
     try {
-      const list = getSavedCrmCustomers();
-      if (list && list.length > 0) return list;
+      const saved = localStorage.getItem("rs_admin_customers");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
     } catch { }
-    return MOCK_CUSTOMERS;
+    return [];
   });
 
   const [initialFulfillments, setInitialFulfillments] = useState<Record<string, any>>(() => {
@@ -364,30 +305,27 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       const json = await res.json();
       const d = json?.data || json;
       if (d) {
-        if (Array.isArray(d.categories) && d.categories.length > 0) setCategories(d.categories);
-        if (Array.isArray(d.products) && d.products.length > 0) setInventory(d.products);
-        if (Array.isArray(d.stockMovements)) setStockHistory(d.stockMovements);
-        if (Array.isArray(d.sales)) setSalesHistory(d.sales);
-        if (Array.isArray(d.customers) && d.customers.length > 0) {
-          setCustomers((prev) => {
-            const map = new Map<string, CustomerProfile>();
-            prev.forEach((c) => map.set(c.id || c.phone, c));
-            d.customers.forEach((c: CustomerProfile) => map.set(c.id || c.phone, c));
-            const merged = Array.from(map.values());
-            safeStorageSet("rs_admin_customers", merged);
-            return merged;
-          });
-        }
-
-        if (Array.isArray(d.categories) && d.categories.length > 0)
+        if (Array.isArray(d.categories)) {
+          setCategories(d.categories);
           safeStorageSet("rs_admin_categories", d.categories);
-        if (Array.isArray(d.products) && d.products.length > 0) {
+        }
+        if (Array.isArray(d.products)) {
+          setInventory(d.products);
           safeStorageSet("rs_admin_inventory", d.products);
           syncInventoryToStorefront(d.products);
         }
-        if (Array.isArray(d.stockMovements))
+        if (Array.isArray(d.stockMovements)) {
+          setStockHistory(d.stockMovements);
           safeStorageSet("rs_admin_stock_history", d.stockMovements);
-        if (Array.isArray(d.sales)) safeStorageSet("rs_admin_sales_history", d.sales);
+        }
+        if (Array.isArray(d.sales)) {
+          setSalesHistory(d.sales);
+          safeStorageSet("rs_admin_sales_history", d.sales);
+        }
+        if (Array.isArray(d.customers)) {
+          setCustomers(d.customers);
+          safeStorageSet("rs_admin_customers", d.customers);
+        }
 
         const fulfillMap: Record<string, any> = {};
         if (Array.isArray(d.sales)) {

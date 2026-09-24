@@ -106,18 +106,9 @@ const initialCustomer: CustomerDetails = {
   gstin: "",
 };
 
-// Reads saved CRM customers from localStorage, registered online users, and mock customers
+// Reads saved CRM customers from localStorage and registered online users
 export const getSavedCrmCustomers = (): CustomerProfile[] => {
   const map = new Map<string, CustomerProfile>();
-
-  // 1. Base seed from MOCK_CUSTOMERS
-  MOCK_CUSTOMERS.forEach((c) => {
-    map.set(c.id, {
-      ...c,
-      address: c.address || (c.city ? `${c.city}, Telangana` : "Hyderabad, Telangana"),
-      state: "Telangana",
-    });
-  });
 
   // 2. Read from rs_admin_customers (CRM persisted state)
   try {

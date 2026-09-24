@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import type { Product, Category } from "../types/inventory";
 import { MOCK_DESIGNS, COLOR_CODES } from "../types/inventory";
+import { generateColorSlug, normalizeText } from "../types/catalog";
 import { sound } from "../types/soundEngine";
 import { StoreService } from "../services/supabase";
 
@@ -58,6 +59,7 @@ interface PremiumDropdownProps {
   searchable?: boolean;
   disabled?: boolean;
   className?: string;
+  allowCustom?: boolean;
 }
 
 function PremiumDropdown({
@@ -69,13 +71,16 @@ function PremiumDropdown({
   searchable = true,
   disabled = false,
   className = "",
+  allowCustom = false,
 }: PremiumDropdownProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const wrapperRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  const selected = options.find((option) => option.value === value);
+  const selected =
+    options.find((option) => normalizeText(option.value) === normalizeText(value)) ||
+    (value ? { value, label: value, description: "Custom Hue", code: generateColorSlug(value) } : undefined);
 
   const filteredOptions = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -88,6 +93,15 @@ function PremiumDropdown({
         .some((text) => text!.toLowerCase().includes(query))
     );
   }, [options, search]);
+
+  const hasCustom =
+    allowCustom &&
+    search.trim() &&
+    !options.some(
+      (opt) =>
+        normalizeText(opt.label) === normalizeText(search) ||
+        normalizeText(opt.value) === normalizeText(search)
+    );
 
   useEffect(() => {
     const handleOutsideClick = (event: MouseEvent) => {
@@ -191,7 +205,7 @@ function PremiumDropdown({
                   ref={searchRef}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder={`Search ${label.toLowerCase()}...`}
+                  placeholder={allowCustom ? `Search or type custom ${label.toLowerCase()}...` : `Search ${label.toLowerCase()}...`}
                   className="h-7 min-w-0 flex-1 bg-transparent text-xs text-stone-800 outline-none placeholder:text-stone-400"
                 />
                 {search && (
@@ -208,7 +222,7 @@ function PremiumDropdown({
           )}
 
           <div className="max-h-56 overflow-y-auto p-1.5 [scrollbar-width:thin]">
-            {filteredOptions.length === 0 ? (
+            {filteredOptions.length === 0 && !hasCustom ? (
               <div className="px-4 py-6 text-center">
                 <Search size={16} className="mx-auto mb-1.5 text-stone-300" />
                 <p className="text-xs font-semibold text-stone-600">No match found</p>
@@ -216,7 +230,7 @@ function PremiumDropdown({
               </div>
             ) : (
               filteredOptions.map((option) => {
-                const isSelected = option.value === value;
+                const isSelected = normalizeText(option.value) === normalizeText(value);
 
                 return (
                   <button
@@ -269,6 +283,25 @@ function PremiumDropdown({
                   </button>
                 );
               })
+            )}
+
+            {hasCustom && (
+              <button
+                type="button"
+                onClick={() => {
+                  sound.playClick();
+                  const customVal = search.trim();
+                  onChange(customVal);
+                  setOpen(false);
+                  setSearch("");
+                }}
+                className="mt-1 flex w-full items-center gap-2 rounded-xl bg-amber-50/80 p-2.5 text-left transition-colors hover:bg-amber-100 border border-amber-200/60"
+              >
+                <Plus size={13} className="shrink-0 text-[#2A0E20]" />
+                <span className="truncate text-xs font-bold text-[#2A0E20]">
+                  Use Custom Hue "{search.trim()}"
+                </span>
+              </button>
             )}
           </div>
 
@@ -500,21 +533,23 @@ export default function BulkStock({
     if (validRows.length === 0) return;
 
     const newProducts: Product[] = validRows.map((row, idx) => {
-      const color1Def =
-        COLOR_CODES.find((c) => c.name === row.color1) || COLOR_CODES[0];
+      const color1Name = (row.color1 || "").trim() || "Standard";
+      const color1Obj = COLOR_CODES.find((c) => normalizeText(c.name) === normalizeText(color1Name));
+      const color1Code = color1Obj ? color1Obj.code : generateColorSlug(color1Name);
 
-      const color2Def =
-        orderMode === "dual"
-          ? COLOR_CODES.find((c) => c.name === row.color2) || COLOR_CODES[1]
-          : null;
+      const color2Name = orderMode === "dual" ? (row.color2 || "").trim() : "";
+      const color2Obj = color2Name
+        ? COLOR_CODES.find((c) => normalizeText(c.name) === normalizeText(color2Name))
+        : null;
+      const color2Code = color2Name ? (color2Obj ? color2Obj.code : generateColorSlug(color2Name)) : null;
 
-      const finalColorName = color2Def
-        ? `${color1Def.name} / ${color2Def.name}`
-        : color1Def.name;
+      const finalColorName = color2Name
+        ? `${color1Name} / ${color2Name}`
+        : color1Name;
 
-      const finalColorSlug = color2Def
-        ? `${color1Def.code}-${color2Def.code}`
-        : color1Def.code;
+      const finalColorSlug = color2Code
+        ? `${color1Code}-${color2Code}`
+        : color1Code;
 
       const serialNum = String(inventory.length + idx + 1).padStart(3, "0");
       const sku = `RSF-${designObj.slug}-${finalColorSlug}-${serialNum}`;
@@ -831,17 +866,19 @@ export default function BulkStock({
         {/* VARIATION ITEM ROWS */}
         <div className="space-y-3 px-6 pb-6">
           {bulkRows.map((row, index) => {
-            const primaryDef =
-              COLOR_CODES.find((c) => c.name === row.color1) || COLOR_CODES[0];
+            const primaryName = (row.color1 || "").trim() || "Standard";
+            const primaryObj = COLOR_CODES.find((c) => normalizeText(c.name) === normalizeText(primaryName));
+            const primaryCode = primaryObj ? primaryObj.code : generateColorSlug(primaryName);
 
-            const secondaryDef =
-              orderMode === "dual"
-                ? COLOR_CODES.find((c) => c.name === row.color2) || COLOR_CODES[1]
-                : null;
+            const secondaryName = orderMode === "dual" ? (row.color2 || "").trim() : "";
+            const secondaryObj = secondaryName
+              ? COLOR_CODES.find((c) => normalizeText(c.name) === normalizeText(secondaryName))
+              : null;
+            const secondaryCode = secondaryName ? (secondaryObj ? secondaryObj.code : generateColorSlug(secondaryName)) : null;
 
-            const autoSku = `RSF-${selectedDesignSlug}-${secondaryDef
-                ? `${primaryDef.code}-${secondaryDef.code}`
-                : primaryDef.code
+            const autoSku = `RSF-${selectedDesignSlug}-${secondaryCode
+                ? `${primaryCode}-${secondaryCode}`
+                : primaryCode
               }-${String(inventory.length + index + 1).padStart(3, "0")}`;
 
             return (
@@ -891,6 +928,7 @@ export default function BulkStock({
                     value={row.color1}
                     options={colorOptions}
                     onChange={(value) => updateRow(row.id, "color1", value)}
+                    allowCustom={true}
                   />
 
                   {orderMode === "dual" ? (
@@ -899,6 +937,7 @@ export default function BulkStock({
                       value={row.color2}
                       options={colorOptions}
                       onChange={(value) => updateRow(row.id, "color2", value)}
+                      allowCustom={true}
                     />
                   ) : (
                     <div className="flex flex-col">

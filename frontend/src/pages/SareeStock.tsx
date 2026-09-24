@@ -593,7 +593,7 @@ function MultiImageUploadInput({
                     className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                   />
                   {index === 0 && (
-                    <span className="absolute top-1.5 left-1.5 rounded-md bg-[#2A0E20]/90 text-brand-gold px-1.5 py-0.5 text-[8.5px] font-bold tracking-wider uppercase shadow-xs backdrop-blur-2xs border border-brand-gold/30">
+                    <span className="absolute top-1.5 left-1.5 rounded-md bg-white text-black px-2 py-0.5 text-[9px] font-extrabold tracking-wider uppercase shadow-md border border-stone-200">
                       ★ Primary
                     </span>
                   )}

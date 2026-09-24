@@ -37,64 +37,7 @@ interface ReviewsManagerProps {
   inventory: Product[];
 }
 
-const DEFAULT_REVIEWS: ProductReview[] = [
-  {
-    id: "rev-1",
-    productId: "1",
-    productName: "Royal Magenta Gold Zari SiCo Saree",
-    reviewerName: "Sowmya Reddy",
-    reviewerLocation: "Jubilee Hills, Hyderabad",
-    rating: 5,
-    title: "Exceptional Drape & Exquisite Zari Work",
-    content:
-      "The handloom SiCo blend is so feather-light yet holds a majestic festive flare. The kaddi border glistens without being loud. Truly a generational heirloom.",
-    verifiedBuyer: true,
-    date: "12 Sep 2026",
-    createdAt: "2026-09-12T10:00:00Z",
-  },
-  {
-    id: "rev-2",
-    productId: "2",
-    productName: "Peacock Blue Dual-Tone SiCo Drape",
-    reviewerName: "Dr. Malini Iyer",
-    reviewerLocation: "Bengaluru",
-    rating: 5,
-    title: "Breathable & Authentic Handloom Texture",
-    content:
-      "Wore this for my daughter's arangetram. Received countless compliments on the authentic pitloom weave and soft drape. Exceptional quality!",
-    verifiedBuyer: true,
-    date: "08 Sep 2026",
-    createdAt: "2026-09-08T15:30:00Z",
-  },
-  {
-    id: "rev-3",
-    productId: "3",
-    productName: "Vintage Crimson Zari Butta SiCo",
-    reviewerName: "Kavitha Sundaram",
-    reviewerLocation: "Chennai",
-    rating: 5,
-    title: "Generational Heirlooms at Honest Value",
-    content:
-      "The saree arrived within 2 days in a gorgeous double-walled presentation box. The unboxing experience was pure luxury.",
-    verifiedBuyer: true,
-    date: "04 Sep 2026",
-    createdAt: "2026-09-04T12:00:00Z",
-  },
-  {
-    id: "rev-4",
-    productId: "4",
-    productName: "Emerald Temple Border SiCo Saree",
-    reviewerName: "Ananya Deshmukh",
-    reviewerLocation: "Mumbai",
-    rating: 5,
-    title: "The Korvai Border Work is Flawless",
-    content:
-      "Such crisp drape and vibrant shade! Pure elegance without any stiffness. Will definitely order again for Diwali.",
-    verifiedBuyer: true,
-    date: "01 Sep 2026",
-    createdAt: "2026-09-01T09:15:00Z",
-  },
-];
+const DEFAULT_REVIEWS: ProductReview[] = [];
 
 export default function ReviewsManager({ inventory }: ReviewsManagerProps) {
   const [reviews, setReviews] = useState<ProductReview[]>(() => {
@@ -102,10 +45,10 @@ export default function ReviewsManager({ inventory }: ReviewsManagerProps) {
       const saved = localStorage.getItem("rs_product_reviews");
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch {}
-    return DEFAULT_REVIEWS;
+    return [];
   });
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -140,7 +83,7 @@ export default function ReviewsManager({ inventory }: ReviewsManagerProps) {
         if (res.ok) {
           const json = await res.json();
           const list = json.reviews || json.data?.reviews;
-          if (Array.isArray(list) && list.length > 0 && isMounted) {
+          if (Array.isArray(list) && isMounted) {
             setReviews(list);
             localStorage.setItem("rs_product_reviews", JSON.stringify(list));
           }
