@@ -17,7 +17,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "../context/CartContext";
 import { API_BASE } from "../config/api";
 import type { SaleConfig, SaleProductItem, SaleTierOffer } from "../types/inventory";
-import { products as fallbackProducts, type Product } from "../data/products";
+import { type Product } from "../data/products";
 
 const DEFAULT_TIERS: SaleTierOffer[] = [
   { id: "tier-1", qty: 1, price: 2500, label: "Buy 1 @2500/-", savingsText: "Special Single Drape Offer" },
@@ -74,28 +74,9 @@ export default function OffersStore() {
     };
   }, []);
 
-  // Filter offer-eligible products
+  // Filter offer-eligible products strictly from configured database items
   const offerProducts: SaleProductItem[] = useMemo(() => {
-    // 1. Items configured in saleConfig
-    const configItems = (saleConfig.saleItems || []).filter((item) => item.isActive !== false);
-    if (configItems.length > 0) {
-      return configItems;
-    }
-
-    // 2. Fallback items
-    return fallbackProducts.slice(0, 8).map((p: any) => ({
-      id: String(p.id),
-      name: p.name || "SiCo Gadwal Saree",
-      category: p.category || "SiCo Gadwal Sarees",
-      salePrice: Number(p.price) || 2500,
-      originalPrice: Number(p.originalPrice) || 3250,
-      imageUrl:
-        (Array.isArray(p.images) && p.images[0]) ||
-        p.imageUrl ||
-        "https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1200",
-      customOfferText: "Bundle Deal",
-      isActive: true,
-    }));
+    return (saleConfig.saleItems || []).filter((item) => item.isActive !== false);
   }, [saleConfig.saleItems]);
 
   // Count offer items in cart for bundle progress bar

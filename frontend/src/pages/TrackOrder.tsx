@@ -24,7 +24,6 @@ import {
 } from "../context/OrderFulfillmentContext";
 import type { OrderStatus } from "../context/OrderFulfillmentContext";
 import { sound } from "../types/soundEngine";
-import { products as fallbackCatalog } from "../data/products";
 import { useShowroomSettings } from "../types/settings";
 
 interface TrackOrderProps {
@@ -81,7 +80,7 @@ export default function TrackOrder({ salesHistory }: TrackOrderProps) {
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
     } catch {}
-    return fallbackCatalog as unknown as Product[];
+    return [];
   }, []);
 
   const findSkuImage = (item: CompletedSale["items"][number]): string => {

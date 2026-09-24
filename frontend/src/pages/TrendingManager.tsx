@@ -44,83 +44,9 @@ export interface TrendingConfig {
   items: TrendingItem[];
 }
 
-export const DEFAULT_TRENDING_ITEMS: TrendingItem[] = [
-  {
-    id: "midnight-sico-gadwal",
-    name: "Midnight Royal SiCo Gadwal",
-    category: "SiCo Gadwal Sarees",
-    material: "SiCo",
-    price: 7999,
-    originalPrice: 9999,
-    badge: "Trending Now",
-    rating: 4.9,
-    reviewCount: 64,
-    images: [
-      "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=900&auto=format&fit=crop&q=80",
-      "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?w=900&auto=format&fit=crop&q=80",
-    ],
-    description: "Deep midnight blue body with contrast scarlet red temple zari border.",
-  },
-  {
-    id: "emerald-sico-gadwal",
-    name: "Emerald Gatti Border SiCo Gadwal",
-    category: "SiCo Gadwal Sarees",
-    material: "SiCo",
-    price: 8499,
-    originalPrice: 11200,
-    badge: "Signature Border",
-    rating: 4.8,
-    reviewCount: 42,
-    images: [
-      "https://medias.utsavfashion.com/media/catalog/product/cache/1/image/1000x/040ec09b1e35df139433887a97daa66f/w/o/woven-art-silk-saree-in-emerald-green-v1-ssf833_2.jpg",
-      "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=900&auto=format&fit=crop&q=80",
-    ],
-    description: "Opulent emerald green SiCo with authentic gatti border and gold buttas.",
-  },
-  {
-    id: "crimson-sico-gadwal",
-    name: "Crimson Temple SiCo Gadwal",
-    category: "SiCo Gadwal Sarees",
-    material: "SiCo",
-    price: 6499,
-    originalPrice: 8500,
-    badge: "Festive Favorite",
-    rating: 4.9,
-    reviewCount: 57,
-    images: [
-      "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?w=900&auto=format&fit=crop&q=80",
-      "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=900&auto=format&fit=crop&q=80",
-    ],
-    description: "Traditional vermilion crimson red drape featuring authentic kumbha temple edging.",
-  },
-  {
-    id: "ivory-sico-gadwal",
-    name: "Ivory Gold SiCo Gadwal",
-    category: "SiCo Gadwal Sarees",
-    material: "SiCo",
-    price: 5899,
-    originalPrice: 7800,
-    badge: "Most Loved",
-    rating: 4.8,
-    reviewCount: 38,
-    images: [
-      "https://images.pexels.com/photos/33328181/pexels-photo-33328181.jpeg?auto=compress&cs=tinysrgb&w=1200",
-      "https://cdn.corenexis.com/f/Gr2AsoVtVeK.png",
-    ],
-    description: "Sublime ivory SiCo drape with pure woven gold zari border.",
-  },
-];
+export const DEFAULT_TRENDING_ITEMS: TrendingItem[] = [];
 
-export const PRESET_LOOM_IMAGES = [
-  "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=900&auto=format&fit=crop&q=80",
-  "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?w=900&auto=format&fit=crop&q=80",
-  "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=900&auto=format&fit=crop&q=80",
-  "https://images.unsplash.com/photo-1609357605129-26f69add5d6e?w=900&auto=format&fit=crop&q=80",
-  "https://images.unsplash.com/photo-1610030469668-93510cb67655?w=900&auto=format&fit=crop&q=80",
-  "https://medias.utsavfashion.com/media/catalog/product/cache/1/image/1000x/040ec09b1e35df139433887a97daa66f/w/o/woven-art-silk-saree-in-emerald-green-v1-ssf833_2.jpg",
-  "https://images.pexels.com/photos/33328181/pexels-photo-33328181.jpeg?auto=compress&cs=tinysrgb&w=1200",
-  "https://cdn.corenexis.com/f/Gr2AsoVtVeK.png",
-];
+export const PRESET_LOOM_IMAGES: string[] = [];
 
 export const BADGE_OPTIONS = [
   "Trending Now",

@@ -6,12 +6,31 @@ import { ENV } from "../config/env.js";
  * Supports Seamless Switch between SANDBOX and PRODUCTION via ENV.CASHFREE.ENV
  */
 
-const getHeaders = () => ({
-  "Content-Type": "application/json",
-  "x-api-version": ENV.CASHFREE.API_VERSION,
-  "x-client-id": ENV.CASHFREE.APP_ID,
-  "x-client-secret": ENV.CASHFREE.SECRET_KEY,
-});
+function sanitizeErrorMessage(msg) {
+  if (!msg || typeof msg !== "string") return "Payment processing error";
+  let sanitized = msg;
+  if (ENV.CASHFREE.SECRET_KEY) {
+    sanitized = sanitized.split(ENV.CASHFREE.SECRET_KEY).join("[REDACTED]");
+  }
+  if (ENV.CASHFREE.APP_ID) {
+    sanitized = sanitized.split(ENV.CASHFREE.APP_ID).join("[REDACTED]");
+  }
+  sanitized = sanitized.replace(/Headers\.append:.*is an invalid header value/gi, "Payment gateway configuration error (invalid credential format)");
+  return sanitized;
+}
+
+const getHeaders = () => {
+  const appId = String(ENV.CASHFREE.APP_ID || "").trim().replace(/[\r\n\t"']/g, "");
+  const secretKey = String(ENV.CASHFREE.SECRET_KEY || "").trim().replace(/[\r\n\t"']/g, "");
+  const apiVersion = String(ENV.CASHFREE.API_VERSION || "2023-08-01").trim().replace(/[\r\n\t"']/g, "");
+
+  return {
+    "Content-Type": "application/json",
+    "x-api-version": apiVersion,
+    "x-client-id": appId,
+    "x-client-secret": secretKey,
+  };
+};
 
 /**
  * 1. Create a Cashfree Order
@@ -37,7 +56,7 @@ export async function createCashfreeOrder({
       order_currency: orderCurrency,
       payment_session_id: mockSessionId,
       order_status: "ACTIVE",
-      environment: ENV.CASHFREE.ENV || "sandbox",
+      environment: ENV.CASHFREE.ENV || "SANDBOX",
       is_mock: true,
     };
   }
@@ -61,23 +80,31 @@ export async function createCashfreeOrder({
     order_tags: orderTags,
   };
 
-  const response = await fetch(`${ENV.CASHFREE.BASE_URL}/orders`, {
-    method: "POST",
-    headers: getHeaders(),
-    body: JSON.stringify(payload),
-  });
+  try {
+    const response = await fetch(`${ENV.CASHFREE.BASE_URL}/orders`, {
+      method: "POST",
+      headers: getHeaders(),
+      body: JSON.stringify(payload),
+    });
 
-  const json = await response.json();
+    const json = await response.json();
 
-  if (!response.ok) {
-    console.error("[Cashfree API Error] Create Order Failed:", json);
-    throw new Error(json.message || `Cashfree Error: ${response.statusText}`);
+    if (!response.ok) {
+      console.error("[Cashfree API Error] Create Order Failed:", json?.message || response.statusText);
+      throw new Error(sanitizeErrorMessage(json.message || `Cashfree Error: ${response.statusText}`));
+    }
+
+    return {
+      order_id: json.order_id || orderId,
+      order_amount: json.order_amount || Number(orderAmount),
+      order_currency: json.order_currency || orderCurrency,
+      payment_session_id: json.payment_session_id,
+      order_status: json.order_status || "ACTIVE",
+      environment: ENV.CASHFREE.ENV,
+    };
+  } catch (err) {
+    throw new Error(sanitizeErrorMessage(err?.message || err));
   }
-
-  return {
-    ...json,
-    environment: ENV.CASHFREE.ENV,
-  };
 }
 
 /**
@@ -94,17 +121,21 @@ export async function getCashfreeOrder(orderId) {
     };
   }
 
-  const response = await fetch(`${ENV.CASHFREE.BASE_URL}/orders/${encodeURIComponent(orderId)}`, {
-    method: "GET",
-    headers: getHeaders(),
-  });
+  try {
+    const response = await fetch(`${ENV.CASHFREE.BASE_URL}/orders/${encodeURIComponent(orderId)}`, {
+      method: "GET",
+      headers: getHeaders(),
+    });
 
-  const json = await response.json();
-  if (!response.ok) {
-    throw new Error(json.message || `Failed to fetch Cashfree order ${orderId}`);
+    const json = await response.json();
+    if (!response.ok) {
+      throw new Error(sanitizeErrorMessage(json.message || `Failed to fetch Cashfree order ${orderId}`));
+    }
+
+    return json;
+  } catch (err) {
+    throw new Error(sanitizeErrorMessage(err?.message || err));
   }
-
-  return json;
 }
 
 /**
@@ -129,20 +160,24 @@ export async function getCashfreeOrderPayments(orderId) {
     ];
   }
 
-  const response = await fetch(
-    `${ENV.CASHFREE.BASE_URL}/orders/${encodeURIComponent(orderId)}/payments`,
-    {
-      method: "GET",
-      headers: getHeaders(),
+  try {
+    const response = await fetch(
+      `${ENV.CASHFREE.BASE_URL}/orders/${encodeURIComponent(orderId)}/payments`,
+      {
+        method: "GET",
+        headers: getHeaders(),
+      }
+    );
+
+    const json = await response.json();
+    if (!response.ok) {
+      throw new Error(sanitizeErrorMessage(json.message || `Failed to fetch Cashfree payments for ${orderId}`));
     }
-  );
 
-  const json = await response.json();
-  if (!response.ok) {
-    throw new Error(json.message || `Failed to fetch Cashfree payments for ${orderId}`);
+    return Array.isArray(json) ? json : [];
+  } catch (err) {
+    throw new Error(sanitizeErrorMessage(err?.message || err));
   }
-
-  return Array.isArray(json) ? json : [];
 }
 
 /**
@@ -188,19 +223,23 @@ export async function createCashfreePaymentLink({
     link_auto_reminders: true,
   };
 
-  const response = await fetch(`${ENV.CASHFREE.BASE_URL}/links`, {
-    method: "POST",
-    headers: getHeaders(),
-    body: JSON.stringify(payload),
-  });
+  try {
+    const response = await fetch(`${ENV.CASHFREE.BASE_URL}/links`, {
+      method: "POST",
+      headers: getHeaders(),
+      body: JSON.stringify(payload),
+    });
 
-  const json = await response.json();
-  if (!response.ok) {
-    console.error("[Cashfree API Error] Create Link Failed:", json);
-    throw new Error(json.message || `Cashfree Link Error: ${response.statusText}`);
+    const json = await response.json();
+    if (!response.ok) {
+      console.error("[Cashfree API Error] Create Link Failed:", json?.message || response.statusText);
+      throw new Error(sanitizeErrorMessage(json.message || `Cashfree Link Error: ${response.statusText}`));
+    }
+
+    return json;
+  } catch (err) {
+    throw new Error(sanitizeErrorMessage(err?.message || err));
   }
-
-  return json;
 }
 
 /**
@@ -213,13 +252,13 @@ export function verifyCashfreeWebhookSignature(rawBody, timestamp, signature) {
     const bodyStr = typeof rawBody === "string" ? rawBody : JSON.stringify(rawBody);
     const dataToSign = timestamp + bodyStr;
     const computedSignature = crypto
-      .createHmac("sha256", ENV.CASHFREE.SECRET_KEY)
+      .createHmac("sha256", String(ENV.CASHFREE.SECRET_KEY).trim().replace(/[\r\n\t"']/g, ""))
       .update(dataToSign)
       .digest("base64");
 
     return computedSignature === signature;
   } catch (err) {
-    console.error("[Cashfree Webhook] Verification error:", err);
+    console.error("[Cashfree Webhook] Verification error:", err?.message || err);
     return false;
   }
 }

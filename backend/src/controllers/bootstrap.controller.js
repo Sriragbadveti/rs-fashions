@@ -66,7 +66,7 @@ export async function getBootstrapData(req, res) {
       const stockTotal = Number(p.stock) || 0;
       const images = Array.isArray(p.images) && p.images.length > 0 
         ? p.images 
-        : ["https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1200&auto=format&fit=crop"];
+        : (p.image_url ? [p.image_url] : []);
 
       const variants = colorList.map((col, idx) => ({
         color: col,

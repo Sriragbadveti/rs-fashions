@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { motion, useMotionValue, animate } from "framer-motion";
 import { Link } from "react-router-dom";
-import { FiArrowUpRight, FiLayers } from "react-icons/fi";
+import { FiArrowUpRight, FiLayers, FiChevronLeft, FiChevronRight } from "react-icons/fi";
 
 export interface MaterialItem {
   id: string;
@@ -62,6 +62,7 @@ export default function MaterialCollections() {
   const containerRef = useRef<HTMLDivElement>(null);
   const firstCardRef = useRef<HTMLDivElement>(null);
   const isCardAnimating = useRef(false);
+  const lastWheelTime = useRef(0);
   const x = useMotionValue(0);
 
   // Multi-item clone buffers on both sides
@@ -134,15 +135,40 @@ export default function MaterialCollections() {
     setInternalCardIndex(targetIdx);
   };
 
-  // Automated step interval (pauses on hover)
+  // Automated step interval (pauses on hover / drag)
   useEffect(() => {
     if (isHovered || isDragging || materials.length <= 1) return;
     const interval = setInterval(() => {
       if (isCardAnimating.current) return;
       slideToCardIndex(internalCardIndex + 1);
-    }, 3200);
+    }, 3400);
     return () => clearInterval(interval);
   }, [isHovered, isDragging, internalCardIndex]);
+
+  // Mouse Wheel & Trackpad Horizontal Scrolling Support
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.shiftKey ? e.deltaY : 0;
+      if (Math.abs(delta) < 18) return;
+
+      const now = Date.now();
+      if (now - lastWheelTime.current < 280) return;
+      lastWheelTime.current = now;
+
+      e.preventDefault();
+      if (delta > 0) {
+        slideToCardIndex(internalCardIndex + 1);
+      } else {
+        slideToCardIndex(internalCardIndex - 1);
+      }
+    };
+
+    el.addEventListener("wheel", handleWheel, { passive: false });
+    return () => el.removeEventListener("wheel", handleWheel);
+  }, [internalCardIndex]);
 
   // Drag and flick handling
   const handleCardDragEnd = (_: any, info: { offset: { x: number }; velocity: { x: number } }) => {
@@ -153,9 +179,9 @@ export default function MaterialCollections() {
     const velocity = info.velocity.x;
 
     let target = internalCardIndex;
-    if (dragOffset < -40 || velocity < -300) {
+    if (dragOffset < -35 || velocity < -260) {
       target = internalCardIndex + 1;
-    } else if (dragOffset > 40 || velocity > 300) {
+    } else if (dragOffset > 35 || velocity > 260) {
       target = internalCardIndex - 1;
     } else {
       target = Math.round(Math.abs(currentX) / step);
@@ -185,16 +211,39 @@ export default function MaterialCollections() {
               .
             </h2>
           </div>
-          <p className="max-w-xs text-xs text-stone-600">
-            Handcrafted heritage weaves celebrating classic textures, heirloom pallus, and contrasting zari borders.
-          </p>
+
+          <div className="flex items-center justify-between sm:justify-end gap-4">
+            <p className="max-w-xs text-xs text-stone-600 hidden sm:block">
+              Handcrafted heritage weaves celebrating classic textures, heirloom pallus, and contrasting zari borders.
+            </p>
+
+            {/* Manual Scroll Arrow Controls */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => slideToCardIndex(internalCardIndex - 1)}
+                aria-label="Previous Weave"
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-stone-200 bg-white text-stone-700 shadow-xs transition-all hover:bg-[#8E3D51] hover:text-white hover:border-[#8E3D51] active:scale-95 cursor-pointer"
+              >
+                <FiChevronLeft size={16} />
+              </button>
+              <button
+                type="button"
+                onClick={() => slideToCardIndex(internalCardIndex + 1)}
+                aria-label="Next Weave"
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-stone-200 bg-white text-stone-700 shadow-xs transition-all hover:bg-[#8E3D51] hover:text-white hover:border-[#8E3D51] active:scale-95 cursor-pointer"
+              >
+                <FiChevronRight size={16} />
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Snap-to-Card Carousel Container with vertical padding buffer to prevent hover clipping */}
+      {/* Snap-to-Card Carousel Container with free drag and mouse wheel scrolling */}
       <div
         ref={containerRef}
-        className="relative w-full overflow-hidden cursor-grab active:cursor-grabbing px-3.5 sm:px-6 lg:px-8 py-4 -my-4"
+        className="relative w-full overflow-hidden cursor-grab active:cursor-grabbing px-3.5 sm:px-6 lg:px-8 py-4 -my-4 touch-pan-x"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
@@ -261,7 +310,7 @@ export default function MaterialCollections() {
               type="button"
               aria-label={`Go to slide ${idx + 1}: ${mat.name}`}
               onClick={() => slideToCardIndex(CARD_BUFFER + idx)}
-              className={`h-2 rounded-full transition-all duration-300 ease-out focus:outline-none ${
+              className={`h-2 rounded-full transition-all duration-300 ease-out focus:outline-none cursor-pointer ${
                 isActive
                   ? "w-6 bg-[#8E3D51] shadow-xs"
                   : "w-2 bg-[#8E3D51]/25 hover:bg-[#8E3D51]/50"

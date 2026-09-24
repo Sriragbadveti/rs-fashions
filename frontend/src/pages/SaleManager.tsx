@@ -31,14 +31,7 @@ const DEFAULT_OFFERS: SaleTierOffer[] = [
   { id: "tier-3", qty: 3, price: 4800, label: "Buy 3 @4800/-", savingsText: "Grand Celebration Value" },
 ];
 
-const PRESET_LOOM_IMAGES = [
-  "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=900&auto=format&fit=crop&q=80",
-  "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?w=900&auto=format&fit=crop&q=80",
-  "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=900&auto=format&fit=crop&q=80",
-  "https://images.unsplash.com/photo-1609357605129-26f69add5d6e?w=900&auto=format&fit=crop&q=80",
-  "https://images.unsplash.com/photo-1610030469668-93510cb67655?w=900&auto=format&fit=crop&q=80",
-  "https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=900&auto=format&fit=crop&q=80",
-];
+const PRESET_LOOM_IMAGES: string[] = [];
 
 export default function SaleManager({ inventory }: SaleManagerProps) {
   const { toast } = useModal();

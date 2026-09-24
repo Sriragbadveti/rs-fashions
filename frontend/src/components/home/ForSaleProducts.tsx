@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { motion, useMotionValue, animate } from "framer-motion";
 import { FiTag, FiGift, FiArrowUpRight, FiEye, FiCheck, FiShoppingBag } from "react-icons/fi";
 import { API_BASE } from "../../config/api";
-import { type Product, products as fallbackProducts } from "../../data/products";
+import { type Product } from "../../data/products";
 import type { SaleConfig, SaleProductItem, SaleTierOffer } from "../../types/inventory";
 import { useCart } from "../../context/CartContext";
 
@@ -67,17 +67,6 @@ export default function ForSaleProducts() {
     return DEFAULT_SALE_CONFIG;
   });
 
-  const [fallbackProds, setFallbackProds] = useState<Product[]>(() => {
-    try {
-      const saved = localStorage.getItem("rs_fashions_products");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed.slice(0, 8);
-      }
-    } catch {}
-    return fallbackProducts.slice(0, 8);
-  });
-
   useEffect(() => {
     let isMounted = true;
     async function loadSaleConfig() {
@@ -105,29 +94,10 @@ export default function ForSaleProducts() {
   }, []);
 
   const displayItems: SaleProductItem[] = useMemo(() => {
-    const configuredItems = (
+    return (
       saleConfig.saleItems?.filter((item) => item.isActive !== false) || []
     ).slice(0, 8);
-    if (configuredItems.length > 0) return configuredItems;
-
-    return fallbackProds.slice(0, 8).map((p: any) => {
-      const price = Number(p.salePrice || p.price) || 2500;
-      return {
-        id: String(p.id),
-        name: p.name || "SiCo Gadwal Drape",
-        category: p.category || "SiCo Gadwal",
-        salePrice: price,
-        originalPrice: Number(p.originalPrice) || Math.round(price * 1.3),
-        imageUrl:
-          (Array.isArray(p.images) && p.images[0]) ||
-          p.imageUrl ||
-          p.image ||
-          "https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1200&auto=format&fit=crop",
-        customOfferText: "Bundle Savings",
-        isActive: true,
-      };
-    });
-  }, [saleConfig.saleItems, fallbackProds]);
+  }, [saleConfig.saleItems]);
 
   const activeTiers = useMemo(() => {
     return saleConfig.tierOffers?.length ? saleConfig.tierOffers : DEFAULT_TIER_OFFERS;

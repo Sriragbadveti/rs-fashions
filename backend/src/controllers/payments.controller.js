@@ -10,9 +10,18 @@ import { ENV } from "../config/env.js";
 import { successResponse, errorResponse } from "../utils/response.js";
 import { invalidateBootstrapCache } from "./bootstrap.controller.js";
 
-/**
- * Controller: Cashfree Payments (PG v2023-08-01)
- */
+function safeErrorMsg(err) {
+  if (!err) return "Payment operation failed";
+  let msg = typeof err === "string" ? err : err.message || "Payment operation failed";
+  if (ENV.CASHFREE.SECRET_KEY) {
+    msg = msg.split(ENV.CASHFREE.SECRET_KEY).join("[REDACTED]");
+  }
+  if (ENV.CASHFREE.APP_ID) {
+    msg = msg.split(ENV.CASHFREE.APP_ID).join("[REDACTED]");
+  }
+  msg = msg.replace(/Headers\.append:.*is an invalid header value/gi, "Payment gateway configuration error");
+  return msg;
+}
 
 // 1. CREATE CASHFREE PAYMENT ORDER (Session for Web & App Checkout)
 export async function createCashfreeOrder(req, res) {
@@ -79,8 +88,8 @@ export async function createCashfreeOrder(req, res) {
       "Cashfree payment order created successfully"
     );
   } catch (err) {
-    console.error("[Cashfree Controller] Create Order Error:", err);
-    return errorResponse(res, err.message || "Failed to create Cashfree order", 500);
+    console.error("[Cashfree Controller] Create Order Error:", safeErrorMsg(err));
+    return errorResponse(res, safeErrorMsg(err), 500);
   }
 }
 
@@ -140,8 +149,8 @@ export async function verifyCashfreePayment(req, res) {
       isPaid ? "Cashfree payment verified successfully" : "Payment not completed or pending"
     );
   } catch (err) {
-    console.error("[Cashfree Controller] Verify Payment Error:", err);
-    return errorResponse(res, err.message || "Failed to verify Cashfree payment", 500);
+    console.error("[Cashfree Controller] Verify Payment Error:", safeErrorMsg(err));
+    return errorResponse(res, safeErrorMsg(err), 500);
   }
 }
 
@@ -195,8 +204,8 @@ export async function createCashfreePaymentLink(req, res) {
       "Cashfree payment link generated successfully"
     );
   } catch (err) {
-    console.error("[Cashfree Controller] Payment Link Error:", err);
-    return errorResponse(res, err.message || "Failed to generate Cashfree payment link", 500);
+    console.error("[Cashfree Controller] Payment Link Error:", safeErrorMsg(err));
+    return errorResponse(res, safeErrorMsg(err), 500);
   }
 }
 

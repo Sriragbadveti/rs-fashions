@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { API_BASE } from "../config/api";
-import { type Product, products as fallbackProducts } from "../data/products";
+import { type Product } from "../data/products";
 import type { DashboardProduct, Category, StockMovement, CustomerProfile, TrackedOrder, CompletedSale } from "../types/dashboard";
 import { getCourierTrackingUrl, LOCAL_STORAGE_FULFILLMENTS } from "../context/OrderFulfillmentContext";
 
@@ -267,7 +267,7 @@ export const StoreService = {
       return storeProducts;
     }
 
-    return fallbackProducts.map((p) => ({ ...p, category: "SiCo Gadwal Sarees" }));
+    return [];
   },
 
   async getProductById(id: string): Promise<Product | null> {

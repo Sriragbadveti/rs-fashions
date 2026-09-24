@@ -21,7 +21,7 @@ import {
   X,
 } from "lucide-react";
 
-import { type Product as ProductType, products as staticProducts } from "../data/products";
+import { type Product as ProductType } from "../data/products";
 import { useCart } from "../context/CartContext";
 import { StoreService } from "../services/supabase";
 
@@ -32,52 +32,17 @@ interface ColorVariantItem {
   inStock: boolean;
 }
 
-const FALLBACK_VARIANTS: ColorVariantItem[] = [
-  {
-    name: "Crimson Red",
-    hex: "#991B1B",
-    image: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1200&auto=format&fit=crop",
-    inStock: true,
-  },
-  {
-    name: "Deep Teal",
-    hex: "#0F766E",
-    image: "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?q=80&w=1200&auto=format&fit=crop",
-    inStock: true,
-  },
-  {
-    name: "Emerald Green",
-    hex: "#065F46",
-    image: "https://medias.utsavfashion.com/media/catalog/product/cache/1/image/1000x/040ec09b1e35df139433887a97daa66f/w/o/woven-art-silk-saree-in-emerald-green-v1-ssf833_2.jpg",
-    inStock: true,
-  },
-  {
-    name: "Maroon Gold",
-    hex: "#7F1D1D",
-    image: "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?q=80&w=1200&auto=format&fit=crop",
-    inStock: true,
-  },
-  {
-    name: "Ivory Gold",
-    hex: "#FEF3C7",
-    image: "https://medias.utsavfashion.com/media/catalog/product/cache/1/image/1000x/040ec09b1e35df139433887a97daa66f/b/a/bandhej-printed-cotton-saree-in-cream-v1-sfc217.jpg",
-    inStock: false,
-  },
-];
-
 export default function Product() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { cart = [], addToCart } = useCart() as any;
 
-  const [allProducts, setAllProducts] = useState<ProductType[]>(staticProducts);
-  const [product, setProduct] = useState<ProductType | null>(() => {
-    return staticProducts.find((item) => item.id === id) || null;
-  });
-  const [loading, setLoading] = useState<boolean>(!product);
+  const [allProducts, setAllProducts] = useState<ProductType[]>([]);
+  const [product, setProduct] = useState<ProductType | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
 
   const [selectedImage, setSelectedImage] = useState(0);
-  const [selectedColor, setSelectedColor] = useState<string>("Crimson Red");
+  const [selectedColor, setSelectedColor] = useState<string>("Standard");
   const [quantity, setQuantity] = useState(1);
   const [copied, setCopied] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
@@ -128,50 +93,37 @@ export default function Product() {
   }, [id]);
 
   const colorVariants: ColorVariantItem[] = useMemo(() => {
-    if (!product) return FALLBACK_VARIANTS;
+    if (!product) return [];
 
-    if ((product as any).variants && Array.isArray((product as any).variants)) {
+    if ((product as any).variants && Array.isArray((product as any).variants) && (product as any).variants.length > 0) {
       return (product as any).variants.map((v: any, idx: number) => ({
         name: v.color || v.name || `Shade ${idx + 1}`,
-        hex: v.hex || FALLBACK_VARIANTS[idx % FALLBACK_VARIANTS.length].hex,
+        hex: v.hex || "#8E3D51",
         image: v.imageUrl || product.images?.[idx % (product.images?.length || 1)],
         inStock: v.stock === undefined ? true : v.stock > 0,
       }));
     }
 
-    if (product.colors && product.colors.length > 0 && product.colors[0] !== "Standard") {
+    if (product.colors && product.colors.length > 0) {
       return product.colors.map((colorName: string, idx: number) => {
-        const fallback =
-          FALLBACK_VARIANTS.find((f) => f.name.toLowerCase() === colorName.toLowerCase()) ||
-          FALLBACK_VARIANTS[idx % FALLBACK_VARIANTS.length];
         return {
           name: colorName,
-          hex: fallback.hex,
-          image: product.images?.[idx] || fallback.image,
+          hex: "#8E3D51",
+          image: product.images?.[idx] || product.images?.[0],
           inStock: true,
         };
       });
     }
 
-    return FALLBACK_VARIANTS;
+    return [{ name: "Standard", hex: "#8E3D51", image: product.images?.[0], inStock: true }];
   }, [product]);
 
   const enrichedImages = useMemo(() => {
     if (!product) return [];
-    const base =
-      Array.isArray(product.images) && product.images.length > 0
-        ? product.images.filter(Boolean)
-        : [product.images?.[0] || (product as any)?.image || FALLBACK_VARIANTS[0].image];
-
-    if (base.length >= 4) return base;
-
-    const extras = [
-      "https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1200&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?q=80&w=1200&auto=format&fit=crop",
-      "https://medias.utsavfashion.com/media/catalog/product/cache/1/image/1000x/040ec09b1e35df139433887a97daa66f/w/o/woven-art-silk-saree-in-emerald-green-v1-ssf833_2.jpg",
-      "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?q=80&w=1200&auto=format&fit=crop",
-    ];
-    return [...base, ...extras.filter((e) => !base.includes(e)).slice(0, 4 - base.length)];
+    if (Array.isArray(product.images) && product.images.length > 0) {
+      return product.images.filter(Boolean);
+    }
+    return [];
   }, [product]);
 
   const handleColorSelect = (variant: ColorVariantItem) => {

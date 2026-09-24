@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect, memo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useSearchParams, Link } from "react-router-dom";
 import { FiChevronDown, FiFilter, FiSearch, FiSliders, FiX, FiRotateCcw, FiShoppingBag, FiCheck, FiTag } from "react-icons/fi";
-import { type Product, products as fallbackProducts } from "../data/products";
+import { type Product } from "../data/products";
 import FilterSheet, { type FilterState } from "../components/shop/FilterSheet";
 import { StoreService } from "../services/supabase";
 import { useCart } from "../context/CartContext";
@@ -183,15 +183,23 @@ const MemoHorizontalProductCard = memo(HorizontalProductCard);
 // EMPTY STATE
 // =====================================================================
 
-function EmptyState({ onReset, className = "" }: { onReset: () => void; className?: string }) {
+function EmptyState({ onReset, isInitialEmpty = false, className = "" }: { onReset: () => void; isInitialEmpty?: boolean; className?: string }) {
   return (
     <div className={`flex min-h-[40vh] flex-col items-center justify-center rounded-3xl border border-stone-200 bg-white p-8 text-center ${className}`}>
       <div className="flex h-16 w-16 items-center justify-center rounded-full bg-black/5 text-stone-400">
-        <FiSearch size={22} />
+        {isInitialEmpty ? <FiShoppingBag size={22} className="text-[#8E3D51]" /> : <FiSearch size={22} />}
       </div>
-      <h2 className="mt-5 font-serif text-2xl sm:text-3xl font-light text-[#2A2421]">No weaves match your selection</h2>
-      <p className="mt-2 max-w-sm text-xs leading-relaxed text-stone-500">Try clearing your search keyword or relaxing your filter parameters.</p>
-      <button type="button" onClick={onReset} className="mt-6 rounded-full bg-[#2A2421] px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-white transition-all hover:bg-[#8E3D51] active:scale-95 shadow-md">Reset All Filters</button>
+      <h2 className="mt-5 font-serif text-2xl sm:text-3xl font-light text-[#2A2421]">
+        {isInitialEmpty ? "No sarees available yet." : "No weaves match your selection"}
+      </h2>
+      <p className="mt-2 max-w-sm text-xs leading-relaxed text-stone-500">
+        {isInitialEmpty
+          ? "Our artisan weavers are crafting fresh authentic handloom drapes. Check back soon for the latest dispatches."
+          : "Try clearing your search keyword or relaxing your filter parameters."}
+      </p>
+      {!isInitialEmpty && (
+        <button type="button" onClick={onReset} className="mt-6 rounded-full bg-[#2A2421] px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-white transition-all hover:bg-[#8E3D51] active:scale-95 shadow-md">Reset All Filters</button>
+      )}
     </div>
   );
 }
@@ -236,11 +244,11 @@ export default function Shop() {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.map((p: any) => ({ ...p, category: "SiCo Gadwal Sarees" }));
+          return parsed.map((p: any) => ({ ...p, category: p.category || "SiCo Gadwal Sarees" }));
         }
       }
     } catch {}
-    return fallbackProducts.map((p) => ({ ...p, category: "SiCo Gadwal Sarees" }));
+    return [];
   });
 
   const [offerProductIds, setOfferProductIds] = useState<Set<string>>(new Set());
@@ -297,7 +305,7 @@ export default function Shop() {
     async function loadProducts() {
       try {
         const data = await StoreService.getProducts();
-        if (isMounted && Array.isArray(data) && data.length > 0) {
+        if (isMounted && Array.isArray(data)) {
           setAllProducts(data);
         }
       } catch (err) {
@@ -633,7 +641,7 @@ export default function Shop() {
               )
             )
           ) : (
-            <EmptyState onReset={handleResetAll} />
+            <EmptyState onReset={handleResetAll} isInitialEmpty={allProducts.length === 0} />
           )}
         </div>
 
@@ -644,7 +652,7 @@ export default function Shop() {
               <MemoProductCard key={product.id} product={product} />
             ))
           ) : (
-            <EmptyState onReset={handleResetAll} className="col-span-full" />
+            <EmptyState onReset={handleResetAll} isInitialEmpty={allProducts.length === 0} className="col-span-full" />
           )}
         </div>
       </div>

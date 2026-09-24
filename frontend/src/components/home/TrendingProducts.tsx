@@ -26,68 +26,7 @@ export interface TrendingConfig {
   items: TrendingItem[];
 }
 
-const DEFAULT_TRENDING_ITEMS: TrendingItem[] = [
-  {
-    id: "vintage-checks",
-    name: "Vintage Checks",
-    category: "SiCo Gadwal Sarees",
-    material: "SiCo",
-    price: 7999,
-    originalPrice: 9999,
-    rating: 4.9,
-    reviewCount: 64,
-    images: [
-      "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=900&auto=format&fit=crop&q=80",
-      "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?w=900&auto=format&fit=crop&q=80",
-    ],
-    description: "Deep midnight blue body with contrast scarlet red temple zari border.",
-  },
-  {
-    id: "emerald-sico-gadwal",
-    name: "Emerald Gatti Border SiCo Gadwal",
-    category: "SiCo Gadwal Sarees",
-    material: "SiCo",
-    price: 8499,
-    originalPrice: 11200,
-    rating: 4.8,
-    reviewCount: 42,
-    images: [
-      "https://medias.utsavfashion.com/media/catalog/product/cache/1/image/1000x/040ec09b1e35df139433887a97daa66f/w/o/woven-art-silk-saree-in-emerald-green-v1-ssf833_2.jpg",
-      "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=900&auto=format&fit=crop&q=80",
-    ],
-    description: "Opulent emerald green with authentic gatti border and gold buttas.",
-  },
-  {
-    id: "crimson-sico-gadwal",
-    name: "Crimson Temple SiCo Gadwal",
-    category: "SiCo Gadwal Sarees",
-    material: "SiCo",
-    price: 6499,
-    originalPrice: 8500,
-    rating: 4.9,
-    reviewCount: 57,
-    images: [
-      "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?w=900&auto=format&fit=crop&q=80",
-      "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=900&auto=format&fit=crop&q=80",
-    ],
-    description: "Traditional vermilion crimson red drape featuring authentic kumbha temple edging.",
-  },
-  {
-    id: "ivory-sico-gadwal",
-    name: "Ivory Gold SiCo Gadwal",
-    category: "SiCo Gadwal Sarees",
-    material: "SiCo",
-    price: 5899,
-    originalPrice: 7800,
-    rating: 4.8,
-    reviewCount: 38,
-    images: [
-      "https://images.pexels.com/photos/33328181/pexels-photo-33328181.jpeg?auto=compress&cs=tinysrgb&w=1200",
-      "https://cdn.corenexis.com/f/Gr2AsoVtVeK.png",
-    ],
-    description: "Sublime ivory drape with pure woven gold zari border.",
-  },
-];
+const DEFAULT_TRENDING_ITEMS: TrendingItem[] = [];
 
 function loadTrendingConfig(): TrendingConfig {
   try {
@@ -104,7 +43,7 @@ function loadTrendingConfig(): TrendingConfig {
         items:
           Array.isArray(parsed.items) && parsed.items.length > 0
             ? parsed.items
-            : DEFAULT_TRENDING_ITEMS,
+            : [],
       };
     }
   } catch {}
@@ -114,7 +53,7 @@ function loadTrendingConfig(): TrendingConfig {
     highlightWord: "Pieces.",
     subtitle:
       "Hand-picked heritage Gadwal drapes celebrated for their timeless interlocked zari weave.",
-    items: DEFAULT_TRENDING_ITEMS,
+    items: [],
   };
 }
 
