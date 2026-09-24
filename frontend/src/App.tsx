@@ -24,6 +24,7 @@ import ReturnPolicy from "./pages/ReturnPolicy";
 import ShippingPolicy from "./pages/ShippingPolicy";
 import OffersStore from "./pages/OffersStore";
 import AuthCallback from "./pages/AuthCallback";
+import QuickPay from "./pages/QuickPay";
 
 import { ADMIN_SECRET_PATH, ADMIN_LOGIN_PATH } from "./config/routes";
 
@@ -32,6 +33,9 @@ function AppContent() {
 
   return (
     <Routes location={location}>
+      {/* QUICK PAY COUNTER / PAYMENT LINK PORTAL */}
+      <Route path="/pay" element={<QuickPay />} />
+
       {/* CRYPTOGRAPHIC ADMIN PORTAL (Stand-alone Layout) */}
       <Route path={ADMIN_SECRET_PATH} element={<Admin />} />
       <Route path={ADMIN_LOGIN_PATH} element={<Login />} />

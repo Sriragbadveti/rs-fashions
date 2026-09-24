@@ -211,16 +211,65 @@ const Billing: React.FC<BillingProps> = ({
     }
   };
 
-  // 2. CONFIRM LINK PAYMENT & COMMIT TO HISTORY
-  // Only called when customer completes payment via PhonePe/Razorpay
+  // AUTO-VERIFY PAYMENT LINK: Automatically polls and completes sale when patron pays
+  useEffect(() => {
+    if (!paymentLinkData || !paymentLinkData.refId) return;
+
+    let isCancelled = false;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`${API_BASE}/payments/cashfree/verify`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orderId: paymentLinkData.refId }),
+        });
+        const json = await res.json();
+        const actual = json.data || json;
+
+        if (!isCancelled && (actual.paid || actual.verified)) {
+          clearInterval(interval);
+          triggerToast("🎉 Patron payment received! Generating official sale receipt...");
+
+          if (!customer.address || customer.address.trim() === "") {
+            setCustomer((prev) => ({
+              ...prev,
+              address: prev.address?.trim() || "In-Store Showroom Counter",
+            }));
+          }
+
+          setTimeout(() => {
+            completeBill({
+              customMethod: "cashfree",
+              paymentLink: paymentLinkData.url,
+              transactionId: actual.paymentId || paymentLinkData.refId,
+              commitImmediate: true,
+            });
+
+            setPaymentLinkData(null);
+            setPaymentLinkError(null);
+          }, 400);
+        }
+      } catch (pollErr) {
+        // Polling retry
+      }
+    }, 2500);
+
+    return () => {
+      isCancelled = true;
+      clearInterval(interval);
+    };
+  }, [paymentLinkData]);
+
+  // 2. CONFIRM LINK PAYMENT & COMMIT TO HISTORY (Manual Fallback)
+  // Only called when customer completes payment via PhonePe/Razorpay or manually confirmed
   const handleConfirmLinkPayment = () => {
     if (!paymentLinkData) return;
 
     if (!customer.address || customer.address.trim() === "") {
-      setAddressError(true);
-      setShowCustomer(true);
-      triggerToast("Please enter customer address before recording sale.");
-      return;
+      setCustomer((prev) => ({
+        ...prev,
+        address: prev.address?.trim() || "In-Store Showroom Counter",
+      }));
     }
 
     completeBill({
@@ -1163,7 +1212,7 @@ const Billing: React.FC<BillingProps> = ({
                         {/* Status notification */}
                         <div className="flex items-center gap-1.5 text-[10px] text-amber-800 bg-amber-50/90 border border-amber-200/70 px-2.5 py-1.5 rounded-lg">
                           <Loader2 className="h-3 w-3 animate-spin text-amber-600 shrink-0" />
-                          <span>Waiting for patron payment. Click below only once payment is received.</span>
+                          <span>Waiting for patron payment. Once paid on their device, the sale receipt will appear automatically!</span>
                         </div>
 
                         {/* Confirmation Button to record sale ONLY when completed */}

@@ -154,6 +154,21 @@ export async function verifyCashfreePayment(req, res) {
   }
 }
 
+function getPublicClientUrl(req) {
+  const origin = req?.headers?.origin || req?.headers?.referer;
+  if (origin && typeof origin === "string" && origin.startsWith("https://")) {
+    try {
+      const u = new URL(origin);
+      return u.origin;
+    } catch {}
+  }
+  const envUrl = String(ENV.CLIENT_URL || "").trim();
+  if (envUrl.startsWith("https://")) {
+    return envUrl;
+  }
+  return "https://rs-fashions.vercel.app";
+}
+
 // 3. CREATE CASHFREE PAYMENT LINK (For Counter POS Billing & WhatsApp Share)
 export async function createCashfreePaymentLink(req, res) {
   try {
@@ -162,7 +177,7 @@ export async function createCashfreePaymentLink(req, res) {
       customerName = "Valued Customer",
       customerPhone = "9999999999",
       customerEmail = "customer@rsfashions.in",
-      invoiceNumber = `RSF-${Date.now().toString().slice(-6)}`,
+      invoiceNumber = `RSF-POS-${Date.now().toString().slice(-6)}`,
     } = req.body;
 
     const amountInRupees = Number(amount) || 0;
@@ -171,35 +186,49 @@ export async function createCashfreePaymentLink(req, res) {
     }
 
     const cleanPhone = String(customerPhone).replace(/[^0-9]/g, "").slice(-10);
-    const linkId = `plink_${invoiceNumber.replace(/[^a-zA-Z0-9_-]/g, "")}_${Date.now().toString().slice(-4)}`;
+    if (!cleanPhone || cleanPhone.length < 10) {
+      return errorResponse(res, "Valid 10-digit customer phone number is required", 400);
+    }
 
-    const linkResult = await createCFLinkService({
-      linkId,
-      linkAmount: amountInRupees,
-      linkPurpose: `RS Fashions Saree Billing #${invoiceNumber}`,
+    const orderId = `RSF_POS_${invoiceNumber.replace(/[^a-zA-Z0-9_-]/g, "")}_${Date.now().toString().slice(-4)}`;
+    const publicClientUrl = getPublicClientUrl(req);
+    const returnUrl = `${publicClientUrl}/pay?order_id=${orderId}&status=return`;
+
+    // Create Cashfree PG Order (Guaranteed Production Supported)
+    const cfOrder = await createCFOrderService({
+      orderId,
+      orderAmount: amountInRupees,
+      orderCurrency: "INR",
       customerDetails: {
-        customerPhone: cleanPhone,
+        customerId: `cust_${cleanPhone}`,
         customerName: customerName.trim(),
         customerEmail: customerEmail.trim(),
+        customerPhone: cleanPhone,
       },
-      linkNotify: {
-        send_sms: true,
-        send_email: Boolean(customerEmail && customerEmail.includes("@")),
+      orderMeta: {
+        returnUrl,
+        notifyUrl: `${ENV.BACKEND_URL}/api/payments/cashfree/webhook`,
       },
-      linkMeta: {
-        returnUrl: `${ENV.CLIENT_URL}/payment-success?invoice=${encodeURIComponent(invoiceNumber)}&link_id=${linkId}`,
+      orderNote: `RS Fashions Saree Billing #${invoiceNumber}`,
+      orderTags: {
+        source: "RS_Fashions_Showroom_POS",
+        invoiceNumber,
       },
     });
+
+    const paymentLinkUrl = `${publicClientUrl}/pay?order_id=${orderId}&session_id=${cfOrder.payment_session_id}&amount=${amountInRupees}&invoice=${encodeURIComponent(invoiceNumber)}&customer=${encodeURIComponent(customerName.trim())}`;
 
     return successResponse(
       res,
       {
-        paymentLink: linkResult.link_url,
-        linkUrl: linkResult.link_url,
-        paymentLinkId: linkResult.link_id || linkId,
+        paymentLink: paymentLinkUrl,
+        linkUrl: paymentLinkUrl,
+        paymentLinkId: orderId,
+        orderId,
+        paymentSessionId: cfOrder.payment_session_id,
         amount: amountInRupees,
         invoiceNumber,
-        status: linkResult.link_status || "ACTIVE",
+        status: cfOrder.order_status || "ACTIVE",
       },
       "Cashfree payment link generated successfully"
     );
