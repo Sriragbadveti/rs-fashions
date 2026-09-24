@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { ENV } from "../config/env.js";
+import { ENV, logSafeCashfreeDiagnostics } from "../config/env.js";
 
 /**
  * Service: Cashfree Payments (PG v2023-08-01)
@@ -47,6 +47,8 @@ export async function createCashfreeOrder({
   isMock = false,
 }) {
   const isConfigured = Boolean(ENV.CASHFREE.APP_ID && ENV.CASHFREE.SECRET_KEY);
+
+  logSafeCashfreeDiagnostics();
 
   if (!isConfigured || isMock || process.env.CASHFREE_MOCK_BENCHMARK === "true") {
     const mockSessionId = `session_${Date.now()}_mock_${Math.random().toString(36).slice(2, 8)}`;
@@ -105,7 +107,7 @@ export async function createCashfreeOrder({
     const json = await response.json();
 
     if (!response.ok) {
-      console.error("[Cashfree API Error] Create Order Failed:", json?.message || response.statusText);
+      console.error(`[Cashfree API Error] Create Order Failed (HTTP ${response.status}):`, json?.message || json?.code || response.statusText);
       throw new Error(sanitizeErrorMessage(json.message || `Cashfree Error: ${response.statusText}`));
     }
 
