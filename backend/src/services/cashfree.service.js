@@ -61,6 +61,25 @@ export async function createCashfreeOrder({
     };
   }
 
+  const rawClientUrl = String(ENV.CLIENT_URL || "").trim();
+  const rawBackendUrl = String(ENV.BACKEND_URL || "").trim();
+
+  const isHttps = (u) => typeof u === "string" && u.startsWith("https://");
+
+  const returnUrl = isHttps(orderMeta.returnUrl)
+    ? orderMeta.returnUrl
+    : (isHttps(rawClientUrl) ? `${rawClientUrl}/checkout?order_id={order_id}&status=cashfree_return` : null);
+
+  const notifyUrl = isHttps(orderMeta.notifyUrl)
+    ? orderMeta.notifyUrl
+    : (isHttps(rawBackendUrl) ? `${rawBackendUrl}/api/payments/cashfree/webhook` : null);
+
+  const safeOrderMeta = {
+    payment_methods: orderMeta.paymentMethods || "cc,dc,upi,nb,app,paylater",
+  };
+  if (returnUrl) safeOrderMeta.return_url = returnUrl;
+  if (notifyUrl) safeOrderMeta.notify_url = notifyUrl;
+
   const payload = {
     order_id: orderId,
     order_amount: Number(orderAmount),
@@ -71,11 +90,7 @@ export async function createCashfreeOrder({
       customer_email: customerDetails.customerEmail || "patron@rsfashions.in",
       customer_phone: customerDetails.customerPhone.replace(/[^0-9]/g, "").slice(-10),
     },
-    order_meta: {
-      return_url: orderMeta.returnUrl || `${ENV.CLIENT_URL}/checkout?order_id={order_id}&status=cashfree_return`,
-      notify_url: orderMeta.notifyUrl || `${ENV.BACKEND_URL}/api/payments/cashfree/webhook`,
-      payment_methods: orderMeta.paymentMethods || "cc,dc,upi,nb,app,paylater",
-    },
+    order_meta: safeOrderMeta,
     order_note: orderNote,
     order_tags: orderTags,
   };
