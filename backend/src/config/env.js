@@ -2,6 +2,8 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
+import crypto from "crypto";
+
 function cleanEnv(val) {
   if (val === undefined || val === null) return "";
   return String(val)
@@ -22,10 +24,12 @@ export const ENV = {
   BACKEND_URL: cleanEnv(process.env.BACKEND_URL) || "http://localhost:5001",
   CASHFREE: {
     get APP_ID() {
-      return cleanEnv(process.env.CASHFREE_APP_ID || process.env.CASHFREE_CLIENT_ID || process.env.CASHFREE_KEY_ID);
+      const raw = cleanEnv(process.env.CASHFREE_APP_ID || process.env.CASHFREE_CLIENT_ID || process.env.CASHFREE_KEY_ID);
+      return raw.replace(/[^a-zA-Z0-9]/g, "");
     },
     get SECRET_KEY() {
-      return cleanEnv(process.env.CASHFREE_SECRET_KEY || process.env.CASHFREE_CLIENT_SECRET || process.env.CASHFREE_SECRET);
+      const raw = cleanEnv(process.env.CASHFREE_SECRET_KEY || process.env.CASHFREE_CLIENT_SECRET || process.env.CASHFREE_SECRET);
+      return raw.replace(/[^a-zA-Z0-9_]/g, "");
     },
     get isProduction() {
       const key = this.SECRET_KEY;
@@ -54,6 +58,14 @@ export const ENV = {
   },
 };
 
+let cachedOutboundIp = null;
+fetch("https://api.ipify.org?format=json")
+  .then((r) => r.json())
+  .then((d) => {
+    cachedOutboundIp = d.ip;
+  })
+  .catch(() => {});
+
 export function logSafeCashfreeDiagnostics() {
   const rawAppId = process.env.CASHFREE_APP_ID || process.env.CASHFREE_CLIENT_ID || process.env.CASHFREE_KEY_ID || "";
   const rawSecret = process.env.CASHFREE_SECRET_KEY || process.env.CASHFREE_CLIENT_SECRET || process.env.CASHFREE_SECRET || "";
@@ -66,15 +78,20 @@ export function logSafeCashfreeDiagnostics() {
     return `${str.slice(0, start)}****${str.slice(-end)}`;
   };
 
+  const sha256 = (val) => crypto.createHash("sha256").update(val || "").digest("hex").slice(0, 8);
+
+  const nonAsciiInAppId = /[^a-zA-Z0-9]/.test(rawAppId.trim());
+  const nonAsciiInSecret = /[^a-zA-Z0-9_]/.test(rawSecret.trim());
+
   console.log("=== [Cashfree Safe Configuration Diagnostics] ===");
-  console.log(`- APP_ID present: ${Boolean(cleanAppId) ? "YES" : "NO"} (len: ${cleanAppId.length}, masked: ${mask(cleanAppId, 4, 3)})`);
-  console.log(`- SECRET_KEY present: ${Boolean(cleanSecret) ? "YES" : "NO"} (len: ${cleanSecret.length}, masked: ${mask(cleanSecret, 12, 4)})`);
-  console.log(`- SECRET_KEY contains newline: ${/[\r\n]|\\n|\\r/.test(rawSecret) ? "YES" : "NO"}`);
-  console.log(`- SECRET_KEY contains leading/trailing whitespace: ${/^\s|\s$/.test(rawSecret) ? "YES" : "NO"}`);
+  console.log(`- APP_ID present: ${Boolean(cleanAppId) ? "YES" : "NO"} (len: ${cleanAppId.length}, masked: ${mask(cleanAppId, 4, 3)}, sha256: ${sha256(cleanAppId)})`);
+  console.log(`- SECRET_KEY present: ${Boolean(cleanSecret) ? "YES" : "NO"} (len: ${cleanSecret.length}, masked: ${mask(cleanSecret, 12, 4)}, sha256: ${sha256(cleanSecret)})`);
+  console.log(`- Non-alphanumeric/hidden characters stripped: ${Boolean(nonAsciiInAppId || nonAsciiInSecret) ? "YES (Cleaned)" : "NO"}`);
   console.log(`- API environment: ${ENV.CASHFREE.ENV}`);
   console.log(`- API endpoint: ${ENV.CASHFREE.BASE_URL}`);
   console.log(`- API version: ${ENV.CASHFREE.API_VERSION}`);
-  console.log(`- Cashfree client initialized: ${Boolean(cleanAppId && cleanSecret) ? "YES" : "NO"}`);
+  console.log(`- Server Outbound IP: ${cachedOutboundIp || "resolving..."}`);
+  console.log(`- Cashfree client ready: ${Boolean(cleanAppId && cleanSecret) ? "YES" : "NO"}`);
   console.log("================================================");
 }
 
