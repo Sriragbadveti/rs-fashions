@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ArrowRight,
   ReceiptIndianRupee,
@@ -231,10 +231,7 @@ const Billing: React.FC<BillingProps> = ({
           triggerToast("🎉 Patron payment received! Generating official sale receipt...");
 
           if (!customer.address || customer.address.trim() === "") {
-            setCustomer((prev) => ({
-              ...prev,
-              address: prev.address?.trim() || "In-Store Showroom Counter",
-            }));
+            updateCustomer("address", customer.city || "In-Store Showroom Counter");
           }
 
           setTimeout(() => {
@@ -258,7 +255,7 @@ const Billing: React.FC<BillingProps> = ({
       isCancelled = true;
       clearInterval(interval);
     };
-  }, [paymentLinkData]);
+  }, [paymentLinkData, customer.address, customer.city, completeBill, updateCustomer]);
 
   // 2. CONFIRM LINK PAYMENT & COMMIT TO HISTORY (Manual Fallback)
   // Only called when customer completes payment via PhonePe/Razorpay or manually confirmed
@@ -266,10 +263,7 @@ const Billing: React.FC<BillingProps> = ({
     if (!paymentLinkData) return;
 
     if (!customer.address || customer.address.trim() === "") {
-      setCustomer((prev) => ({
-        ...prev,
-        address: prev.address?.trim() || "In-Store Showroom Counter",
-      }));
+      updateCustomer("address", customer.city || "In-Store Showroom Counter");
     }
 
     completeBill({
