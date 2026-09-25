@@ -14,7 +14,10 @@ export default function Admin() {
   const [currentUser, setCurrentUser] = useState<UserSession | null>(() => {
     try {
       const saved = localStorage.getItem("rs_admin_session");
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.role === "admin") return parsed;
+      }
     } catch {}
     return null;
   });

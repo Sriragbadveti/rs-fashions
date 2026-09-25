@@ -1,4 +1,4 @@
-import {Product, MOCK_DESIGNS, COLOR_CODES} from "../types/inventory";
+import { Product, MOCK_DESIGNS, COLOR_CODES, LEGACY_COLOR_CODES, VIBGYOR_COLORS } from "../types/inventory";
 
 export const LOW_STOCK_THRESHOLD = 2;
 
@@ -14,6 +14,10 @@ export const CurrencyFormatter = new Intl.NumberFormat("en-IN", {
 
 export function normalizeText(value: string): string {
   return value.trim().toLowerCase();
+}
+
+export function isVibgyorColor(value: string): boolean {
+  return VIBGYOR_COLORS.some((c) => normalizeText(c) === normalizeText(value));
 }
 
 export function createDesignSlug(name: string): string {
@@ -52,11 +56,14 @@ export function createDesignSlug(name: string): string {
 export function generateColorSlug(color: string): string {
   const knownColor = COLOR_CODES.find(
     (colorDefinition) => normalizeText(colorDefinition.name) === normalizeText(color)
+  ) || LEGACY_COLOR_CODES.find(
+    (colorDefinition) => normalizeText(colorDefinition.name) === normalizeText(color)
   );
 
   if (knownColor) {
     return knownColor.code;
   }
+
 
   const words = color
     .trim()

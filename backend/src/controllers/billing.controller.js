@@ -2,11 +2,47 @@ import { supabase } from "../config/supabase.js";
 import { successResponse, errorResponse } from "../utils/response.js";
 import { invalidateCatalogCache } from "./catalog.controller.js";
 import { invalidateBootstrapCache } from "./bootstrap.controller.js";
-import { saveOrderToStore } from "../database/localStore.js";
+import { saveOrderToStore, getNextSequentialInvoiceNumberFromStore } from "../database/localStore.js";
 
 /**
  * Controller: POS Billing, Counter Invoicing & Coupons
  */
+
+async function resolveSequentialInvoiceNumber(providedInvoice, providedOrder) {
+  const candidate = (providedInvoice || providedOrder || "").toString().trim();
+  if (candidate) {
+    if (/^\d+$/.test(candidate)) {
+      return candidate.padStart(3, "0");
+    }
+    return candidate;
+  }
+
+  let maxNumber = 0;
+  try {
+    const localNext = getNextSequentialInvoiceNumberFromStore();
+    const localVal = parseInt(localNext, 10);
+    if (!isNaN(localVal) && localVal - 1 > maxNumber) {
+      maxNumber = localVal - 1;
+    }
+  } catch {}
+
+  if (supabase) {
+    try {
+      const { data } = await supabase.from("orders").select("invoice_number, order_number").limit(500);
+      if (Array.isArray(data)) {
+        for (const o of data) {
+          const inv = o.invoice_number || o.order_number;
+          if (inv && /^\d+$/.test(String(inv).trim())) {
+            const val = parseInt(String(inv).trim(), 10);
+            if (!isNaN(val) && val > maxNumber) maxNumber = val;
+          }
+        }
+      }
+    } catch {}
+  }
+
+  return String(maxNumber + 1).padStart(3, "0");
+}
 
 // 1. ATOMIC CHECKOUT
 export async function handleCheckout(req, res) {
@@ -42,7 +78,8 @@ export async function handleCheckout(req, res) {
     }
 
     const saleId = `inv-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
-    const finalInvoiceNumber = invoiceNumber || orderNumber || `RSF-${Date.now().toString().slice(-6)}`;
+    const finalInvoiceNumber = await resolveSequentialInvoiceNumber(invoiceNumber, orderNumber);
+
 
     if (supabase) {
       // 1. Record order in orders table

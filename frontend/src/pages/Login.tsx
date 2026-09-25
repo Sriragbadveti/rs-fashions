@@ -9,8 +9,8 @@ interface LoginProps {
 
 export default function Login({ onLoginSuccess }: LoginProps) {
   const navigate = useNavigate();
-  const [email, setEmail] = useState<string>("admin@rsfashions.in");
-  const [password, setPassword] = useState<string>("admin2026");
+  const [email, setEmail] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
@@ -111,7 +111,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="admin@rsfashions.in"
+                    placeholder="name@rsfashions.in"
                     className="w-full pl-10 pr-4 py-2.5 bg-transparent text-xs text-stone-800 placeholder:text-stone-400 focus:outline-none"
                   />
                 </div>
@@ -127,7 +127,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••••••"
+                    placeholder="Enter administrator passkey"
                     className="w-full pl-10 pr-10 py-2.5 bg-transparent text-xs text-stone-800 placeholder:text-stone-400 focus:outline-none"
                   />
                   <button

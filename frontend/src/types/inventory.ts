@@ -215,33 +215,58 @@ export interface ColorDefinition {
 }
 
 /**
- * Master Color Catalogue.
- *
- * These codes are used directly inside the SKU:
- * RSF-{DESIGN_CODE}-{COLOR_CODE}-{SERIAL}
+ * Canonical VIBGYOR Saree Colors
  */
-export const COLOR_CODES: ColorDefinition[] = [
-  /* --- Basic & Primary Essentials --- */
-  { name: "Red", code: "RED" },
-  { name: "Crimson Red", code: "RD" },
+export const VIBGYOR_COLORS = [
+  "Violet",
+  "Indigo",
+  "Blue",
+  "Green",
+  "Yellow",
+  "Orange",
+  "Red",
+] as const;
+
+export type VibgyorColor = (typeof VIBGYOR_COLORS)[number];
+
+export const VIBGYOR_COLOR_CODES: ColorDefinition[] = [
+  { name: "Violet", code: "VLT" },
+  { name: "Indigo", code: "IND" },
   { name: "Blue", code: "BLU" },
+  { name: "Green", code: "GRN" },
+  { name: "Yellow", code: "YEL" },
+  { name: "Orange", code: "ORG" },
+  { name: "Red", code: "RED" },
+];
+
+/**
+ * Active selectable color palette for Admin saree management: ONLY VIBGYOR
+ */
+export const COLOR_CODES: ColorDefinition[] = VIBGYOR_COLOR_CODES;
+
+/**
+ * Legacy Color Catalogue for backwards compatibility with existing sarees.
+ */
+export const LEGACY_COLOR_CODES: ColorDefinition[] = [
+  ...VIBGYOR_COLOR_CODES,
+  /* --- Basic & Primary Essentials --- */
+  { name: "Crimson Red", code: "RD" },
   { name: "Navy Blue", code: "NB" },
   { name: "Royal Blue", code: "RB" },
   { name: "Sky Blue", code: "SB" },
   { name: "Midnight Blue", code: "BL" },
   { name: "Peacock Blue", code: "PB" },
-  { name: "Green", code: "GRN" },
   { name: "Emerald Green", code: "GR" },
   { name: "Bottle Green", code: "BG" },
   { name: "Olive Green", code: "OL" },
   { name: "Mint Green", code: "MN" },
   { name: "Pista Green", code: "PI" },
   { name: "Sea Green", code: "SG" },
-  { name: "Yellow", code: "YEL" },
   { name: "Lemon Yellow", code: "LY" },
   { name: "Golden Yellow", code: "GY" },
   { name: "Mustard Yellow", code: "MY" },
   { name: "Mustard Violet", code: "MV" },
+
 
   /* --- Pinks, Corals & Peaches --- */
   { name: "Pink", code: "PNK" },
@@ -382,7 +407,13 @@ export interface Product {
    * Optional multiple product images.
    */
   images?: string[];
+
+  /**
+   * Special offer flag (Admin marked for Trending & Exclusive Offers).
+   */
+  isSpecialOffer?: boolean;
 }
+
 
 /* =========================================================
    DASHBOARD

@@ -770,8 +770,14 @@ export default function CRM({
       client: CustomerProfile,
       type: MessageTemplateType = "birthday"
     ) => {
+      let resolvedType = type;
+      if (resolvedType === "birthday" && (!client.birthday || !client.birthday.trim())) {
+        resolvedType = "festive_offer";
+      } else if (resolvedType === "anniversary" && (!client.anniversary || !client.anniversary.trim())) {
+        resolvedType = "festive_offer";
+      }
       setSelectedClientForMessage(client);
-      setTemplateType(type);
+      setTemplateType(resolvedType);
 
       setGeneratedMessage(
         buildMessage(
@@ -1498,47 +1504,76 @@ export default function CRM({
                   </div>
 
                   <div className="pt-3 mt-3 border-t border-stone-100 flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        openWhatsAppComposer(
-                          client,
-                          "birthday"
-                        )
-                      }
-                      title="Birthday Wish"
-                      className="group/action flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 text-emerald-800 text-xs font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
-                    >
-                      <Gift
-                        size={13}
-                        className="text-emerald-700 transition-transform duration-200 group-hover/action:-translate-y-0.5"
-                      />
+                    {(() => {
+                      const hasBirthday = Boolean(client.birthday && String(client.birthday).trim() !== "");
+                      const hasAnniversary = Boolean(client.anniversary && String(client.anniversary).trim() !== "");
 
-                      <span>
-                        Birthday
-                      </span>
-                    </button>
+                      return (
+                        <>
+                          <button
+                            type="button"
+                            disabled={!hasBirthday}
+                            onClick={() =>
+                              hasBirthday &&
+                              openWhatsAppComposer(
+                                client,
+                                "birthday"
+                              )
+                            }
+                            title={hasBirthday ? "Birthday Wish" : "No birthday submitted by patron (Action Disabled)"}
+                            className={`group/action flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border text-xs font-semibold transition-all duration-200 focus:outline-none ${
+                              hasBirthday
+                                ? "bg-emerald-50 hover:bg-emerald-100 border-emerald-200/80 text-emerald-800 hover:-translate-y-0.5 hover:shadow-sm active:scale-[0.97] cursor-pointer"
+                                : "bg-stone-100/90 border-stone-200/60 text-stone-400 opacity-40 cursor-not-allowed"
+                            }`}
+                          >
+                            <Gift
+                              size={13}
+                              className={
+                                hasBirthday
+                                  ? "text-emerald-700 transition-transform duration-200 group-hover/action:-translate-y-0.5"
+                                  : "text-stone-400"
+                              }
+                            />
 
-                    <button
-                      type="button"
-                      onClick={() =>
-                        openWhatsAppComposer(
-                          client,
-                          "anniversary"
-                        )
-                      }
-                      title="Anniversary Message"
-                      className="group/action flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200/80 text-amber-900 text-xs font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
-                    >
-                      <Heart
-                        size={13}
-                        className="text-amber-800 transition-transform duration-200 group-hover/action:scale-110"
-                      />
+                            <span>
+                              Birthday
+                            </span>
+                          </button>
 
-                      <span>
-                        Anniversary
-                      </span>
-                    </button>
+                          <button
+                            type="button"
+                            disabled={!hasAnniversary}
+                            onClick={() =>
+                              hasAnniversary &&
+                              openWhatsAppComposer(
+                                client,
+                                "anniversary"
+                              )
+                            }
+                            title={hasAnniversary ? "Anniversary Message" : "No anniversary submitted by patron (Action Disabled)"}
+                            className={`group/action flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border text-xs font-semibold transition-all duration-200 focus:outline-none ${
+                              hasAnniversary
+                                ? "bg-amber-50 hover:bg-amber-100 border-amber-200/80 text-amber-900 hover:-translate-y-0.5 hover:shadow-sm active:scale-[0.97] cursor-pointer"
+                                : "bg-stone-100/90 border-stone-200/60 text-stone-400 opacity-40 cursor-not-allowed"
+                            }`}
+                          >
+                            <Heart
+                              size={13}
+                              className={
+                                hasAnniversary
+                                  ? "text-amber-800 transition-transform duration-200 group-hover/action:scale-110"
+                                  : "text-stone-400"
+                              }
+                            />
+
+                            <span>
+                              Anniversary
+                            </span>
+                          </button>
+                        </>
+                      );
+                    })()}
 
                     <button
                       type="button"
@@ -1698,26 +1733,42 @@ export default function CRM({
                       const active =
                         templateType ===
                         template.id;
+                      const isBirthday = template.id === "birthday";
+                      const isAnniv = template.id === "anniversary";
+                      const hasBday = Boolean(selectedClientForMessage?.birthday && String(selectedClientForMessage.birthday).trim() !== "");
+                      const hasAnniv = Boolean(selectedClientForMessage?.anniversary && String(selectedClientForMessage.anniversary).trim() !== "");
+                      const isTemplateDisabled = (isBirthday && !hasBday) || (isAnniv && !hasAnniv);
 
                       return (
                         <button
                           key={template.id}
                           type="button"
+                          disabled={isTemplateDisabled}
+                          title={
+                            isTemplateDisabled
+                              ? `No ${isBirthday ? "birthday" : "anniversary"} submitted by patron`
+                              : undefined
+                          }
                           onClick={() =>
+                            !isTemplateDisabled &&
                             setTemplateType(
                               template.id
                             )
                           }
-                          className={`group flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-xl text-xs font-semibold transition-all duration-200 active:scale-[0.97] ${
-                            active
-                              ? "bg-[#2A0E20] text-amber-100 shadow-sm"
-                              : "bg-stone-100 text-stone-600 hover:bg-stone-200 hover:-translate-y-0.5"
+                          className={`group flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-xl text-xs font-semibold transition-all duration-200 ${
+                            isTemplateDisabled
+                              ? "bg-stone-100 border border-stone-200/50 text-stone-400 opacity-40 cursor-not-allowed"
+                              : active
+                              ? "bg-[#2A0E20] text-amber-100 shadow-sm cursor-pointer active:scale-[0.97]"
+                              : "bg-stone-100 text-stone-600 hover:bg-stone-200 hover:-translate-y-0.5 cursor-pointer active:scale-[0.97]"
                           }`}
                         >
                           <Icon
                             size={13}
                             className={
-                              active
+                              isTemplateDisabled
+                                ? "text-stone-400"
+                                : active
                                 ? "text-brand-gold"
                                 : "group-hover:scale-110 transition-transform"
                             }

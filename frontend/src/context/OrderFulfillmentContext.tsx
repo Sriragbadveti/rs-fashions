@@ -1,10 +1,11 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
 import { API_BASE } from "../config/api";
 
-// The three stages an order can be in.
-export type OrderStatus = "packaging" | "shipped" | "delivered";
+// The four canonical stages an order can be in.
+export type OrderStatus = "new" | "packaging" | "shipped" | "delivered";
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
+  new: "New Order",
   packaging: "Packaging",
   shipped: "Shipped",
   delivered: "Delivered",
@@ -12,6 +13,7 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
 
 // Badge/dropdown colors per status — shared so TrackOrder and TransactionHistory render identically.
 export const ORDER_STATUS_STYLES: Record<OrderStatus, string> = {
+  new: "bg-purple-50 text-purple-700 border-purple-200",
   packaging: "bg-amber-50 text-amber-700 border-amber-200",
   shipped: "bg-blue-50 text-blue-700 border-blue-200",
   delivered: "bg-emerald-50 text-emerald-700 border-emerald-200",
@@ -28,7 +30,7 @@ export interface OrderFulfillment {
 }
 
 const DEFAULT_FULFILLMENT: OrderFulfillment = {
-  status: "packaging",
+  status: "new",
   trackingNumber: "",
   carrierPartner: "",
 };
@@ -147,7 +149,9 @@ export function OrderFulfillmentProvider({
                     ? "delivered"
                     : fulfillment.status === "shipped"
                     ? "shipped"
-                    : "processing";
+                    : fulfillment.status === "packaging"
+                    ? "packaging"
+                    : "new";
                 return {
                   ...o,
                   orderStatus: statusMapped,

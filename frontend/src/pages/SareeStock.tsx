@@ -46,7 +46,9 @@ import {
   calculateInventoryMetrics,
   filterInventory,
   getAvailableDesignOptions,
+  isVibgyorColor,
 } from "../types/catalog";
+
 
 interface CatalogProps {
   inventory: Product[];
@@ -286,10 +288,6 @@ function ColorInput({
     requestAnimationFrame(() => updateDropdownPosition());
   };
 
-  const hasCustomColor =
-    value.trim() &&
-    !COLOR_OPTIONS.some((c) => normalizeText(c) === normalizeText(value));
-
   return (
     <div ref={containerRef} className="relative w-full">
       <div
@@ -333,7 +331,7 @@ function ColorInput({
         >
           <div className="flex items-center justify-between border-b border-stone-100 px-3.5 py-2.5">
             <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-stone-400">
-              Select Silk Hue
+              Select VIBGYOR Silk Hue
             </span>
             <span className="rounded-full bg-stone-100 px-2 py-0.5 text-[9px] font-bold text-stone-600">
               {filteredColors.length}
@@ -363,24 +361,12 @@ function ColorInput({
                 </button>
               );
             })}
-
-            {hasCustomColor && (
-              <button
-                type="button"
-                onClick={() => setIsOpen(false)}
-                className="mt-1 flex w-full items-center gap-2 rounded-xl bg-amber-50/70 p-2 text-left transition-colors hover:bg-amber-100/70"
-              >
-                <Plus size={13} className="shrink-0 text-[#2A0E20]" />
-                <span className="truncate text-xs font-bold text-[#2A0E20]">
-                  Use Custom Hue "{value}"
-                </span>
-              </button>
-            )}
           </div>
         </div>
       )}
     </div>
   );
+
 }
 
 // ============================================================
@@ -695,9 +681,15 @@ function VariantShadeManager({
     const colorName = newColor.trim();
     if (!colorName || !designSlug || !serialNumber) return;
 
+    if (!isVibgyorColor(colorName)) {
+      alert("Please select a valid VIBGYOR color (Violet, Indigo, Blue, Green, Yellow, Orange, Red).");
+      return;
+    }
+
     const alreadyExists = variants.some(
       (v) => normalizeText(v.color) === normalizeText(colorName)
     );
+
 
     if (alreadyExists) {
       alert("This color shade is already registered on this saree pattern.");
@@ -1006,6 +998,12 @@ function ProductCard({
             Low Stock
           </span>
         )}
+
+        {(product.isSpecialOffer || (product.tags || []).includes("special_offer")) && (
+          <span className="absolute right-3 bottom-3 z-10 flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-600 to-amber-500 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white shadow-sm backdrop-blur-xs">
+            <Sparkles size={10} /> Special Offer
+          </span>
+        )}
       </div>
 
       {/* Card Content Information */}
@@ -1256,6 +1254,7 @@ export default function Catalog({
   const [primaryStock, setPrimaryStock] = useState("");
   const [formImageUrl, setFormImageUrl] = useState("");
   const [formImages, setFormImages] = useState<string[]>([]);
+  const [formIsSpecialOffer, setFormIsSpecialOffer] = useState(false);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -1413,6 +1412,7 @@ export default function Catalog({
     setFormImageUrl("");
     setFormImages([]);
     setFormSerialNumber("001");
+    setFormIsSpecialOffer(false);
     setIsModalOpen(true);
   }
 
@@ -1434,6 +1434,7 @@ export default function Catalog({
       : [];
     setFormImages(initialImgs);
     setFormImageUrl(initialImgs[0] || product.imageUrl || "");
+    setFormIsSpecialOffer(Boolean(product.isSpecialOffer || (product.tags || []).includes("special_offer")));
     setIsModalOpen(true);
   }
 
@@ -1466,6 +1467,14 @@ export default function Catalog({
 
     const effectiveImageUrl = effectiveImages[0] || undefined;
 
+    const rawTags = formTags
+      .split(",")
+      .map((t) => t.trim().toLowerCase())
+      .filter(Boolean);
+    const finalTags = formIsSpecialOffer
+      ? Array.from(new Set([...rawTags, "special_offer"]))
+      : rawTags.filter((t) => t !== "special_offer");
+
     const payload: Product = {
       id:
         editingProductId ||
@@ -1475,10 +1484,8 @@ export default function Catalog({
       categoryId: finalCategory,
       purchasePrice: Number(formPurchasePrice) || 0,
       salePrice: Number(formSalePrice) || 0,
-      tags: formTags
-        .split(",")
-        .map((t) => t.trim().toLowerCase())
-        .filter(Boolean),
+      isSpecialOffer: formIsSpecialOffer,
+      tags: finalTags,
       variants: finalVariants,
       imageUrl: effectiveImageUrl,
       images: effectiveImages.length > 0 ? effectiveImages : (effectiveImageUrl ? [effectiveImageUrl] : undefined),
@@ -1956,6 +1963,34 @@ export default function Catalog({
                   placeholder="handloom, sico gadwal, zari, temple border, bridal..."
                   className="h-10 w-full rounded-xl border border-stone-200/80 bg-white/90 px-3.5 text-xs outline-none transition-all focus:border-[#D4A373] focus:ring-2 focus:ring-[#D4A373]/10"
                 />
+              </div>
+
+              {/* Special Offer Toggle for Trending Showcase */}
+              <div className="flex items-center justify-between rounded-2xl border border-amber-200/80 bg-amber-50/40 p-4 transition-all">
+                <div className="space-y-0.5 pr-4">
+                  <div className="flex items-center gap-2">
+                    <Sparkles size={14} className="text-amber-600" />
+                    <label
+                      htmlFor="saree-special-offer"
+                      className="cursor-pointer text-xs font-bold text-stone-900"
+                    >
+                      Mark as Special Offer (Showcase in Trending)
+                    </label>
+                  </div>
+                  <p className="text-[11px] text-stone-500">
+                    Sarees marked as Special Offer will appear prominently in the storefront &ldquo;Trending&rdquo; section.
+                  </p>
+                </div>
+                <label className="relative inline-flex cursor-pointer items-center">
+                  <input
+                    id="saree-special-offer"
+                    type="checkbox"
+                    checked={formIsSpecialOffer}
+                    onChange={(e) => setFormIsSpecialOffer(e.target.checked)}
+                    className="peer sr-only"
+                  />
+                  <div className="peer h-6 w-11 rounded-full bg-stone-300 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-stone-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-[#8E3D51] peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none"></div>
+                </label>
               </div>
 
               {/* Footer CTA */}

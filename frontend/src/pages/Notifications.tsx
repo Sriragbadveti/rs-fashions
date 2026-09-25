@@ -22,15 +22,17 @@ function getStoredCRMContactsWithMilestones() {
   try {
     const saved = localStorage.getItem("rs_fashions_crm_contacts");
     if (saved) {
-      return JSON.parse(saved);
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+    const adminCust = localStorage.getItem("rs_admin_customers");
+    if (adminCust) {
+      const parsed = JSON.parse(adminCust);
+      if (Array.isArray(parsed)) return parsed;
     }
   } catch {}
 
-  return [
-    { name: "Smt. Kamala Reddy", phone: "9876543210", birthday: "2026-09-15", anniversary: "2026-09-18" },
-    { name: "Dr. Ananya Rao", phone: "9123456789", birthday: "2026-09-12", anniversary: "2026-10-01" },
-    { name: "Sri Rajeshwar Rao", phone: "9848098480", birthday: "2026-09-25", anniversary: "2026-09-11" },
-  ];
+  return [];
 }
 
 export default function Notifications({ salesHistory, onNavigateTab, onClose }: NotificationsProps) {

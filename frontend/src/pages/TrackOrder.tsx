@@ -268,6 +268,7 @@ export default function TrackOrder({ salesHistory }: TrackOrderProps) {
           {(
             [
               { id: "ALL" as const, label: "All Orders" },
+              { id: "new" as const, label: ORDER_STATUS_LABELS.new },
               { id: "packaging" as const, label: ORDER_STATUS_LABELS.packaging },
               { id: "shipped" as const, label: ORDER_STATUS_LABELS.shipped },
               { id: "delivered" as const, label: ORDER_STATUS_LABELS.delivered },

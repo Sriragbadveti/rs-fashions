@@ -321,13 +321,12 @@ export default function Account() {
     setPayments(updated);
   };
 
-  // Progress Steps Helper
+  // Progress Steps Helper (Synchronized with 4 canonical states: new, packaging, shipped, delivered)
   const getOrderStepProgress = (status: string, stage?: string) => {
     const s = (stage || status || "").toLowerCase();
-    if (s.includes("delivered")) return 5;
-    if (s.includes("out for delivery") || s.includes("out_for_delivery")) return 4;
+    if (s.includes("delivered")) return 4;
     if (s.includes("shipped") || s.includes("transit") || s.includes("dispatch")) return 3;
-    if (s.includes("packed") || s.includes("processing") || s.includes("loom")) return 2;
+    if (s.includes("pack") || s.includes("processing") || s.includes("loom")) return 2;
     return 1;
   };
 
@@ -506,7 +505,7 @@ export default function Account() {
             ) : (
               orders.map((order) => {
                 const step = getOrderStepProgress(order.orderStatus, order.currentStage);
-                const isDelivered = step === 5;
+                const isDelivered = step === 4;
                 const isCancelled = order.orderStatus === "cancelled";
 
                 return (
@@ -574,15 +573,14 @@ export default function Account() {
                             <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-stone-200 z-0" />
                             <div
                               className="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-emerald-600 transition-all duration-500 z-0"
-                              style={{ width: `${Math.min(100, Math.max(0, (step - 1) * 25))}%` }}
+                              style={{ width: `${Math.min(100, Math.max(0, (step - 1) * 33.33))}%` }}
                             />
 
                             {[
                               { label: "Order Placed", stepNum: 1 },
-                              { label: "Handcrafted / Packed", stepNum: 2 },
+                              { label: "Packaging", stepNum: 2 },
                               { label: "Shipped", stepNum: 3 },
-                              { label: "Out for Delivery", stepNum: 4 },
-                              { label: "Delivered", stepNum: 5 },
+                              { label: "Delivered", stepNum: 4 },
                             ].map((s) => {
                               const isCompleted = step >= s.stepNum;
                               const isCurrent = step === s.stepNum;

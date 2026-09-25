@@ -29,7 +29,7 @@ import {
 } from "../context/OrderFulfillmentContext";
 import type { OrderStatus } from "../context/OrderFulfillmentContext";
 import { useShowroomSettings } from "../types/settings";
-import { STORE_ADDRESS, STORE_WHATSAPP_NUMBER } from "../types/useBilling";
+import { STORE_ADDRESS, STORE_WHATSAPP_NUMBER, formatInvoiceNumber } from "../types/useBilling";
 
 interface TransactionHistoryProps {
   salesHistory: CompletedSale[];
@@ -289,7 +289,7 @@ export default function TransactionHistory({
       "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
       "RS FASHIONS - ORDER & CUSTOMER DETAILS",
       "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
-      `Invoice / Order #: ${sale.invoiceNumber}`,
+      `Invoice / Order #: ${formatInvoiceNumber(sale.invoiceNumber)}`,
       `Date: ${formatDate(sale.date)}`,
       `Payment Method: ${getPaymentLabel(sale.paymentMethod)}`,
       `Order Status: ${statusLabel}`,
@@ -445,7 +445,7 @@ export default function TransactionHistory({
       "SiCo Gadwal Sarees & Curated Silks",
       "━━━━━━━━━━━━━━━━━━",
       "*RETAIL SALES RECEIPT*",
-      `*Receipt #:* ${sale.invoiceNumber}`,
+      `*Receipt #:* ${formatInvoiceNumber(sale.invoiceNumber)}`,
       `*Date:* ${formatDate(sale.date)}`,
       `*Customer:* ${getCustomerName(sale)} (${
         customerPhone || ""
@@ -657,7 +657,7 @@ export default function TransactionHistory({
                 <div className="min-w-0 flex-1">
                   <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                     <span className="max-w-full truncate rounded-lg border border-stone-200 bg-stone-50 px-2 py-1 font-mono text-[10px] font-bold text-stone-800">
-                      {sale.invoiceNumber}
+                      {formatInvoiceNumber(sale.invoiceNumber)}
                     </span>
 
                     <span className="rounded-full bg-stone-100 px-2 py-1 text-[8px] font-bold uppercase tracking-wide text-stone-500">
@@ -889,7 +889,7 @@ export default function TransactionHistory({
                   <td className="px-4 py-4 align-middle">
                     <div className="flex flex-col items-start gap-1.5">
                       <span className="inline-flex items-center rounded-lg border border-stone-200 bg-stone-50 px-2 py-1.5 font-mono text-[10px] font-semibold text-stone-800">
-                        {sale.invoiceNumber}
+                        {formatInvoiceNumber(sale.invoiceNumber)}
                       </span>
 
                       <span className="text-[9px] font-semibold uppercase tracking-wider text-stone-400">
@@ -1415,7 +1415,7 @@ export default function TransactionHistory({
 
                 <span className="min-w-0 truncate font-display text-sm font-semibold text-stone-900">
                   Invoice Preview:{" "}
-                  {inspectInvoice.invoiceNumber}
+                  {formatInvoiceNumber(inspectInvoice.invoiceNumber)}
                 </span>
               </div>
 
@@ -1511,7 +1511,7 @@ export default function TransactionHistory({
 
                   <div className="mt-0.5 flex min-w-0 items-center gap-2">
                     <p className="min-w-0 truncate font-mono font-bold text-stone-900">
-                      {inspectInvoice.invoiceNumber}
+                      {formatInvoiceNumber(inspectInvoice.invoiceNumber)}
                     </p>
 
                     <button

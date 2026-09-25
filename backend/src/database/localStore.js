@@ -65,6 +65,20 @@ export function saveOrderToStore(order) {
   return cleanOrder;
 }
 
+export function getNextSequentialInvoiceNumberFromStore() {
+  const orders = readJson("orders.json", []);
+  let maxNumber = 0;
+  for (const o of orders) {
+    const inv = o.invoice_number || o.invoiceNumber || o.order_number || o.orderNumber;
+    if (inv && /^\d+$/.test(String(inv).trim())) {
+      const val = parseInt(String(inv).trim(), 10);
+      if (!isNaN(val) && val > maxNumber) maxNumber = val;
+    }
+  }
+  return String(maxNumber + 1).padStart(3, "0");
+}
+
+
 export function getOrdersFromStore(phone, email) {
   const orders = readJson("orders.json", []);
   const fulfillments = readJson("fulfillments.json", {});
@@ -86,14 +100,14 @@ export function getOrdersFromStore(phone, email) {
     const f = fulfillments[inv] || {};
     return {
       ...o,
-      orderStatus: f.status || o.orderStatus || o.order_status || "processing",
-      order_status: f.status || o.order_status || o.orderStatus || "processing",
+      orderStatus: f.status || o.orderStatus || o.order_status || "new",
+      order_status: f.status || o.order_status || o.orderStatus || "new",
       awbNumber: f.trackingNumber !== undefined ? f.trackingNumber : (o.awbNumber || o.tracking_number || null),
       tracking_number: f.trackingNumber !== undefined ? f.trackingNumber : (o.tracking_number || o.awbNumber || null),
       carrierPartner: f.carrierPartner || o.carrierPartner || o.carrier_partner || "RS Fashions Express",
       carrier_partner: f.carrierPartner || o.carrier_partner || o.carrierPartner || "RS Fashions Express",
       trackingUrl: f.trackingUrl || o.trackingUrl || null,
-      currentStage: f.status || o.currentStage || o.current_stage || "processing",
+      currentStage: f.status || o.currentStage || o.current_stage || "new",
     };
   });
 }
@@ -119,8 +133,8 @@ export function saveFulfillmentToStore(invoiceNumber, fulfillment) {
     (o) => (o.invoiceNumber || o.invoice_number || o.id) === invoiceNumber
   );
   if (ordIdx >= 0) {
-    orders[ordIdx].orderStatus = updated.status || orders[ordIdx].orderStatus || "processing";
-    orders[ordIdx].order_status = updated.status || orders[ordIdx].order_status || "processing";
+    orders[ordIdx].orderStatus = updated.status || orders[ordIdx].orderStatus || "new";
+    orders[ordIdx].order_status = updated.status || orders[ordIdx].order_status || "new";
     orders[ordIdx].awbNumber = updated.trackingNumber || orders[ordIdx].awbNumber || null;
     orders[ordIdx].carrierPartner = updated.carrierPartner || orders[ordIdx].carrierPartner || "RS Fashions Express";
     orders[ordIdx].trackingUrl = updated.trackingUrl || orders[ordIdx].trackingUrl || null;

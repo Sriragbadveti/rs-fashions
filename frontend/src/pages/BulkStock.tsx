@@ -928,7 +928,7 @@ export default function BulkStock({
                     value={row.color1}
                     options={colorOptions}
                     onChange={(value) => updateRow(row.id, "color1", value)}
-                    allowCustom={true}
+                    allowCustom={false}
                   />
 
                   {orderMode === "dual" ? (
@@ -937,7 +937,7 @@ export default function BulkStock({
                       value={row.color2}
                       options={colorOptions}
                       onChange={(value) => updateRow(row.id, "color2", value)}
-                      allowCustom={true}
+                      allowCustom={false}
                     />
                   ) : (
                     <div className="flex flex-col">

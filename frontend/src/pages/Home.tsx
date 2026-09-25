@@ -4,7 +4,6 @@ import Hero from "../components/home/Hero";
 import MaterialCollections from "../components/home/MaterialCollections";
 import ForSaleProducts from "../components/home/ForSaleProducts";
 import TrendingProducts from "../components/home/TrendingProducts";
-import OfferBanner from "../components/home/OfferBanner";
 // import LoomStories from "../components/home/LoomStories";
 import HomeFooter from "../components/home/HomeFooter";
 // import Marquee from "../components/ui/Marquee";
@@ -36,9 +35,8 @@ function Home() {
 
       <ForSaleProducts />
 
+      {/* Trending Section: Exclusively displays sarees marked as Special Offer */}
       <TrendingProducts />
-
-      <OfferBanner />
 
       {/* <LoomStories /> */}
 

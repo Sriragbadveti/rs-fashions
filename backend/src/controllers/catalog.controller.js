@@ -25,11 +25,42 @@ export function invalidateCatalogCache() {
   invalidateBootstrapCache();
 }
 
+export const VIBGYOR_COLORS = new Set([
+  "violet",
+  "indigo",
+  "blue",
+  "green",
+  "yellow",
+  "orange",
+  "red",
+]);
+
+export function validateVibgyorColors(colorList) {
+  if (!Array.isArray(colorList) || colorList.length === 0) return true;
+  for (const c of colorList) {
+    if (!c) continue;
+    const parts = String(c).split(/[/,&+]/).map((p) => p.trim().toLowerCase());
+    for (const p of parts) {
+      if (!p || p === "standard") continue;
+      const isVibgyor = Array.from(VIBGYOR_COLORS).some((vc) => p.includes(vc));
+      if (!isVibgyor) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 // 1. GET ALL PRODUCTS
 export async function getProducts(req, res) {
   try {
+    const isTrendingOnly = req.query.trending === "true" || req.query.special_offer === "true";
+
     if (cachedProducts && Date.now() - lastProductsFetch < CACHE_TTL_MS) {
-      return successResponse(res, { products: cachedProducts }, "Products retrieved successfully (cached)");
+      const results = isTrendingOnly
+        ? cachedProducts.filter((p) => p.isSpecialOffer)
+        : cachedProducts;
+      return successResponse(res, { products: results }, "Products retrieved successfully (cached)");
     }
 
     if (!supabase) return successResponse(res, { products: [] });
@@ -57,6 +88,11 @@ export async function getProducts(req, res) {
             sku: `${p.id}-${col.slice(0, 3).toUpperCase()}`,
           }));
 
+          const isSpecialOffer =
+            (Array.isArray(p.tags) && p.tags.includes("special_offer")) ||
+            Boolean(p.is_special_offer) ||
+            Boolean(p.isSpecialOffer);
+
           return {
             id: p.id,
             name: p.name,
@@ -71,6 +107,7 @@ export async function getProducts(req, res) {
             imageUrl: images[0],
             colors: colorList,
             tags: Array.isArray(p.tags) ? p.tags : ["handloom", "sico"],
+            isSpecialOffer,
             description: p.description || `${p.name} - Handcrafted Gadwal saree.`,
           };
         });
@@ -84,14 +121,22 @@ export async function getProducts(req, res) {
     }
 
     const products = await inFlightProductsPromise;
-    return successResponse(res, { products }, "Products retrieved successfully");
+    const results = isTrendingOnly
+      ? products.filter((p) => p.isSpecialOffer)
+      : products;
+    return successResponse(res, { products: results }, "Products retrieved successfully");
   } catch (err) {
     if (cachedProducts) {
-      return successResponse(res, { products: cachedProducts }, "Products retrieved successfully (fallback)");
+      const isTrendingOnly = req.query.trending === "true" || req.query.special_offer === "true";
+      const results = isTrendingOnly
+        ? cachedProducts.filter((p) => p.isSpecialOffer)
+        : cachedProducts;
+      return successResponse(res, { products: results }, "Products retrieved successfully (fallback)");
     }
     return errorResponse(res, err.message, 500);
   }
 }
+
 
 // 2. GET ALL CATEGORIES
 export async function getCategories(req, res) {
@@ -178,6 +223,21 @@ export async function createProduct(req, res) {
       ? variants.map((v) => v.color).filter(Boolean)
       : (colors.length > 0 ? colors : ["Standard"]);
 
+    if (!validateVibgyorColors(colorNames)) {
+      return errorResponse(
+        res,
+        "Color options must be restricted to VIBGYOR colors: Violet, Indigo, Blue, Green, Yellow, Orange, Red.",
+        400
+      );
+    }
+
+    let finalTags = Array.isArray(tags) ? [...tags] : [];
+    if (req.body.isSpecialOffer === true) {
+      if (!finalTags.includes("special_offer")) finalTags.push("special_offer");
+    } else if (req.body.isSpecialOffer === false) {
+      finalTags = finalTags.filter((t) => t !== "special_offer");
+    }
+
     let finalImages = images.length > 0
       ? [...images]
       : (imageUrl ? [imageUrl] : ["https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1200&auto=format&fit=crop"]);
@@ -224,7 +284,8 @@ export async function createProduct(req, res) {
         stock: totalStock,
         images: finalImages,
         colors: colorNames,
-        tags: Array.isArray(tags) ? tags : [],
+        tags: finalTags,
+
         rating: 4.8,
         review_count: 0,
         featured: Boolean(featured),
@@ -309,6 +370,25 @@ export async function updateProduct(req, res) {
       featured,
     } = req.body;
 
+    if (colors && !validateVibgyorColors(colors)) {
+      return errorResponse(
+        res,
+        "Color options must be restricted to VIBGYOR colors: Violet, Indigo, Blue, Green, Yellow, Orange, Red.",
+        400
+      );
+    }
+
+    if (variants && variants.length > 0) {
+      const vColors = variants.map((v) => v.color).filter(Boolean);
+      if (!validateVibgyorColors(vColors)) {
+        return errorResponse(
+          res,
+          "Color options must be restricted to VIBGYOR colors: Violet, Indigo, Blue, Green, Yellow, Orange, Red.",
+          400
+        );
+      }
+    }
+
     let resolvedCategory = category;
     if (!resolvedCategory && categoryId && supabase) {
       try {
@@ -333,6 +413,23 @@ export async function updateProduct(req, res) {
         }
       }
       if (tags) updates.tags = tags;
+
+      if (req.body.isSpecialOffer !== undefined) {
+        let currentTags = updates.tags ? [...updates.tags] : [];
+        if (!updates.tags) {
+          try {
+            const { data: prodData } = await supabase.from("products").select("tags").eq("id", id).single();
+            if (prodData?.tags) currentTags = Array.isArray(prodData.tags) ? [...prodData.tags] : [];
+          } catch {}
+        }
+        if (req.body.isSpecialOffer) {
+          if (!currentTags.includes("special_offer")) currentTags.push("special_offer");
+        } else {
+          currentTags = currentTags.filter((t) => t !== "special_offer");
+        }
+        updates.tags = currentTags;
+      }
+
       if (variants && variants.length > 0) {
         const totalStock = variants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0);
         const colorNames = variants.map((v) => v.color).filter(Boolean);
@@ -341,6 +438,7 @@ export async function updateProduct(req, res) {
       } else if (stock !== undefined) {
         updates.stock = Math.max(0, Number(stock) || 0);
       }
+
       if (images && Array.isArray(images)) {
         updates.images = await Promise.all(
           images.map(async (img, idx) => {

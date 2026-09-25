@@ -2,85 +2,86 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { FiArrowUpRight, FiCompass } from "react-icons/fi";
-import { useCart } from "../../context/CartContext";
-import type { Product } from "../../data/products";
-
-export interface TrendingItem {
-  id: string;
-  name: string;
-  category: string;
-  material: string;
-  price: number;
-  originalPrice: number;
-  rating: number;
-  reviewCount: number;
-  images: string[];
-  description: string;
-}
-
-export interface TrendingConfig {
-  isEnabled: boolean;
-  sectionTitle: string;
-  highlightWord: string;
-  subtitle: string;
-  items: TrendingItem[];
-}
-
-const DEFAULT_TRENDING_ITEMS: TrendingItem[] = [];
-
-function loadTrendingConfig(): TrendingConfig {
-  try {
-    const saved = localStorage.getItem("rs_fashions_trending_config");
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      return {
-        isEnabled: parsed.isEnabled ?? true,
-        sectionTitle: parsed.sectionTitle || "Trending",
-        highlightWord: parsed.highlightWord || "Pieces.",
-        subtitle:
-          parsed.subtitle ||
-          "Hand-picked heritage Gadwal drapes celebrated for their timeless interlocked zari weave.",
-        items:
-          Array.isArray(parsed.items) && parsed.items.length > 0
-            ? parsed.items
-            : [],
-      };
-    }
-  } catch {}
-  return {
-    isEnabled: true,
-    sectionTitle: "Trending",
-    highlightWord: "Pieces.",
-    subtitle:
-      "Hand-picked heritage Gadwal drapes celebrated for their timeless interlocked zari weave.",
-    items: [],
-  };
-}
+import { Sparkles, Package } from "lucide-react";
+import { API_BASE } from "../../config/api";
+import type { Product } from "../../types/inventory";
 
 export default function TrendingProducts() {
-  const [config, setConfig] = useState<TrendingConfig>(loadTrendingConfig);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const handleConfigChange = () => {
-      setConfig(loadTrendingConfig());
+    let isMounted = true;
+
+    async function fetchTrendingProducts() {
+      try {
+        const res = await fetch(`${API_BASE}/catalog/products?trending=true`);
+        if (!res.ok) {
+          if (isMounted) {
+            setProducts([]);
+            setLoading(false);
+          }
+          return;
+        }
+        const data = await res.json();
+        const list: Product[] = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.products)
+          ? data.products
+          : [];
+
+        // Strict verification: only sarees marked as Special Offer appear
+        const specialOffers = list.filter((p) => {
+          return (
+            p.isSpecialOffer === true ||
+            (Array.isArray(p.tags) &&
+              p.tags.some(
+                (tag) => String(tag).trim().toLowerCase() === "special_offer"
+              ))
+          );
+        });
+
+        if (isMounted) {
+          setProducts(specialOffers);
+          setLoading(false);
+        }
+      } catch (err) {
+        console.warn("Failed to fetch trending special offer sarees:", err);
+        if (isMounted) {
+          setProducts([]);
+          setLoading(false);
+        }
+      }
+    }
+
+    fetchTrendingProducts();
+
+    const handleSync = () => {
+      fetchTrendingProducts();
     };
-    window.addEventListener("trendingConfigChanged", handleConfigChange);
-    window.addEventListener("storage", handleConfigChange);
+
+    window.addEventListener("storage", handleSync);
+    window.addEventListener("catalogUpdated", handleSync);
+
     return () => {
-      window.removeEventListener("trendingConfigChanged", handleConfigChange);
-      window.removeEventListener("storage", handleConfigChange);
+      isMounted = false;
+      window.removeEventListener("storage", handleSync);
+      window.removeEventListener("catalogUpdated", handleSync);
     };
   }, []);
 
-  if (!config.isEnabled || config.items.length === 0) {
+  // If loading or no sarees are marked as Special Offer, hide the section cleanly
+  if (loading || products.length === 0) {
     return null;
   }
 
-  const marqueeItems = [...config.items, ...config.items];
+  // Double items for seamless infinite marquee loop if there are multiple items
+  const displayItems =
+    products.length >= 3 ? [...products, ...products] : products;
 
   return (
-    <section className="relative overflow-hidden bg-[#FAF7F2] py-14 sm:py-24 font-sans select-none">
-      {/* Ambient Lighting Accents */}
+    <section className="relative overflow-hidden bg-[#FAF7F2] py-14 sm:py-24 font-sans select-none border-t border-stone-200/50">
+      {/* Ambient Luxury Lighting Accents */}
       <div className="pointer-events-none absolute -top-20 left-1/4 h-80 w-80 rounded-full bg-linear-to-br from-[#E8D4C8]/35 to-[#8E3D51]/8 blur-3xl" />
       <div className="pointer-events-none absolute bottom-0 right-10 h-96 w-96 rounded-full bg-linear-to-tl from-[#F0E6DD]/60 to-transparent blur-3xl" />
 
@@ -88,17 +89,16 @@ export default function TrendingProducts() {
       <div className="relative mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-10">
         <div className="mb-10 flex flex-col justify-between gap-4 border-b border-black/8 pb-6 sm:flex-row sm:items-end">
           <div>
-            <span className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#8E3D51]">
-              Curated Highlights &bull; SiCo Gadwal Sarees
-            </span>
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-100/80 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-[#8E3D51]">
+              <Sparkles size={11} className="text-amber-600" />
+              <span>Special Offer Showcase &bull; SiCo Gadwal</span>
+            </div>
             <h2 className="mt-2 font-serif text-3xl sm:text-5xl font-normal tracking-tight text-[#2A2421]">
-              {config.sectionTitle}{" "}
-              <span className="italic font-light text-[#8E3D51]">
-                {config.highlightWord}
-              </span>
+              Trending{" "}
+              <span className="italic font-light text-[#8E3D51]">Pieces.</span>
             </h2>
             <p className="mt-1.5 text-xs text-[#7A6E64] font-light max-w-lg leading-relaxed">
-              {config.subtitle}
+              Exclusively curated SiCo Gadwal creations currently marked on Special Offer by our weavers and curators.
             </p>
           </div>
 
@@ -122,92 +122,98 @@ export default function TrendingProducts() {
         <div className="pointer-events-none absolute inset-y-0 left-0 z-20 w-16 bg-linear-to-r from-[#FAF7F2] to-transparent sm:w-28" />
         <div className="pointer-events-none absolute inset-y-0 right-0 z-20 w-16 bg-linear-to-l from-[#FAF7F2] to-transparent sm:w-28" />
 
-        {/* Moving Track: Right to Left (0% to -50%) */}
+        {/* Moving Track */}
         <motion.div
-          className="flex w-max gap-6 px-3"
-          animate={{ x: ["0%", "-50%"] }}
+          className="flex w-max gap-6 px-4"
+          animate={{ x: products.length >= 3 ? ["0%", "-50%"] : "0%" }}
           transition={{
             ease: "linear",
-            duration: 28,
+            duration: Math.max(20, products.length * 6),
             repeat: Infinity,
           }}
           whileHover={{ animationPlayState: "paused" }}
         >
-          {marqueeItems.map((item, idx) => {
-            const primaryImage = item.images?.[0] || DEFAULT_TRENDING_ITEMS[0].images[0];
-            const hoverImage = item.images?.[1] || primaryImage;
+          {displayItems.map((item, idx) => {
+            const primaryImage =
+              item.imageUrl ||
+              (Array.isArray(item.images) && item.images[0]) ||
+              (item.variants?.[0]?.imageUrl ?? "");
+            const hoverImage =
+              (Array.isArray(item.images) && item.images[1]) || primaryImage;
+            const price = Number(item.salePrice || 0);
 
             return (
               <div
                 key={`${item.id}-${idx}`}
-                className="group relative flex w-70 shrink-0 flex-col sm:w-[320px] lg:w-85"
+                className="group relative flex w-72 shrink-0 flex-col sm:w-[320px] lg:w-80"
               >
                 {/* Saree Card Frame */}
-                <div className="relative block aspect-[0.74] w-full overflow-hidden rounded-[26px] bg-[#EDE8E0] shadow-[0_8px_30px_rgba(42,36,33,0.04)] border border-stone-200/60 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(142,61,81,0.14)] hover:-translate-y-1">
-                  <Link
-                    to={`/product/${item.id}`}
-                    state={{
-                      product: {
-                        id: item.id,
-                        name: item.name,
-                        category: "SiCo Gadwal Sarees",
-                        material: item.material || "SiCo",
-                        price: item.price,
-                        originalPrice: item.originalPrice,
-                        images: item.images,
-                        colors: ["Standard"],
-                        sizes: ["Free Size"],
-                        description: item.description,
-                        longDescription:
-                          item.description ||
-                          "Authentic handcrafted SiCo Gadwal drape with heritage zari border.",
-                        stock: 6,
-                        rating: item.rating,
-                        reviewCount: item.reviewCount,
-                      },
-                    }}
-                    className="absolute inset-0 z-0"
-                  >
+                <div className="relative block aspect-[0.78] w-full overflow-hidden rounded-[26px] bg-[#EDE8E0] shadow-[0_8px_30px_rgba(42,36,33,0.04)] border border-stone-200/60 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(142,61,81,0.14)] hover:-translate-y-1">
+                  <Link to={`/product/${item.id}`} className="absolute inset-0 z-0">
                     {/* Primary Image */}
-                    <img
-                      src={primaryImage}
-                      alt={item.name}
-                      loading="lazy"
-                      className="h-full w-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-105"
-                    />
+                    {primaryImage ? (
+                      <img
+                        src={primaryImage}
+                        alt={item.name}
+                        loading="lazy"
+                        className="h-full w-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-stone-100">
+                        <Package size={42} className="text-stone-300" />
+                      </div>
+                    )}
 
                     {/* Alternate Hover Image */}
-                    {hoverImage && (
+                    {hoverImage && hoverImage !== primaryImage && (
                       <img
                         src={hoverImage}
-                        alt={`${item.name} alternate angle`}
+                        alt={`${item.name} alternate view`}
                         loading="lazy"
                         className="absolute inset-0 h-full w-full object-cover object-center opacity-0 transition-opacity duration-700 ease-out group-hover:opacity-100 group-hover:scale-105"
                       />
                     )}
 
                     {/* Ambient Dark Gradient Layer */}
-                    <div className="absolute inset-0 bg-linear-to-t from-stone-950/70 via-stone-950/15 to-black/10 opacity-70 transition-opacity duration-300 group-hover:opacity-85" />
+                    <div className="absolute inset-0 bg-linear-to-t from-stone-950/75 via-stone-950/20 to-black/10 opacity-70 transition-opacity duration-300 group-hover:opacity-85" />
                   </Link>
 
+                  {/* Special Offer Luxury Ribbon Badge */}
+                  <div className="absolute left-3.5 top-3.5 z-10 flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 px-3 py-1 shadow-md backdrop-blur-xs">
+                    <Sparkles size={11} className="text-white animate-pulse" />
+                    <span className="text-[9.5px] font-bold uppercase tracking-wider text-white">
+                      Special Offer
+                    </span>
+                  </div>
+
                   {/* Floating Glassmorphic Details Plate */}
-                  <div className="absolute inset-x-3 bottom-3 z-10 rounded-2xl bg-white/80 p-4 shadow-sm backdrop-blur-md border border-white/70 transition-all duration-300 group-hover:bg-white/95 group-hover:shadow-md">
+                  <div className="absolute inset-x-3 bottom-3 z-10 rounded-2xl bg-white/85 p-3.5 shadow-sm backdrop-blur-md border border-white/70 transition-all duration-300 group-hover:bg-white/95 group-hover:shadow-md">
                     <div className="flex items-center justify-between text-[10px] tracking-wider text-[#8C7A6B] mb-1">
                       <span className="font-semibold text-[#8E3D51] truncate">
-                        {item.material || "SiCo"}
+                        SiCo Gadwal Handloom
                       </span>
+                      {item.variants && item.variants.length > 0 && (
+                        <span className="text-stone-500 font-mono text-[9.5px]">
+                          {item.variants.length} {item.variants.length === 1 ? "shade" : "shades"}
+                        </span>
+                      )}
                     </div>
 
                     <Link
                       to={`/product/${item.id}`}
-                      className="block font-serif text-sm sm:text-[15px] font-normal leading-snug tracking-tight text-[#2A2421] line-clamp-1 hover:text-[#8E3D51] transition-colors"
+                      className="block font-serif text-sm sm:text-[15px] font-semibold leading-snug tracking-tight text-[#2A2421] line-clamp-1 hover:text-[#8E3D51] transition-colors"
                     >
                       {item.name}
                     </Link>
 
-                    <p className="mt-1 line-clamp-1 text-[11px] text-[#786C63] font-light italic">
-                      {item.description}
-                    </p>
+                    <div className="mt-2 flex items-center justify-between pt-1 border-t border-stone-100">
+                      <span className="text-sm font-bold text-stone-900">
+                        ₹{price.toLocaleString("en-IN")}
+                      </span>
+                      <span className="text-[10px] font-bold text-[#8E3D51] uppercase tracking-wider group-hover:underline">
+                        View Drape &rarr;
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>

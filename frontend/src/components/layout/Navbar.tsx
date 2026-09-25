@@ -317,7 +317,7 @@ function Navbar() {
                                 <span className="font-medium">Profile Details</span>
                               </Link>
 
-                              {currentUser.role === "admin" && (
+                              {Boolean(currentUser.role === "admin" && typeof window !== "undefined" && localStorage.getItem("rs_admin_session")) && (
                                 <>
                                   <div className="my-1 border-t border-stone-100" />
                                   <Link to={ADMIN_SECRET_PATH} onClick={() => setIsUserDropdownOpen(false)} className="flex items-center gap-2.5 rounded-xl bg-amber-50 px-3 py-2 font-semibold text-amber-950 transition-colors hover:bg-amber-100">

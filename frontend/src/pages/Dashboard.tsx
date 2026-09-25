@@ -331,13 +331,16 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
         if (Array.isArray(d.sales)) {
           d.sales.forEach((s: any) => {
             if (s.invoiceNumber) {
+              const st = (s.orderStatus || s.order_status || "").toLowerCase();
               fulfillMap[s.invoiceNumber] = {
                 status:
-                  s.orderStatus === "delivered"
+                  st === "delivered"
                     ? "delivered"
-                    : s.orderStatus === "shipped"
+                    : st === "shipped"
                       ? "shipped"
-                      : "packaging",
+                      : st === "packaging" || st === "processing"
+                        ? "packaging"
+                        : "new",
                 trackingNumber: "",
                 carrierPartner: "",
               };

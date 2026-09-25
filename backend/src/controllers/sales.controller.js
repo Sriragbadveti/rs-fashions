@@ -160,7 +160,7 @@ export async function getCustomerOrders(req, res) {
               }
             }
 
-            const effectiveStatus = localFulfillment.status || o.order_status || "processing";
+            const effectiveStatus = localFulfillment.status || o.order_status || "new";
             const trackingUrl = awb ? getCourierTrackingUrl(carrier, awb) : null;
 
             return {
@@ -400,7 +400,7 @@ export async function updateFulfillment(req, res) {
       }
 
       const updatedFulfillment = saveFulfillmentToStore(invoiceNumber, {
-        status: status || data?.[0]?.order_status || "packaging",
+        status: status !== undefined ? status : (data?.[0]?.order_status || "new"),
         trackingNumber: effectiveAwb,
         carrierPartner: effectiveCarrier,
         trackingUrl: getCourierTrackingUrl(effectiveCarrier, effectiveAwb),
@@ -417,7 +417,7 @@ export async function updateFulfillment(req, res) {
     }
 
     const localFulfillment = saveFulfillmentToStore(invoiceNumber, {
-      status: status || "packaging",
+      status: status !== undefined ? status : "new",
       trackingNumber: trackingNumber || "",
       carrierPartner: carrierPartner || "RS Fashions Express",
       trackingUrl: getCourierTrackingUrl(carrierPartner || "RS Fashions Express", trackingNumber || ""),

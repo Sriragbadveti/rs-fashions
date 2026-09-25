@@ -542,7 +542,7 @@ function MobileMenu({ onClose }: MobileMenuProps) {
                       </Link>
                     </div>
 
-                    {currentUser.role === "admin" && (
+                    {Boolean(currentUser.role === "admin" && typeof window !== "undefined" && localStorage.getItem("rs_admin_session")) && (
                       <Link
                         to={ADMIN_SECRET_PATH}
                         onClick={handleDismiss}

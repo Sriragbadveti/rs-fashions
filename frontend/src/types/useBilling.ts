@@ -55,20 +55,62 @@ const INVOICE_COUNTER_KEY = "rsf_last_invoice_number";
 // (e.g. if you later build an invoice-history page).
 // -----------------------------------------------------------------
 
-// Reads the last invoice number from localStorage, adds 1, saves it
-// back, and returns the new number as a string.
-export const getNextInvoiceNumber = (): string => {
-  const lastNumber = parseInt(
+// Formats any numeric invoice number with leading zeros (at least 3 digits: "001", "002"...)
+export const formatInvoiceNumber = (inv: string | number | null | undefined): string => {
+  if (inv === null || inv === undefined) return "";
+  const s = String(inv).trim();
+  if (/^\d+$/.test(s)) {
+    return s.padStart(3, "0");
+  }
+  return s;
+};
+
+// Reads the last invoice number from storage, adds 1, saves it back,
+// and returns the formatted sequential number starting from "001" (001, 002, 003...).
+export const getNextInvoiceNumber = (existingSales?: Array<{ invoiceNumber?: string; invoice_number?: string }>): string => {
+  let maxNumber = parseInt(
     localStorage.getItem(INVOICE_COUNTER_KEY) || "0",
     10
   );
+  if (isNaN(maxNumber)) maxNumber = 0;
 
-  const nextNumber = lastNumber + 1;
+  // Cross-reference existing sales to prevent duplicates across page refreshes
+  if (Array.isArray(existingSales) && existingSales.length > 0) {
+    for (const s of existingSales) {
+      const inv = s.invoiceNumber || s.invoice_number;
+      if (inv && /^\d+$/.test(String(inv).trim())) {
+        const num = parseInt(String(inv).trim(), 10);
+        if (!isNaN(num) && num > maxNumber) {
+          maxNumber = num;
+        }
+      }
+    }
+  } else {
+    try {
+      const stored = localStorage.getItem("rs_admin_sales_history");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          for (const s of parsed) {
+            const inv = s.invoiceNumber || s.invoice_number;
+            if (inv && /^\d+$/.test(String(inv).trim())) {
+              const num = parseInt(String(inv).trim(), 10);
+              if (!isNaN(num) && num > maxNumber) {
+                maxNumber = num;
+              }
+            }
+          }
+        }
+      }
+    } catch {}
+  }
 
+  const nextNumber = maxNumber + 1;
   localStorage.setItem(INVOICE_COUNTER_KEY, String(nextNumber));
 
-  return String(nextNumber);
+  return String(nextNumber).padStart(3, "0");
 };
+
 
 export interface CompleteBillOptions {
   commitImmediate?: boolean;
