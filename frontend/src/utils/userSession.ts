@@ -235,15 +235,6 @@ export function setUserSession(data: Partial<UserSession> & { name: string; emai
     // Reactivate patron status in admin CRM
     markCustomerActive(session.email, session.phone);
 
-    // Also sync admin session if admin role
-    if (session.role === "admin") {
-      localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify({
-        name: session.name,
-        email: session.email,
-        role: "Superadmin",
-      }));
-    }
-
     // Auto-migrate guest addresses into this patron's saved addresses
     try {
       const guestRaw = localStorage.getItem("rs_saved_addresses_guest");

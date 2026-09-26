@@ -7,9 +7,17 @@ import {
   initiateGoogleAuth,
   handleGoogleCallback,
   verifyGoogleToken,
+  adminLogin,
+  adminLogout,
+  verifyAdminSession,
 } from "../controllers/auth.controller.js";
 
 const router = Router();
+
+// Admin Authentication (Cryptographic Session Isolation)
+router.post("/admin-login", adminLogin);
+router.post("/admin-logout", adminLogout);
+router.get("/admin-verify", verifyAdminSession);
 
 // Google OAuth 2.0 routes
 router.get("/google", initiateGoogleAuth);

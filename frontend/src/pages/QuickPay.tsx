@@ -147,11 +147,10 @@ export default function QuickPay() {
                   setIsPaid(true);
                   setPaymentDetails(secondActual);
                 } else {
-                  setIsPaid(true); // Payment details were returned by Cashfree JS SDK
-                  setPaymentDetails({ orderId, paymentId: result.paymentDetails?.payment_id || `cf_pay_${Date.now()}` });
+                  setErrorMessage("Payment is pending or awaiting confirmation from bank. Please check your transaction.");
                 }
               } catch {
-                setIsPaid(true);
+                setErrorMessage("Unable to verify payment with server. Please check your order history.");
               }
               setIsVerifying(false);
               setIsLoading(false);
@@ -159,7 +158,7 @@ export default function QuickPay() {
             return;
           }
         } catch {
-          setIsPaid(true);
+          setErrorMessage("Failed to reach server for payment confirmation.");
         } finally {
           setIsVerifying(false);
           setIsLoading(false);

@@ -133,7 +133,7 @@ export async function getCashfreeOrder(orderId) {
   if (!isConfigured) {
     return {
       order_id: orderId,
-      order_status: "PAID",
+      order_status: "ACTIVE",
       is_mock: true,
     };
   }

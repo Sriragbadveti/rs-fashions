@@ -1,8 +1,20 @@
 import { createClient } from "@supabase/supabase-js";
 import { API_BASE } from "../config/api";
+import { getAdminAuthHeaders } from "../utils/adminSession";
 import { type Product } from "../data/products";
 import type { DashboardProduct, Category, StockMovement, CustomerProfile, TrackedOrder, CompletedSale } from "../types/dashboard";
 import { getCourierTrackingUrl, LOCAL_STORAGE_FULFILLMENTS } from "../context/OrderFulfillmentContext";
+
+function adminFetch(url: string, init: RequestInit = {}): Promise<Response> {
+  const adminHeaders = getAdminAuthHeaders();
+  return fetch(url, {
+    ...init,
+    headers: {
+      ...adminHeaders,
+      ...(init.headers || {}),
+    },
+  });
+}
 
 // Environment variables from Vite
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "";
@@ -377,7 +389,7 @@ export const StoreService = {
     trackedOrders: TrackedOrder[];
   }> {
     try {
-      const res = await fetch(`${API_BASE}/admin/bootstrap`);
+      const res = await adminFetch(`${API_BASE}/admin/bootstrap`);
       const json = await res.json();
       if (json.success) {
         if (json.products) localStorage.setItem(LOCAL_STORAGE_PRODUCTS, JSON.stringify(json.products));
@@ -420,7 +432,7 @@ export const StoreService = {
   // 1.1 ADMIN DASHBOARD PRODUCTS
   async getDashboardProducts(): Promise<DashboardProduct[]> {
     try {
-      const res = await fetch(`${API_BASE}/admin/bootstrap`);
+      const res = await adminFetch(`${API_BASE}/admin/bootstrap`);
       const json = await res.json();
       if (json.success && json.products) {
         return json.products;
@@ -465,7 +477,7 @@ export const StoreService = {
 
   async addDashboardProduct(product: DashboardProduct, categoryId: string): Promise<DashboardProduct> {
     try {
-      await fetch(`${API_BASE}/admin/products`, {
+      await adminFetch(`${API_BASE}/admin/products`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...product, categoryId }),
@@ -482,7 +494,7 @@ export const StoreService = {
 
   async updateDashboardProduct(product: DashboardProduct): Promise<DashboardProduct> {
     try {
-      await fetch(`${API_BASE}/admin/products/${encodeURIComponent(product.id)}`, {
+      await adminFetch(`${API_BASE}/admin/products/${encodeURIComponent(product.id)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(product),
@@ -499,7 +511,7 @@ export const StoreService = {
 
   async deleteDashboardProduct(id: string): Promise<boolean> {
     try {
-      await fetch(`${API_BASE}/admin/products/${encodeURIComponent(id)}`, {
+      await adminFetch(`${API_BASE}/admin/products/${encodeURIComponent(id)}`, {
         method: "DELETE",
       });
     } catch (err) {
@@ -515,7 +527,7 @@ export const StoreService = {
   // 1.2 CATEGORIES
   async getCategories(): Promise<Category[]> {
     try {
-      const res = await fetch(`${API_BASE}/admin/categories`);
+      const res = await adminFetch(`${API_BASE}/admin/categories`);
       const json = await res.json();
       if (json.success && Array.isArray(json.data) && json.data.length > 0) {
         return json.data.map((c: any) => ({
@@ -562,7 +574,7 @@ export const StoreService = {
 
   async addCategory(category: Category): Promise<Category> {
     try {
-      await fetch(`${API_BASE}/admin/categories`, {
+      await adminFetch(`${API_BASE}/admin/categories`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(category),
@@ -579,7 +591,7 @@ export const StoreService = {
   // 1.3 STOCK MOVEMENTS
   async getStockMovements(): Promise<StockMovement[]> {
     try {
-      const res = await fetch(`${API_BASE}/admin/bootstrap`);
+      const res = await adminFetch(`${API_BASE}/admin/bootstrap`);
       const json = await res.json();
       if (json.success && json.stockMovements) {
         return json.stockMovements;
@@ -620,7 +632,7 @@ export const StoreService = {
 
   async addStockMovement(movement: StockMovement): Promise<StockMovement> {
     try {
-      await fetch(`${API_BASE}/admin/stock-movements`, {
+      await adminFetch(`${API_BASE}/admin/stock-movements`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(movement),
@@ -637,7 +649,7 @@ export const StoreService = {
   // 1.4 PATRONS & CUSTOMER CRM
   async getCustomers(): Promise<CustomerProfile[]> {
     try {
-      const res = await fetch(`${API_BASE}/admin/bootstrap`);
+      const res = await adminFetch(`${API_BASE}/admin/bootstrap`);
       const json = await res.json();
       if (json.success && json.customers) {
         return json.customers;
@@ -677,7 +689,7 @@ export const StoreService = {
 
   async addCustomer(customer: CustomerProfile): Promise<CustomerProfile> {
     try {
-      await fetch(`${API_BASE}/admin/customers`, {
+      await adminFetch(`${API_BASE}/admin/customers`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(customer),
@@ -693,7 +705,7 @@ export const StoreService = {
 
   async updateCustomer(customer: CustomerProfile): Promise<CustomerProfile> {
     try {
-      await fetch(`${API_BASE}/admin/customers`, {
+      await adminFetch(`${API_BASE}/admin/customers`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(customer),
@@ -724,7 +736,7 @@ export const StoreService = {
   // 1.5 TRACKED ORDERS & DISPATCHES
   async getTrackedOrders(): Promise<TrackedOrder[]> {
     try {
-      const res = await fetch(`${API_BASE}/admin/bootstrap`);
+      const res = await adminFetch(`${API_BASE}/admin/bootstrap`);
       const json = await res.json();
       if (json.success && json.trackedOrders) {
         return json.trackedOrders;
@@ -768,7 +780,7 @@ export const StoreService = {
 
   async addTrackedOrder(order: TrackedOrder): Promise<TrackedOrder> {
     try {
-      await fetch(`${API_BASE}/admin/tracked-orders`, {
+      await adminFetch(`${API_BASE}/admin/tracked-orders`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(order),
@@ -784,7 +796,7 @@ export const StoreService = {
 
   async updateTrackedOrder(order: TrackedOrder): Promise<TrackedOrder> {
     try {
-      await fetch(`${API_BASE}/admin/tracked-orders`, {
+      await adminFetch(`${API_BASE}/admin/tracked-orders`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(order),
@@ -815,7 +827,7 @@ export const StoreService = {
   // 1.6 COMPLETED SALES & POS BILLS
   async getCompletedSales(): Promise<CompletedSale[]> {
     try {
-      const res = await fetch(`${API_BASE}/admin/bootstrap`);
+      const res = await adminFetch(`${API_BASE}/admin/bootstrap`);
       const json = await res.json();
       if (json.success && json.sales) {
         return json.sales;
@@ -889,7 +901,7 @@ export const StoreService = {
 
   async addCompletedSale(sale: CompletedSale): Promise<CompletedSale> {
     try {
-      await fetch(`${API_BASE}/admin/sales`, {
+      await adminFetch(`${API_BASE}/admin/sales`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(sale),
@@ -1518,6 +1530,7 @@ export const StoreService = {
     orderCurrency?: string;
     orderStatus?: string;
     environment?: string;
+    alreadyPaid?: boolean;
     message?: string;
   }> {
     try {
@@ -1536,6 +1549,7 @@ export const StoreService = {
         orderCurrency: actualData.orderCurrency,
         orderStatus: actualData.orderStatus,
         environment: actualData.environment,
+        alreadyPaid: Boolean(actualData.alreadyPaid),
         message: data.message,
       };
     } catch (err: any) {
@@ -1578,10 +1592,42 @@ export const StoreService = {
     } catch (err: any) {
       console.warn("Cashfree verify error:", err);
       return {
-        success: true,
-        verified: true,
-        paid: true,
+        success: false,
+        verified: false,
+        paid: false,
         orderId: payload.orderId,
+        message: err.message || "Failed to verify payment with server",
+      };
+    }
+  },
+
+  async getCashfreePaymentStatus(orderId: string): Promise<{
+    success: boolean;
+    paid: boolean;
+    orderId?: string;
+    orderStatus?: string;
+    paymentSessionId?: string | null;
+    canRetry?: boolean;
+    message?: string;
+  }> {
+    try {
+      const res = await fetch(`${API_BASE}/payments/cashfree/status/${encodeURIComponent(orderId)}`);
+      const data = await res.json();
+      const actualData = data.data || data;
+      return {
+        success: Boolean(data.success),
+        paid: Boolean(actualData.paid),
+        orderId: actualData.orderId || orderId,
+        orderStatus: actualData.orderStatus,
+        paymentSessionId: actualData.paymentSessionId,
+        canRetry: Boolean(actualData.canRetry),
+        message: data.message,
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        paid: false,
+        message: err.message || "Failed to check payment status",
       };
     }
   },

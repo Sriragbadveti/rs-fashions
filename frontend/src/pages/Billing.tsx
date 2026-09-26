@@ -166,9 +166,12 @@ const Billing: React.FC<BillingProps> = ({
       triggerToast("Please enter a valid 10-digit customer phone number.");
       return null;
     }
+    if (isGeneratingLink) return null;
     setPhoneError(false);
     setPaymentLinkError(null);
     setIsGeneratingLink(true);
+
+    const stableInvoice = `RSF-POS-${cleanPhone.slice(-4)}-${liveNetPayable}`;
 
     try {
       const res = await fetch(`${API_BASE}/payments/cashfree/create-payment-link`, {
@@ -179,7 +182,7 @@ const Billing: React.FC<BillingProps> = ({
           customerName: customer.name?.trim() || "Patron",
           customerPhone: cleanPhone,
           customerEmail: customer.email?.trim() || "patron@rsfashions.in",
-          invoiceNumber: `RSF-POS-${Date.now().toString().slice(-6)}`,
+          invoiceNumber: stableInvoice,
         }),
       });
       const json = await res.json();

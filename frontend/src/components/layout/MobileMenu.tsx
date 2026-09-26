@@ -7,14 +7,13 @@ import {
   FiChevronDown,
 } from "react-icons/fi";
 import { Link, useNavigate } from "react-router-dom";
-import { Package, MapPin, LogOut, Sparkles, User } from "lucide-react";
+import { Package, MapPin, LogOut, User } from "lucide-react";
 import {
   getUserSession,
   clearUserSession,
   type UserSession,
 } from "../../utils/userSession";
 import logo from "../../assets/logo/logo1.png";
-import { ADMIN_SECRET_PATH } from "../../config/routes";
 
 interface MobileMenuProps {
   onClose: () => void;
@@ -541,20 +540,6 @@ function MobileMenu({ onClose }: MobileMenuProps) {
                         <FiArrowUpRight size={12} className="text-[#8C7A6B]" />
                       </Link>
                     </div>
-
-                    {Boolean(currentUser.role === "admin" && typeof window !== "undefined" && localStorage.getItem("rs_admin_session")) && (
-                      <Link
-                        to={ADMIN_SECRET_PATH}
-                        onClick={handleDismiss}
-                        className="flex items-center justify-between rounded-xl bg-amber-100/70 border border-amber-300 p-3 text-xs font-bold text-amber-950"
-                      >
-                        <span className="flex items-center gap-1.5">
-                          <Sparkles size={14} className="text-amber-700" />
-                          Admin Portal & POS
-                        </span>
-                        <FiArrowUpRight size={13} />
-                      </Link>
-                    )}
                   </div>
                 ) : (
                   <Link

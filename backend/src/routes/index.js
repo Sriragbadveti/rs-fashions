@@ -12,60 +12,63 @@ import settingsRoutes from "./settings.routes.js";
 import uploadRoutes from "./upload.routes.js";
 import reviewsRoutes from "./reviews.routes.js";
 import authRoutes from "./auth.routes.js";
+import { requireAdminAuth } from "../middleware/adminAuth.js";
 
 const apiRouter = Router();
 
-// Authentication & Device Sessions
+// Authentication & Device Sessions (Public verification and passkey login)
 apiRouter.use("/auth", authRoutes);
 apiRouter.use("/admin/auth", authRoutes);
 
-// Single-Shot Hydration
-apiRouter.use("/", bootstrapRoutes);
-apiRouter.use("/admin", bootstrapRoutes);
+// ==========================================
+// PROTECTED ADMIN ROUTER SCOPE
+// All routes under /admin/* require valid cryptographic server token
+// ==========================================
+const adminRouter = Router();
+adminRouter.use(requireAdminAuth);
 
-// Saree Catalog & Categories
+adminRouter.use("/bootstrap", bootstrapRoutes);
+adminRouter.use("/catalog", catalogRoutes);
+adminRouter.use("/billing", billingRoutes);
+adminRouter.use("/inventory", inventoryRoutes);
+adminRouter.use("/crm", crmRoutes);
+adminRouter.use("/tracking", trackingRoutes);
+adminRouter.use("/sales", salesRoutes);
+adminRouter.use("/settings", settingsRoutes);
+adminRouter.use("/reviews", reviewsRoutes);
+
+adminRouter.use("/", bootstrapRoutes);
+adminRouter.use("/", catalogRoutes);
+adminRouter.use("/", billingRoutes);
+adminRouter.use("/", inventoryRoutes);
+adminRouter.use("/", crmRoutes);
+adminRouter.use("/", trackingRoutes);
+adminRouter.use("/", salesRoutes);
+adminRouter.use("/", settingsRoutes);
+
+apiRouter.use("/admin", adminRouter);
+
+// ==========================================
+// PUBLIC STOREFRONT & SHARED SERVICES
+// ==========================================
 apiRouter.use("/catalog", catalogRoutes);
-apiRouter.use("/admin", catalogRoutes);
-apiRouter.use("/", catalogRoutes);
-
-// Billing & Invoicing
 apiRouter.use("/billing", billingRoutes);
-apiRouter.use("/admin", billingRoutes);
-apiRouter.use("/", billingRoutes);
-
-// Payment Gateways
 apiRouter.use("/payments", paymentsRoutes);
-
-// Inventory & Audit Trail
 apiRouter.use("/inventory", inventoryRoutes);
-apiRouter.use("/admin", inventoryRoutes);
-apiRouter.use("/", inventoryRoutes);
-
-// CRM & Customers
 apiRouter.use("/crm", crmRoutes);
-apiRouter.use("/admin", crmRoutes);
-apiRouter.use("/", crmRoutes);
-
-// Loom & Courier Tracking
 apiRouter.use("/tracking", trackingRoutes);
-apiRouter.use("/admin", trackingRoutes);
-apiRouter.use("/", trackingRoutes);
-
-// Sales Ledger & Analytics
 apiRouter.use("/sales", salesRoutes);
-apiRouter.use("/admin", salesRoutes);
-apiRouter.use("/", salesRoutes);
-
-// Store Settings
 apiRouter.use("/settings", settingsRoutes);
-apiRouter.use("/admin", settingsRoutes);
-apiRouter.use("/", settingsRoutes);
-
-// Product Reviews (Admin & Storefront)
 apiRouter.use("/reviews", reviewsRoutes);
-apiRouter.use("/admin/reviews", reviewsRoutes);
-
-// File & Image Storage (Supabase 'sarees' bucket)
 apiRouter.use("/upload", uploadRoutes);
+
+// Backward-compatible storefront fallback mounts
+apiRouter.use("/", bootstrapRoutes);
+apiRouter.use("/", catalogRoutes);
+apiRouter.use("/", billingRoutes);
+apiRouter.use("/", crmRoutes);
+apiRouter.use("/", trackingRoutes);
+apiRouter.use("/", salesRoutes);
+apiRouter.use("/", settingsRoutes);
 
 export default apiRouter;

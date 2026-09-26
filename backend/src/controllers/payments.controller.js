@@ -2,13 +2,21 @@ import {
   createCashfreeOrder as createCFOrderService,
   getCashfreeOrder,
   getCashfreeOrderPayments,
-  createCashfreePaymentLink as createCFLinkService,
   verifyCashfreeWebhookSignature,
 } from "../services/cashfree.service.js";
 import { supabase } from "../config/supabase.js";
 import { ENV } from "../config/env.js";
 import { successResponse, errorResponse } from "../utils/response.js";
 import { invalidateBootstrapCache } from "./bootstrap.controller.js";
+import {
+  getPaymentHistory,
+  savePaymentAttempt,
+  updatePaymentAttemptStatus,
+  findOrderFromStore,
+  markOrderPaidInStore,
+  isWebhookEventProcessed,
+  recordWebhookEvent,
+} from "../database/localStore.js";
 
 function safeErrorMsg(err) {
   if (!err) return "Payment operation failed";
@@ -23,36 +31,208 @@ function safeErrorMsg(err) {
   return msg;
 }
 
-// 1. CREATE CASHFREE PAYMENT ORDER (Session for Web & App Checkout)
+// Concurrency mutex lock to prevent simultaneous requests from creating duplicate Cashfree orders
+const inFlightLocks = new Map();
+
+async function acquireLock(key, timeoutMs = 8000) {
+  const start = Date.now();
+  while (inFlightLocks.has(key)) {
+    if (Date.now() - start > timeoutMs) {
+      throw new Error("Payment request concurrency timeout. Another request is currently processing.");
+    }
+    await new Promise((resolve) => setTimeout(resolve, 60));
+  }
+  inFlightLocks.set(key, Date.now());
+}
+
+function releaseLock(key) {
+  inFlightLocks.delete(key);
+}
+
+/**
+ * 1. CREATE CASHFREE PAYMENT ORDER (With Concurrency Control & Idempotency)
+ * POST /api/payments/cashfree/create-order
+ */
 export async function createCashfreeOrder(req, res) {
+  const {
+    amount,
+    currency = "INR",
+    customerName = "Valued Customer",
+    customerPhone = "9999999999",
+    customerEmail = "customer@rsfashions.in",
+    customerId,
+    orderNumber,
+    idempotencyKey,
+    orderNote = "RS Fashions Saree Order",
+    returnUrl,
+  } = req.body;
+
+  const amountInRupees = Number(amount) || 0;
+  if (amountInRupees <= 0) {
+    return errorResponse(res, "Valid payment amount is required", 400);
+  }
+
+  const cleanPhone = String(customerPhone).replace(/[^0-9]/g, "").slice(-10);
+  if (!cleanPhone || cleanPhone.length < 10) {
+    return errorResponse(res, "Valid 10-digit customer phone number is required", 400);
+  }
+
+  // Derive stable order key: orderNumber takes precedence, fallback to idempotencyKey or phone+amount
+  const orderKey = orderNumber
+    ? String(orderNumber).trim()
+    : idempotencyKey
+    ? String(idempotencyKey).trim()
+    : `cart_${cleanPhone}_${amountInRupees}`;
+
+  const cleanOrderSlug = orderKey.replace(/[^a-zA-Z0-9_-]/g, "");
+
   try {
-    const {
-      amount,
-      currency = "INR",
-      customerName = "Valued Customer",
-      customerPhone = "9999999999",
-      customerEmail = "customer@rsfashions.in",
-      customerId,
-      orderNumber,
-      orderNote = "RS Fashions Saree Order",
-      returnUrl,
-    } = req.body;
+    await acquireLock(orderKey);
 
-    const amountInRupees = Number(amount) || 0;
-    if (amountInRupees <= 0) {
-      return errorResponse(res, "Valid payment amount is required", 400);
+    // 1. Check if the internal order exists in DB / store
+    let internalOrder = findOrderFromStore(orderKey);
+    if (!internalOrder && supabase) {
+      try {
+        const { data } = await supabase
+          .from("orders")
+          .select("*")
+          .or(`order_number.eq.${orderKey},id.eq.${orderKey}`)
+          .maybeSingle();
+        if (data) internalOrder = data;
+      } catch {}
     }
 
-    const cleanPhone = String(customerPhone).replace(/[^0-9]/g, "").slice(-10);
-    if (!cleanPhone || cleanPhone.length < 10) {
-      return errorResponse(res, "Valid 10-digit customer phone number is required", 400);
+    // Server-side amount validation if order exists in DB
+    if (internalOrder && internalOrder.total) {
+      const recordedTotal = Number(internalOrder.total);
+      if (recordedTotal > 0 && Math.abs(recordedTotal - amountInRupees) > 1) {
+        return errorResponse(
+          res,
+          `Payment amount mismatch. Order requires ₹${recordedTotal}, but received ₹${amountInRupees}.`,
+          400
+        );
+      }
     }
 
-    const cfOrderId = orderNumber
-      ? `RSF_${orderNumber.replace(/[^a-zA-Z0-9_-]/g, "")}_${Date.now().toString().slice(-4)}`
-      : `RSF_CF_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    // 2. State Machine Check: If order is already PAID, return paid state immediately (NO NEW CHARGE)
+    const isOrderAlreadyPaid =
+      internalOrder &&
+      (String(internalOrder.payment_status || internalOrder.paymentStatus).toLowerCase() === "paid" ||
+        String(internalOrder.order_status || internalOrder.orderStatus).toLowerCase() === "delivered");
 
-    const isBenchmarkMock = req.headers["x-benchmark-mock"] === "true" || process.env.CASHFREE_MOCK_BENCHMARK === "true";
+    if (isOrderAlreadyPaid) {
+      return successResponse(
+        res,
+        {
+          orderId: internalOrder.order_number || internalOrder.orderNumber || orderKey,
+          orderStatus: "PAID",
+          paid: true,
+          orderAmount: Number(internalOrder.total) || amountInRupees,
+          orderCurrency: currency,
+          alreadyPaid: true,
+        },
+        "Order has already been paid successfully. No additional payment required."
+      );
+    }
+
+    // 3. Check Payment History for existing active / pending sessions
+    const history = getPaymentHistory(orderKey);
+    let attemptNumber = 1;
+
+    if (history && Array.isArray(history.attempts) && history.attempts.length > 0) {
+      const lastAttempt = history.attempts[history.attempts.length - 1];
+
+      // If last attempt is already PAID
+      if (lastAttempt.status === "PAID") {
+        return successResponse(
+          res,
+          {
+            orderId: lastAttempt.cfOrderId,
+            orderStatus: "PAID",
+            paid: true,
+            orderAmount: lastAttempt.orderAmount,
+            orderCurrency: lastAttempt.orderCurrency || currency,
+            alreadyPaid: true,
+          },
+          "Order has already been paid successfully."
+        );
+      }
+
+      // If last attempt is PENDING, verify status and reuse session if active
+      if (lastAttempt.status === "PENDING" && lastAttempt.paymentSessionId) {
+        const ageMinutes = (Date.now() - new Date(lastAttempt.createdAt).getTime()) / (60 * 1000);
+
+        // If session was created recently (< 25 mins, Cashfree default expiry is 30 mins)
+        if (ageMinutes < 25) {
+          try {
+            const cfOrderData = await getCashfreeOrder(lastAttempt.cfOrderId);
+            if (cfOrderData.order_status === "PAID") {
+              updatePaymentAttemptStatus(lastAttempt.cfOrderId, "PAID");
+              markOrderPaidInStore(orderKey, { cfOrderId: lastAttempt.cfOrderId });
+              return successResponse(
+                res,
+                {
+                  orderId: lastAttempt.cfOrderId,
+                  orderStatus: "PAID",
+                  paid: true,
+                  orderAmount: lastAttempt.orderAmount,
+                  orderCurrency: currency,
+                  alreadyPaid: true,
+                },
+                "Payment for this order was already completed."
+              );
+            }
+
+            if (cfOrderData.order_status === "ACTIVE") {
+              // REUSE existing valid payment session to prevent double payment!
+              return successResponse(
+                res,
+                {
+                  orderId: lastAttempt.cfOrderId,
+                  paymentSessionId: lastAttempt.paymentSessionId,
+                  orderAmount: lastAttempt.orderAmount,
+                  orderCurrency: lastAttempt.orderCurrency || currency,
+                  orderStatus: "ACTIVE",
+                  reused: true,
+                  attemptNumber: lastAttempt.attemptNumber,
+                },
+                "Active Cashfree payment session reused successfully"
+              );
+            }
+
+            if (cfOrderData.order_status === "EXPIRED" || cfOrderData.order_status === "TERMINATED") {
+              updatePaymentAttemptStatus(lastAttempt.cfOrderId, "EXPIRED");
+            }
+          } catch {
+            // If Cashfree call fails but session is very fresh (< 10 mins), safely reuse
+            if (ageMinutes < 10) {
+              return successResponse(
+                res,
+                {
+                  orderId: lastAttempt.cfOrderId,
+                  paymentSessionId: lastAttempt.paymentSessionId,
+                  orderAmount: lastAttempt.orderAmount,
+                  orderCurrency: lastAttempt.orderCurrency || currency,
+                  orderStatus: "ACTIVE",
+                  reused: true,
+                  attemptNumber: lastAttempt.attemptNumber,
+                },
+                "Active Cashfree payment session reused"
+              );
+            }
+          }
+        }
+      }
+
+      // If previous attempt is FAILED, EXPIRED, or CANCELLED, increment attempt counter
+      attemptNumber = (lastAttempt.attemptNumber || history.attempts.length) + 1;
+    }
+
+    // 4. Generate deterministic Cashfree Order ID linked to this internal order attempt
+    const cfOrderId = `RSF_${cleanOrderSlug}_A${attemptNumber}`;
+
+    const isBenchmarkMock =
+      req.headers["x-benchmark-mock"] === "true" || process.env.CASHFREE_MOCK_BENCHMARK === "true";
 
     const cfOrder = await createCFOrderService({
       orderId: cfOrderId,
@@ -71,29 +251,52 @@ export async function createCashfreeOrder(req, res) {
       orderNote,
       orderTags: {
         source: "RS_Fashions_WebStore",
+        orderNumber: orderKey,
+        attemptNumber: String(attemptNumber),
       },
       isMock: isBenchmarkMock,
+    });
+
+    const paymentSessionId = cfOrder.payment_session_id;
+
+    // 5. Record payment attempt in local database / history
+    savePaymentAttempt(orderKey, {
+      attemptNumber,
+      cfOrderId,
+      paymentSessionId,
+      orderAmount: amountInRupees,
+      orderCurrency: currency,
+      status: "PENDING",
+      createdAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 25 * 60 * 1000).toISOString(),
     });
 
     return successResponse(
       res,
       {
         orderId: cfOrder.order_id || cfOrderId,
-        paymentSessionId: cfOrder.payment_session_id,
+        paymentSessionId,
         orderAmount: cfOrder.order_amount || amountInRupees,
         orderCurrency: cfOrder.order_currency || currency,
         orderStatus: cfOrder.order_status || "ACTIVE",
         environment: cfOrder.environment || ENV.CASHFREE.ENV,
+        attemptNumber,
+        reused: false,
       },
       "Cashfree payment order created successfully"
     );
   } catch (err) {
     console.error("[Cashfree Controller] Create Order Error:", safeErrorMsg(err));
     return errorResponse(res, safeErrorMsg(err), 500);
+  } finally {
+    releaseLock(orderKey);
   }
 }
 
-// 2. VERIFY CASHFREE PAYMENT STATUS (Server-Side Official Check)
+/**
+ * 2. VERIFY CASHFREE PAYMENT STATUS (Server-Side Source of Truth)
+ * POST /api/payments/cashfree/verify
+ */
 export async function verifyCashfreePayment(req, res) {
   try {
     const { orderId } = req.body;
@@ -101,39 +304,57 @@ export async function verifyCashfreePayment(req, res) {
       return errorResponse(res, "Missing orderId for Cashfree verification", 400);
     }
 
-    // 1. Fetch Order & Payments from Cashfree API
+    // 1. Fetch Order & Payments directly from Cashfree API
     const orderData = await getCashfreeOrder(orderId);
     const payments = await getCashfreeOrderPayments(orderId);
 
     const isPaid =
       orderData.order_status === "PAID" ||
-      payments.some(
-        (p) => String(p.payment_status).toUpperCase() === "SUCCESS"
-      );
+      payments.some((p) => String(p.payment_status).toUpperCase() === "SUCCESS");
 
-    const successfulPayment = payments.find(
-      (p) => String(p.payment_status).toUpperCase() === "SUCCESS"
-    ) || payments[0] || {};
+    const successfulPayment =
+      payments.find((p) => String(p.payment_status).toUpperCase() === "SUCCESS") ||
+      payments[0] ||
+      {};
 
     const paymentId = successfulPayment.payment_id || `cf_pay_${Date.now()}`;
     const paymentMethod = successfulPayment.payment_group || "cashfree";
 
-    // 2. If paid and Supabase is configured, ensure order record is updated
-    if (isPaid && supabase) {
-      try {
-        await supabase
-          .from("orders")
-          .update({
-            payment_status: "paid",
-            payment_method: "cashfree",
-            updated_at: new Date().toISOString(),
-          })
-          .or(`order_number.eq.${orderId},id.eq.${orderId}`);
+    if (isPaid) {
+      // Update Payment Attempt Status
+      updatePaymentAttemptStatus(orderId, "PAID", {
+        paymentId,
+        paymentDetails: successfulPayment,
+      });
 
-        invalidateBootstrapCache();
-      } catch (dbErr) {
-        console.warn("[Cashfree Verify] DB update notice:", dbErr.message);
+      // Update Local Order Store
+      markOrderPaidInStore(orderId, {
+        paymentId,
+        paymentMethod,
+        paymentDetails: successfulPayment,
+      });
+
+      // Update Supabase if connected
+      if (supabase) {
+        try {
+          await supabase
+            .from("orders")
+            .update({
+              payment_status: "paid",
+              payment_method: "cashfree",
+              updated_at: new Date().toISOString(),
+            })
+            .or(`order_number.eq.${orderId},id.eq.${orderId}`);
+
+          invalidateBootstrapCache();
+        } catch (dbErr) {
+          console.warn("[Cashfree Verify] DB update note:", dbErr.message);
+        }
       }
+    } else if (orderData.order_status === "EXPIRED" || orderData.order_status === "TERMINATED") {
+      updatePaymentAttemptStatus(orderId, "EXPIRED");
+    } else if (orderData.order_status === "FAILED") {
+      updatePaymentAttemptStatus(orderId, "FAILED");
     }
 
     return successResponse(
@@ -154,6 +375,68 @@ export async function verifyCashfreePayment(req, res) {
   }
 }
 
+/**
+ * 3. GET PAYMENT STATUS FOR AN ORDER (For Network Recovery & Safe Retries)
+ * GET /api/payments/cashfree/status/:orderId
+ */
+export async function getPaymentStatus(req, res) {
+  try {
+    const { orderId } = req.params;
+    if (!orderId) {
+      return errorResponse(res, "Order ID is required", 400);
+    }
+
+    const history = getPaymentHistory(orderId);
+    let internalOrder = findOrderFromStore(orderId);
+
+    if (internalOrder && String(internalOrder.payment_status).toLowerCase() === "paid") {
+      return successResponse(res, {
+        orderId,
+        orderStatus: "PAID",
+        paid: true,
+      });
+    }
+
+    if (history && history.attempts.length > 0) {
+      const lastAttempt = history.attempts[history.attempts.length - 1];
+      if (lastAttempt.status === "PAID") {
+        return successResponse(res, {
+          orderId: lastAttempt.cfOrderId,
+          orderStatus: "PAID",
+          paid: true,
+        });
+      }
+
+      // Check with Cashfree
+      try {
+        const cfOrder = await getCashfreeOrder(lastAttempt.cfOrderId);
+        return successResponse(res, {
+          orderId: lastAttempt.cfOrderId,
+          orderStatus: cfOrder.order_status || lastAttempt.status,
+          paid: cfOrder.order_status === "PAID",
+          paymentSessionId: cfOrder.order_status === "ACTIVE" ? lastAttempt.paymentSessionId : null,
+          canRetry: cfOrder.order_status === "EXPIRED" || cfOrder.order_status === "FAILED",
+        });
+      } catch {
+        return successResponse(res, {
+          orderId: lastAttempt.cfOrderId,
+          orderStatus: lastAttempt.status,
+          paid: false,
+          paymentSessionId: lastAttempt.paymentSessionId,
+        });
+      }
+    }
+
+    return successResponse(res, {
+      orderId,
+      orderStatus: "NOT_FOUND",
+      paid: false,
+    });
+  } catch (err) {
+    return errorResponse(res, err.message, 500);
+  }
+}
+
 function getPublicClientUrl(req) {
   const origin = req?.headers?.origin || req?.headers?.referer;
   if (origin && typeof origin === "string" && origin.startsWith("https://")) {
@@ -169,32 +452,74 @@ function getPublicClientUrl(req) {
   return "https://rs-fashions.vercel.app";
 }
 
-// 3. CREATE CASHFREE PAYMENT LINK (For Counter POS Billing & WhatsApp Share)
+/**
+ * 4. CREATE CASHFREE PAYMENT LINK (POS / Showroom Counter Billing)
+ * POST /api/payments/cashfree/create-payment-link
+ */
 export async function createCashfreePaymentLink(req, res) {
+  const {
+    amount,
+    customerName = "Valued Customer",
+    customerPhone = "9999999999",
+    customerEmail = "customer@rsfashions.in",
+    invoiceNumber = `RSF-POS-${Date.now().toString().slice(-6)}`,
+  } = req.body;
+
+  const amountInRupees = Number(amount) || 0;
+  if (amountInRupees <= 0) {
+    return errorResponse(res, "Valid payment amount is required", 400);
+  }
+
+  const cleanPhone = String(customerPhone).replace(/[^0-9]/g, "").slice(-10);
+  if (!cleanPhone || cleanPhone.length < 10) {
+    return errorResponse(res, "Valid 10-digit customer phone number is required", 400);
+  }
+
+  const posKey = `POS_${invoiceNumber.replace(/[^a-zA-Z0-9_-]/g, "")}`;
+
   try {
-    const {
-      amount,
-      customerName = "Valued Customer",
-      customerPhone = "9999999999",
-      customerEmail = "customer@rsfashions.in",
-      invoiceNumber = `RSF-POS-${Date.now().toString().slice(-6)}`,
-    } = req.body;
+    await acquireLock(posKey);
 
-    const amountInRupees = Number(amount) || 0;
-    if (amountInRupees <= 0) {
-      return errorResponse(res, "Valid payment amount is required", 400);
+    // Check if an attempt already exists for this POS invoice
+    const history = getPaymentHistory(posKey);
+    let attemptNumber = 1;
+
+    if (history && history.attempts.length > 0) {
+      const last = history.attempts[history.attempts.length - 1];
+      if (last.status === "PAID") {
+        return successResponse(res, {
+          orderId: last.cfOrderId,
+          status: "PAID",
+          paid: true,
+          amount: last.orderAmount,
+          invoiceNumber,
+        }, "Invoice is already paid.");
+      }
+
+      if (last.status === "PENDING" && last.paymentLinkUrl) {
+        return successResponse(res, {
+          paymentLink: last.paymentLinkUrl,
+          linkUrl: last.paymentLinkUrl,
+          paymentLinkId: last.cfOrderId,
+          orderId: last.cfOrderId,
+          paymentSessionId: last.paymentSessionId,
+          amount: amountInRupees,
+          invoiceNumber,
+          status: "ACTIVE",
+          reused: true,
+        }, "Existing active payment link reused.");
+      }
+
+      attemptNumber = last.attemptNumber + 1;
     }
 
-    const cleanPhone = String(customerPhone).replace(/[^0-9]/g, "").slice(-10);
-    if (!cleanPhone || cleanPhone.length < 10) {
-      return errorResponse(res, "Valid 10-digit customer phone number is required", 400);
-    }
-
-    const orderId = `RSF_POS_${invoiceNumber.replace(/[^a-zA-Z0-9_-]/g, "")}_${Date.now().toString().slice(-4)}`;
+    const orderId = `RSF_${posKey}_A${attemptNumber}`;
     const publicClientUrl = getPublicClientUrl(req);
     const returnUrl = `${publicClientUrl}/pay?order_id=${orderId}&status=return`;
 
-    // Create Cashfree PG Order (Guaranteed Production Supported)
+    const isBenchmarkMock =
+      req.headers["x-benchmark-mock"] === "true" || process.env.CASHFREE_MOCK_BENCHMARK === "true";
+
     const cfOrder = await createCFOrderService({
       orderId,
       orderAmount: amountInRupees,
@@ -214,9 +539,20 @@ export async function createCashfreePaymentLink(req, res) {
         source: "RS_Fashions_Showroom_POS",
         invoiceNumber,
       },
+      isMock: isBenchmarkMock,
     });
 
     const paymentLinkUrl = `${publicClientUrl}/pay?order_id=${orderId}&session_id=${cfOrder.payment_session_id}&amount=${amountInRupees}&invoice=${encodeURIComponent(invoiceNumber)}&customer=${encodeURIComponent(customerName.trim())}`;
+
+    savePaymentAttempt(posKey, {
+      attemptNumber,
+      cfOrderId: orderId,
+      paymentSessionId: cfOrder.payment_session_id,
+      paymentLinkUrl,
+      orderAmount: amountInRupees,
+      status: "PENDING",
+      createdAt: new Date().toISOString(),
+    });
 
     return successResponse(
       res,
@@ -229,50 +565,115 @@ export async function createCashfreePaymentLink(req, res) {
         amount: amountInRupees,
         invoiceNumber,
         status: cfOrder.order_status || "ACTIVE",
+        reused: false,
       },
       "Cashfree payment link generated successfully"
     );
   } catch (err) {
     console.error("[Cashfree Controller] Payment Link Error:", safeErrorMsg(err));
     return errorResponse(res, safeErrorMsg(err), 500);
+  } finally {
+    releaseLock(posKey);
   }
 }
 
-// 4. CASHFREE WEBHOOK HANDLER (Secure Asynchronous Notifications)
+/**
+ * 5. CASHFREE WEBHOOK HANDLER (Idempotent & Signature-Verified)
+ * POST /api/payments/cashfree/webhook
+ */
 export async function handleCashfreeWebhook(req, res) {
   try {
     const signature = req.headers["x-webhook-signature"];
     const timestamp = req.headers["x-webhook-timestamp"];
 
+    // 1. Signature Verification
     const isValid = verifyCashfreeWebhookSignature(req.body, timestamp, signature);
     if (!isValid) {
       console.warn("[Cashfree Webhook] Invalid webhook signature received.");
       return errorResponse(res, "Invalid webhook signature", 401);
     }
 
-    const event = req.body;
-    const eventType = event.type || event.event;
+    const event = req.body || {};
+    const eventType = event.type || event.event || "UNKNOWN";
     const orderData = event.data?.order || {};
     const paymentData = event.data?.payment || {};
 
-    const orderId = orderData.order_id || paymentData.order_id;
-    const paymentStatus = paymentData.payment_status || orderData.order_status;
+    const cfOrderId = orderData.order_id || paymentData.order_id;
+    const paymentStatus = String(paymentData.payment_status || orderData.order_status || "").toUpperCase();
+    const eventId =
+      paymentData.cf_payment_id ||
+      paymentData.payment_id ||
+      event.event_id ||
+      `evt_${cfOrderId}_${paymentStatus}_${timestamp || Date.now()}`;
 
-    if (orderId && String(paymentStatus).toUpperCase() === "SUCCESS" && supabase) {
-      await supabase
-        .from("orders")
-        .update({
-          payment_status: "paid",
-          payment_method: "cashfree",
-          updated_at: new Date().toISOString(),
-        })
-        .or(`order_number.eq.${orderId},id.eq.${orderId}`);
-
-      invalidateBootstrapCache();
-      console.log(`[Cashfree Webhook] Order ${orderId} marked as PAID via webhook event ${eventType}`);
+    // 2. Webhook Idempotency Deduplication Check
+    if (isWebhookEventProcessed(eventId)) {
+      console.log(`[Cashfree Webhook] Duplicate webhook event ignored: ${eventId}`);
+      return successResponse(
+        res,
+        { received: true, deduplicated: true, eventId },
+        "Webhook event already processed (idempotent response)"
+      );
     }
 
-    return successResponse(res, { received: true }, "Webhook processed successfully");
+    // 3. Process Event based on State Machine
+    if (cfOrderId) {
+      if (paymentStatus === "SUCCESS") {
+        // Record Attempt Status as PAID
+        updatePaymentAttemptStatus(cfOrderId, "PAID", {
+          paymentId: eventId,
+          paymentDetails: paymentData,
+        });
+
+        // Mark Local Order as PAID
+        markOrderPaidInStore(cfOrderId, {
+          paymentId: eventId,
+          paymentMethod: "cashfree",
+          paymentDetails: paymentData,
+        });
+
+        // Update Supabase if active
+        if (supabase) {
+          try {
+            await supabase
+              .from("orders")
+              .update({
+                payment_status: "paid",
+                payment_method: "cashfree",
+                updated_at: new Date().toISOString(),
+              })
+              .or(`order_number.eq.${cfOrderId},id.eq.${cfOrderId}`);
+
+            invalidateBootstrapCache();
+          } catch (dbErr) {
+            console.warn("[Cashfree Webhook] Supabase update note:", dbErr.message);
+          }
+        }
+
+        console.log(`[Cashfree Webhook] Order ${cfOrderId} transitioned to PAID via event ${eventType}`);
+      } else if (paymentStatus === "FAILED" || paymentStatus === "CANCELLED" || paymentStatus === "EXPIRED") {
+        // Ensure an already PAID order is NEVER downgraded to FAILED due to out-of-order delivery
+        const history = getPaymentHistory(cfOrderId);
+        const isAlreadyPaid =
+          history?.currentStatus === "PAID" ||
+          history?.attempts?.some((a) => a.cfOrderId === cfOrderId && a.status === "PAID");
+
+        if (isAlreadyPaid) {
+          console.warn(`[Cashfree Webhook] Out-of-order ${paymentStatus} event ignored for already PAID order ${cfOrderId}`);
+        } else {
+          updatePaymentAttemptStatus(cfOrderId, paymentStatus);
+        }
+      }
+    }
+
+    // 4. Mark Event as processed in persistent store
+    recordWebhookEvent(eventId, {
+      cfOrderId,
+      eventType,
+      paymentStatus,
+    });
+
+    return successResponse(res, { received: true, processed: true, eventId }, "Webhook processed successfully");
   } catch (err) {
     console.error("[Cashfree Webhook Error]:", err);
     return errorResponse(res, err.message || "Webhook processing error", 500);

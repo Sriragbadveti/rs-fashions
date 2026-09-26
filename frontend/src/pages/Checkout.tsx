@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import {
   FiArrowLeft,
   FiArrowRight,
@@ -128,6 +128,8 @@ function Checkout() {
   const [errors, setErrors] = useState<Partial<Record<keyof AddressForm, string>>>({});
   const [existingOrderNumber, setExistingOrderNumber] = useState<string | null>(null);
   const [existingOrderId, setExistingOrderId] = useState<string | null>(null);
+  const isSubmittingRef = useRef<boolean>(false);
+  const stableOrderNumberRef = useRef<string | null>(null);
 
   // User Authentication Gate: user must be logged in with a valid 30-day session
   const [currentUser, setCurrentUser] = useState<any>(() => getUserSession());
@@ -625,17 +627,25 @@ function Checkout() {
   };
 
   const placeOrder = async () => {
-    if (isProcessing) return;
+    // Immediate synchronous lock to block rapid clicks and concurrent browser execution
+    if (isSubmittingRef.current || isProcessing) return;
+    isSubmittingRef.current = true;
+    setIsProcessing(true);
 
     // Real-time stock validation at the moment of payment:
     // If any saree was purchased by another patron and is sold out, block payment!
     const isStockAvailable = await validateCartInventory();
     if (!isStockAvailable) {
+      isSubmittingRef.current = false;
       setIsProcessing(false);
       return;
     }
 
-    setIsProcessing(true);
+    // Maintain a stable unique internal order identifier across retries
+    if (!stableOrderNumberRef.current) {
+      stableOrderNumberRef.current = existingOrderNumber || `RSF-ORD-${Date.now().toString(36).toUpperCase()}`;
+    }
+    const orderNum = stableOrderNumberRef.current;
 
     // If Cashfree Gateway is selected
     if (paymentMethod === "cashfree") {
@@ -647,9 +657,17 @@ function Checkout() {
           customerName: `${address.firstName} ${address.lastName}`.trim(),
           email: address.email || currentUser?.email || "customer@rsfashions.in",
           phone: `${address.countryDial} ${address.phone}`,
-          orderNumber: existingOrderNumber || undefined,
+          orderNumber: orderNum,
           orderNote: `RS Fashions Saree Order (${itemCount} items)`,
         });
+
+        // 1. If backend identifies that the order is ALREADY PAID, complete immediately
+        if (cfRes.alreadyPaid || cfRes.orderStatus === "PAID") {
+          await completeCashfreeSuccess(cfRes.orderId || orderNum);
+          isSubmittingRef.current = false;
+          setIsProcessing(false);
+          return;
+        }
 
         if (!cfRes.success || !cfRes.paymentSessionId || !cfRes.orderId) {
           throw new Error(cfRes.message || "Failed to initialize Cashfree payment session");
@@ -671,6 +689,7 @@ function Checkout() {
         cashfree.checkout(checkoutOptions).then(async (result: any) => {
           if (result.error) {
             console.warn("Cashfree checkout error:", result.error);
+            isSubmittingRef.current = false;
             setIsProcessing(false);
             if (result.error.message) {
               alert(`Payment Notice: ${result.error.message}`);
@@ -682,25 +701,40 @@ function Checkout() {
             return;
           }
           if (result.paymentDetails) {
-            // Verify payment on backend
+            // Server-side verification is the sole authority of payment success
             try {
               const verifyRes = await StoreService.verifyCashfreePayment({ orderId: cfRes.orderId! });
               if (verifyRes.paid) {
                 await completeCashfreeSuccess(cfRes.orderId!, verifyRes.paymentId);
               } else {
                 alert("Payment status pending or incomplete. Please check your bank transaction.");
-                setIsProcessing(false);
               }
             } catch (vErr) {
-              console.warn("Verification notice, recording success:", vErr);
-              await completeCashfreeSuccess(cfRes.orderId!);
+              console.warn("Verification error:", vErr);
+              alert("Payment could not be verified by the server. Please check your order history or contact support.");
+            } finally {
+              isSubmittingRef.current = false;
+              setIsProcessing(false);
             }
           }
         });
         return;
       } catch (cfErr: any) {
-        console.error("Cashfree checkout error:", cfErr);
-        alert(cfErr.message || "Could not initialize Cashfree checkout");
+        console.error("Cashfree checkout network/creation error:", cfErr);
+
+        // Network recovery: query backend order status before blindly recreating or failing
+        try {
+          const statusRes = await StoreService.getCashfreePaymentStatus(orderNum);
+          if (statusRes.paid) {
+            await completeCashfreeSuccess(statusRes.orderId || orderNum);
+            isSubmittingRef.current = false;
+            setIsProcessing(false);
+            return;
+          }
+        } catch {}
+
+        alert(cfErr.message || "Could not initialize payment session. Please check your network and try again.");
+        isSubmittingRef.current = false;
         setIsProcessing(false);
         return;
       }

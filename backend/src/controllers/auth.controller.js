@@ -1,5 +1,10 @@
 import { supabase } from "../config/supabase.js";
 import { successResponse, errorResponse } from "../utils/response.js";
+import {
+  generateAdminToken,
+  revokeAdminToken,
+  verifyAdminToken,
+} from "../middleware/adminAuth.js";
 
 // In-memory sessions store fallback
 const memorySessions = new Map();
@@ -512,3 +517,80 @@ export async function verifyGoogleToken(req, res) {
     return errorResponse(res, err.message, 500);
   }
 }
+
+/**
+ * 7. Admin Login (Issues cryptographic session token)
+ * POST /api/auth/admin-login
+ */
+export async function adminLogin(req, res) {
+  try {
+    const { email, password } = req.body;
+    if (!email || typeof email !== "string" || !email.trim()) {
+      return errorResponse(res, "Administrator email is required", 400);
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const expectedPassword = process.env.ADMIN_PASSWORD || "admin2026";
+    if (password !== expectedPassword) {
+      return errorResponse(res, "Invalid administrator security key. Access denied.", 401);
+    }
+
+    const { token, claims } = generateAdminToken({
+      name: "Sindhuja",
+      email: cleanEmail,
+    });
+
+    return successResponse(
+      res,
+      {
+        token,
+        user: {
+          name: "Sindhuja",
+          email: cleanEmail,
+          role: "admin",
+          sessionId: claims.jti,
+        },
+      },
+      "Admin authenticated successfully"
+    );
+  } catch (err) {
+    return errorResponse(res, err.message, 500);
+  }
+}
+
+/**
+ * 8. Admin Logout (Invalidates session token)
+ * POST /api/auth/admin-logout
+ */
+export async function adminLogout(req, res) {
+  try {
+    const authHeader = req.headers["authorization"] || req.headers["x-admin-token"];
+    if (authHeader) {
+      const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : String(authHeader).trim();
+      revokeAdminToken(token);
+    }
+    return successResponse(res, { loggedOut: true }, "Admin session invalidated successfully");
+  } catch (err) {
+    return errorResponse(res, err.message, 500);
+  }
+}
+
+/**
+ * 9. Verify Active Admin Session
+ * GET /api/auth/admin-verify
+ */
+export async function verifyAdminSession(req, res) {
+  const authHeader = req.headers["authorization"] || req.headers["x-admin-token"];
+  if (!authHeader) {
+    return errorResponse(res, "No admin session token provided", 401);
+  }
+
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : String(authHeader).trim();
+  const claims = verifyAdminToken(token);
+  if (!claims) {
+    return errorResponse(res, "Admin session expired or invalid", 401);
+  }
+
+  return successResponse(res, { valid: true, user: claims }, "Admin session is valid");
+}
+

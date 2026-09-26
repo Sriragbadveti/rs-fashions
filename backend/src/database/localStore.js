@@ -232,3 +232,129 @@ export function deleteReviewFromStore(id) {
   writeJson("reviews.json", filtered);
   return true;
 }
+
+// ==========================================
+// PAYMENT ATTEMPTS & IDEMPOTENCY
+// ==========================================
+export function getPaymentHistory(orderKey) {
+  const attempts = readJson("payment_attempts.json", {});
+  return attempts[orderKey] || null;
+}
+
+export function savePaymentAttempt(orderKey, attemptRecord) {
+  const attempts = readJson("payment_attempts.json", {});
+  const existing = attempts[orderKey] || {
+    orderKey,
+    attempts: [],
+    currentStatus: "CREATED",
+    updatedAt: new Date().toISOString(),
+  };
+
+  const attemptIdx = existing.attempts.findIndex(
+    (a) => a.cfOrderId === attemptRecord.cfOrderId
+  );
+
+  if (attemptIdx >= 0) {
+    existing.attempts[attemptIdx] = {
+      ...existing.attempts[attemptIdx],
+      ...attemptRecord,
+      updatedAt: new Date().toISOString(),
+    };
+  } else {
+    existing.attempts.push({
+      ...attemptRecord,
+      createdAt: attemptRecord.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  existing.currentStatus = attemptRecord.status || existing.currentStatus;
+  existing.updatedAt = new Date().toISOString();
+  attempts[orderKey] = existing;
+  writeJson("payment_attempts.json", attempts);
+  return existing;
+}
+
+export function updatePaymentAttemptStatus(cfOrderId, status, metadata = {}) {
+  const attempts = readJson("payment_attempts.json", {});
+  for (const key of Object.keys(attempts)) {
+    const record = attempts[key];
+    const attempt = record.attempts?.find((a) => a.cfOrderId === cfOrderId);
+    if (attempt) {
+      // Valid state transitions: CREATED -> PENDING -> PAID / FAILED / EXPIRED / CANCELLED
+      // Terminal state check: if already PAID, do not revert to earlier state!
+      if (attempt.status === "PAID" && status !== "PAID") {
+        return record;
+      }
+      attempt.status = status;
+      attempt.updatedAt = new Date().toISOString();
+      if (metadata.paymentId) attempt.paymentId = metadata.paymentId;
+      if (metadata.paymentDetails) attempt.paymentDetails = metadata.paymentDetails;
+      record.currentStatus = status;
+      record.updatedAt = new Date().toISOString();
+      writeJson("payment_attempts.json", attempts);
+      return record;
+    }
+  }
+  return null;
+}
+
+export function findOrderFromStore(orderIdOrNumber) {
+  if (!orderIdOrNumber) return null;
+  const orders = readJson("orders.json", []);
+  const clean = String(orderIdOrNumber).trim();
+  return orders.find(
+    (o) =>
+      o.id === clean ||
+      o.orderNumber === clean ||
+      o.order_number === clean ||
+      o.invoiceNumber === clean ||
+      o.invoice_number === clean
+  ) || null;
+}
+
+export function markOrderPaidInStore(orderIdOrNumber, paymentDetails = {}) {
+  const orders = readJson("orders.json", []);
+  const clean = String(orderIdOrNumber).trim();
+  const ordIdx = orders.findIndex(
+    (o) =>
+      o.id === clean ||
+      o.orderNumber === clean ||
+      o.order_number === clean ||
+      o.invoiceNumber === clean ||
+      o.invoice_number === clean
+  );
+
+  if (ordIdx >= 0) {
+    orders[ordIdx].paymentStatus = "paid";
+    orders[ordIdx].payment_status = "paid";
+    orders[ordIdx].paymentMethod = "cashfree";
+    orders[ordIdx].payment_method = "cashfree";
+    orders[ordIdx].paymentDetails = paymentDetails;
+    orders[ordIdx].updatedAt = new Date().toISOString();
+    writeJson("orders.json", orders);
+    return orders[ordIdx];
+  }
+  return null;
+}
+
+// ==========================================
+// WEBHOOK EVENT DEDUPLICATION (IDEMPOTENCY)
+// ==========================================
+export function isWebhookEventProcessed(eventId) {
+  if (!eventId) return false;
+  const events = readJson("webhook_events.json", {});
+  return Boolean(events[eventId]);
+}
+
+export function recordWebhookEvent(eventId, details = {}) {
+  if (!eventId) return;
+  const events = readJson("webhook_events.json", {});
+  events[eventId] = {
+    eventId,
+    processedAt: new Date().toISOString(),
+    ...details,
+  };
+  writeJson("webhook_events.json", events);
+}
+

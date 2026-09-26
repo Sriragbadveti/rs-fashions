@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Lock, Mail, ShieldCheck, Loader2, ArrowRight, Eye, EyeOff, Store } from "lucide-react";
-import { setUserSession } from "../utils/userSession";
+import { API_BASE } from "../config/api";
+import { setAdminSession, AdminUser } from "../utils/adminSession";
 
 interface LoginProps {
   onLoginSuccess?: (user: { name: string; email: string; role: string }) => void;
@@ -15,39 +16,62 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
 
-    if (!email.trim()) {
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail) {
       setError("Please enter your administrator email.");
       return;
     }
 
-    if (password !== "admin2026") {
-      setError("Invalid administrator security key. Access denied.");
+    if (!password) {
+      setError("Please enter your administrator passkey.");
       return;
     }
 
     setIsLoading(true);
 
-    setTimeout(() => {
-      setIsLoading(false);
-      const sessionUser = {
-        name: "Sindhu",
-        email: email.trim().toLowerCase(),
-        role: "admin" as const,
-        phone: "+91 98480 12345",
+    try {
+      const res = await fetch(`${API_BASE}/auth/admin-login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: cleanEmail, password }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok || json.success === false) {
+        throw new Error(json.message || "Invalid administrator credentials. Access denied.");
+      }
+
+      const { token, user } = json.data || {};
+      if (!token || !user) {
+        throw new Error("Invalid session token returned by authentication server.");
+      }
+
+      const adminUser: AdminUser = {
+        name: user.name || "Administrator",
+        email: user.email || cleanEmail,
+        role: "admin",
+        sessionId: user.sessionId,
       };
 
-      setUserSession(sessionUser);
+      // Store cryptographically signed token strictly in sessionStorage (tab-isolated)
+      setAdminSession(token, adminUser);
 
       if (onLoginSuccess) {
-        onLoginSuccess(sessionUser);
+        onLoginSuccess(adminUser);
       } else {
-        navigate("/admin");
+        navigate("/admin-7f9a2b8e");
       }
-    }, 450);
+    } catch (err: any) {
+      console.error("[Admin Login Error]:", err);
+      setError(err.message || "Authentication service unavailable. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (

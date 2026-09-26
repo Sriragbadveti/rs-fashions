@@ -7,6 +7,7 @@ import { Store, Package, MapPin, LogOut, Sparkles, User as UserIcon, ChevronDown
 
 import { useCart } from "../../context/CartContext";
 import { getUserSession, clearUserSession, USER_SESSION_EVENT, type UserSession } from "../../utils/userSession";
+import { isAdminAuthenticated } from "../../utils/adminSession";
 
 import CartDrawer from "../cart/CartDrawer";
 import MobileMenu from "./MobileMenu";
@@ -317,7 +318,7 @@ function Navbar() {
                                 <span className="font-medium">Profile Details</span>
                               </Link>
 
-                              {Boolean(currentUser.role === "admin" && typeof window !== "undefined" && localStorage.getItem("rs_admin_session")) && (
+                              {Boolean(isAdminAuthenticated()) && (
                                 <>
                                   <div className="my-1 border-t border-stone-100" />
                                   <Link to={ADMIN_SECRET_PATH} onClick={() => setIsUserDropdownOpen(false)} className="flex items-center gap-2.5 rounded-xl bg-amber-50 px-3 py-2 font-semibold text-amber-950 transition-colors hover:bg-amber-100">
