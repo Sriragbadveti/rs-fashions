@@ -184,6 +184,8 @@ export interface DashboardProduct {
   imageUrl?: string;
   material?: string;
   description?: string;
+  isSpecialOffer?: boolean;
+  isLimitedEdition?: boolean;
 }
 
 export type OrderDirection = "OUTWARD_CUSTOMER" | "INWARD_WEAVER";

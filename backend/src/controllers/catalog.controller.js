@@ -2,6 +2,11 @@ import { supabase } from "../config/supabase.js";
 import { successResponse, errorResponse } from "../utils/response.js";
 import { uploadImageToSupabaseStorage } from "./upload.controller.js";
 import { invalidateBootstrapCache } from "./bootstrap.controller.js";
+import {
+  getProductsFromStore,
+  saveProductToStore,
+  deleteProductFromStore,
+} from "../database/localStore.js";
 
 /**
  * Controller: Saree Catalog & Categories
@@ -54,61 +59,107 @@ export function validateVibgyorColors(colorList) {
 // 1. GET ALL PRODUCTS
 export async function getProducts(req, res) {
   try {
-    const isTrendingOnly = req.query.trending === "true" || req.query.special_offer === "true";
+    const isTrendingOnly =
+      req.query.trending === "true" ||
+      req.query.special_offer === "true" ||
+      req.query.limited_edition === "true";
+
+    const filterTrending = (list) => {
+      if (!isTrendingOnly) return list;
+      return list.filter(
+        (p) =>
+          Boolean(p.isLimitedEdition) ||
+          Boolean(p.isSpecialOffer) ||
+          (Array.isArray(p.tags) &&
+            p.tags.some((t) =>
+              ["limited_edition", "special_offer", "trending", "offers"].includes(
+                String(t).trim().toLowerCase()
+              )
+            ))
+      );
+    };
 
     if (cachedProducts && Date.now() - lastProductsFetch < CACHE_TTL_MS) {
-      const results = isTrendingOnly
-        ? cachedProducts.filter((p) => p.isSpecialOffer)
-        : cachedProducts;
-      return successResponse(res, { products: results }, "Products retrieved successfully (cached)");
+      return successResponse(
+        res,
+        { products: filterTrending(cachedProducts) },
+        "Products retrieved successfully (cached)"
+      );
     }
-
-    if (!supabase) return successResponse(res, { products: [] });
 
     if (!inFlightProductsPromise) {
       inFlightProductsPromise = (async () => {
-        const { data, error } = await supabase
-          .from("products")
-          .select("*")
-          .order("created_at", { ascending: false });
+        let rawData = [];
 
-        if (error) throw error;
+        if (supabase) {
+          try {
+            const { data, error } = await supabase
+              .from("products")
+              .select("*")
+              .order("created_at", { ascending: false });
 
-        const products = (data || []).map((p) => {
+            if (!error && Array.isArray(data) && data.length > 0) {
+              rawData = data;
+            }
+          } catch (dbErr) {
+            console.warn("Supabase products fetch note:", dbErr.message);
+          }
+        }
+
+        // If Supabase returned empty or is offline, load from local JSON store
+        if (rawData.length === 0) {
+          rawData = getProductsFromStore();
+        }
+
+        const products = (rawData || []).map((p) => {
           const colorList = Array.isArray(p.colors) && p.colors.length > 0 ? p.colors : ["Standard"];
           const stockTotal = Number(p.stock) || 0;
           const images = Array.isArray(p.images) && p.images.length > 0 
             ? p.images 
-            : (p.image_url ? [p.image_url] : []);
+            : (p.image_url || p.imageUrl ? [p.image_url || p.imageUrl] : []);
 
-          const variants = colorList.map((col, idx) => ({
-            color: col,
-            colorSlug: col.slice(0, 3).toUpperCase(),
-            stock: idx === 0 ? stockTotal : 0,
-            sku: `${p.id}-${col.slice(0, 3).toUpperCase()}`,
-          }));
+          const variants = Array.isArray(p.variants) && p.variants.length > 0
+            ? p.variants
+            : colorList.map((col, idx) => ({
+                color: col,
+                colorSlug: col.slice(0, 3).toUpperCase(),
+                stock: idx === 0 ? stockTotal : 0,
+                sku: `${p.id}-${col.slice(0, 3).toUpperCase()}`,
+                imageUrl: images[idx] || images[0],
+              }));
+
+          const tags = Array.isArray(p.tags) ? p.tags : ["handloom", "sico"];
 
           const isSpecialOffer =
-            (Array.isArray(p.tags) && p.tags.includes("special_offer")) ||
+            tags.includes("special_offer") ||
             Boolean(p.is_special_offer) ||
             Boolean(p.isSpecialOffer);
+
+          const isLimitedEdition =
+            tags.includes("limited_edition") ||
+            Boolean(p.is_limited_edition) ||
+            Boolean(p.isLimitedEdition);
 
           return {
             id: p.id,
             name: p.name,
             category: p.category || "SiCo Gadwal Sarees",
-            categoryId: "c1",
+            categoryId: p.category_id || p.categoryId || "c1",
             material: p.material || "SiCo",
-            price: Number(p.price) || 0,
-            originalPrice: Number(p.original_price) || Math.round((Number(p.price) || 0) * 1.25),
+            price: Number(p.price || p.sale_price || p.salePrice) || 0,
+            salePrice: Number(p.price || p.sale_price || p.salePrice) || 0,
+            purchasePrice: Number(p.purchase_price || p.purchasePrice) || 0,
+            originalPrice: Number(p.original_price || p.originalPrice) || Math.round((Number(p.price || p.salePrice) || 0) * 1.25),
             stock: stockTotal,
             variants,
             images,
-            imageUrl: images[0],
+            imageUrl: images[0] || p.imageUrl || p.image_url,
             colors: colorList,
-            tags: Array.isArray(p.tags) ? p.tags : ["handloom", "sico"],
+            tags,
             isSpecialOffer,
+            isLimitedEdition,
             description: p.description || `${p.name} - Handcrafted Gadwal saree.`,
+            featured: Boolean(p.featured),
           };
         });
 
@@ -121,19 +172,18 @@ export async function getProducts(req, res) {
     }
 
     const products = await inFlightProductsPromise;
-    const results = isTrendingOnly
-      ? products.filter((p) => p.isSpecialOffer)
-      : products;
-    return successResponse(res, { products: results }, "Products retrieved successfully");
+    return successResponse(
+      res,
+      { products: filterTrending(products) },
+      "Products retrieved successfully"
+    );
   } catch (err) {
-    if (cachedProducts) {
-      const isTrendingOnly = req.query.trending === "true" || req.query.special_offer === "true";
-      const results = isTrendingOnly
-        ? cachedProducts.filter((p) => p.isSpecialOffer)
-        : cachedProducts;
-      return successResponse(res, { products: results }, "Products retrieved successfully (fallback)");
-    }
-    return errorResponse(res, err.message, 500);
+    const local = getProductsFromStore();
+    return successResponse(
+      res,
+      { products: local },
+      "Products retrieved successfully (local store)"
+    );
   }
 }
 
@@ -336,12 +386,38 @@ export async function createProduct(req, res) {
         }
       }
 
+      saveProductToStore(data);
       invalidateCatalogCache();
       return successResponse(res, { product: data }, "Saree catalogued successfully", 201);
     }
 
+    const localPayload = {
+      id: prodId,
+      name: name.trim(),
+      category: resolvedCategory,
+      categoryId: categoryId || "c1",
+      material: resolvedMaterial,
+      price: priceVal,
+      salePrice: priceVal,
+      purchasePrice: Number(req.body.purchasePrice) || 0,
+      originalPrice: origPriceVal,
+      stock: totalStock,
+      images: finalImages,
+      imageUrl: finalImages[0],
+      colors: colorNames,
+      tags: finalTags,
+      isSpecialOffer: Boolean(req.body.isSpecialOffer || finalTags.includes("special_offer")),
+      isLimitedEdition: Boolean(req.body.isLimitedEdition || finalTags.includes("limited_edition")),
+      variants,
+      rating: 4.8,
+      reviewCount: 0,
+      featured: Boolean(featured),
+      description: description || `Handcrafted ${name} saree drape.`,
+    };
+
+    saveProductToStore(localPayload);
     invalidateCatalogCache();
-    return successResponse(res, { product: req.body }, "Saree created locally", 201);
+    return successResponse(res, { product: localPayload }, "Saree created locally", 201);
   } catch (err) {
     console.error("Create product error:", err);
     return errorResponse(res, err.message, 500);
@@ -426,6 +502,22 @@ export async function updateProduct(req, res) {
           if (!currentTags.includes("special_offer")) currentTags.push("special_offer");
         } else {
           currentTags = currentTags.filter((t) => t !== "special_offer");
+        }
+        updates.tags = currentTags;
+      }
+
+      if (req.body.isLimitedEdition !== undefined) {
+        let currentTags = updates.tags ? [...updates.tags] : [];
+        if (!updates.tags) {
+          try {
+            const { data: prodData } = await supabase.from("products").select("tags").eq("id", id).single();
+            if (prodData?.tags) currentTags = Array.isArray(prodData.tags) ? [...prodData.tags] : [];
+          } catch {}
+        }
+        if (req.body.isLimitedEdition) {
+          if (!currentTags.includes("limited_edition")) currentTags.push("limited_edition");
+        } else {
+          currentTags = currentTags.filter((t) => t !== "limited_edition");
         }
         updates.tags = currentTags;
       }
@@ -518,12 +610,14 @@ export async function updateProduct(req, res) {
         }
       }
 
+      saveProductToStore(data);
       invalidateCatalogCache();
       return successResponse(res, { product: data }, "Product updated successfully");
     }
 
+    const localUpdated = saveProductToStore({ id, ...req.body });
     invalidateCatalogCache();
-    return successResponse(res, { product: req.body }, "Product updated locally");
+    return successResponse(res, { product: localUpdated }, "Product updated locally");
   } catch (err) {
     console.error("Update product error:", err);
     return errorResponse(res, err.message, 500);
@@ -538,6 +632,7 @@ export async function deleteProduct(req, res) {
       const { error } = await supabase.from("products").delete().eq("id", id);
       if (error) throw error;
     }
+    deleteProductFromStore(id);
     invalidateCatalogCache();
     return successResponse(res, { id }, "Product deleted successfully");
   } catch (err) {

@@ -30,23 +30,29 @@ export default function TrendingProducts() {
           ? data.products
           : [];
 
-        // Strict verification: only sarees marked as Special Offer appear
-        const specialOffers = list.filter((p) => {
-          return (
+        // Strict verification: sarees marked as Limited Edition or Special Offer appear
+        const trendingItems = list.filter((p) => {
+          const isLimited =
+            p.isLimitedEdition === true ||
+            (Array.isArray(p.tags) &&
+              p.tags.some(
+                (tag) => String(tag).trim().toLowerCase() === "limited_edition"
+              ));
+          const isSpecial =
             p.isSpecialOffer === true ||
             (Array.isArray(p.tags) &&
               p.tags.some(
                 (tag) => String(tag).trim().toLowerCase() === "special_offer"
-              ))
-          );
+              ));
+          return isLimited || isSpecial;
         });
 
         if (isMounted) {
-          setProducts(specialOffers);
+          setProducts(trendingItems);
           setLoading(false);
         }
       } catch (err) {
-        console.warn("Failed to fetch trending special offer sarees:", err);
+        console.warn("Failed to fetch trending sarees:", err);
         if (isMounted) {
           setProducts([]);
           setLoading(false);
@@ -91,14 +97,14 @@ export default function TrendingProducts() {
           <div>
             <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-100/80 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-[#8E3D51]">
               <Sparkles size={11} className="text-amber-600" />
-              <span>Special Offer Showcase &bull; SiCo Gadwal</span>
+              <span>Limited Edition &amp; Trending &bull; SiCo Gadwal</span>
             </div>
             <h2 className="mt-2 font-serif text-3xl sm:text-5xl font-normal tracking-tight text-[#2A2421]">
-              Trending{" "}
-              <span className="italic font-light text-[#8E3D51]">Pieces.</span>
+              Limited Edition &amp;{" "}
+              <span className="italic font-light text-[#8E3D51]">Trending Pieces.</span>
             </h2>
             <p className="mt-1.5 text-xs text-[#7A6E64] font-light max-w-lg leading-relaxed">
-              Exclusively curated SiCo Gadwal creations currently marked on Special Offer by our weavers and curators.
+              Exclusively curated SiCo Gadwal sarees and limited edition weaves handcrafted by our master artisans.
             </p>
           </div>
 
@@ -178,13 +184,30 @@ export default function TrendingProducts() {
                     <div className="absolute inset-0 bg-linear-to-t from-stone-950/75 via-stone-950/20 to-black/10 opacity-70 transition-opacity duration-300 group-hover:opacity-85" />
                   </Link>
 
-                  {/* Special Offer Luxury Ribbon Badge */}
-                  <div className="absolute left-3.5 top-3.5 z-10 flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 px-3 py-1 shadow-md backdrop-blur-xs">
-                    <Sparkles size={11} className="text-white animate-pulse" />
-                    <span className="text-[9.5px] font-bold uppercase tracking-wider text-white">
-                      Special Offer
-                    </span>
-                  </div>
+                  {/* Limited Edition or Special Offer Luxury Ribbon Badge */}
+                  {(() => {
+                    const isLimited =
+                      item.isLimitedEdition === true ||
+                      (Array.isArray(item.tags) &&
+                        item.tags.some(
+                          (t) => String(t).trim().toLowerCase() === "limited_edition"
+                        ));
+                    return isLimited ? (
+                      <div className="absolute left-3.5 top-3.5 z-10 flex items-center gap-1.5 rounded-full bg-gradient-to-r from-purple-950 via-purple-900 to-amber-700 px-3 py-1 shadow-md backdrop-blur-xs border border-amber-300/40">
+                        <Sparkles size={11} className="text-amber-300 animate-pulse" />
+                        <span className="text-[9.5px] font-bold uppercase tracking-wider text-amber-100">
+                          ✨ Limited Edition
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="absolute left-3.5 top-3.5 z-10 flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 px-3 py-1 shadow-md backdrop-blur-xs">
+                        <Sparkles size={11} className="text-white animate-pulse" />
+                        <span className="text-[9.5px] font-bold uppercase tracking-wider text-white">
+                          Special Offer
+                        </span>
+                      </div>
+                    );
+                  })()}
 
                   {/* Floating Glassmorphic Details Plate */}
                   <div className="absolute inset-x-3 bottom-3 z-10 rounded-2xl bg-white/85 p-3.5 shadow-sm backdrop-blur-md border border-white/70 transition-all duration-300 group-hover:bg-white/95 group-hover:shadow-md">

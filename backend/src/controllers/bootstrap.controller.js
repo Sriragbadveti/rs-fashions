@@ -1,5 +1,6 @@
 import { supabase } from "../config/supabase.js";
 import { successResponse, errorResponse } from "../utils/response.js";
+import { getProductsFromStore } from "../database/localStore.js";
 
 let bootstrapCache = null;
 let bootstrapCacheTimestamp = 0;
@@ -21,9 +22,12 @@ export async function getBootstrapData(req, res) {
     }
 
     if (!supabase) {
+      const fallbackProducts = getProductsFromStore();
       return successResponse(res, {
-        categories: [],
-        products: [],
+        categories: [
+          { id: "c1", name: "SiCo Gadwal Sarees", slug: "SICO-GADWAL", hsn: "5208", nextSequence: 10 },
+        ],
+        products: fallbackProducts,
         stockMovements: [],
         sales: [],
         customers: [],
@@ -61,36 +65,56 @@ export async function getBootstrapData(req, res) {
       nextSequence: Number(c.next_sequence) || 1,
     }));
 
-    const products = (prodsRes.data || []).map((p) => {
+    let rawProds = prodsRes.data || [];
+    if (rawProds.length === 0) {
+      rawProds = getProductsFromStore();
+    }
+
+    const products = rawProds.map((p) => {
       const colorList = Array.isArray(p.colors) && p.colors.length > 0 ? p.colors : ["Standard"];
       const stockTotal = Number(p.stock) || 0;
       const images = Array.isArray(p.images) && p.images.length > 0 
         ? p.images 
-        : (p.image_url ? [p.image_url] : []);
+        : (p.image_url || p.imageUrl ? [p.image_url || p.imageUrl] : []);
 
-      const variants = colorList.map((col, idx) => ({
-        color: col,
-        colorSlug: col.slice(0, 3).toUpperCase(),
-        stock: idx === 0 ? stockTotal : 0,
-        sku: `${p.id}-${col.slice(0, 3).toUpperCase()}`,
-      }));
+      const variants = Array.isArray(p.variants) && p.variants.length > 0
+        ? p.variants
+        : colorList.map((col, idx) => ({
+            color: col,
+            colorSlug: col.slice(0, 3).toUpperCase(),
+            stock: idx === 0 ? stockTotal : 0,
+            sku: `${p.id}-${col.slice(0, 3).toUpperCase()}`,
+            imageUrl: images[idx] || images[0],
+          }));
+
+      const tags = Array.isArray(p.tags) ? p.tags : [];
+      const isSpecialOffer =
+        tags.includes("special_offer") ||
+        Boolean(p.is_special_offer) ||
+        Boolean(p.isSpecialOffer);
+      const isLimitedEdition =
+        tags.includes("limited_edition") ||
+        Boolean(p.is_limited_edition) ||
+        Boolean(p.isLimitedEdition);
 
       return {
         id: p.id,
         name: p.name,
         category: p.category || "SiCo Gadwal Sarees",
-        categoryId: "c1",
+        categoryId: p.categoryId || p.category_id || "c1",
         material: p.material || "SiCo",
-        purchasePrice: Math.round(Number(p.price) * 0.7) || 0,
-        salePrice: Number(p.price) || 0,
-        price: Number(p.price) || 0,
-        originalPrice: p.original_price ? Number(p.original_price) : (Number(p.price) * 1.25),
+        purchasePrice: Number(p.purchasePrice || p.purchase_price) || Math.round(Number(p.price || p.salePrice) * 0.7) || 0,
+        salePrice: Number(p.price || p.salePrice || p.sale_price) || 0,
+        price: Number(p.price || p.salePrice || p.sale_price) || 0,
+        originalPrice: p.original_price || p.originalPrice ? Number(p.original_price || p.originalPrice) : (Number(p.price || p.salePrice) * 1.25),
         stock: stockTotal,
         variants,
         images,
-        imageUrl: images[0],
+        imageUrl: images[0] || p.imageUrl || p.image_url,
         colors: colorList,
-        tags: Array.isArray(p.tags) ? p.tags : [],
+        tags,
+        isSpecialOffer,
+        isLimitedEdition,
         rating: Number(p.rating) || 4.8,
         reviewCount: Number(p.review_count) || 0,
         featured: Boolean(p.featured),

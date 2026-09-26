@@ -999,7 +999,13 @@ function ProductCard({
           </span>
         )}
 
-        {(product.isSpecialOffer || (product.tags || []).includes("special_offer")) && (
+        {(product.isLimitedEdition || (product.tags || []).includes("limited_edition")) && (
+          <span className="absolute right-3 bottom-3 z-10 flex items-center gap-1 rounded-full bg-gradient-to-r from-purple-950 via-purple-900 to-amber-700 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-200 shadow-sm backdrop-blur-xs border border-amber-400/30">
+            <Sparkles size={10} className="text-amber-300" /> Limited Edition
+          </span>
+        )}
+
+        {!(product.isLimitedEdition || (product.tags || []).includes("limited_edition")) && (product.isSpecialOffer || (product.tags || []).includes("special_offer")) && (
           <span className="absolute right-3 bottom-3 z-10 flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-600 to-amber-500 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white shadow-sm backdrop-blur-xs">
             <Sparkles size={10} /> Special Offer
           </span>
@@ -1255,6 +1261,7 @@ export default function Catalog({
   const [formImageUrl, setFormImageUrl] = useState("");
   const [formImages, setFormImages] = useState<string[]>([]);
   const [formIsSpecialOffer, setFormIsSpecialOffer] = useState(false);
+  const [formIsLimitedEdition, setFormIsLimitedEdition] = useState(false);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -1413,6 +1420,7 @@ export default function Catalog({
     setFormImages([]);
     setFormSerialNumber("001");
     setFormIsSpecialOffer(false);
+    setFormIsLimitedEdition(false);
     setIsModalOpen(true);
   }
 
@@ -1435,6 +1443,7 @@ export default function Catalog({
     setFormImages(initialImgs);
     setFormImageUrl(initialImgs[0] || product.imageUrl || "");
     setFormIsSpecialOffer(Boolean(product.isSpecialOffer || (product.tags || []).includes("special_offer")));
+    setFormIsLimitedEdition(Boolean(product.isLimitedEdition || (product.tags || []).includes("limited_edition")));
     setIsModalOpen(true);
   }
 
@@ -1471,9 +1480,18 @@ export default function Catalog({
       .split(",")
       .map((t) => t.trim().toLowerCase())
       .filter(Boolean);
-    const finalTags = formIsSpecialOffer
-      ? Array.from(new Set([...rawTags, "special_offer"]))
-      : rawTags.filter((t) => t !== "special_offer");
+    let finalTags = [...rawTags];
+    if (formIsSpecialOffer) {
+      if (!finalTags.includes("special_offer")) finalTags.push("special_offer");
+    } else {
+      finalTags = finalTags.filter((t) => t !== "special_offer");
+    }
+    if (formIsLimitedEdition) {
+      if (!finalTags.includes("limited_edition")) finalTags.push("limited_edition");
+    } else {
+      finalTags = finalTags.filter((t) => t !== "limited_edition");
+    }
+    finalTags = Array.from(new Set(finalTags));
 
     const payload: Product = {
       id:
@@ -1485,6 +1503,7 @@ export default function Catalog({
       purchasePrice: Number(formPurchasePrice) || 0,
       salePrice: Number(formSalePrice) || 0,
       isSpecialOffer: formIsSpecialOffer,
+      isLimitedEdition: formIsLimitedEdition,
       tags: finalTags,
       variants: finalVariants,
       imageUrl: effectiveImageUrl,
@@ -1965,32 +1984,63 @@ export default function Catalog({
                 />
               </div>
 
-              {/* Special Offer Toggle for Trending Showcase */}
-              <div className="flex items-center justify-between rounded-2xl border border-amber-200/80 bg-amber-50/40 p-4 transition-all">
-                <div className="space-y-0.5 pr-4">
-                  <div className="flex items-center gap-2">
-                    <Sparkles size={14} className="text-amber-600" />
-                    <label
-                      htmlFor="saree-special-offer"
-                      className="cursor-pointer text-xs font-bold text-stone-900"
-                    >
-                      Mark as Special Offer (Showcase in Trending)
-                    </label>
+              {/* Limited Edition & Special Offer Toggles */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Limited Edition Toggle */}
+                <div className="flex items-center justify-between rounded-2xl border border-purple-200/80 bg-purple-50/40 p-4 transition-all">
+                  <div className="space-y-0.5 pr-3">
+                    <div className="flex items-center gap-1.5">
+                      <Sparkles size={14} className="text-purple-600" />
+                      <label
+                        htmlFor="saree-limited-edition"
+                        className="cursor-pointer text-xs font-bold text-stone-900"
+                      >
+                        Limited Edition
+                      </label>
+                    </div>
+                    <p className="text-[11px] text-stone-500">
+                      Showcase in Landing Page Trending &amp; Limited Edition.
+                    </p>
                   </div>
-                  <p className="text-[11px] text-stone-500">
-                    Sarees marked as Special Offer will appear prominently in the storefront &ldquo;Trending&rdquo; section.
-                  </p>
+                  <label className="relative inline-flex cursor-pointer items-center shrink-0">
+                    <input
+                      id="saree-limited-edition"
+                      type="checkbox"
+                      checked={formIsLimitedEdition}
+                      onChange={(e) => setFormIsLimitedEdition(e.target.checked)}
+                      className="peer sr-only"
+                    />
+                    <div className="peer h-6 w-11 rounded-full bg-stone-300 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-stone-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-[#5E1E43] peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none"></div>
+                  </label>
                 </div>
-                <label className="relative inline-flex cursor-pointer items-center">
-                  <input
-                    id="saree-special-offer"
-                    type="checkbox"
-                    checked={formIsSpecialOffer}
-                    onChange={(e) => setFormIsSpecialOffer(e.target.checked)}
-                    className="peer sr-only"
-                  />
-                  <div className="peer h-6 w-11 rounded-full bg-stone-300 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-stone-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-[#8E3D51] peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none"></div>
-                </label>
+
+                {/* Special Offer Toggle */}
+                <div className="flex items-center justify-between rounded-2xl border border-amber-200/80 bg-amber-50/40 p-4 transition-all">
+                  <div className="space-y-0.5 pr-3">
+                    <div className="flex items-center gap-1.5">
+                      <Sparkles size={14} className="text-amber-600" />
+                      <label
+                        htmlFor="saree-special-offer"
+                        className="cursor-pointer text-xs font-bold text-stone-900"
+                      >
+                        Special Offer
+                      </label>
+                    </div>
+                    <p className="text-[11px] text-stone-500">
+                      Showcase with festive pricing / offers banner.
+                    </p>
+                  </div>
+                  <label className="relative inline-flex cursor-pointer items-center shrink-0">
+                    <input
+                      id="saree-special-offer"
+                      type="checkbox"
+                      checked={formIsSpecialOffer}
+                      onChange={(e) => setFormIsSpecialOffer(e.target.checked)}
+                      className="peer sr-only"
+                    />
+                    <div className="peer h-6 w-11 rounded-full bg-stone-300 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-stone-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-[#8E3D51] peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none"></div>
+                  </label>
+                </div>
               </div>
 
               {/* Footer CTA */}

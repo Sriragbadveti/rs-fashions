@@ -1,0 +1,160 @@
+[
+  {
+    "id": "emerald-sico-gadwal",
+    "name": "Emerald Royal Kaddi SiCo Gadwal Saree",
+    "categoryId": "c1",
+    "category": "SiCo Gadwal Sarees",
+    "material": "SiCo",
+    "purchasePrice": 6200,
+    "salePrice": 8499,
+    "price": 8499,
+    "originalPrice": 11200,
+    "stock": 8,
+    "isLimitedEdition": true,
+    "isSpecialOffer": true,
+    "tags": ["limited_edition", "special_offer", "trending", "gadwal", "zari", "kaddi_border"],
+    "colors": ["Emerald Green", "Royal Antique Gold"],
+    "variants": [
+      {
+        "color": "Emerald Green",
+        "colorSlug": "EME",
+        "stock": 5,
+        "sku": "SGS-EME-001",
+        "imageUrl": "https://medias.utsavfashion.com/media/catalog/product/cache/1/image/1000x/040ec09b1e35df139433887a97daa66f/w/o/woven-art-silk-saree-in-emerald-green-v1-ssf833_2.jpg"
+      },
+      {
+        "color": "Royal Antique Gold",
+        "colorSlug": "GLD",
+        "stock": 3,
+        "sku": "SGS-GLD-001",
+        "imageUrl": "https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1200&auto=format&fit=crop"
+      }
+    ],
+    "images": [
+      "https://medias.utsavfashion.com/media/catalog/product/cache/1/image/1000x/040ec09b1e35df139433887a97daa66f/w/o/woven-art-silk-saree-in-emerald-green-v1-ssf833_2.jpg",
+      "https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1200&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?q=80&w=1200&auto=format&fit=crop"
+    ],
+    "imageUrl": "https://medias.utsavfashion.com/media/catalog/product/cache/1/image/1000x/040ec09b1e35df139433887a97daa66f/w/o/woven-art-silk-saree-in-emerald-green-v1-ssf833_2.jpg",
+    "description": "Master-weaver limited edition SiCo Gadwal featuring rich kaddi zari borders and pure contrast interlocked pallu.",
+    "featured": true
+  },
+  {
+    "id": "midnight-sico-gadwal",
+    "name": "Midnight Heritage Checks SiCo Gadwal",
+    "categoryId": "c1",
+    "category": "SiCo Gadwal Sarees",
+    "material": "SiCo",
+    "purchasePrice": 5800,
+    "salePrice": 7999,
+    "price": 7999,
+    "originalPrice": 9999,
+    "stock": 6,
+    "isLimitedEdition": true,
+    "isSpecialOffer": true,
+    "tags": ["limited_edition", "special_offer", "trending", "vintage_checks", "sico"],
+    "colors": ["Midnight Blue", "Burnished Gold"],
+    "variants": [
+      {
+        "color": "Midnight Blue",
+        "colorSlug": "MID",
+        "stock": 4,
+        "sku": "SGS-MID-002",
+        "imageUrl": "https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1200&auto=format&fit=crop"
+      },
+      {
+        "color": "Burnished Gold",
+        "colorSlug": "BGD",
+        "stock": 2,
+        "sku": "SGS-BGD-002",
+        "imageUrl": "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?q=80&w=1200&auto=format&fit=crop"
+      }
+    ],
+    "images": [
+      "https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1200&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?q=80&w=1200&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?q=80&w=1200&auto=format&fit=crop"
+    ],
+    "imageUrl": "https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1200&auto=format&fit=crop",
+    "description": "Authentic temple-border SiCo Gadwal saree woven with fine silk-cotton warp and pure gold zari check motifs.",
+    "featured": true
+  },
+  {
+    "id": "rose-sico-gadwal",
+    "name": "Rose Quartz Silver Zari SiCo Gadwal",
+    "categoryId": "c1",
+    "category": "SiCo Gadwal Sarees",
+    "material": "SiCo",
+    "purchasePrice": 3800,
+    "salePrice": 4999,
+    "price": 4999,
+    "originalPrice": 6499,
+    "stock": 9,
+    "isLimitedEdition": true,
+    "isSpecialOffer": true,
+    "tags": ["limited_edition", "special_offer", "trending", "pastel", "silver_zari"],
+    "colors": ["Rose Pink", "Silver Frost"],
+    "variants": [
+      {
+        "color": "Rose Pink",
+        "colorSlug": "ROS",
+        "stock": 6,
+        "sku": "SGS-ROS-003",
+        "imageUrl": "https://medias.utsavfashion.com/media/catalog/product/cache/1/image/1000x/040ec09b1e35df139433887a97daa66f/e/m/embroidered-viscose-silk-saree-in-baby-pink-v1-sgsa847_1.jpg"
+      },
+      {
+        "color": "Silver Frost",
+        "colorSlug": "SLV",
+        "stock": 3,
+        "sku": "SGS-SLV-003",
+        "imageUrl": "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?q=80&w=1200&auto=format&fit=crop"
+      }
+    ],
+    "images": [
+      "https://medias.utsavfashion.com/media/catalog/product/cache/1/image/1000x/040ec09b1e35df139433887a97daa66f/e/m/embroidered-viscose-silk-saree-in-baby-pink-v1-sgsa847_1.jpg",
+      "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?q=80&w=1200&auto=format&fit=crop"
+    ],
+    "imageUrl": "https://medias.utsavfashion.com/media/catalog/product/cache/1/image/1000x/040ec09b1e35df139433887a97daa66f/e/m/embroidered-viscose-silk-saree-in-baby-pink-v1-sgsa847_1.jpg",
+    "description": "Delicately balanced pastel SiCo Gadwal drape, featuring featherlight handloom texture and pure silver zari border.",
+    "featured": true
+  },
+  {
+    "id": "ivory-sico-gadwal",
+    "name": "Ivory Gold Temple SiCo Gadwal Saree",
+    "categoryId": "c1",
+    "category": "SiCo Gadwal Sarees",
+    "material": "SiCo",
+    "purchasePrice": 4200,
+    "salePrice": 5899,
+    "price": 5899,
+    "originalPrice": 7800,
+    "stock": 14,
+    "isLimitedEdition": false,
+    "isSpecialOffer": false,
+    "tags": ["gadwal", "handloom", "daily_luxury", "kumbham"],
+    "colors": ["Cream", "Antique Gold"],
+    "variants": [
+      {
+        "color": "Cream",
+        "colorSlug": "CRM",
+        "stock": 10,
+        "sku": "SGS-CRM-004",
+        "imageUrl": "https://medias.utsavfashion.com/media/catalog/product/cache/1/image/1000x/040ec09b1e35df139433887a97daa66f/b/a/bandhej-printed-cotton-saree-in-cream-v1-sfc217.jpg"
+      },
+      {
+        "color": "Antique Gold",
+        "colorSlug": "ANT",
+        "stock": 4,
+        "sku": "SGS-ANT-004",
+        "imageUrl": "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?q=80&w=1200&auto=format&fit=crop"
+      }
+    ],
+    "images": [
+      "https://medias.utsavfashion.com/media/catalog/product/cache/1/image/1000x/040ec09b1e35df139433887a97daa66f/b/a/bandhej-printed-cotton-saree-in-cream-v1-sfc217.jpg",
+      "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?q=80&w=1200&auto=format&fit=crop"
+    ],
+    "imageUrl": "https://medias.utsavfashion.com/media/catalog/product/cache/1/image/1000x/040ec09b1e35df139433887a97daa66f/b/a/bandhej-printed-cotton-saree-in-cream-v1-sfc217.jpg",
+    "description": "Breathable, lightweight and effortlessly graceful SiCo Gadwal handloom weave for everyday celebrations.",
+    "featured": false
+  }
+]

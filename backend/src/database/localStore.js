@@ -358,3 +358,37 @@ export function recordWebhookEvent(eventId, details = {}) {
   writeJson("webhook_events.json", events);
 }
 
+// ==========================================
+// SAREE CATALOG & INVENTORY PERSISTENCE
+// ==========================================
+export function getProductsFromStore() {
+  return readJson("products.json", []);
+}
+
+export function saveProductToStore(product) {
+  const products = getProductsFromStore();
+  const existingIdx = products.findIndex((p) => p.id === product.id);
+
+  const cleanProduct = {
+    ...product,
+    updatedAt: new Date().toISOString(),
+  };
+
+  if (existingIdx >= 0) {
+    products[existingIdx] = { ...products[existingIdx], ...cleanProduct };
+  } else {
+    products.unshift(cleanProduct);
+  }
+
+  writeJson("products.json", products);
+  return cleanProduct;
+}
+
+export function deleteProductFromStore(id) {
+  const products = getProductsFromStore();
+  const filtered = products.filter((p) => p.id !== id);
+  writeJson("products.json", filtered);
+  return true;
+}
+
+
