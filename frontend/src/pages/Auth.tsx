@@ -302,6 +302,57 @@ export default function Auth() {
     setError(null);
 
     const destination = redirectUrl && redirectUrl !== "/account" ? redirectUrl : "/shop";
+    const googleClientId =
+      import.meta.env.VITE_GOOGLE_CLIENT_ID ||
+      "762908526958-l9nfup2v64ad83ipr3uc90ifvh35ije9.apps.googleusercontent.com";
+
+    // 1. First priority: Google Identity Services (GIS) Token Popup
+    // Completely bypasses redirect_uri checks and opens Google's official fast sign-in popup
+    if (typeof window !== "undefined" && (window as any).google?.accounts?.oauth2) {
+      try {
+        const tokenClient = (window as any).google.accounts.oauth2.initTokenClient({
+          client_id: googleClientId,
+          scope: "openid email profile",
+          callback: async (tokenResponse: any) => {
+            if (tokenResponse.error) {
+              setGoogleLoading(false);
+              if (tokenResponse.error !== "popup_closed_by_user") {
+                setError(`Google sign-in error: ${tokenResponse.error_description || tokenResponse.error}`);
+              }
+              return;
+            }
+
+            try {
+              const res = await fetch(`${API_BASE}/auth/google/verify`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  accessToken: tokenResponse.access_token,
+                  redirect: destination,
+                }),
+              });
+              const result = await res.json();
+              if (!res.ok || !result.success) {
+                throw new Error(result.message || "Failed to verify Google profile");
+              }
+
+              setUserSession(result.data.user);
+              navigate(destination, { replace: true });
+            } catch (vErr: any) {
+              setGoogleLoading(false);
+              setError(vErr.message || "Failed to verify Google sign-in with server");
+            }
+          },
+        });
+
+        tokenClient.requestAccessToken({ prompt: "select_account" });
+        return;
+      } catch (gisErr) {
+        console.warn("[GoogleAuth] GIS popup initialization note:", gisErr);
+      }
+    }
+
+    // 2. Fallback to server redirect flow
     await StoreService.signInWithGoogle(destination);
   };
 

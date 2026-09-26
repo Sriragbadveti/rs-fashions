@@ -109,6 +109,33 @@ export default function AuthCallback() {
           setStatus("error");
           setErrorMessage(err.message || "Failed to process Google sign-in response.");
         }
+      } else if (searchParams.get("code")) {
+        // Direct Google OAuth redirect with authorization code
+        try {
+          const authCode = searchParams.get("code");
+          const callbackUri = `${window.location.origin}/auth/callback`;
+          const res = await fetch(
+            `${API_BASE}/auth/google/callback?code=${encodeURIComponent(authCode!)}&redirect_uri=${encodeURIComponent(callbackUri)}&json=true`
+          );
+          const data = await res.json();
+          if (!res.ok || !data.success || !data.data?.user) {
+            throw new Error(data.message || "Failed to exchange Google authorization code");
+          }
+
+          setUserSession(data.data.user);
+          setStatus("success");
+          setTimeout(() => {
+            const dest = data.data.redirect || redirect;
+            const finalDestination = dest.startsWith("/") ? dest : `/${dest}`;
+            navigate(finalDestination, { replace: true });
+          }, 600);
+          return;
+        } catch (err: any) {
+          console.error("Failed to process Google auth code:", err);
+          setStatus("error");
+          setErrorMessage(err.message || "Failed to complete Google sign-in with server.");
+          return;
+        }
       } else if (success === "true") {
         setStatus("success");
         setTimeout(() => {

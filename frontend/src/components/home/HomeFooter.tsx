@@ -149,7 +149,7 @@ function HomeFooter() {
                   </a>
 
                   <a
-                    href="https://instagram.com"
+                    href="https://www.instagram.com/rs_fashions25?stkn=MXh4c3ZqODZ4NmFrMA=="
                     target="_blank"
                     rel="noreferrer"
                     aria-label="Instagram Support"

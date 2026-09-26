@@ -306,7 +306,7 @@ export async function handleGoogleCallback(req, res) {
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
     const backendUrl = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 5001}`;
-    const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${backendUrl}/api/auth/google/callback`;
+    const redirectUri = req.query.redirect_uri || process.env.GOOGLE_REDIRECT_URI || `${backendUrl}/api/auth/google/callback`;
 
     // 1. Exchange Code for Access Token
     const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
@@ -399,12 +399,23 @@ export async function handleGoogleCallback(req, res) {
       status: "active",
     };
 
+    if (req.query.json === "true" || req.headers.accept?.includes("application/json")) {
+      return successResponse(
+        res,
+        { user: userPayload, redirect: destination },
+        "Google sign-in completed successfully"
+      );
+    }
+
     const userParam = encodeURIComponent(JSON.stringify(userPayload));
     return res.redirect(
       `${clientUrl}/auth/callback?success=true&user=${userParam}&redirect=${encodeURIComponent(destination)}`
     );
   } catch (err) {
     console.error("[GoogleAuth] Callback error:", err);
+    if (req.query.json === "true" || req.headers.accept?.includes("application/json")) {
+      return errorResponse(res, err.message || "Google authentication failed", 400);
+    }
     return res.redirect(
       `${clientUrl}/auth/callback?error=${encodeURIComponent(
         err.message || "Google authentication failed"
