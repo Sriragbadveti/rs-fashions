@@ -106,9 +106,12 @@ export async function getProducts(req, res) {
           }
         }
 
-        // If Supabase returned empty or is offline, load from local JSON store
-        if (rawData.length === 0) {
-          rawData = getProductsFromStore();
+        // Merge products from local JSON store so local limited edition items are always present
+        const localItems = getProductsFromStore();
+        for (const lp of localItems) {
+          if (!rawData.some((rp) => rp.id === lp.id)) {
+            rawData.push(lp);
+          }
         }
 
         const products = (rawData || []).map((p) => {

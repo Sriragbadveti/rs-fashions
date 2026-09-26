@@ -65,9 +65,12 @@ export async function getBootstrapData(req, res) {
       nextSequence: Number(c.next_sequence) || 1,
     }));
 
-    let rawProds = prodsRes.data || [];
-    if (rawProds.length === 0) {
-      rawProds = getProductsFromStore();
+    let rawProds = [...(prodsRes.data || [])];
+    const localStoreProds = getProductsFromStore();
+    for (const lp of localStoreProds) {
+      if (!rawProds.some((rp) => rp.id === lp.id)) {
+        rawProds.push(lp);
+      }
     }
 
     const products = rawProds.map((p) => {
