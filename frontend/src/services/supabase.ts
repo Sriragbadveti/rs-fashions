@@ -968,24 +968,41 @@ export const StoreService = {
     const destination = redirectPath && redirectPath !== "/account" ? redirectPath : "/shop";
     sessionStorage.setItem("rs_auth_redirect", destination);
 
-    if (supabase) {
+    // 1. Probe Supabase Auth settings to see if Google provider is actively enabled
+    if (supabase && SUPABASE_URL && SUPABASE_ANON_KEY) {
       try {
-        const callbackUrl = `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(destination)}`;
-        const { data, error } = await supabase.auth.signInWithOAuth({
-          provider: "google",
-          options: {
-            redirectTo: callbackUrl,
-          },
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 1800);
+
+        const settingsRes = await fetch(`${SUPABASE_URL}/auth/v1/settings`, {
+          headers: { apikey: SUPABASE_ANON_KEY },
+          signal: controller.signal,
         });
-        if (!error && data?.url) {
-          window.location.href = data.url;
-          return;
+        clearTimeout(timeoutId);
+
+        if (settingsRes.ok) {
+          const settings = await settingsRes.json();
+          // Only trigger Supabase OAuth if provider is explicitly enabled in Supabase dashboard
+          if (settings?.external?.google) {
+            const callbackUrl = `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(destination)}`;
+            const { data, error } = await supabase.auth.signInWithOAuth({
+              provider: "google",
+              options: {
+                redirectTo: callbackUrl,
+              },
+            });
+            if (!error && data?.url) {
+              window.location.href = data.url;
+              return;
+            }
+          }
         }
       } catch (e) {
-        console.warn("Supabase client OAuth note, redirecting to backend OAuth:", e);
+        console.warn("[GoogleAuth] Supabase provider check note, proceeding to direct Google OAuth:", e);
       }
     }
 
+    // 2. Direct Backend Google OAuth 2.0 flow (uses configured GOOGLE_CLIENT_ID & SECRET)
     const backendOAuthUrl = `${API_BASE}/auth/google?redirect=${encodeURIComponent(destination)}`;
     window.location.href = backendOAuthUrl;
   },

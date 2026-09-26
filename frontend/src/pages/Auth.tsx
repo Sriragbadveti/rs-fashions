@@ -113,7 +113,10 @@ export default function Auth() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(() => {
+    const err = searchParams.get("error");
+    return err ? decodeURIComponent(err) : null;
+  });
 
   // Birthday & Anniversary — optional, signup only.
   const [birthday, setBirthday] = useState("");
