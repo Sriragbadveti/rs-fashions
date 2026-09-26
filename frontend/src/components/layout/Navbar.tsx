@@ -3,16 +3,14 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion, useScroll, useTransform } from "framer-motion";
 import { FiMenu, FiSearch, FiShoppingBag, FiX, FiArrowUpRight, FiUser } from "react-icons/fi";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Store, Package, MapPin, LogOut, Sparkles, User as UserIcon, ChevronDown } from "lucide-react";
+import { Store, Package, MapPin, LogOut, User as UserIcon, ChevronDown } from "lucide-react";
 
 import { useCart } from "../../context/CartContext";
 import { getUserSession, clearUserSession, USER_SESSION_EVENT, type UserSession } from "../../utils/userSession";
-import { isAdminAuthenticated } from "../../utils/adminSession";
 
 import CartDrawer from "../cart/CartDrawer";
 import MobileMenu from "./MobileMenu";
 import logo from "../../assets/logo/logo1.png";
-import { ADMIN_SECRET_PATH } from "../../config/routes";
 
 function Navbar() {
   const location = useLocation();
@@ -317,16 +315,6 @@ function Navbar() {
                                 <UserIcon size={15} className="text-[#8E3D51]" />
                                 <span className="font-medium">Profile Details</span>
                               </Link>
-
-                              {Boolean(isAdminAuthenticated()) && (
-                                <>
-                                  <div className="my-1 border-t border-stone-100" />
-                                  <Link to={ADMIN_SECRET_PATH} onClick={() => setIsUserDropdownOpen(false)} className="flex items-center gap-2.5 rounded-xl bg-amber-50 px-3 py-2 font-semibold text-amber-950 transition-colors hover:bg-amber-100">
-                                    <Sparkles size={15} className="text-amber-700" />
-                                    <span>Admin Dashboard</span>
-                                  </Link>
-                                </>
-                              )}
                             </div>
 
                             <div className="border-t border-stone-100 bg-stone-50 p-2">
