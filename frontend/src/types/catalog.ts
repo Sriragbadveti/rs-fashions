@@ -1,8 +1,10 @@
-import { Product, MOCK_DESIGNS, COLOR_CODES, LEGACY_COLOR_CODES, VIBGYOR_COLORS } from "../types/inventory";
+import { Product, MOCK_DESIGNS, COLOR_CODES, LEGACY_COLOR_CODES, VIBGYOR_COLORS, type ColorDefinition } from "../types/inventory";
 
 export const LOW_STOCK_THRESHOLD = 2;
 
-export const COLOR_OPTIONS = COLOR_CODES.map(
+export const CUSTOM_COLORS_STORAGE_KEY = "rs_fashions_custom_colors";
+
+export const COLOR_OPTIONS: string[] = COLOR_CODES.map(
   (colorDefinition) => colorDefinition.name
 );
 
@@ -16,8 +18,22 @@ export function normalizeText(value: string): string {
   return value.trim().toLowerCase();
 }
 
+export function formatColorName(raw: string): string {
+  const trimmed = String(raw || "").trim().replace(/\s+/g, " ");
+  if (!trimmed) return "";
+  return trimmed
+    .split(" ")
+    .map((w) => (w ? w.charAt(0).toUpperCase() + w.slice(1) : ""))
+    .join(" ");
+}
+
 export function isVibgyorColor(value: string): boolean {
-  return VIBGYOR_COLORS.some((c) => normalizeText(c) === normalizeText(value));
+  if (!value || !value.trim()) return false;
+  return (
+    VIBGYOR_COLORS.some((c) => normalizeText(c) === normalizeText(value)) ||
+    COLOR_CODES.some((c) => normalizeText(c.name) === normalizeText(value)) ||
+    Boolean(value.trim())
+  );
 }
 
 export function createDesignSlug(name: string): string {
@@ -64,7 +80,6 @@ export function generateColorSlug(color: string): string {
     return knownColor.code;
   }
 
-
   const words = color
     .trim()
     .replace(/[^a-zA-Z0-9\s]/g, "")
@@ -75,11 +90,118 @@ export function generateColorSlug(color: string): string {
     return "CLR";
   }
 
+  if (words.length === 1) {
+    return words[0].slice(0, 3).toUpperCase();
+  }
+
   return words
     .map((word) => word.charAt(0))
     .join("")
     .slice(0, 3)
     .toUpperCase();
+}
+
+export function syncColorsToRuntime(
+  incomingColors: ColorDefinition[],
+  emitEvent = true
+): ColorDefinition[] {
+  if (!Array.isArray(incomingColors)) return COLOR_CODES;
+
+  let changed = false;
+  for (const item of incomingColors) {
+    if (!item || !item.name) continue;
+    const formattedName = formatColorName(item.name);
+    if (!formattedName || normalizeText(formattedName) === "standard") continue;
+
+    const exists = COLOR_CODES.some(
+      (c) => normalizeText(c.name) === normalizeText(formattedName)
+    );
+    if (!exists) {
+      const code = (item.code || generateColorSlug(formattedName)).trim().toUpperCase();
+      COLOR_CODES.push({ name: formattedName, code });
+      if (!COLOR_OPTIONS.some((o) => normalizeText(o) === normalizeText(formattedName))) {
+        COLOR_OPTIONS.push(formattedName);
+      }
+      changed = true;
+    }
+  }
+
+  if (changed && typeof window !== "undefined") {
+    try {
+      localStorage.setItem(CUSTOM_COLORS_STORAGE_KEY, JSON.stringify(COLOR_CODES));
+    } catch {
+      // ignore storage errors
+    }
+    if (emitEvent) {
+      window.dispatchEvent(
+        new CustomEvent("rs_colors_updated", { detail: [...COLOR_CODES] })
+      );
+    }
+  }
+
+  return [...COLOR_CODES];
+}
+
+export function registerColorInCatalog(
+  rawName: string,
+  customCode?: string
+): ColorDefinition {
+  const formattedName = formatColorName(rawName);
+  const existing = COLOR_CODES.find(
+    (c) => normalizeText(c.name) === normalizeText(formattedName)
+  );
+  if (existing) {
+    return existing;
+  }
+
+  let baseCode = (customCode || generateColorSlug(formattedName)).trim().toUpperCase();
+  const usedCodes = new Set(COLOR_CODES.map((c) => c.code.toUpperCase()));
+  if (usedCodes.has(baseCode)) {
+    const lettersOnly = formattedName.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+    if (lettersOnly.length >= 3 && !usedCodes.has(lettersOnly.slice(0, 3))) {
+      baseCode = lettersOnly.slice(0, 3);
+    } else {
+      let counter = 2;
+      while (usedCodes.has(`${baseCode}${counter}`)) {
+        counter++;
+      }
+      baseCode = `${baseCode}${counter}`;
+    }
+  }
+
+  const newColor: ColorDefinition = { name: formattedName, code: baseCode };
+  COLOR_CODES.push(newColor);
+  if (!COLOR_OPTIONS.some((o) => normalizeText(o) === normalizeText(formattedName))) {
+    COLOR_OPTIONS.push(formattedName);
+  }
+
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.setItem(CUSTOM_COLORS_STORAGE_KEY, JSON.stringify(COLOR_CODES));
+    } catch {
+      // ignore
+    }
+    window.dispatchEvent(
+      new CustomEvent("rs_colors_updated", { detail: [...COLOR_CODES] })
+    );
+  }
+
+  return newColor;
+}
+
+// Hydrate any locally saved custom colors on module load
+if (typeof window !== "undefined") {
+  try {
+    const savedColors = localStorage.getItem(CUSTOM_COLORS_STORAGE_KEY);
+    if (savedColors) {
+      const parsed = JSON.parse(savedColors);
+      if (Array.isArray(parsed)) {
+        syncColorsToRuntime(parsed, false);
+      }
+    }
+  } catch {
+    // ignore
+  }
 }
 
 export function buildSku(

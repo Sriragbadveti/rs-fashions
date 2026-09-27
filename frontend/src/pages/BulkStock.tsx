@@ -20,11 +20,17 @@ import {
   ArrowRight,
   Info,
 } from "lucide-react";
-import type { Product, Category } from "../types/inventory";
+import type { Product, Category, ColorDefinition } from "../types/inventory";
 import { MOCK_DESIGNS, COLOR_CODES } from "../types/inventory";
-import { generateColorSlug, normalizeText } from "../types/catalog";
+import { generateColorSlug, normalizeText, formatColorName } from "../types/catalog";
 import { sound } from "../types/soundEngine";
 import { StoreService } from "../services/supabase";
+import {
+  IMAGE_ACCEPT_ATTR,
+  isSupportedImageFile,
+  fileToVisibleDataUrl,
+  handleSareeImageError,
+} from "../utils/imageConverter";
 
 interface BulkStockProps {
   inventory: Product[];
@@ -60,6 +66,8 @@ interface PremiumDropdownProps {
   disabled?: boolean;
   className?: string;
   allowCustom?: boolean;
+  onRegisterCustom?: (customValue: string) => Promise<string | void> | string | void;
+  customActionLabel?: string;
 }
 
 function PremiumDropdown({
@@ -72,6 +80,8 @@ function PremiumDropdown({
   disabled = false,
   className = "",
   allowCustom = false,
+  onRegisterCustom,
+  customActionLabel = "Register Color",
 }: PremiumDropdownProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -80,7 +90,7 @@ function PremiumDropdown({
 
   const selected =
     options.find((option) => normalizeText(option.value) === normalizeText(value)) ||
-    (value ? { value, label: value, description: "Custom Hue", code: generateColorSlug(value) } : undefined);
+    (value ? { value, label: value, description: `Code: ${generateColorSlug(value)}`, code: generateColorSlug(value) } : undefined);
 
   const filteredOptions = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -94,14 +104,15 @@ function PremiumDropdown({
     );
   }, [options, search]);
 
-  const hasCustom =
+  const hasCustom = Boolean(
     allowCustom &&
     search.trim() &&
     !options.some(
       (opt) =>
         normalizeText(opt.label) === normalizeText(search) ||
         normalizeText(opt.value) === normalizeText(search)
-    );
+    )
+  );
 
   useEffect(() => {
     const handleOutsideClick = (event: MouseEvent) => {
@@ -143,6 +154,24 @@ function PremiumDropdown({
     onChange(option.value);
     setOpen(false);
     setSearch("");
+  };
+
+  const handleRegisterCustom = async () => {
+    const rawVal = search.trim();
+    if (!rawVal) {
+      searchRef.current?.focus();
+      return;
+    }
+    sound.playClick();
+    const formatted = formatColorName(rawVal);
+    setOpen(false);
+    setSearch("");
+    if (onRegisterCustom) {
+      const registeredName = await onRegisterCustom(formatted);
+      onChange(typeof registeredName === "string" && registeredName ? registeredName : formatted);
+    } else {
+      onChange(formatted);
+    }
   };
 
   return (
@@ -205,7 +234,17 @@ function PremiumDropdown({
                   ref={searchRef}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder={allowCustom ? `Search or type custom ${label.toLowerCase()}...` : `Search ${label.toLowerCase()}...`}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (hasCustom) {
+                        handleRegisterCustom();
+                      } else if (filteredOptions.length === 1) {
+                        handleSelect(filteredOptions[0]);
+                      }
+                    }
+                  }}
+                  placeholder={allowCustom ? `Search or type new color to register...` : `Search ${label.toLowerCase()}...`}
                   className="h-7 min-w-0 flex-1 bg-transparent text-xs text-stone-800 outline-none placeholder:text-stone-400"
                 />
                 {search && (
@@ -288,28 +327,53 @@ function PremiumDropdown({
             {hasCustom && (
               <button
                 type="button"
-                onClick={() => {
-                  sound.playClick();
-                  const customVal = search.trim();
-                  onChange(customVal);
-                  setOpen(false);
-                  setSearch("");
-                }}
-                className="mt-1 flex w-full items-center gap-2 rounded-xl bg-amber-50/80 p-2.5 text-left transition-colors hover:bg-amber-100 border border-amber-200/60"
+                onClick={handleRegisterCustom}
+                className="mt-1 flex w-full items-center justify-between gap-2.5 rounded-xl bg-[#2A0E20] px-3 py-2.5 text-left text-amber-100 shadow-xs transition-all hover:bg-[#3D142E] active:scale-[0.99]"
               >
-                <Plus size={13} className="shrink-0 text-[#2A0E20]" />
-                <span className="truncate text-xs font-bold text-[#2A0E20]">
-                  Use Custom Hue "{search.trim()}"
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-white/15 text-amber-300">
+                    <Plus size={13} />
+                  </span>
+                  <div className="min-w-0">
+                    <span className="block truncate text-xs font-bold text-amber-100">
+                      + {customActionLabel} &ldquo;{formatColorName(search)}&rdquo;
+                    </span>
+                    <span className="block truncate text-[9.5px] text-amber-200/75">
+                      Save new color to palette &amp; backend
+                    </span>
+                  </div>
+                </div>
+                <span className="shrink-0 rounded bg-white/15 px-1.5 py-0.5 font-mono text-[9px] font-bold text-amber-200">
+                  {generateColorSlug(search.trim())}
                 </span>
               </button>
             )}
           </div>
 
           {options.length > 0 && (
-            <div className="border-t border-stone-100 bg-stone-50/70 px-3 py-1.5">
+            <div className="flex items-center justify-between gap-2 border-t border-stone-100 bg-stone-50/70 px-3 py-1.5">
               <span className="text-[9px] font-mono text-stone-400">
                 Showing {filteredOptions.length} of {options.length} options
               </span>
+
+              {allowCustom && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (hasCustom) {
+                      handleRegisterCustom();
+                    } else {
+                      sound.playClick();
+                      if (search.trim()) setSearch("");
+                      searchRef.current?.focus();
+                    }
+                  }}
+                  className="inline-flex items-center gap-1 rounded-lg bg-amber-100/80 px-2 py-0.5 text-[10px] font-bold text-[#2A0E20] border border-amber-300/70 transition-colors hover:bg-amber-200/80"
+                >
+                  <Plus size={11} />
+                  <span>{customActionLabel}</span>
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -324,6 +388,34 @@ export default function BulkStock({
   onBulkRestock,
 }: BulkStockProps) {
   const [orderMode, setOrderMode] = useState<OrderMode>("single");
+
+  const [colorPalette, setColorPalette] = useState<ColorDefinition[]>(() => [
+    ...COLOR_CODES,
+  ]);
+
+  useEffect(() => {
+    let mounted = true;
+    StoreService.getColors().then((colors) => {
+      if (mounted && Array.isArray(colors)) {
+        setColorPalette([...colors]);
+      }
+    });
+
+    const handleColorsUpdated = () => {
+      setColorPalette([...COLOR_CODES]);
+    };
+    window.addEventListener("rs_colors_updated", handleColorsUpdated);
+    return () => {
+      mounted = false;
+      window.removeEventListener("rs_colors_updated", handleColorsUpdated);
+    };
+  }, []);
+
+  const handleRegisterColor = async (newColorName: string): Promise<string> => {
+    const registered = await StoreService.registerColor(newColorName);
+    setColorPalette([...COLOR_CODES]);
+    return registered.name;
+  };
 
   const [selectedDesignSlug, setSelectedDesignSlug] = useState(
     MOCK_DESIGNS[0]?.slug || ""
@@ -378,13 +470,13 @@ export default function BulkStock({
 
   const colorOptions: DropdownOption[] = useMemo(
     () =>
-      COLOR_CODES.map((color) => ({
+      colorPalette.map((color) => ({
         value: color.name,
         label: color.name,
         description: `Code: ${color.code}`,
         code: color.code,
       })),
-    []
+    [colorPalette]
   );
 
   const selectedDesign = useMemo(
@@ -443,17 +535,17 @@ export default function BulkStock({
     );
   };
 
-  const handleSingleImageUpload = (
+  const handleSingleImageUpload = async (
     id: string,
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    e.target.value = "";
+    if (!file || !isSupportedImageFile(file)) return;
 
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      sound.playClick();
-      const dataUrl = reader.result as string;
+    sound.playClick();
+    try {
+      const dataUrl = await fileToVisibleDataUrl(file);
       updateRow(id, "imageUrl", dataUrl);
 
       try {
@@ -464,32 +556,35 @@ export default function BulkStock({
       } catch (err) {
         console.warn("Bulk image upload notice:", err);
       }
-    };
-    reader.readAsDataURL(file);
-    e.target.value = "";
+    } catch (err) {
+      console.warn("Failed to process image:", err);
+    }
   };
 
-  const handleBulkImagesUpload = (
+  const handleBulkImagesUpload = async (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
+    const fileList = Array.from(files).filter((f) => isSupportedImageFile(f));
+    e.target.value = "";
+    if (fileList.length === 0) return;
+
     sound.playGunReload();
-    const fileList = Array.from(files);
 
-    fileList.forEach((file, index) => {
-      const reader = new FileReader();
-
-      reader.onloadend = async () => {
-        const dataUrl = reader.result as string;
-        const rowId = `bulk-row-${Date.now()}-${index}`;
+    for (let index = 0; index < fileList.length; index++) {
+      const file = fileList[index];
+      try {
+        const dataUrl = await fileToVisibleDataUrl(file);
+        const rowId = `bulk-row-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 6)}`;
 
         setBulkRows((prev) => {
+          const palette = colorPalette.length > 0 ? colorPalette : COLOR_CODES;
           const newRow: BulkRow = {
             id: rowId,
-            color1: COLOR_CODES[index % COLOR_CODES.length]?.name || "",
-            color2: COLOR_CODES[(index + 1) % COLOR_CODES.length]?.name || "",
+            color1: palette[index % palette.length]?.name || "",
+            color2: palette[(index + 1) % palette.length]?.name || "",
             qty: 5,
             imageUrl: dataUrl,
           };
@@ -501,20 +596,19 @@ export default function BulkStock({
           return [...prev, newRow];
         });
 
-        try {
-          const uploadRes = await StoreService.uploadImage(dataUrl);
-          if (uploadRes.success && uploadRes.url) {
-            updateRow(rowId, "imageUrl", uploadRes.url);
-          }
-        } catch (err) {
-          console.warn("Bulk image batch sync notice:", err);
-        }
-      };
-
-      reader.readAsDataURL(file);
-    });
-
-    e.target.value = "";
+        StoreService.uploadImage(dataUrl)
+          .then((uploadRes) => {
+            if (uploadRes.success && uploadRes.url) {
+              updateRow(rowId, "imageUrl", uploadRes.url);
+            }
+          })
+          .catch((err) => {
+            console.warn("Bulk image batch sync notice:", err);
+          });
+      } catch (err) {
+        console.warn("Failed to process bulk image:", err);
+      }
+    }
   };
 
   const applyQuantityToAll = () => {
@@ -534,12 +628,12 @@ export default function BulkStock({
 
     const newProducts: Product[] = validRows.map((row, idx) => {
       const color1Name = (row.color1 || "").trim() || "Standard";
-      const color1Obj = COLOR_CODES.find((c) => normalizeText(c.name) === normalizeText(color1Name));
+      const color1Obj = colorPalette.find((c) => normalizeText(c.name) === normalizeText(color1Name));
       const color1Code = color1Obj ? color1Obj.code : generateColorSlug(color1Name);
 
       const color2Name = orderMode === "dual" ? (row.color2 || "").trim() : "";
       const color2Obj = color2Name
-        ? COLOR_CODES.find((c) => normalizeText(c.name) === normalizeText(color2Name))
+        ? colorPalette.find((c) => normalizeText(c.name) === normalizeText(color2Name))
         : null;
       const color2Code = color2Name ? (color2Obj ? color2Obj.code : generateColorSlug(color2Name)) : null;
 
@@ -565,12 +659,14 @@ export default function BulkStock({
           orderMode === "dual" ? "dual-tone" : "single-tone",
         ],
         imageUrl: row.imageUrl || undefined,
+        images: row.imageUrl ? [row.imageUrl] : undefined,
         variants: [
           {
             color: finalColorName,
             colorSlug: finalColorSlug,
             stock: row.qty,
             sku: sku,
+            imageUrl: row.imageUrl || undefined,
           },
         ],
       };
@@ -772,10 +868,10 @@ export default function BulkStock({
             <input
               type="file"
               multiple
-              accept="image/*"
+              accept={IMAGE_ACCEPT_ATTR}
               onChange={handleBulkImagesUpload}
               className="absolute inset-0 z-10 cursor-pointer opacity-0"
-              title="Upload multiple saree photos"
+              title="Upload multiple saree photos (JPG, PNG, WebP, HEIC)"
             />
             <div className="pointer-events-none mx-auto flex max-w-md flex-col items-center">
               <div className="mb-3 flex h-13 w-13 items-center justify-center rounded-2xl bg-amber-100 text-amber-900 shadow-xs transition-transform duration-300 group-hover:scale-105 border border-amber-200/80">
@@ -785,7 +881,7 @@ export default function BulkStock({
                 Drop Multiple Drape Photos to Auto-Index
               </h3>
               <p className="mt-1 text-xs leading-relaxed text-stone-500 font-light">
-                Drag and drop 5 to 50 saree photographs here at once. Each image automatically creates an individual variant entry ready for instant SKU assignment.
+                Drag and drop 5 to 50 saree photographs (JPG, PNG, WebP, or HEIC) here at once. Each image automatically creates an individual variant entry ready for instant SKU assignment.
               </p>
               <div className="mt-3.5 inline-flex items-center gap-1.5 rounded-full bg-[#2A0E20] px-4 py-1.5 text-[9.5px] font-bold uppercase tracking-wider text-amber-100 shadow-xs">
                 <Upload size={12} className="text-amber-300" />
@@ -867,12 +963,12 @@ export default function BulkStock({
         <div className="space-y-3 px-6 pb-6">
           {bulkRows.map((row, index) => {
             const primaryName = (row.color1 || "").trim() || "Standard";
-            const primaryObj = COLOR_CODES.find((c) => normalizeText(c.name) === normalizeText(primaryName));
+            const primaryObj = colorPalette.find((c) => normalizeText(c.name) === normalizeText(primaryName));
             const primaryCode = primaryObj ? primaryObj.code : generateColorSlug(primaryName);
 
             const secondaryName = orderMode === "dual" ? (row.color2 || "").trim() : "";
             const secondaryObj = secondaryName
-              ? COLOR_CODES.find((c) => normalizeText(c.name) === normalizeText(secondaryName))
+              ? colorPalette.find((c) => normalizeText(c.name) === normalizeText(secondaryName))
               : null;
             const secondaryCode = secondaryName ? (secondaryObj ? secondaryObj.code : generateColorSlug(secondaryName)) : null;
 
@@ -898,6 +994,11 @@ export default function BulkStock({
                       <img
                         src={row.imageUrl}
                         alt={`${row.color1} drape`}
+                        onError={(e) => {
+                          handleSareeImageError(e, row.imageUrl, (recovered) => {
+                            updateRow(row.id, "imageUrl", recovered);
+                          });
+                        }}
                         className="h-full w-full object-cover"
                       />
                       <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover/img:opacity-100">
@@ -914,10 +1015,10 @@ export default function BulkStock({
                   )}
                   <input
                     type="file"
-                    accept="image/*"
+                    accept={IMAGE_ACCEPT_ATTR}
                     onChange={(e) => handleSingleImageUpload(row.id, e)}
                     className="absolute inset-0 cursor-pointer opacity-0"
-                    title="Upload or change drape photograph"
+                    title="Upload or change drape photograph (JPG, PNG, WebP, HEIC)"
                   />
                 </div>
 
@@ -928,7 +1029,9 @@ export default function BulkStock({
                     value={row.color1}
                     options={colorOptions}
                     onChange={(value) => updateRow(row.id, "color1", value)}
-                    allowCustom={false}
+                    allowCustom={true}
+                    onRegisterCustom={handleRegisterColor}
+                    customActionLabel="Register Color"
                   />
 
                   {orderMode === "dual" ? (
@@ -937,7 +1040,9 @@ export default function BulkStock({
                       value={row.color2}
                       options={colorOptions}
                       onChange={(value) => updateRow(row.id, "color2", value)}
-                      allowCustom={false}
+                      allowCustom={true}
+                      onRegisterCustom={handleRegisterColor}
+                      customActionLabel="Register Color"
                     />
                   ) : (
                     <div className="flex flex-col">

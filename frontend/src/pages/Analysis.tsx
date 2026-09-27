@@ -122,20 +122,20 @@ export default function Analysis({
   const formatInteger = (value: number) =>
     new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(Math.round(value));
 
-  const horizonMultiplier = useMemo(() => {
+  const horizonDays = useMemo(() => {
     switch (timeHorizon) {
       case "week":
-        return 0.28;
+        return 7;
       case "month":
-        return 1;
+        return 30;
       case "quarter":
-        return 2.85;
+        return 90;
       case "year":
-        return 11.4;
+        return 365;
       case "festive":
-        return 4.2;
+        return 180;
       default:
-        return 1;
+        return 30;
     }
   }, [timeHorizon]);
 
@@ -154,30 +154,67 @@ export default function Analysis({
     }
   }, [timeHorizon]);
 
-  // Core Metrics Aggregation
+  // Filter salesHistory by selected time horizon
+  const filteredSales = useMemo(() => {
+    const now = Date.now();
+    const cutoff = now - horizonDays * 24 * 60 * 60 * 1000;
+    return salesHistory.filter((sale) => {
+      const rawDate = sale.date || (sale as unknown as Record<string, string>).timestamp;
+      const ts = rawDate ? new Date(rawDate).getTime() : NaN;
+      if (Number.isNaN(ts)) return true;
+      return ts >= cutoff;
+    });
+  }, [salesHistory, horizonDays]);
+
+  const inventoryCostMap = useMemo(() => {
+    const map = new Map<string, number>();
+    inventory.forEach((p) => {
+      map.set(p.id, Number(p.purchasePrice) || 0);
+      map.set(p.name.toLowerCase(), Number(p.purchasePrice) || 0);
+    });
+    return map;
+  }, [inventory]);
+
+  // Core Metrics Aggregation (100% Real Data)
   const metrics = useMemo(() => {
-    const rawSales = salesHistory.reduce((sum, sale) => sum + sale.total, 0);
-    const baseRevenue = rawSales > 0 ? rawSales : 348500;
-    const adjustedRevenue = Math.round(baseRevenue * horizonMultiplier);
-    const baseCost = Math.round(adjustedRevenue * 0.58);
-    const grossProfit = adjustedRevenue - baseCost;
+    const adjustedRevenue = Math.round(
+      filteredSales.reduce((sum, sale) => sum + (Number(sale.total) || 0), 0)
+    );
+
+    const baseCost = Math.round(
+      filteredSales.reduce((sum, sale) => {
+        const saleCost = (sale.items || []).reduce((acc, it) => {
+          const unitCost =
+            inventoryCostMap.get(it.productId) ??
+            inventoryCostMap.get((it.name || "").toLowerCase()) ??
+            0;
+          return acc + unitCost * (Number(it.qty) || 0);
+        }, 0);
+        return sum + saleCost;
+      }, 0)
+    );
+
+    const totalGst = Math.round(
+      filteredSales.reduce(
+        (sum, sale) => sum + (Number(sale.cgst) || 0) + (Number(sale.sgst) || 0),
+        0
+      )
+    );
+
+    const grossProfit = Math.max(0, adjustedRevenue - baseCost);
     const marginPercent =
       adjustedRevenue > 0 ? Math.round((grossProfit / adjustedRevenue) * 100) : 0;
 
-    const basePieces = salesHistory.reduce(
-      (sum, sale) => sum + sale.items.reduce((acc, it) => acc + it.qty, 0),
+    const totalPiecesSold = filteredSales.reduce(
+      (sum, sale) =>
+        sum + (sale.items || []).reduce((acc, it) => acc + (Number(it.qty) || 0), 0),
       0
-    );
-    const totalPiecesSold = Math.max(
-      18,
-      Math.round((basePieces || 22) * horizonMultiplier)
     );
     const avgTicketValue =
       totalPiecesSold > 0 ? Math.round(adjustedRevenue / totalPiecesSold) : 0;
-    const totalGst = Math.round(adjustedRevenue * 0.107);
 
-    const gstSales = salesHistory.filter((s) => s.billingType === "gst");
-    const retailSales = salesHistory.filter((s) => s.billingType !== "gst");
+    const gstSales = filteredSales.filter((s) => s.billingType === "gst");
+    const retailSales = filteredSales.filter((s) => s.billingType !== "gst");
 
     return {
       adjustedRevenue,
@@ -190,51 +227,79 @@ export default function Analysis({
       gstSales,
       retailSales,
     };
-  }, [salesHistory, horizonMultiplier]);
+  }, [filteredSales, inventoryCostMap]);
 
   const trendLabels = useMemo(() => {
     const labelsMap: Record<TimeHorizon, string[]> = {
       week: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-      month: ["1st", "5th", "10th", "15th", "20th", "25th", "30th"],
-      quarter: ["Apr", "May", "Jun", "Jul", "Aug", "Sep"],
-      year: ["Q1 Apr", "Q2 Jul", "Q3 Oct", "Q4 Jan"],
-      festive: ["Navratri", "Dussehra", "Karva Chauth", "Diwali", "Muhurat Days"],
+      month: ["Wk 1", "Wk 2", "Wk 3", "Wk 4", "Wk 5"],
+      quarter: ["Month 1", "Month 2", "Month 3"],
+      year: ["Q1", "Q2", "Q3", "Q4"],
+      festive: ["Phase 1", "Phase 2", "Phase 3", "Phase 4", "Phase 5"],
     };
     return labelsMap[timeHorizon];
   }, [timeHorizon]);
 
-  const trendPattern = useMemo(() => {
-    const patternMap: Record<TimeHorizon, number[]> = {
-      week: [0.09, 0.11, 0.13, 0.12, 0.16, 0.22, 0.17],
-      month: [0.1, 0.13, 0.18, 0.14, 0.19, 0.23, 0.18],
-      quarter: [0.13, 0.14, 0.16, 0.17, 0.19, 0.21],
-      year: [0.2, 0.23, 0.35, 0.22],
-      festive: [0.12, 0.18, 0.22, 0.28, 0.2],
-    };
-    return patternMap[timeHorizon];
-  }, [timeHorizon]);
-
-  // 1. REVENUE DATASET
-  const revenueTrend = useMemo<ChartPoint[]>(() => {
-    const total = trendPattern.reduce((sum, v) => sum + v, 0);
-    return trendLabels.map((label, idx) => ({
+  // Bucket real sales across the selected time horizon
+  const bucketedSeries = useMemo(() => {
+    const count = trendLabels.length;
+    const buckets = trendLabels.map((label) => ({
       label,
-      value: Math.round(metrics.adjustedRevenue * (trendPattern[idx] / total)),
+      revenue: 0,
+      cost: 0,
     }));
-  }, [metrics.adjustedRevenue, trendLabels, trendPattern]);
 
-  // 2. INDEPENDENT PROFIT & LOSS DATASET
-  const pandlTrend = useMemo<PandLPoint[]>(() => {
-    const total = trendPattern.reduce((sum, v) => sum + v, 0);
-    return trendLabels.map((label, idx) => {
-      const revenue = Math.round(metrics.adjustedRevenue * (trendPattern[idx] / total));
-      const costRate = 0.58 + ((idx % 3) * 0.015 - 0.015);
-      const cost = Math.round(revenue * costRate);
-      const profit = revenue - cost;
-      const marginPct = revenue > 0 ? Math.round((profit / revenue) * 100) : 0;
-      return { label, revenue, cost, profit, marginPct };
+    if (filteredSales.length === 0) return buckets;
+
+    const now = Date.now();
+    const windowMs = horizonDays * 24 * 60 * 60 * 1000;
+    const startMs = now - windowMs;
+
+    filteredSales.forEach((sale, idx) => {
+      const rawDate = sale.date || (sale as unknown as Record<string, string>).timestamp;
+      const ts = rawDate ? new Date(rawDate).getTime() : NaN;
+      let bucketIdx = count - 1;
+      if (!Number.isNaN(ts) && windowMs > 0) {
+        const ratio = clamp((ts - startMs) / windowMs, 0, 0.9999);
+        bucketIdx = Math.floor(ratio * count);
+      } else {
+        bucketIdx = idx % count;
+      }
+
+      const rev = Number(sale.total) || 0;
+      const cost = (sale.items || []).reduce((acc, it) => {
+        const unitCost =
+          inventoryCostMap.get(it.productId) ??
+          inventoryCostMap.get((it.name || "").toLowerCase()) ??
+          0;
+        return acc + unitCost * (Number(it.qty) || 0);
+      }, 0);
+
+      buckets[bucketIdx].revenue += Math.round(rev);
+      buckets[bucketIdx].cost += Math.round(cost);
     });
-  }, [metrics.adjustedRevenue, trendLabels, trendPattern]);
+
+    return buckets;
+  }, [filteredSales, trendLabels, horizonDays, inventoryCostMap]);
+
+  // 1. REVENUE DATASET (Real)
+  const revenueTrend = useMemo<ChartPoint[]>(() => {
+    return bucketedSeries.map((b) => ({
+      label: b.label,
+      value: b.revenue,
+    }));
+  }, [bucketedSeries]);
+
+  // 2. INDEPENDENT PROFIT & LOSS DATASET (Real)
+  const pandlTrend = useMemo<PandLPoint[]>(() => {
+    return bucketedSeries.map((b) => {
+      const revenue = b.revenue;
+      const cost = b.cost;
+      const profit = Math.max(0, revenue - cost);
+      const marginPct = revenue > 0 ? Math.round((profit / revenue) * 100) : 0;
+      return { label: b.label, revenue, cost, profit, marginPct };
+    });
+  }, [bucketedSeries]);
 
   // Revenue Spline Geometry
   const revenueChart = useMemo(() => {
@@ -266,7 +331,7 @@ export default function Analysis({
 
     const yTicks = [0, 25, 50, 75, 100].map((pct) => ({
       percentage: pct,
-      value: minValue + (range * pct) / 100,
+      value: maxValue <= 1.12 && values.every((v) => v === 0) ? 0 : minValue + (range * pct) / 100,
       y: height - bottom - (pct / 100) * (height - top - bottom),
     }));
 
@@ -302,37 +367,30 @@ export default function Analysis({
 
     const yTicks = [0, 25, 50, 75, 100].map((pct) => ({
       percentage: pct,
-      value: minProfit + (range * pct) / 100,
+      value: maxProfit <= 1.15 && profits.every((v) => v === 0) ? 0 : minProfit + (range * pct) / 100,
       y: height - bottom - (pct / 100) * (height - top - bottom),
     }));
 
     return { width, height, points, linePath, areaPath, yTicks };
   }, [pandlTrend]);
 
-  // Top Performing Products
+  // Top Performing Products (Strictly from actual sales)
   const topDesigns = useMemo(() => {
     const map = new Map<string, { name: string; revenue: number; units: number }>();
 
-    inventory.forEach((p) => {
-      map.set(p.name, {
-        name: p.name,
-        revenue:
-          p.salePrice * Math.max(1, Math.floor(3 * horizonMultiplier)),
-        units: Math.max(1, Math.floor(3 * horizonMultiplier)),
-      });
-    });
-
-    salesHistory.forEach((sale) => {
-      sale.items.forEach((item) => {
+    filteredSales.forEach((sale) => {
+      (sale.items || []).forEach((item) => {
         const existing = map.get(item.name);
+        const itemRev = (Number(item.unitPrice) || 0) * (Number(item.qty) || 0);
+        const itemQty = Number(item.qty) || 0;
         if (existing) {
-          existing.revenue += item.unitPrice * item.qty;
-          existing.units += item.qty;
+          existing.revenue += itemRev;
+          existing.units += itemQty;
         } else {
           map.set(item.name, {
             name: item.name,
-            revenue: item.unitPrice * item.qty,
-            units: item.qty,
+            revenue: itemRev,
+            units: itemQty,
           });
         }
       });
@@ -341,40 +399,64 @@ export default function Analysis({
     return Array.from(map.values())
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 5);
-  }, [inventory, salesHistory, horizonMultiplier]);
+  }, [filteredSales]);
 
   const maxProductRevenue = Math.max(...topDesigns.map((d) => d.revenue), 1);
 
-  // Payment Methods
-  const paymentMethods = useMemo<PaymentMethod[]>(
-    () => [
+  // Payment Methods (Strictly from actual sales)
+  const paymentMethods = useMemo<PaymentMethod[]>(() => {
+    let upiAmount = 0;
+    let cardAmount = 0;
+    let cashAmount = 0;
+
+    filteredSales.forEach((sale) => {
+      const mode = String(
+        (sale as unknown as Record<string, unknown>).paymentMethod ||
+          (sale as unknown as Record<string, unknown>).paymentMode ||
+          "upi"
+      ).toLowerCase();
+      const amt = Number(sale.total) || 0;
+      if (mode.includes("card")) {
+        cardAmount += amt;
+      } else if (mode.includes("cash") && !mode.includes("cashfree")) {
+        cashAmount += amt;
+      } else {
+        upiAmount += amt;
+      }
+    });
+
+    const total = upiAmount + cardAmount + cashAmount;
+    const upiShare = total > 0 ? Math.round((upiAmount / total) * 100) : 0;
+    const cardShare = total > 0 ? Math.round((cardAmount / total) * 100) : 0;
+    const cashShare = total > 0 ? Math.max(0, 100 - upiShare - cardShare) : 0;
+
+    return [
       {
         label: "UPI & Scanner QR",
         shortLabel: "UPI",
-        share: 58,
-        amount: metrics.adjustedRevenue * 0.58,
+        share: upiShare,
+        amount: upiAmount,
         icon: QrCode,
         color: "#6366F1",
       },
       {
         label: "Credit & Debit Cards",
         shortLabel: "Cards",
-        share: 30,
-        amount: metrics.adjustedRevenue * 0.3,
+        share: cardShare,
+        amount: cardAmount,
         icon: CreditCard,
         color: "#D97706",
       },
       {
         label: "Cash at Desk",
         shortLabel: "Cash",
-        share: 12,
-        amount: metrics.adjustedRevenue * 0.12,
+        share: cashShare,
+        amount: cashAmount,
         icon: Banknote,
         color: "#10B981",
       },
-    ],
-    [metrics.adjustedRevenue]
-  );
+    ];
+  }, [filteredSales]);
 
   const paymentDonut = useMemo(() => {
     const radius = 72;
@@ -389,31 +471,22 @@ export default function Analysis({
     });
   }, [paymentMethods]);
 
-  // Billing Split (GST vs Retail)
+  // Billing Split (GST vs Retail — Strictly from actual sales)
   const billingSplit = useMemo(() => {
-    const actualGstRevenue = metrics.gstSales.reduce((sum, s) => sum + s.total, 0);
+    const actualGstRevenue = metrics.gstSales.reduce((sum, s) => sum + (Number(s.total) || 0), 0);
     const actualRetailRevenue = metrics.retailSales.reduce(
-      (sum, s) => sum + s.total,
+      (sum, s) => sum + (Number(s.total) || 0),
       0
     );
-
-    if (actualGstRevenue > 0 || actualRetailRevenue > 0) {
-      const total = actualGstRevenue + actualRetailRevenue;
-      return {
-        gst: actualGstRevenue,
-        retail: actualRetailRevenue,
-        gstPercent: total > 0 ? Math.round((actualGstRevenue / total) * 100) : 0,
-        retailPercent: total > 0 ? Math.round((actualRetailRevenue / total) * 100) : 0,
-      };
-    }
+    const total = actualGstRevenue + actualRetailRevenue;
 
     return {
-      gst: Math.round(metrics.adjustedRevenue * 0.72),
-      retail: Math.round(metrics.adjustedRevenue * 0.28),
-      gstPercent: 72,
-      retailPercent: 28,
+      gst: actualGstRevenue,
+      retail: actualRetailRevenue,
+      gstPercent: total > 0 ? Math.round((actualGstRevenue / total) * 100) : 0,
+      retailPercent: total > 0 ? Math.round((actualRetailRevenue / total) * 100) : 0,
     };
-  }, [metrics.adjustedRevenue, metrics.gstSales, metrics.retailSales]);
+  }, [metrics.gstSales, metrics.retailSales]);
 
   // Swatch Inventory Data
   const colorVelocity = useMemo(() => {
@@ -482,7 +555,9 @@ export default function Analysis({
             formatter: currency,
             icon: IndianRupee,
             iconClass: "bg-emerald-50 text-emerald-800 border-emerald-200/80",
-            trend: "+24.8% higher than before",
+            trend: `${filteredSales.length} ${
+              filteredSales.length === 1 ? "invoice" : "invoices"
+            } billed in period`,
             trendClass: "text-emerald-700",
             trendIcon: TrendingUp,
           },
@@ -1137,52 +1212,58 @@ export default function Analysis({
         </div>
 
         <div className="space-y-3.5 pt-1">
-          {topDesigns.map((d, idx) => {
-            const percentage = Math.round((d.revenue / maxProductRevenue) * 100);
+          {topDesigns.length === 0 ? (
+            <div className="py-8 text-center text-xs text-stone-400">
+              No saree sales recorded in {horizonLabel.toLowerCase()} yet. Complete a bill to see your top-performing designs here.
+            </div>
+          ) : (
+            topDesigns.map((d, idx) => {
+              const percentage = Math.round((d.revenue / maxProductRevenue) * 100);
 
-            return (
-              <div key={d.name} className="space-y-1.5 group">
-                <div className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span
-                      className={`w-5 h-5 rounded-md flex items-center justify-center font-display font-bold text-[10px] shrink-0 ${
-                        idx === 0
-                          ? "bg-amber-100 text-amber-950 border border-amber-300"
-                          : idx === 1
-                          ? "bg-stone-200 text-stone-700"
-                          : "bg-stone-100 text-stone-600"
-                      }`}
-                    >
-                      #{idx + 1}
-                    </span>
-                    <span className="font-semibold text-stone-900 truncate group-hover:text-brand-plum transition-colors">
-                      {d.name}
-                    </span>
-                    <span className="text-[11px] text-stone-400 font-mono">
-                      ({d.units} drapes chosen)
-                    </span>
+              return (
+                <div key={d.name} className="space-y-1.5 group">
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span
+                        className={`w-5 h-5 rounded-md flex items-center justify-center font-display font-bold text-[10px] shrink-0 ${
+                          idx === 0
+                            ? "bg-amber-100 text-amber-950 border border-amber-300"
+                            : idx === 1
+                            ? "bg-stone-200 text-stone-700"
+                            : "bg-stone-100 text-stone-600"
+                        }`}
+                      >
+                        #{idx + 1}
+                      </span>
+                      <span className="font-semibold text-stone-900 truncate group-hover:text-brand-plum transition-colors">
+                        {d.name}
+                      </span>
+                      <span className="text-[11px] text-stone-400 font-mono">
+                        ({d.units} drapes chosen)
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="font-display font-bold text-stone-950">
+                        {currency(d.revenue)}
+                      </span>
+                      <span className="text-[10px] font-mono text-stone-400 w-10 text-right">
+                        ({percentage}%)
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="font-display font-bold text-stone-950">
-                      {currency(d.revenue)}
-                    </span>
-                    <span className="text-[10px] font-mono text-stone-400 w-10 text-right">
-                      ({percentage}%)
-                    </span>
+                  {/* Progress Indicator */}
+                  <div className="h-2 w-full rounded-full bg-stone-100 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-linear-to-r from-[#2A0E20] via-[#7B2E58] to-[#D4A373] transition-all duration-500"
+                      style={{ width: `${Math.max(6, percentage)}%` }}
+                    />
                   </div>
                 </div>
-
-                {/* Progress Indicator */}
-                <div className="h-2 w-full rounded-full bg-stone-100 overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-linear-to-r from-[#2A0E20] via-[#7B2E58] to-[#D4A373] transition-all duration-500"
-                    style={{ width: `${Math.max(6, percentage)}%` }}
-                  />
-                </div>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </div>
       </section>
 
@@ -1205,32 +1286,38 @@ export default function Analysis({
             <span className="text-xs font-semibold text-brand-gold">Active Colorways</span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-            {colorVelocity.map((v) => (
-              <div
-                key={v.color}
-                className="p-3 rounded-2xl bg-white/70 border border-stone-200/70 flex items-center justify-between hover:bg-white hover:border-stone-300 transition-all"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <span className="w-3.5 h-3.5 rounded-full bg-[#2A0E20] border border-amber-200 shadow-sm shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold text-stone-900 truncate">{v.color}</p>
-                    <p className="text-[10px] text-stone-400">{v.count} pieces left</p>
-                  </div>
-                </div>
-
-                <span
-                  className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0 ${
-                    v.count <= 2
-                      ? "bg-rose-50 text-rose-700 border border-rose-200"
-                      : "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                  }`}
+          {colorVelocity.length === 0 ? (
+            <div className="py-8 text-center text-xs text-stone-400">
+              No color variants currently in stock. Add sarees in Saree Stock or Bulk Stock Entry to view shelf distribution.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+              {colorVelocity.map((v) => (
+                <div
+                  key={v.color}
+                  className="p-3 rounded-2xl bg-white/70 border border-stone-200/70 flex items-center justify-between hover:bg-white hover:border-stone-300 transition-all"
                 >
-                  {v.count <= 2 ? "Running Out" : "Plenty in Stock"}
-                </span>
-              </div>
-            ))}
-          </div>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="w-3.5 h-3.5 rounded-full bg-[#2A0E20] border border-amber-200 shadow-sm shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-stone-900 truncate">{v.color}</p>
+                      <p className="text-[10px] text-stone-400">{v.count} pieces left</p>
+                    </div>
+                  </div>
+
+                  <span
+                    className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0 ${
+                      v.count <= 2
+                        ? "bg-rose-50 text-rose-700 border border-rose-200"
+                        : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                    }`}
+                  >
+                    {v.count <= 2 ? "Running Out" : "Plenty in Stock"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Master Weaver Procurement Advisory (6 Columns) */}
@@ -1245,11 +1332,11 @@ export default function Analysis({
                   <h2 className="font-display font-medium text-lg text-stone-950">
                     Re-Stock Suggestions
                   </h2>
-                  <p className="text-xs text-stone-500">Smart advice on what to order from the looms for {horizonLabel}.</p>
+                  <p className="text-xs text-stone-500">Live inventory &amp; restock status based on your current stock.</p>
                 </div>
               </div>
               <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold">
-                Smart Suggestions
+                Live Stock Check
               </span>
             </div>
 
@@ -1258,10 +1345,12 @@ export default function Analysis({
                 <ArrowUpRight size={16} className="text-emerald-800 mt-0.5 shrink-0" />
                 <div>
                   <p className="font-bold text-emerald-950">
-                    Ask for more suggestions
+                    Active Showroom Catalog: {inventory.length} {inventory.length === 1 ? "design" : "designs"} ({inventory.reduce((sum, p) => sum + p.variants.reduce((vSum, v) => vSum + (Number(v.stock) || 0), 0), 0)} total pieces)
                   </p>
                   <p className="text-[11px] text-emerald-800 mt-1 leading-relaxed">
-                    Over 70% of these drapes sold out quickly this period. Book extra pit-looms with our master weavers in Gadwal before the rush.
+                    {topDesigns.length > 0
+                      ? `Top seller in ${horizonLabel.toLowerCase()} is "${topDesigns[0].name}" with ${topDesigns[0].units} drapes sold (${currency(topDesigns[0].revenue)}).`
+                      : "No sales billed in this window yet. Once bills are generated, fast-moving designs will be highlighted here."}
                   </p>
                 </div>
               </div>
@@ -1270,10 +1359,18 @@ export default function Analysis({
                 <Clock size={16} className="text-amber-900 mt-0.5 shrink-0" />
                 <div>
                   <p className="font-bold text-amber-950">
-                    Keep wedding colors ready on hand
+                    Low-Stock Alert ({inventory.filter((p) => p.variants.reduce((s, v) => s + (Number(v.stock) || 0), 0) <= 2).length} {inventory.filter((p) => p.variants.reduce((s, v) => s + (Number(v.stock) || 0), 0) <= 2).length === 1 ? "design needs" : "designs need"} restocking)
                   </p>
                   <p className="text-[11px] text-amber-800 mt-1 leading-relaxed">
-                    Crimson Red [RD], Maroon Gold [MG], and Emerald Green [GR] make up 60% of all bridal purchases. Keep at least 10 pieces of each color in stock so clients always have choices.
+                    {inventory.filter((p) => p.variants.reduce((s, v) => s + (Number(v.stock) || 0), 0) <= 2).length > 0
+                      ? `Designs running low: ${inventory
+                          .filter((p) => p.variants.reduce((s, v) => s + (Number(v.stock) || 0), 0) <= 2)
+                          .slice(0, 4)
+                          .map((p) => `${p.name} (${p.variants.reduce((s, v) => s + (Number(v.stock) || 0), 0)} left)`)
+                          .join(", ")}.`
+                      : inventory.length > 0
+                      ? "All stocked saree designs currently have healthy shelf quantities above their low-stock threshold."
+                      : "Your catalog has no low-stock alerts right now."}
                   </p>
                 </div>
               </div>

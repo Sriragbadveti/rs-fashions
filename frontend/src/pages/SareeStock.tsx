@@ -38,6 +38,7 @@ import {
   COLOR_OPTIONS,
   CurrencyFormatter,
   normalizeText,
+  formatColorName,
   createDesignSlug,
   generateColorSlug,
   buildSku,
@@ -48,6 +49,14 @@ import {
   getAvailableDesignOptions,
   isVibgyorColor,
 } from "../types/catalog";
+import {
+  IMAGE_ACCEPT_ATTR,
+  isSupportedImageFile,
+  fileToVisibleDataUrl,
+  isUnrenderedHeicDataUrl,
+  convertHeicDataUrlToJpeg,
+  handleSareeImageError,
+} from "../utils/imageConverter";
 
 
 interface CatalogProps {
@@ -230,17 +239,47 @@ function ColorInput({
   placeholder?: string;
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [availableColors, setAvailableColors] = useState<string[]>(() => [
+    ...COLOR_OPTIONS,
+  ]);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
 
+  useEffect(() => {
+    let mounted = true;
+    StoreService.getColors().then(() => {
+      if (mounted) setAvailableColors([...COLOR_OPTIONS]);
+    });
+    const handleColorsUpdated = () => setAvailableColors([...COLOR_OPTIONS]);
+    window.addEventListener("rs_colors_updated", handleColorsUpdated);
+    return () => {
+      mounted = false;
+      window.removeEventListener("rs_colors_updated", handleColorsUpdated);
+    };
+  }, []);
+
   const filteredColors = useMemo(() => {
     const query = value.trim().toLowerCase();
-    if (!query) return COLOR_OPTIONS;
-    return COLOR_OPTIONS.filter((color) =>
+    if (!query) return availableColors;
+    return availableColors.filter((color) =>
       color.toLowerCase().includes(query)
     );
-  }, [value]);
+  }, [value, availableColors]);
+
+  const isCustomColor = Boolean(
+    value.trim() &&
+      !availableColors.some((c) => normalizeText(c) === normalizeText(value))
+  );
+
+  const handleRegisterNewColor = async () => {
+    const raw = value.trim();
+    if (!raw) return;
+    const registered = await StoreService.registerColor(raw);
+    setAvailableColors([...COLOR_OPTIONS]);
+    onChange(registered.name);
+    setIsOpen(false);
+  };
 
   const updateDropdownPosition = () => {
     if (!inputRef.current) return;
@@ -307,6 +346,12 @@ function ColorInput({
             onChange(event.target.value);
             openDropdown();
           }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && isCustomColor) {
+              e.preventDefault();
+              handleRegisterNewColor();
+            }
+          }}
           placeholder={placeholder}
           className="h-full w-full rounded-2xl bg-transparent py-3 pl-9 pr-9 text-xs font-semibold text-stone-900 outline-none placeholder:text-stone-400 placeholder:font-normal"
         />
@@ -331,7 +376,7 @@ function ColorInput({
         >
           <div className="flex items-center justify-between border-b border-stone-100 px-3.5 py-2.5">
             <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-stone-400">
-              Select VIBGYOR Silk Hue
+              Select or Register Silk Hue
             </span>
             <span className="rounded-full bg-stone-100 px-2 py-0.5 text-[9px] font-bold text-stone-600">
               {filteredColors.length}
@@ -361,12 +406,36 @@ function ColorInput({
                 </button>
               );
             })}
+
+            {isCustomColor && (
+              <button
+                type="button"
+                onClick={handleRegisterNewColor}
+                className="mt-1 flex w-full items-center justify-between gap-2.5 rounded-xl bg-[#2A0E20] px-3 py-2.5 text-left text-amber-100 shadow-xs transition-all hover:bg-[#3D142E]"
+              >
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-white/15 text-amber-300">
+                    <Plus size={13} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-bold text-amber-100">
+                      + Register Color &ldquo;{formatColorName(value)}&rdquo;
+                    </p>
+                    <p className="text-[9.5px] text-amber-200/75">
+                      Save new color to palette &amp; backend
+                    </p>
+                  </div>
+                </div>
+                <span className="shrink-0 rounded bg-white/15 px-1.5 py-0.5 font-mono text-[9px] font-bold text-amber-200">
+                  {generateColorSlug(value.trim())}
+                </span>
+              </button>
+            )}
           </div>
         </div>
       )}
     </div>
   );
-
 }
 
 // ============================================================
@@ -386,12 +455,26 @@ function MultiImageUploadInput({
   const [urlInput, setUrlInput] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    if (!images || images.length === 0) return;
+    if (!images.some((url) => isUnrenderedHeicDataUrl(url))) return;
+    let cancelled = false;
+    Promise.all(
+      images.map((url) => (isUnrenderedHeicDataUrl(url) ? convertHeicDataUrlToJpeg(url) : Promise.resolve(url)))
+    ).then((converted) => {
+      if (!cancelled) onChange(converted);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [images]);
+
   async function handleFiles(fileList: FileList | null | undefined) {
     if (!fileList || fileList.length === 0) return;
 
-    const files = Array.from(fileList).filter((f) => f.type.startsWith("image/"));
+    const files = Array.from(fileList).filter((f) => isSupportedImageFile(f));
     if (files.length === 0) {
-      setUploadError("Please provide valid image files (JPG, PNG, or WebP).");
+      setUploadError("Please provide valid image files (JPG, PNG, WebP, or HEIC).");
       return;
     }
 
@@ -400,16 +483,7 @@ function MultiImageUploadInput({
     setUploadProgress(15);
 
     try {
-      const readPromises = files.map(
-        (file) =>
-          new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.readAsDataURL(file);
-          })
-      );
-
-      const dataUrls = await Promise.all(readPromises);
+      const dataUrls = await Promise.all(files.map((file) => fileToVisibleDataUrl(file)));
       setUploadProgress(50);
 
       // Upload via backend batch API if available
@@ -513,7 +587,7 @@ function MultiImageUploadInput({
               Drop multiple drape photographs here
             </p>
             <p className="text-[10px] text-stone-400">
-              or click to browse from device &bull; Select multiple files at once (JPG, PNG, WebP)
+              or click to browse from device &bull; Select multiple files at once (JPG, PNG, WebP, HEIC)
             </p>
           </>
         )}
@@ -522,7 +596,7 @@ function MultiImageUploadInput({
           ref={fileInputRef}
           type="file"
           multiple
-          accept="image/*"
+          accept={IMAGE_ACCEPT_ATTR}
           className="hidden"
           onChange={(e) => handleFiles(e.target.files)}
         />
@@ -576,11 +650,16 @@ function MultiImageUploadInput({
                     alt={`Saree View ${index + 1}`}
                     loading="lazy"
                     decoding="async"
+                    onError={(e) => {
+                      handleSareeImageError(e, imgUrl, (recovered) => {
+                        onChange(images.map((u, i) => (i === index ? recovered : u)));
+                      });
+                    }}
                     className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                   />
                   {index === 0 && (
                     <span className="absolute top-1.5 left-1.5 rounded-md bg-white text-black px-2 py-0.5 text-[9px] font-extrabold tracking-wider uppercase shadow-md border border-stone-200">
-                      ★ Primary
+                      Primary
                     </span>
                   )}
                 </div>
@@ -644,52 +723,52 @@ function VariantShadeManager({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const rowFileInputRefs = useRef<{ [key: number]: HTMLInputElement | null }>({});
 
-  const handleVariantFile = (file: File | undefined, target: "new" | number) => {
-    if (!file || !file.type.startsWith("image/")) return;
+  const handleVariantFile = async (file: File | undefined, target: "new" | number) => {
+    if (!file || !isSupportedImageFile(file)) return;
 
     if (typeof target === "number") {
       setIsUploadingShadeIdx(target);
+    } else {
+      setIsUploadingShadeIdx(-1);
     }
 
-    const reader = new FileReader();
-    reader.onload = async () => {
-      if (typeof reader.result === "string") {
-        const dataUrl = reader.result;
-        try {
-          const res = await StoreService.uploadImage(dataUrl);
-          const finalUrl = res && res.success && res.url ? res.url : dataUrl;
-          if (target === "new") {
-            setNewVariantImage(finalUrl);
-          } else {
-            onUpdateVariantImage(target, finalUrl);
-          }
-        } catch {
-          if (target === "new") {
-            setNewVariantImage(dataUrl);
-          } else {
-            onUpdateVariantImage(target, dataUrl);
-          }
-        } finally {
-          setIsUploadingShadeIdx(null);
-        }
+    try {
+      const dataUrl = await fileToVisibleDataUrl(file);
+      if (target === "new") {
+        setNewVariantImage(dataUrl);
+      } else {
+        onUpdateVariantImage(target, dataUrl);
       }
-    };
-    reader.readAsDataURL(file);
+
+      try {
+        const res = await StoreService.uploadImage(dataUrl);
+        const finalUrl = res && res.success && res.url ? res.url : dataUrl;
+        if (target === "new") {
+          setNewVariantImage(finalUrl);
+        } else {
+          onUpdateVariantImage(target, finalUrl);
+        }
+      } catch {
+        // Already updated with visible dataUrl
+      }
+    } catch (err) {
+      console.warn("Failed to process shade image:", err);
+    } finally {
+      setIsUploadingShadeIdx(null);
+    }
   };
 
   function handleAdd() {
-    const colorName = newColor.trim();
+    const colorName = formatColorName(newColor.trim());
     if (!colorName || !designSlug || !serialNumber) return;
 
-    if (!isVibgyorColor(colorName)) {
-      alert("Please select a valid VIBGYOR color (Violet, Indigo, Blue, Green, Yellow, Orange, Red).");
-      return;
+    if (!COLOR_OPTIONS.some((c) => normalizeText(c) === normalizeText(colorName))) {
+      StoreService.registerColor(colorName).catch(() => {});
     }
 
     const alreadyExists = variants.some(
       (v) => normalizeText(v.color) === normalizeText(colorName)
     );
-
 
     if (alreadyExists) {
       alert("This color shade is already registered on this saree pattern.");
@@ -776,6 +855,11 @@ function VariantShadeManager({
                         <img
                           src={v.imageUrl}
                           alt={v.color}
+                          onError={(e) => {
+                            handleSareeImageError(e, v.imageUrl, (recovered) => {
+                              onUpdateVariantImage(idx, recovered);
+                            });
+                          }}
                           className="h-full w-full object-cover"
                         />
                         <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity hover:opacity-100">
@@ -794,9 +878,12 @@ function VariantShadeManager({
                         rowFileInputRefs.current[idx] = el;
                       }}
                       type="file"
-                      accept="image/*"
+                      accept={IMAGE_ACCEPT_ATTR}
                       className="hidden"
-                      onChange={(e) => handleVariantFile(e.target.files?.[0], idx)}
+                      onChange={(e) => {
+                        handleVariantFile(e.target.files?.[0], idx);
+                        e.target.value = "";
+                      }}
                     />
                   </div>
 
@@ -868,10 +955,17 @@ function VariantShadeManager({
                 }`}
               title="Attach a photograph for this new shade"
             >
-              {newVariantImage ? (
+              {isUploadingShadeIdx === -1 ? (
+                <Loader2 size={15} className="animate-spin text-[#D4A373]" />
+              ) : newVariantImage ? (
                 <img
                   src={newVariantImage}
                   alt="New shade visual"
+                  onError={(e) => {
+                    handleSareeImageError(e, newVariantImage, (recovered) => {
+                      setNewVariantImage(recovered);
+                    });
+                  }}
                   className="h-full w-full object-cover"
                 />
               ) : (
@@ -883,9 +977,12 @@ function VariantShadeManager({
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept={IMAGE_ACCEPT_ATTR}
                 className="hidden"
-                onChange={(e) => handleVariantFile(e.target.files?.[0], "new")}
+                onChange={(e) => {
+                  handleVariantFile(e.target.files?.[0], "new");
+                  e.target.value = "";
+                }}
               />
             </div>
 
@@ -923,15 +1020,21 @@ function ProductCard({
   onToggleSelect,
   onEdit,
   onDelete,
+  onRecoverImage,
 }: {
   product: Product;
   isSelected?: boolean;
   onToggleSelect?: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onRecoverImage?: (recoveredUrl: string) => void;
 }) {
   const totalStock = (product.variants || []).reduce((sum, v) => sum + (v.stock || 0), 0);
   const isLowStock = totalStock <= LOW_STOCK_THRESHOLD;
+  const displayImageUrl =
+    product.imageUrl ||
+    product.images?.[0] ||
+    product.variants?.find((v) => v.imageUrl)?.imageUrl;
 
   return (
     <div
@@ -958,12 +1061,17 @@ function ProductCard({
           <Check size={13} className={isSelected ? "text-white stroke-[3]" : "text-transparent"} />
         </button>
 
-        {product.imageUrl ? (
+        {displayImageUrl ? (
           <img
-            src={product.imageUrl}
+            src={displayImageUrl}
             alt={product.name}
             loading="lazy"
             decoding="async"
+            onError={(e) => {
+              handleSareeImageError(e, displayImageUrl, (recovered) => {
+                onRecoverImage?.(recovered);
+              });
+            }}
             className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
           />
         ) : (
@@ -1322,7 +1430,7 @@ export default function Catalog({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.code === "KeyN") {
+      if (e.altKey && e.code === "KeyN") {
         e.preventDefault();
         openCreateModal();
       }
@@ -1332,7 +1440,7 @@ export default function Catalog({
         setIsModalOpen(false);
       }
 
-      if (e.ctrlKey && e.code === "Slash") {
+      if (e.altKey && e.code === "Slash") {
         e.preventDefault();
         searchInputRef.current?.focus();
       }
@@ -1341,6 +1449,42 @@ export default function Catalog({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isModalOpen]);
+
+  useEffect(() => {
+    inventory.forEach((product) => {
+      const hasRawHeicMain = isUnrenderedHeicDataUrl(product.imageUrl);
+      const hasRawHeicGallery = (product.images || []).some((u) => isUnrenderedHeicDataUrl(u));
+      const hasRawHeicVariant = (product.variants || []).some((v) => isUnrenderedHeicDataUrl(v.imageUrl));
+      if (!hasRawHeicMain && !hasRawHeicGallery && !hasRawHeicVariant) return;
+
+      (async () => {
+        const nextImageUrl = hasRawHeicMain && product.imageUrl
+          ? await convertHeicDataUrlToJpeg(product.imageUrl)
+          : product.imageUrl;
+        const nextImages = hasRawHeicGallery && product.images
+          ? await Promise.all(
+              product.images.map((u) => (isUnrenderedHeicDataUrl(u) ? convertHeicDataUrlToJpeg(u) : Promise.resolve(u)))
+            )
+          : product.images;
+        const nextVariants = hasRawHeicVariant
+          ? await Promise.all(
+              (product.variants || []).map(async (v) =>
+                isUnrenderedHeicDataUrl(v.imageUrl) && v.imageUrl
+                  ? { ...v, imageUrl: await convertHeicDataUrlToJpeg(v.imageUrl) }
+                  : v
+              )
+            )
+          : product.variants;
+
+        onUpdateProduct({
+          ...product,
+          imageUrl: nextImageUrl,
+          images: nextImages,
+          variants: nextVariants,
+        });
+      })();
+    });
+  }, [inventory]);
 
   function handleDesignChange(name: string) {
     setFormName(name);
@@ -1545,7 +1689,7 @@ export default function Catalog({
           />
           <span>Add New Drapery</span>
           <span className="hidden rounded bg-white/10 px-1.5 py-0.5 text-[9px] font-mono text-amber-200/60 xl:inline">
-            CTRL+N
+            alt+N
           </span>
         </button>
       </div>
@@ -1617,7 +1761,7 @@ export default function Catalog({
         <input
           ref={searchInputRef}
           type="text"
-          placeholder="Search by SKU, Gadwal pattern, hue, or keyword tags... (Ctrl + /)"
+          placeholder="Search by SKU, Gadwal pattern, hue, or keyword tags... (alt + /)"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="min-w-0 flex-1 bg-transparent text-xs text-stone-800 outline-none placeholder:text-stone-400"
@@ -1693,6 +1837,22 @@ export default function Catalog({
                 }
                 onEdit={() => openEditModal(p)}
                 onDelete={() => setProductPendingDelete(p)}
+                onRecoverImage={(recoveredUrl) => {
+                  const oldUrl =
+                    p.imageUrl ||
+                    p.images?.[0] ||
+                    p.variants?.find((v) => v.imageUrl)?.imageUrl;
+                  onUpdateProduct({
+                    ...p,
+                    imageUrl: p.imageUrl === oldUrl || !p.imageUrl ? recoveredUrl : p.imageUrl,
+                    images: Array.isArray(p.images) && p.images.length > 0
+                      ? p.images.map((u) => (u === oldUrl ? recoveredUrl : u))
+                      : [recoveredUrl],
+                    variants: (p.variants || []).map((v) =>
+                      v.imageUrl === oldUrl ? { ...v, imageUrl: recoveredUrl } : v
+                    ),
+                  });
+                }}
               />
             ))}
           </div>
@@ -1835,7 +1995,7 @@ export default function Catalog({
             <div className="flex shrink-0 items-center justify-between gap-4 border-b border-stone-100 px-6 py-4">
               <div className="min-w-0">
                 <h2 className="truncate font-serif text-lg font-bold text-stone-900">
-                  {editingProductId ? "Update Gadwal Saree Record" : "Register New SiCo Gadwal Drapery"}
+                  {editingProductId ? "Update Gadwal Saree Record" : "Register New SiCo Gadwal"}
                 </h2>
                 <p className="mt-0.5 truncate font-mono text-[10px] text-stone-400">
                   {previewSku}

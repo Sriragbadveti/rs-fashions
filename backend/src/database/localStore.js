@@ -154,47 +154,7 @@ export function getFulfillmentFromStore(invoiceNumber) {
 // REVIEWS
 // ==========================================
 export function getReviewsFromStore(productId) {
-  const reviews = readJson("reviews.json", [
-    {
-      id: "rev-1",
-      productId: "1",
-      productName: "Royal Magenta Gold Zari SiCo Saree",
-      reviewerName: "Sowmya Reddy",
-      reviewerLocation: "Jubilee Hills, Hyderabad",
-      rating: 5,
-      title: "Exceptional Drape & Exquisite Zari Work",
-      content: "The handloom SiCo blend is so feather-light yet holds a majestic festive flare. The kaddi border glistens without being loud. Truly a generational heirloom.",
-      verifiedBuyer: true,
-      date: "12 Sep 2026",
-      createdAt: "2026-09-12T10:00:00Z"
-    },
-    {
-      id: "rev-2",
-      productId: "2",
-      productName: "Peacock Blue Dual-Tone SiCo Drape",
-      reviewerName: "Dr. Malini Iyer",
-      reviewerLocation: "Bengaluru",
-      rating: 5,
-      title: "Breathable & Authentic Handloom Texture",
-      content: "Wore this for my daughter's arangetram. Received countless compliments on the authentic pitloom weave and soft drape. Exceptional quality!",
-      verifiedBuyer: true,
-      date: "08 Sep 2026",
-      createdAt: "2026-09-08T15:30:00Z"
-    },
-    {
-      id: "rev-3",
-      productId: "3",
-      productName: "Vintage Crimson Zari Butta SiCo",
-      reviewerName: "Kavitha Sundaram",
-      reviewerLocation: "Chennai",
-      rating: 5,
-      title: "Generational Heirlooms at Honest Value",
-      content: "The saree arrived within 2 days in a gorgeous double-walled presentation box. The unboxing experience was pure luxury.",
-      verifiedBuyer: true,
-      date: "04 Sep 2026",
-      createdAt: "2026-09-04T12:00:00Z"
-    }
-  ]);
+  const reviews = readJson("reviews.json", []);
 
   if (productId) {
     return reviews.filter((r) => String(r.productId) === String(productId));
@@ -391,4 +351,127 @@ export function deleteProductFromStore(id) {
   return true;
 }
 
+// ==========================================
+// COLOR PALETTE PERSISTENCE
+// ==========================================
+export const DEFAULT_COLOR_PALETTE = [
+  { name: "Violet", code: "VLT" },
+  { name: "Indigo", code: "IND" },
+  { name: "Blue", code: "BLU" },
+  { name: "Green", code: "GRN" },
+  { name: "Yellow", code: "YEL" },
+  { name: "Orange", code: "ORG" },
+  { name: "Red", code: "RED" },
+];
 
+export function formatColorTitle(raw) {
+  const trimmed = String(raw || "").trim().replace(/\s+/g, " ");
+  if (!trimmed) return "";
+  return trimmed
+    .split(" ")
+    .map((w) => (w ? w.charAt(0).toUpperCase() + w.slice(1) : ""))
+    .join(" ");
+}
+
+export function generateColorCode(colorName, existingColors = []) {
+  const cleaned = String(colorName || "")
+    .trim()
+    .replace(/[^a-zA-Z0-9\s]/g, "")
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (!cleaned.length) return "CLR";
+
+  let baseCode = "";
+  if (cleaned.length === 1) {
+    baseCode = cleaned[0].slice(0, 3).toUpperCase();
+  } else {
+    baseCode = cleaned
+      .map((w) => w.charAt(0))
+      .join("")
+      .slice(0, 3)
+      .toUpperCase();
+  }
+
+  if (baseCode.length < 2 && cleaned[0].length >= 2) {
+    baseCode = cleaned[0].slice(0, 2).toUpperCase();
+  }
+
+  const usedCodes = new Set(
+    (existingColors || []).map((c) => String(c.code || "").trim().toUpperCase())
+  );
+
+  if (!usedCodes.has(baseCode)) return baseCode;
+
+  // Try alternative 3-letter combinations from the name
+  const lettersOnly = cleaned.join("").toUpperCase();
+  if (lettersOnly.length >= 3) {
+    const alt1 = lettersOnly.slice(0, 3);
+    if (!usedCodes.has(alt1)) return alt1;
+    const alt2 = (lettersOnly[0] + lettersOnly[1] + lettersOnly[lettersOnly.length - 1]).toUpperCase();
+    if (!usedCodes.has(alt2)) return alt2;
+  }
+
+  let counter = 2;
+  while (usedCodes.has(`${baseCode}${counter}`)) {
+    counter++;
+  }
+  return `${baseCode}${counter}`;
+}
+
+export function getColorsFromStore() {
+  const stored = readJson("colors.json", []);
+  const merged = [...DEFAULT_COLOR_PALETTE];
+  const seen = new Set(merged.map((c) => c.name.trim().toLowerCase()));
+
+  if (Array.isArray(stored)) {
+    for (const item of stored) {
+      if (!item || !item.name) continue;
+      const norm = String(item.name).trim().toLowerCase();
+      if (!norm || norm === "standard" || seen.has(norm)) continue;
+      seen.add(norm);
+      merged.push({
+        name: formatColorTitle(item.name),
+        code: String(item.code || generateColorCode(item.name, merged))
+          .trim()
+          .toUpperCase(),
+      });
+    }
+  }
+
+  return merged;
+}
+
+export function saveColorToStore(colorInput) {
+  const current = getColorsFromStore();
+  const rawName = typeof colorInput === "string" ? colorInput : colorInput?.name;
+  const formattedName = formatColorTitle(rawName);
+  if (!formattedName || formattedName.toLowerCase() === "standard") {
+    return { color: null, colors: current };
+  }
+
+  const norm = formattedName.toLowerCase();
+  const existing = current.find((c) => c.name.trim().toLowerCase() === norm);
+  if (existing) {
+    writeJson("colors.json", current);
+    return { color: existing, colors: current };
+  }
+
+  const rawCode = typeof colorInput === "object" && colorInput?.code ? String(colorInput.code).trim().toUpperCase() : "";
+  const code = rawCode || generateColorCode(formattedName, current);
+  const newColor = { name: formattedName, code };
+
+  const updated = [...current, newColor];
+  writeJson("colors.json", updated);
+  return { color: newColor, colors: updated };
+}
+
+export function saveColorsToStore(colorList = []) {
+  let current = getColorsFromStore();
+  for (const item of colorList) {
+    const res = saveColorToStore(item);
+    current = res.colors;
+  }
+  writeJson("colors.json", current);
+  return current;
+}

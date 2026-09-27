@@ -6,6 +6,14 @@ import { type Product } from "../data/products";
 import FilterSheet, { type FilterState } from "../components/shop/FilterSheet";
 import { StoreService } from "../services/supabase";
 import { useCart } from "../context/CartContext";
+import { handleSareeImageError } from "../utils/imageConverter";
+
+const DUMMY_PRODUCT_IDS = new Set([
+  "emerald-sico-gadwal",
+  "midnight-sico-gadwal",
+  "rose-sico-gadwal",
+  "ivory-sico-gadwal",
+]);
 
 // =====================================================================
 // SHARED TYPES
@@ -83,9 +91,23 @@ function ProductCard({ product }: { product: CardProduct }) {
     <article className="group relative flex h-full flex-col font-sans select-none overflow-hidden rounded-2xl sm:rounded-3xl border border-white/60 bg-white p-2 sm:p-3 shadow-xs transition-shadow duration-200 hover:shadow-md">
       <div className="relative aspect-[3/4.2] w-full overflow-hidden rounded-xl sm:rounded-2xl bg-[#EFEAE2]">
         <Link to={`/product/${product.id}`} state={{ product }} className="block h-full w-full">
-          <img src={primaryImage} alt={product.name} loading="lazy" decoding="async" className="h-full w-full object-cover object-center" />
+          <img
+            src={primaryImage}
+            alt={product.name}
+            loading="lazy"
+            decoding="async"
+            onError={(e) => handleSareeImageError(e, primaryImage)}
+            className="h-full w-full object-cover object-center"
+          />
           {hasSecondaryImage && (
-            <img src={hoverImage} alt={`${product.name} alternate view`} loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover object-center opacity-0 transition-opacity duration-300 ease-out group-hover:opacity-100" />
+            <img
+              src={hoverImage}
+              alt={`${product.name} alternate view`}
+              loading="lazy"
+              decoding="async"
+              onError={(e) => handleSareeImageError(e, hoverImage)}
+              className="absolute inset-0 h-full w-full object-cover object-center opacity-0 transition-opacity duration-300 ease-out group-hover:opacity-100"
+            />
           )}
         </Link>
 
@@ -144,9 +166,23 @@ function HorizontalProductCard({ product, isOffer, offerBadgeText }: { product: 
     <article className="group relative flex w-full overflow-hidden rounded-2xl border border-white/60 bg-white p-2.5 shadow-xs font-sans select-none items-stretch">
       {/* Image — stretched to fill the full card height */}
       <Link to={`/product/${product.id}`} state={{ product }} className="relative w-32 shrink-0 overflow-hidden rounded-xl bg-[#EFEAE2] min-h-30">
-        <img src={primaryImage} alt={product.name} loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover object-center" />
+        <img
+          src={primaryImage}
+          alt={product.name}
+          loading="lazy"
+          decoding="async"
+          onError={(e) => handleSareeImageError(e, primaryImage)}
+          className="absolute inset-0 h-full w-full object-cover object-center"
+        />
         {hasSecondaryImage && (
-          <img src={hoverImage} alt={`${product.name} alternate view`} loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover object-center opacity-0 transition-opacity duration-300 ease-out group-hover:opacity-100" />
+          <img
+            src={hoverImage}
+            alt={`${product.name} alternate view`}
+            loading="lazy"
+            decoding="async"
+            onError={(e) => handleSareeImageError(e, hoverImage)}
+            className="absolute inset-0 h-full w-full object-cover object-center opacity-0 transition-opacity duration-300 ease-out group-hover:opacity-100"
+          />
         )}
         {isOffer && (
           <span className="absolute left-1.5 top-1.5 rounded-full bg-[#8E3D51] px-2 py-0.5 text-[8px] font-bold uppercase tracking-wider text-white shadow-sm z-10">{offerBadgeText}</span>
@@ -244,7 +280,9 @@ export default function Shop() {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.map((p: any) => ({ ...p, category: p.category || "SiCo Gadwal Sarees" }));
+          return parsed
+            .filter((p: any) => p && p.id && !DUMMY_PRODUCT_IDS.has(String(p.id)))
+            .map((p: any) => ({ ...p, category: p.category || "SiCo Gadwal Sarees" }));
         }
       }
     } catch {}

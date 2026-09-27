@@ -3,7 +3,10 @@ import { API_BASE } from "../config/api";
 import { getAdminAuthHeaders } from "../utils/adminSession";
 import { type Product } from "../data/products";
 import type { DashboardProduct, Category, StockMovement, CustomerProfile, TrackedOrder, CompletedSale } from "../types/dashboard";
+import { COLOR_CODES, type ColorDefinition } from "../types/inventory";
+import { syncColorsToRuntime, registerColorInCatalog } from "../types/catalog";
 import { getCourierTrackingUrl, LOCAL_STORAGE_FULFILLMENTS } from "../context/OrderFulfillmentContext";
+import { isUnrenderedHeicDataUrl, convertHeicDataUrlToJpeg } from "../utils/imageConverter";
 
 function adminFetch(url: string, init: RequestInit = {}): Promise<Response> {
   const adminHeaders = getAdminAuthHeaders();
@@ -141,6 +144,19 @@ const initialCMS: CMSContent = {
 // UNIFIED DATA SERVICE (Supabase + Fallback)
 // ==========================================
 
+const DUMMY_PRODUCT_IDS = new Set([
+  "emerald-sico-gadwal",
+  "midnight-sico-gadwal",
+  "rose-sico-gadwal",
+  "ivory-sico-gadwal",
+]);
+
+const DUMMY_ORDER_IDS = new Set([
+  "inv-mu7lz088-ba09",
+  "inv-mu7jzpbh-tfl1",
+  "RSF-921901",
+]);
+
 export const StoreService = {
   isSupabaseConnected(): boolean {
     return Boolean(supabase);
@@ -148,30 +164,54 @@ export const StoreService = {
 
   // 1. PRODUCTS (Storefront & Admin)
   async getProducts(): Promise<Product[]> {
+    const cleanAndHealProducts = async (list: Product[]): Promise<Product[]> => {
+      const filtered = (list || []).filter(
+        (p) => p && p.id && !DUMMY_PRODUCT_IDS.has(String(p.id))
+      );
+      return Promise.all(
+        filtered.map(async (p) => {
+          const rawImages = Array.isArray(p.images) ? p.images : [];
+          if (!rawImages.some((u) => isUnrenderedHeicDataUrl(u))) {
+            return p;
+          }
+          const healedImages = await Promise.all(
+            rawImages.map((u) =>
+              isUnrenderedHeicDataUrl(u) ? convertHeicDataUrlToJpeg(u) : Promise.resolve(u)
+            )
+          );
+          return { ...p, images: healedImages };
+        })
+      );
+    };
+
     try {
       const res = await fetch(`${API_BASE}/catalog/products`);
       const json = await res.json();
-      const productList = json.products || json.data?.products;
+      const productList = (json.products || json.data?.products || []).filter(
+        (d: any) => d && d.id && !DUMMY_PRODUCT_IDS.has(String(d.id))
+      );
       if (json.success && Array.isArray(productList) && productList.length > 0) {
-        const mapped = productList.map((d: any) => ({
-          id: d.id,
-          name: d.name,
-          category: d.category || "SiCo Gadwal Sarees",
-          material: d.material || "SiCo",
-          price: Number(d.salePrice || d.price) || 0,
-          originalPrice: d.originalPrice ? Number(d.originalPrice) : (Number(d.salePrice || d.price) * 1.3),
-          stock: d.variants ? d.variants.reduce((sum: number, v: any) => sum + (Number(v.stock) || 0), 0) : (d.stock || 0),
-          rating: Number(d.rating) || 4.8,
-          reviewCount: Number(d.reviewCount) || 12,
-          images: (Array.isArray(d.images) && d.images.length > 0)
-            ? d.images
-            : (d.imageUrl ? [d.imageUrl] : ["https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1200&auto=format&fit=crop"]),
-          colors: d.variants && d.variants.length > 0 ? d.variants.map((v: any) => v.color) : (Array.isArray(d.colors) && d.colors.length > 0 ? d.colors : ["Standard"]),
-          sizes: ["Free Size (5.5m + 0.8m Blouse)"],
-          description: d.description || "",
-          longDescription: d.longDescription || d.description || "",
-          featured: Boolean(d.featured),
-        }));
+        const mapped = await cleanAndHealProducts(
+          productList.map((d: any) => ({
+            id: d.id,
+            name: d.name,
+            category: d.category || "SiCo Gadwal Sarees",
+            material: d.material || "SiCo",
+            price: Number(d.salePrice || d.price) || 0,
+            originalPrice: d.originalPrice ? Number(d.originalPrice) : (Number(d.salePrice || d.price) * 1.3),
+            stock: d.variants ? d.variants.reduce((sum: number, v: any) => sum + (Number(v.stock) || 0), 0) : (d.stock || 0),
+            rating: Number(d.rating) || 4.8,
+            reviewCount: Number(d.reviewCount) || 12,
+            images: (Array.isArray(d.images) && d.images.length > 0)
+              ? d.images
+              : (d.imageUrl ? [d.imageUrl] : ["https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1200&auto=format&fit=crop"]),
+            colors: d.variants && d.variants.length > 0 ? d.variants.map((v: any) => v.color) : (Array.isArray(d.colors) && d.colors.length > 0 ? d.colors : ["Standard"]),
+            sizes: ["Free Size (5.5m + 0.8m Blouse)"],
+            description: d.description || "",
+            longDescription: d.longDescription || d.description || "",
+            featured: Boolean(d.featured),
+          }))
+        );
         try {
           localStorage.setItem(LOCAL_STORAGE_PRODUCTS, JSON.stringify(mapped));
         } catch {
@@ -186,23 +226,28 @@ export const StoreService = {
     if (supabase) {
       const { data, error } = await supabase.from("products").select("*").order("created_at", { ascending: false });
       if (!error && data) {
-        return data.map((d: any) => ({
-          id: d.id,
-          name: d.name,
-          category: d.category || "SiCo Gadwal Sarees",
-          material: d.material || "SiCo",
-          price: Number(d.price) || 0,
-          originalPrice: d.original_price ? Number(d.original_price) : undefined,
-          stock: d.stock !== undefined ? Number(d.stock) : 0,
-          rating: Number(d.rating) || 4.8,
-          reviewCount: Number(d.review_count) || 0,
-          images: Array.isArray(d.images) && d.images.length > 0 ? d.images : ["https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1200&auto=format&fit=crop"],
-          colors: Array.isArray(d.colors) && d.colors.length > 0 ? d.colors : ["Standard"],
-          sizes: Array.isArray(d.sizes) && d.sizes.length > 0 ? d.sizes : ["Free Size"],
-          description: d.description || "",
-          longDescription: d.long_description || d.description || "",
-          featured: Boolean(d.featured),
-        }));
+        const realData = data.filter((d: any) => d && d.id && !DUMMY_PRODUCT_IDS.has(String(d.id)));
+        if (realData.length > 0) {
+          return cleanAndHealProducts(
+            realData.map((d: any) => ({
+              id: d.id,
+              name: d.name,
+              category: d.category || "SiCo Gadwal Sarees",
+              material: d.material || "SiCo",
+              price: Number(d.price) || 0,
+              originalPrice: d.original_price ? Number(d.original_price) : undefined,
+              stock: d.stock !== undefined ? Number(d.stock) : 0,
+              rating: Number(d.rating) || 4.8,
+              reviewCount: Number(d.review_count) || 0,
+              images: Array.isArray(d.images) && d.images.length > 0 ? d.images : ["https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1200&auto=format&fit=crop"],
+              colors: Array.isArray(d.colors) && d.colors.length > 0 ? d.colors : ["Standard"],
+              sizes: Array.isArray(d.sizes) && d.sizes.length > 0 ? d.sizes : ["Free Size"],
+              description: d.description || "",
+              longDescription: d.long_description || d.description || "",
+              featured: Boolean(d.featured),
+            }))
+          );
+        }
       }
     }
     
@@ -212,8 +257,16 @@ export const StoreService = {
     if (adminSaved) {
       try {
         const parsedAdmin = JSON.parse(adminSaved);
-        if (Array.isArray(parsedAdmin) && parsedAdmin.length > 0) {
-          adminMapped = parsedAdmin.map((d: any) => {
+        if (Array.isArray(parsedAdmin)) {
+          const cleanAdmin = parsedAdmin.filter(
+            (d: any) => d && d.id && !DUMMY_PRODUCT_IDS.has(String(d.id))
+          );
+          if (cleanAdmin.length !== parsedAdmin.length) {
+            try {
+              localStorage.setItem("rs_admin_inventory", JSON.stringify(cleanAdmin));
+            } catch {}
+          }
+          adminMapped = cleanAdmin.map((d: any) => {
             const variants = Array.isArray(d.variants) ? d.variants : [];
             const variantImages = variants.map((v: any) => v.imageUrl).filter(Boolean) as string[];
             const primaryImg = d.imageUrl || variantImages[0] || "https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1200&auto=format&fit=crop";
@@ -238,7 +291,7 @@ export const StoreService = {
               originalPrice,
               stock: totalStock,
               rating: Number(d.rating) || 4.8,
-              reviewCount: Number(d.reviewCount) || 28,
+              reviewCount: Number(d.reviewCount) || 0,
               images: images.length > 0 ? images : ["https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1200&auto=format&fit=crop"],
               colors: colors.length > 0 ? colors : ["Standard"],
               sizes: ["Free Size (5.5m + 0.8m Blouse)"],
@@ -258,25 +311,31 @@ export const StoreService = {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) storeProducts = parsed;
+        if (Array.isArray(parsed)) {
+          storeProducts = parsed.filter(
+            (p: any) => p && p.id && !DUMMY_PRODUCT_IDS.has(String(p.id))
+          );
+          if (storeProducts.length !== parsed.length) {
+            try {
+              localStorage.setItem(LOCAL_STORAGE_PRODUCTS, JSON.stringify(storeProducts));
+            } catch {}
+          }
+        }
       } catch {
         // ignore
       }
     }
 
-    if (adminMapped.length > 0) {
-      const mergedMap = new Map<string, Product>();
-      storeProducts.forEach((p) => mergedMap.set(p.id, p));
-      adminMapped.forEach((p) => mergedMap.set(p.id, p));
-      const combined = Array.from(mergedMap.values());
+    if (adminSaved !== null) {
+      const healed = await cleanAndHealProducts(adminMapped);
       try {
-        localStorage.setItem(LOCAL_STORAGE_PRODUCTS, JSON.stringify(combined));
+        localStorage.setItem(LOCAL_STORAGE_PRODUCTS, JSON.stringify(healed));
       } catch { }
-      return combined;
+      return healed;
     }
 
     if (storeProducts.length > 0) {
-      return storeProducts;
+      return cleanAndHealProducts(storeProducts);
     }
 
     return [];
@@ -392,17 +451,26 @@ export const StoreService = {
       const res = await adminFetch(`${API_BASE}/admin/bootstrap`);
       const json = await res.json();
       if (json.success) {
-        if (json.products) localStorage.setItem(LOCAL_STORAGE_PRODUCTS, JSON.stringify(json.products));
+        const cleanProds = (json.products || []).filter(
+          (p: any) => p && p.id && !DUMMY_PRODUCT_IDS.has(String(p.id))
+        );
+        const cleanSales = (json.sales || []).filter(
+          (s: any) =>
+            s &&
+            !DUMMY_ORDER_IDS.has(String(s.id || "")) &&
+            !DUMMY_ORDER_IDS.has(String(s.invoiceNumber || ""))
+        );
+        if (json.products) localStorage.setItem(LOCAL_STORAGE_PRODUCTS, JSON.stringify(cleanProds));
         if (json.categories) localStorage.setItem(LOCAL_STORAGE_CATEGORIES, JSON.stringify(json.categories));
         if (json.stockMovements) localStorage.setItem(LOCAL_STORAGE_STOCK_MOVEMENTS, JSON.stringify(json.stockMovements));
-        if (json.sales) localStorage.setItem(LOCAL_STORAGE_SALES, JSON.stringify(json.sales));
+        if (json.sales) localStorage.setItem(LOCAL_STORAGE_SALES, JSON.stringify(cleanSales));
         if (json.customers) localStorage.setItem(LOCAL_STORAGE_CUSTOMERS, JSON.stringify(json.customers));
         if (json.trackedOrders) localStorage.setItem(LOCAL_STORAGE_TRACKED_ORDERS, JSON.stringify(json.trackedOrders));
         return {
           categories: json.categories || [],
-          products: json.products || [],
+          products: cleanProds,
           stockMovements: json.stockMovements || [],
-          sales: json.sales || [],
+          sales: cleanSales,
           customers: json.customers || [],
           trackedOrders: json.trackedOrders || [],
         };
@@ -435,7 +503,9 @@ export const StoreService = {
       const res = await adminFetch(`${API_BASE}/admin/bootstrap`);
       const json = await res.json();
       if (json.success && json.products) {
-        return json.products;
+        return json.products.filter(
+          (p: any) => p && p.id && !DUMMY_PRODUCT_IDS.has(String(p.id))
+        );
       }
     } catch {
       // ignore
@@ -443,31 +513,38 @@ export const StoreService = {
     if (supabase) {
       const { data, error } = await supabase.from("products").select("*").order("created_at", { ascending: false });
       if (!error && data) {
-        return data.map((d: any) => ({
-          id: d.id,
-          name: d.name,
-          categoryId: d.category_id || "c1",
-          purchasePrice: Number(d.purchase_price) || 0,
-          salePrice: Number(d.price) || 0,
-          tags: Array.isArray(d.tags) ? d.tags : [],
-          variants: Array.isArray(d.variants) && d.variants.length > 0 ? d.variants : [
-            {
-              color: (Array.isArray(d.colors) && d.colors[0]) || "Standard",
-              colorSlug: "STD",
-              stock: Number(d.stock) || 0,
-              sku: d.id,
-            }
-          ],
-          imageUrl: Array.isArray(d.images) && d.images.length > 0 ? d.images[0] : undefined,
-          material: d.material || "SiCo",
-          description: d.description || "",
-        }));
+        return data
+          .filter((d: any) => d && d.id && !DUMMY_PRODUCT_IDS.has(String(d.id)))
+          .map((d: any) => ({
+            id: d.id,
+            name: d.name,
+            categoryId: d.category_id || "c1",
+            purchasePrice: Number(d.purchase_price) || 0,
+            salePrice: Number(d.price) || 0,
+            tags: Array.isArray(d.tags) ? d.tags : [],
+            variants: Array.isArray(d.variants) && d.variants.length > 0 ? d.variants : [
+              {
+                color: (Array.isArray(d.colors) && d.colors[0]) || "Standard",
+                colorSlug: "STD",
+                stock: Number(d.stock) || 0,
+                sku: d.id,
+              }
+            ],
+            imageUrl: Array.isArray(d.images) && d.images.length > 0 ? d.images[0] : undefined,
+            material: d.material || "SiCo",
+            description: d.description || "",
+          }));
       }
     }
     const saved = localStorage.getItem(LOCAL_STORAGE_PRODUCTS);
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.filter(
+            (p: any) => p && p.id && !DUMMY_PRODUCT_IDS.has(String(p.id))
+          );
+        }
       } catch {
         // ignore
       }
@@ -586,6 +663,44 @@ export const StoreService = {
     const updated = [...current, category];
     localStorage.setItem(LOCAL_STORAGE_CATEGORIES, JSON.stringify(updated));
     return category;
+  },
+
+  // 1.2.1 COLOR PALETTE (Storefront & Admin)
+  async getColors(): Promise<ColorDefinition[]> {
+    try {
+      const res = await fetch(`${API_BASE}/catalog/colors`);
+      const json = await res.json();
+      const remoteColors = json?.data?.colors || json?.colors;
+      if (json?.success && Array.isArray(remoteColors)) {
+        return syncColorsToRuntime(remoteColors);
+      }
+    } catch {
+      // fallback to runtime / localStorage
+    }
+    return [...COLOR_CODES];
+  },
+
+  async registerColor(name: string, code?: string): Promise<ColorDefinition> {
+    const registeredLocal = registerColorInCatalog(name, code);
+    try {
+      const res = await adminFetch(`${API_BASE}/catalog/colors`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: registeredLocal.name, code: registeredLocal.code }),
+      });
+      const json = await res.json();
+      const remoteColors = json?.data?.colors || json?.colors;
+      if (Array.isArray(remoteColors)) {
+        syncColorsToRuntime(remoteColors);
+      }
+      const remoteColor = json?.data?.color || json?.color;
+      if (remoteColor && remoteColor.name && remoteColor.code) {
+        return remoteColor;
+      }
+    } catch (err) {
+      console.warn("Backend register color sync notice:", err);
+    }
+    return registeredLocal;
   },
 
   // 1.3 STOCK MOVEMENTS
@@ -916,13 +1031,17 @@ export const StoreService = {
   },
 
   async uploadImage(base64OrDataUrl: string, onProgress?: (percent: number) => void): Promise<{ success: boolean; url: string; message?: string }> {
+    let safeDataUrl = base64OrDataUrl;
+    if (isUnrenderedHeicDataUrl(safeDataUrl)) {
+      safeDataUrl = await convertHeicDataUrlToJpeg(safeDataUrl);
+    }
     try {
       if (onProgress) onProgress(25);
 
       const res = await fetch(`${API_BASE}/upload`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: base64OrDataUrl }),
+        body: JSON.stringify({ image: safeDataUrl }),
       });
 
       if (onProgress) onProgress(75);
@@ -935,21 +1054,26 @@ export const StoreService = {
       if (data.success && uploadedUrl) {
         return { success: true, url: uploadedUrl, message: data.message };
       }
-      return { success: false, url: base64OrDataUrl, message: data.message || "Upload failed" };
+      return { success: false, url: safeDataUrl, message: data.message || "Upload failed" };
     } catch (err: any) {
       if (onProgress) onProgress(100);
-      return { success: true, url: base64OrDataUrl, message: "Saved locally (Network offline)" };
+      return { success: true, url: safeDataUrl, message: "Saved locally (Network offline)" };
     }
   },
 
   async uploadImages(base64Array: string[], onProgress?: (percent: number) => void): Promise<string[]> {
     if (!base64Array || base64Array.length === 0) return [];
+    const safeArray = await Promise.all(
+      base64Array.map((item) =>
+        isUnrenderedHeicDataUrl(item) ? convertHeicDataUrlToJpeg(item) : Promise.resolve(item)
+      )
+    );
     try {
       if (onProgress) onProgress(20);
       const res = await fetch(`${API_BASE}/upload`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ images: base64Array }),
+        body: JSON.stringify({ images: safeArray }),
       });
       if (onProgress) onProgress(80);
       const data = await res.json();
@@ -957,10 +1081,10 @@ export const StoreService = {
       if (data.success && Array.isArray(data.urls)) {
         return data.urls;
       }
-      return base64Array;
+      return safeArray;
     } catch {
       if (onProgress) onProgress(100);
-      return base64Array;
+      return safeArray;
     }
   },
 

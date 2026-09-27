@@ -240,9 +240,9 @@ export const VIBGYOR_COLOR_CODES: ColorDefinition[] = [
 ];
 
 /**
- * Active selectable color palette for Admin saree management: ONLY VIBGYOR
+ * Active selectable color palette for Admin saree management (VIBGYOR + Registered Custom Colors)
  */
-export const COLOR_CODES: ColorDefinition[] = VIBGYOR_COLOR_CODES;
+export const COLOR_CODES: ColorDefinition[] = [...VIBGYOR_COLOR_CODES];
 
 /**
  * Legacy Color Catalogue for backwards compatibility with existing sarees.

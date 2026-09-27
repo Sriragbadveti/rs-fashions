@@ -6,6 +6,9 @@ import {
   getProductsFromStore,
   saveProductToStore,
   deleteProductFromStore,
+  getColorsFromStore,
+  saveColorToStore,
+  saveColorsToStore,
 } from "../database/localStore.js";
 
 /**
@@ -44,13 +47,10 @@ export function validateVibgyorColors(colorList) {
   if (!Array.isArray(colorList) || colorList.length === 0) return true;
   for (const c of colorList) {
     if (!c) continue;
-    const parts = String(c).split(/[/,&+]/).map((p) => p.trim().toLowerCase());
+    const parts = String(c).split(/[/,&+]/).map((p) => p.trim()).filter(Boolean);
     for (const p of parts) {
-      if (!p || p === "standard") continue;
-      const isVibgyor = Array.from(VIBGYOR_COLORS).some((vc) => p.includes(vc));
-      if (!isVibgyor) {
-        return false;
-      }
+      if (p.toLowerCase() === "standard") continue;
+      saveColorToStore(p);
     }
   }
   return true;
@@ -671,3 +671,86 @@ export async function createCategory(req, res) {
     return errorResponse(res, err.message, 500);
   }
 }
+
+// 6. GET ALL REGISTERED COLORS
+export async function getColors(req, res) {
+  try {
+    let colors = getColorsFromStore();
+
+    if (supabase) {
+      try {
+        const { data } = await supabase
+          .from("settings")
+          .select("value")
+          .eq("key", "color_palette")
+          .maybeSingle();
+
+        if (data?.value && Array.isArray(data.value)) {
+          colors = saveColorsToStore(data.value);
+        }
+      } catch (err) {
+        console.warn("Supabase color_palette read notice:", err.message);
+      }
+    }
+
+    return successResponse(res, { colors }, "Color palette retrieved successfully");
+  } catch (err) {
+    return errorResponse(res, err.message, 500);
+  }
+}
+
+// 7. REGISTER NEW COLOR
+export async function registerColor(req, res) {
+  try {
+    const { name, code } = req.body || {};
+    if (!name || !String(name).trim()) {
+      return errorResponse(res, "Color name is required", 400);
+    }
+
+    // Sync any existing Supabase colors first before adding the new one
+    if (supabase) {
+      try {
+        const { data } = await supabase
+          .from("settings")
+          .select("value")
+          .eq("key", "color_palette")
+          .maybeSingle();
+
+        if (data?.value && Array.isArray(data.value)) {
+          saveColorsToStore(data.value);
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    const { color, colors } = saveColorToStore({ name, code });
+    if (!color) {
+      return errorResponse(res, "Invalid color name", 400);
+    }
+
+    if (supabase) {
+      try {
+        await supabase.from("settings").upsert({
+          key: "color_palette",
+          value: colors,
+          updated_at: new Date().toISOString(),
+        });
+      } catch (err) {
+        console.warn("Supabase color_palette upsert notice:", err.message);
+      }
+    }
+
+    invalidateCatalogCache();
+    return successResponse(
+      res,
+      { color, colors },
+      `Color "${color.name}" registered successfully`,
+      201
+    );
+  } catch (err) {
+    console.error("Register color error:", err);
+    return errorResponse(res, err.message, 500);
+  }
+}
+
