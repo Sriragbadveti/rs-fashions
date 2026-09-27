@@ -32,6 +32,8 @@ import {
   handleSareeImageError,
 } from "../utils/imageConverter";
 
+import { getRegisteredBorderColors, saveBorderColorToRegistry } from "./SareeStock";
+
 interface BulkStockProps {
   inventory: Product[];
   categories: Category[];
@@ -44,6 +46,7 @@ interface BulkRow {
   id: string;
   color1: string;
   color2: string;
+  borderColor?: string;
   qty: number;
   imageUrl?: string;
 }
@@ -431,12 +434,17 @@ export default function BulkStock({
       id: "row-1",
       color1: COLOR_CODES[0]?.name || "",
       color2: COLOR_CODES[1]?.name || "",
+      borderColor: "",
       qty: 5,
       imageUrl: "",
     },
   ]);
 
   const [applyQty, setApplyQty] = useState<number>(5);
+  const [applyBorder, setApplyBorder] = useState<string>("");
+  const [registeredBorders, setRegisteredBorders] = useState<string[]>(() =>
+    getRegisteredBorderColors()
+  );
   const [successBatch, setSuccessBatch] = useState<{
     isOpen: boolean;
     designName: string;
@@ -479,6 +487,29 @@ export default function BulkStock({
     [colorPalette]
   );
 
+  const borderOptions: DropdownOption[] = useMemo(() => {
+    const list = Array.from(new Set([...registeredBorders, ...colorPalette.map((c) => c.name)]));
+    return list.map((bName) => {
+      const colObj = colorPalette.find((c) => normalizeText(c.name) === normalizeText(bName));
+      return {
+        value: bName,
+        label: bName,
+        description: colObj ? `Code: ${colObj.code}` : "Border Shade",
+        code: colObj ? colObj.code : generateColorSlug(bName),
+      };
+    });
+  }, [registeredBorders, colorPalette]);
+
+  const handleRegisterBorder = async (newBorder: string): Promise<string> => {
+    const trimmed = newBorder.trim();
+    if (trimmed) {
+      saveBorderColorToRegistry(trimmed);
+      setRegisteredBorders(getRegisteredBorderColors());
+      await StoreService.registerColor(trimmed).catch(() => {});
+    }
+    return trimmed;
+  };
+
   const selectedDesign = useMemo(
     () => MOCK_DESIGNS.find((d) => d.slug === selectedDesignSlug),
     [selectedDesignSlug]
@@ -502,6 +533,7 @@ export default function BulkStock({
         id: `row-${Date.now()}-${Math.random()}`,
         color1: COLOR_CODES[0]?.name || "",
         color2: COLOR_CODES[1]?.name || "",
+        borderColor: applyBorder || "",
         qty: 5,
         imageUrl: "",
       },
@@ -617,6 +649,21 @@ export default function BulkStock({
     setBulkRows((prev) => prev.map((row) => ({ ...row, qty: safeQty })));
   };
 
+  const applyBorderToAll = () => {
+    if (!applyBorder.trim()) return;
+    sound.playClick();
+    const borderVal = applyBorder.trim();
+    saveBorderColorToRegistry(borderVal);
+    setRegisteredBorders(getRegisteredBorderColors());
+    setBulkRows((prev) =>
+      prev.map((row) => ({
+        ...row,
+        borderColor: borderVal,
+        color2: orderMode === "dual" ? borderVal : row.color2,
+      }))
+    );
+  };
+
   const handleCommitBulkStock = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -631,7 +678,12 @@ export default function BulkStock({
       const color1Obj = colorPalette.find((c) => normalizeText(c.name) === normalizeText(color1Name));
       const color1Code = color1Obj ? color1Obj.code : generateColorSlug(color1Name);
 
-      const color2Name = orderMode === "dual" ? (row.color2 || "").trim() : "";
+      const borderShade = (row.borderColor || (orderMode === "dual" ? row.color2 : "") || "").trim();
+      if (borderShade) {
+        saveBorderColorToRegistry(borderShade);
+      }
+
+      const color2Name = orderMode === "dual" ? (row.color2 || borderShade) : borderShade;
       const color2Obj = color2Name
         ? colorPalette.find((c) => normalizeText(c.name) === normalizeText(color2Name))
         : null;
@@ -654,9 +706,10 @@ export default function BulkStock({
         categoryId: selectedCategoryId,
         purchasePrice: purchasePrice ?? 0,
         salePrice: salePrice ?? 0,
+        borderColor: borderShade || undefined,
         tags: [
           "bulk-restock",
-          orderMode === "dual" ? "dual-tone" : "single-tone",
+          orderMode === "dual" || borderShade ? "dual-tone" : "single-tone",
         ],
         imageUrl: row.imageUrl || undefined,
         images: row.imageUrl ? [row.imageUrl] : undefined,
@@ -910,8 +963,28 @@ export default function BulkStock({
               </p>
             </div>
 
-            {/* QUICK QUANTITY SYNC CONTROLS */}
+            {/* QUICK QUANTITY & BORDER SYNC CONTROLS */}
             <div className="flex flex-wrap items-center gap-2">
+              {/* Batch Border Apply */}
+              <div className="flex h-9 items-center rounded-xl border border-stone-200/80 bg-white px-2.5 shadow-2xs gap-1.5">
+                <input
+                  type="text"
+                  placeholder="Set Border Shade..."
+                  value={applyBorder}
+                  onChange={(e) => setApplyBorder(e.target.value)}
+                  className="w-28 sm:w-36 bg-transparent text-xs font-semibold text-stone-800 outline-none placeholder:text-stone-400"
+                />
+                <button
+                  type="button"
+                  onClick={applyBorderToAll}
+                  disabled={!applyBorder.trim()}
+                  className="rounded-lg bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-900 border border-amber-200/70 hover:bg-amber-100 disabled:opacity-40 transition-colors"
+                >
+                  Set Borders
+                </button>
+              </div>
+
+              {/* Quantity controls */}
               <div className="flex h-9 items-center overflow-hidden rounded-xl border border-stone-200/80 bg-white shadow-2xs">
                 <button
                   type="button"
@@ -966,14 +1039,14 @@ export default function BulkStock({
             const primaryObj = colorPalette.find((c) => normalizeText(c.name) === normalizeText(primaryName));
             const primaryCode = primaryObj ? primaryObj.code : generateColorSlug(primaryName);
 
-            const secondaryName = orderMode === "dual" ? (row.color2 || "").trim() : "";
-            const secondaryObj = secondaryName
-              ? colorPalette.find((c) => normalizeText(c.name) === normalizeText(secondaryName))
+            const borderVal = (row.borderColor || (orderMode === "dual" ? row.color2 : "") || "").trim();
+            const borderObj = borderVal
+              ? colorPalette.find((c) => normalizeText(c.name) === normalizeText(borderVal))
               : null;
-            const secondaryCode = secondaryName ? (secondaryObj ? secondaryObj.code : generateColorSlug(secondaryName)) : null;
+            const borderCode = borderVal ? (borderObj ? borderObj.code : generateColorSlug(borderVal)) : null;
 
-            const autoSku = `RSF-${selectedDesignSlug}-${secondaryCode
-                ? `${primaryCode}-${secondaryCode}`
+            const autoSku = `RSF-${selectedDesignSlug}-${borderCode
+                ? `${primaryCode}-${borderCode}`
                 : primaryCode
               }-${String(inventory.length + index + 1).padStart(3, "0")}`;
 
@@ -1034,37 +1107,30 @@ export default function BulkStock({
                     customActionLabel="Register Color"
                   />
 
-                  {orderMode === "dual" ? (
-                    <PremiumDropdown
-                      label="Border / Zari Shade"
-                      value={row.color2}
-                      options={colorOptions}
-                      onChange={(value) => updateRow(row.id, "color2", value)}
-                      allowCustom={true}
-                      onRegisterCustom={handleRegisterColor}
-                      customActionLabel="Register Color"
-                    />
-                  ) : (
-                    <div className="flex flex-col">
-                      <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.14em] text-stone-400">
-                        Generated Drape SKU
-                      </label>
-                      <div className="flex h-11 items-center rounded-2xl border border-stone-200/80 bg-stone-50/80 px-3.5 font-mono text-[10.5px] font-bold text-stone-800">
-                        <span className="truncate">{autoSku}</span>
-                      </div>
-                    </div>
-                  )}
+                  <PremiumDropdown
+                    label="Border / Zari Shade"
+                    value={row.borderColor || (orderMode === "dual" ? row.color2 : "")}
+                    options={borderOptions}
+                    placeholder="e.g. Gold Zari / Contrast Shade"
+                    onChange={(value) => {
+                      updateRow(row.id, "borderColor", value);
+                      if (orderMode === "dual") {
+                        updateRow(row.id, "color2", value);
+                      }
+                    }}
+                    allowCustom={true}
+                    onRegisterCustom={handleRegisterBorder}
+                    customActionLabel="Save Border Shade"
+                  />
 
-                  {orderMode === "dual" && (
-                    <div className="flex flex-col sm:col-span-2 xl:col-span-1">
-                      <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.14em] text-stone-400">
-                        Generated Drape SKU
-                      </label>
-                      <div className="flex h-11 items-center rounded-2xl border border-stone-200/80 bg-stone-50/80 px-3.5 font-mono text-[10.5px] font-bold text-stone-800">
-                        <span className="truncate">{autoSku}</span>
-                      </div>
+                  <div className="flex flex-col">
+                    <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.14em] text-stone-400">
+                      Generated Drape SKU
+                    </label>
+                    <div className="flex h-11 items-center rounded-2xl border border-stone-200/80 bg-stone-50/80 px-3.5 font-mono text-[10.5px] font-bold text-stone-800">
+                      <span className="truncate">{autoSku}</span>
                     </div>
-                  )}
+                  </div>
                 </div>
 
                 {/* Stock Quantity Controls */}

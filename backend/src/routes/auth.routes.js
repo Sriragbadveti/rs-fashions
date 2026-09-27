@@ -11,6 +11,7 @@ import {
   adminLogout,
   verifyAdminSession,
   createAdminAuthorized,
+  updatePatronPhone,
 } from "../controllers/auth.controller.js";
 
 const router = Router();
@@ -25,6 +26,7 @@ router.post("/admin-create-authorized", createAdminAuthorized);
 router.get("/google", initiateGoogleAuth);
 router.get("/google/callback", handleGoogleCallback);
 router.post("/google/verify", verifyGoogleToken);
+router.post("/update-phone", updatePatronPhone);
 
 // Active device session routes
 router.post("/session", registerSession);

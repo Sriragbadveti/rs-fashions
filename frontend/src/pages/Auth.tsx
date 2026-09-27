@@ -17,6 +17,7 @@ import { setUserSession } from "../utils/userSession";
 import { StoreService } from "../services/supabase";
 import { ADMIN_SECRET_PATH } from "../config/routes";
 import logo from "../assets/logo/logo1.png";
+import GooglePhoneModal from "../components/auth/GooglePhoneModal";
 
 type AuthMode = "signin" | "signup";
 
@@ -113,6 +114,8 @@ export default function Auth() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [showPhoneModal, setShowPhoneModal] = useState(false);
+  const [pendingGoogleUser, setPendingGoogleUser] = useState<any>(null);
   const [error, setError] = useState<string | null>(() => {
     const err = searchParams.get("error");
     return err ? decodeURIComponent(err) : null;
@@ -336,8 +339,18 @@ export default function Auth() {
                 throw new Error(result.message || "Failed to verify Google profile");
               }
 
-              setUserSession(result.data.user);
-              navigate(destination, { replace: true });
+              const user = result.data.user;
+              const cleanP = (user.phone || "").replace(/\D/g, "").slice(-10);
+              const hasValidPhone = cleanP.length === 10 && !user.phone.startsWith("G-");
+              setUserSession(user);
+
+              if (!hasValidPhone) {
+                setGoogleLoading(false);
+                setPendingGoogleUser(user);
+                setShowPhoneModal(true);
+              } else {
+                navigate(destination, { replace: true });
+              }
             } catch (vErr: any) {
               setGoogleLoading(false);
               setError(vErr.message || "Failed to verify Google sign-in with server");
@@ -744,6 +757,22 @@ export default function Auth() {
           </div>
         </div>
       </div>
+
+      {showPhoneModal && pendingGoogleUser && (
+        <GooglePhoneModal
+          isOpen={showPhoneModal}
+          user={pendingGoogleUser}
+          onSuccess={() => {
+            setShowPhoneModal(false);
+            const destination = redirectUrl && redirectUrl !== "/account" ? redirectUrl : "/shop";
+            navigate(destination, { replace: true });
+          }}
+          onCancel={() => {
+            setShowPhoneModal(false);
+            setGoogleLoading(false);
+          }}
+        />
+      )}
     </main>
   );
 }

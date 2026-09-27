@@ -197,15 +197,16 @@ export async function handleBulkIntake(req, res) {
           images,
           colors: colorList,
           tags: p.tags || ["bulk-intake", "loom-arrival"],
+          border_color: p.borderColor || p.border_color || null,
           description: p.description || `Bulk loom intake for ${p.name}.`,
           updated_at: new Date().toISOString(),
         }).select().single();
 
         if (prodData) {
           insertedProducts.push(prodData);
-          saveProductToStore({ ...p, ...prodData, id: prodId });
+          saveProductToStore({ ...p, ...prodData, id: prodId, borderColor: p.borderColor || p.border_color });
         } else {
-          saveProductToStore({ ...p, id: prodId, price: priceVal, salePrice: priceVal, stock: stockTotal, colors: colorList, images });
+          saveProductToStore({ ...p, id: prodId, price: priceVal, salePrice: priceVal, stock: stockTotal, colors: colorList, images, borderColor: p.borderColor || p.border_color });
         }
 
         // Movement record
