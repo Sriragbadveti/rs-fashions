@@ -848,19 +848,20 @@ export function useBilling({
   // Runs before an invoice is generated. Returns false + shows an
   // alert if something required is missing/invalid.
   // ---------------------------------------------------------------
-  const validateSale = () => {
+  const validateSale = (overrideCustomerName?: string, silentMode = false) => {
     if (cart.length === 0) {
-      alert("Please add at least one saree to the bill.");
+      if (!silentMode) alert("Please add at least one saree to the bill.");
       return false;
     }
 
-    if (!customer.name.trim()) {
-      alert("Please enter customer name.");
+    const nameToValidate = (overrideCustomerName !== undefined ? overrideCustomerName : customer.name).trim();
+    if (!nameToValidate) {
+      if (!silentMode) alert("Please enter customer name.");
       return false;
     }
 
     if (!customer.phone.trim()) {
-      alert("Please enter phone number for warranty & WhatsApp billing.");
+      if (!silentMode) alert("Please enter phone number for warranty & WhatsApp billing.");
       return false;
     }
 
@@ -868,20 +869,18 @@ export function useBilling({
       const gstin = customer.gstin.trim().toUpperCase();
 
       if (gstin.length !== 15) {
-        alert(
-          "Please enter a valid 15-character customer GSTIN or uncheck B2B."
-        );
+        if (!silentMode) alert("Please enter a valid 15-character customer GSTIN or uncheck B2B.");
         return false;
       }
     }
 
     if (effectiveDiscountPercent < 0 || effectiveDiscountPercent > 100) {
-      alert("Discount must be between 0% and 100%.");
+      if (!silentMode) alert("Discount must be between 0% and 100%.");
       return false;
     }
 
     if (billingType === "gst" && (gstRate < 0 || gstRate > 100)) {
-      alert("GST rate must be between 0% and 100%.");
+      if (!silentMode) alert("GST rate must be between 0% and 100%.");
       return false;
     }
 
@@ -894,7 +893,21 @@ export function useBilling({
   // and conditionally hands it to onCompleteSale if commitImmediate is true.
   // ---------------------------------------------------------------
   const completeBill = (options?: CompleteBillOptions): CompletedSale | null => {
-    if (!validateSale()) return null;
+    const isAutoCommit = Boolean(options?.commitImmediate);
+    const effectiveName = customer.name.trim() || (isAutoCommit ? "Patron" : "");
+    const effectivePhone = customer.phone.trim() || (isAutoCommit ? "9999999999" : "");
+    const effectiveAddress = customer.address?.trim() || customer.city || "In-Store Showroom Counter";
+
+    if (!validateSale(effectiveName, isAutoCommit)) return null;
+
+    if (isAutoCommit) {
+      setCustomer((prev) => ({
+        ...prev,
+        name: prev.name.trim() || effectiveName,
+        phone: prev.phone.trim() || effectivePhone,
+        address: prev.address?.trim() || effectiveAddress,
+      }));
+    }
 
     const commitImmediate = options?.commitImmediate ?? false;
     const resolvedMethod = options?.customMethod ?? paymentMethod;
@@ -903,8 +916,8 @@ export function useBilling({
     const sale: CompletedSale = {
       invoiceNumber: getNextInvoiceNumber(),
       date: now,
-      customerName: customer.name.trim(),
-      customerPhone: customer.phone.trim(),
+      customerName: effectiveName,
+      customerPhone: effectivePhone,
       items: cart,
       subtotal,
       discount,
@@ -917,8 +930,9 @@ export function useBilling({
       billingType,
       customer: {
         ...customer,
-        name: customer.name.trim(),
-        phone: customer.phone.trim(),
+        name: effectiveName,
+        phone: effectivePhone,
+        address: effectiveAddress,
         gstin:
           isB2bInvoice && customer.gstin
             ? customer.gstin.trim().toUpperCase()

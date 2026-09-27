@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   ArrowRight,
   ReceiptIndianRupee,
@@ -31,11 +31,13 @@ import {
   Link2,
   Smartphone,
   Send,
+  Sparkles,
 } from "lucide-react";
 
 import type { CartItem, CompletedSale, Product, CustomerProfile } from "../types/inventory";
 import { API_BASE } from "../config/api";
 import logo from "../assets/logo/logo1.png";
+import { sound } from "../types/soundEngine";
 
 import {
   useBilling,
@@ -68,6 +70,7 @@ const Billing: React.FC<BillingProps> = ({
 }) => {
   const showroom = useShowroomSettings();
   const {
+    billingType,
     search,
     selectedCategory,
     isCategoryDropdownOpen,
@@ -141,8 +144,32 @@ const Billing: React.FC<BillingProps> = ({
     refId: string;
     amount: number;
   } | null>(null);
+  const [paymentCompletedInfo, setPaymentCompletedInfo] = useState<{
+    paymentId: string;
+    amount: number;
+    timestamp: number;
+  } | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
   const [paymentLinkError, setPaymentLinkError] = useState<string | null>(null);
+
+  // Stable references for resilient polling without re-render drops
+  const activePollingRefId = useRef<string | null>(null);
+  const isAutoRecordingRef = useRef<boolean>(false);
+  const latestCustomerRef = useRef(customer);
+  const latestCartRef = useRef(cart);
+  const completeBillRef = useRef(completeBill);
+
+  useEffect(() => {
+    latestCustomerRef.current = customer;
+  }, [customer]);
+
+  useEffect(() => {
+    latestCartRef.current = cart;
+  }, [cart]);
+
+  useEffect(() => {
+    completeBillRef.current = completeBill;
+  }, [completeBill]);
 
   // TRIGGER TOAST HELPER
   const triggerToast = (msg: string) => {
@@ -157,7 +184,7 @@ const Billing: React.FC<BillingProps> = ({
   const liveNetPayable = Math.max(0, subtotal - liveDiscountAmount);
 
   // 1. GENERATE PAYMENT LINK (Cashfree)
-  // CRITICAL: Does NOT commit sale to ledger or backend!
+  // Captures full order details, sends to backend, and initiates real-time monitoring
   const handleGeneratePaymentLink = async (provider: "cashfree" | "phonepe" | "razorpay" = "cashfree"): Promise<string | null> => {
     const cleanPhone = (customer.phone || "").replace(/[^0-9]/g, "");
     if (!customer.phone || cleanPhone.length !== 10) {
@@ -182,7 +209,13 @@ const Billing: React.FC<BillingProps> = ({
           customerName: customer.name?.trim() || "Patron",
           customerPhone: cleanPhone,
           customerEmail: customer.email?.trim() || "patron@rsfashions.in",
+          customerAddress: customer.address?.trim() || customer.city || "In-Store Showroom Counter",
           invoiceNumber: stableInvoice,
+          items: cart,
+          subtotal,
+          discount: liveDiscountAmount,
+          total: liveNetPayable,
+          billingType,
         }),
       });
       const json = await res.json();
@@ -199,6 +232,10 @@ const Billing: React.FC<BillingProps> = ({
         refId: actualData.paymentLinkId || actualData.linkId || `cf_link_${Date.now()}`,
         amount: liveNetPayable,
       };
+
+      setPaymentCompletedInfo(null);
+      isAutoRecordingRef.current = false;
+      activePollingRefId.current = data.refId;
       setPaymentLinkData(data);
       triggerToast("Cashfree payment link generated successfully!");
       return link;
@@ -207,61 +244,81 @@ const Billing: React.FC<BillingProps> = ({
       const msg = err.message || "Payment link generation failed";
       setPaymentLinkError(msg);
       triggerToast(`Payment link failed: ${msg}`);
-      // NOTE: Sale is explicitly NOT committed to history or backend on failure
       return null;
     } finally {
       setIsGeneratingLink(false);
     }
   };
 
-  // AUTO-VERIFY PAYMENT LINK: Automatically polls and completes sale when patron pays
+  // AUTO-VERIFY PAYMENT LINK: Automatically polls and completes & records sale as soon as patron pays
   useEffect(() => {
-    if (!paymentLinkData || !paymentLinkData.refId) return;
+    if (!paymentLinkData || !paymentLinkData.refId) {
+      activePollingRefId.current = null;
+      return;
+    }
 
+    activePollingRefId.current = paymentLinkData.refId;
+    isAutoRecordingRef.current = false;
     let isCancelled = false;
+
     const interval = setInterval(async () => {
+      const orderIdToPoll = activePollingRefId.current;
+      if (!orderIdToPoll || isAutoRecordingRef.current || isCancelled) return;
+
       try {
         const res = await fetch(`${API_BASE}/payments/cashfree/verify`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ orderId: paymentLinkData.refId }),
+          body: JSON.stringify({ orderId: orderIdToPoll }),
         });
         const json = await res.json();
         const actual = json.data || json;
 
         if (!isCancelled && (actual.paid || actual.verified)) {
+          if (isAutoRecordingRef.current) return;
+          isAutoRecordingRef.current = true;
+          activePollingRefId.current = null;
           clearInterval(interval);
-          triggerToast("🎉 Patron payment received! Generating official sale receipt...");
 
-          if (!customer.address || customer.address.trim() === "") {
-            updateCustomer("address", customer.city || "In-Store Showroom Counter");
+          const payId = actual.paymentId || orderIdToPoll;
+          sound.playNotification();
+          triggerToast("🎉 Patron payment received! Sale automatically recorded.");
+
+          // Record auto-complete metadata
+          setPaymentCompletedInfo({
+            paymentId: payId,
+            amount: paymentLinkData.amount,
+            timestamp: Date.now(),
+          });
+
+          // Ensure address & name are populated
+          if (!latestCustomerRef.current.address || latestCustomerRef.current.address.trim() === "") {
+            updateCustomer("address", latestCustomerRef.current.city || "In-Store Showroom Counter");
+          }
+          if (!latestCustomerRef.current.name || latestCustomerRef.current.name.trim() === "") {
+            updateCustomer("name", "Patron");
           }
 
-          setTimeout(() => {
-            completeBill({
-              customMethod: "cashfree",
-              paymentLink: paymentLinkData.url,
-              transactionId: actual.paymentId || paymentLinkData.refId,
-              commitImmediate: true,
-            });
-
-            setPaymentLinkData(null);
-            setPaymentLinkError(null);
-          }, 400);
+          // Complete and commit sale immediately to ledger and database!
+          completeBillRef.current({
+            customMethod: "cashfree",
+            paymentLink: paymentLinkData.url,
+            transactionId: payId,
+            commitImmediate: true,
+          });
         }
       } catch (pollErr) {
         // Polling retry
       }
-    }, 2500);
+    }, 2000);
 
     return () => {
       isCancelled = true;
       clearInterval(interval);
     };
-  }, [paymentLinkData, customer.address, customer.city, completeBill, updateCustomer]);
+  }, [paymentLinkData]);
 
   // 2. CONFIRM LINK PAYMENT & COMMIT TO HISTORY (Manual Fallback)
-  // Only called when customer completes payment via PhonePe/Razorpay or manually confirmed
   const handleConfirmLinkPayment = () => {
     if (!paymentLinkData) return;
 
@@ -269,15 +326,20 @@ const Billing: React.FC<BillingProps> = ({
       updateCustomer("address", customer.city || "In-Store Showroom Counter");
     }
 
+    const payId = paymentLinkData.refId;
+    setPaymentCompletedInfo({
+      paymentId: payId,
+      amount: paymentLinkData.amount,
+      timestamp: Date.now(),
+    });
+
     completeBill({
       customMethod: paymentLinkData.provider,
       paymentLink: paymentLinkData.url,
-      transactionId: paymentLinkData.refId,
+      transactionId: payId,
       commitImmediate: true,
     });
 
-    setPaymentLinkData(null);
-    setPaymentLinkError(null);
     triggerToast("Payment confirmed! Sale recorded in Transaction History.");
   };
 
@@ -1139,8 +1201,59 @@ const Billing: React.FC<BillingProps> = ({
                       </div>
                     )}
 
-                    {/* Active Link Box */}
-                    {paymentLinkData && (
+                    {/* Payment Completed & Auto-Recorded Card */}
+                    {paymentCompletedInfo ? (
+                      <div className="rounded-2xl border-2 border-emerald-500 bg-emerald-50 p-4 space-y-3 shadow-md animate-fade-in">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-emerald-800 font-bold text-xs uppercase tracking-wider">
+                            <CheckCircle2 className="h-5 w-5 text-emerald-600 animate-bounce shrink-0" />
+                            <span>Payment Completed &amp; Auto-Recorded!</span>
+                          </div>
+                          <span className="font-mono text-[9px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-600 text-white shadow-xs">
+                            ✓ DONE
+                          </span>
+                        </div>
+
+                        <div className="rounded-xl bg-white/95 border border-emerald-200 p-2.5 space-y-1 shadow-xs">
+                          <div className="flex justify-between text-xs font-bold text-stone-800">
+                            <span>Amount Settled:</span>
+                            <span className="text-emerald-700">{currency(paymentCompletedInfo.amount)}</span>
+                          </div>
+                          <div className="flex justify-between text-[10px] text-stone-500 font-mono">
+                            <span>Transaction Ref:</span>
+                            <span className="text-stone-700 font-semibold">{paymentCompletedInfo.paymentId}</span>
+                          </div>
+                          <div className="text-[10px] text-emerald-700 font-medium pt-1 border-t border-emerald-100 flex items-center gap-1">
+                            <Sparkles className="h-3 w-3 text-amber-500 shrink-0" />
+                            <span>Sale recorded in Transaction History &amp; inventory updated!</span>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => setShowInvoice(true)}
+                            className="flex-1 h-9 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all"
+                          >
+                            <ReceiptIndianRupee className="h-3.5 w-3.5 text-amber-200" />
+                            <span>View Receipt</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPaymentLinkData(null);
+                              setPaymentCompletedInfo(null);
+                              resetBilling();
+                              triggerToast("Ready for next customer");
+                            }}
+                            className="px-3 h-9 rounded-xl bg-stone-200 hover:bg-stone-300 text-stone-700 text-xs font-semibold"
+                          >
+                            New Bill
+                          </button>
+                        </div>
+                      </div>
+                    ) : paymentLinkData ? (
                       <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 space-y-2.5">
                         <div className="flex items-center justify-between text-[11px] font-semibold text-stone-700">
                           <span className="flex items-center gap-1.5 text-emerald-800 font-bold">
@@ -1207,12 +1320,12 @@ const Billing: React.FC<BillingProps> = ({
                         </div>
 
                         {/* Status notification */}
-                        <div className="flex items-center gap-1.5 text-[10px] text-amber-800 bg-amber-50/90 border border-amber-200/70 px-2.5 py-1.5 rounded-lg">
-                          <Loader2 className="h-3 w-3 animate-spin text-amber-600 shrink-0" />
-                          <span>Waiting for patron payment. Once paid on their device, the sale receipt will appear automatically!</span>
+                        <div className="flex items-center gap-2 text-[11px] text-amber-900 bg-amber-50/90 border border-amber-200 px-3 py-2 rounded-xl animate-pulse">
+                          <Loader2 className="h-4 w-4 animate-spin text-amber-600 shrink-0" />
+                          <span>Waiting for customer payment... Once paid on customer's device, the sale will be automatically recorded here!</span>
                         </div>
 
-                        {/* Confirmation Button to record sale ONLY when completed */}
+                        {/* Confirmation Button to record sale ONLY when completed (manual fallback) */}
                         <div className="pt-1 flex flex-col gap-1.5">
                           <button
                             type="button"
@@ -1228,6 +1341,7 @@ const Billing: React.FC<BillingProps> = ({
                             onClick={() => {
                               setPaymentLinkData(null);
                               setPaymentLinkError(null);
+                              setPaymentCompletedInfo(null);
                               triggerToast("Payment link cancelled. No sale was recorded in history.");
                             }}
                             className="w-full text-center text-[10px] text-stone-500 hover:text-stone-700 py-1"
@@ -1236,12 +1350,12 @@ const Billing: React.FC<BillingProps> = ({
                           </button>
                         </div>
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 )}
 
                 {/* COMPLETE SALE BUTTON FOR DIRECT SETTLEMENT (Cash / Card / UPI) */}
-                {paymentMethod !== "phonepe" && paymentMethod !== "razorpay" && (
+                {(paymentMethod !== "cashfree" || (!paymentLinkData && !paymentCompletedInfo)) && paymentMethod !== "phonepe" && paymentMethod !== "razorpay" && (
                   <button
                     type="button"
                     disabled={cart.length === 0}
@@ -1267,7 +1381,15 @@ const Billing: React.FC<BillingProps> = ({
       {showInvoice && completedSale && (
         <InvoiceModal
           sale={completedSale}
-          onClose={() => setShowInvoice(false)}
+          onClose={() => {
+            if (isSaleCommitted || paymentCompletedInfo) {
+              setPaymentCompletedInfo(null);
+              setPaymentLinkData(null);
+              resetBilling();
+            } else {
+              setShowInvoice(false);
+            }
+          }}
           onPrint={() => {
             printInvoice();
             triggerToast("Receipt sent to printer");
@@ -1277,11 +1399,18 @@ const Billing: React.FC<BillingProps> = ({
             triggerToast("WhatsApp payment link dispatched");
           }}
           onSaveNewBill={() => {
-            commitSale();
+            if (!isSaleCommitted && !paymentCompletedInfo) {
+              commitSale();
+            }
+            setPaymentCompletedInfo(null);
+            setPaymentLinkData(null);
             resetBilling();
-            triggerToast("Sale successfully recorded & saved to system ledger!");
+            triggerToast("Ready for next customer! Sale saved to ledger.");
           }}
           onGenerateGatewayLink={handleGeneratePaymentLink}
+          isCommitted={isSaleCommitted || Boolean(paymentCompletedInfo)}
+          paymentCompletedInfo={paymentCompletedInfo}
+          activePaymentLink={paymentLinkData}
         />
       )}
     </div>
@@ -1626,6 +1755,9 @@ interface InvoiceModalProps {
   onWhatsApp: () => void;
   onSaveNewBill: () => void;
   onGenerateGatewayLink?: (provider: "cashfree" | "phonepe" | "razorpay") => Promise<string | null>;
+  isCommitted?: boolean;
+  paymentCompletedInfo?: { paymentId: string; amount: number; timestamp: number } | null;
+  activePaymentLink?: { url: string; refId: string; amount: number } | null;
 }
 
 const InvoiceModal: React.FC<InvoiceModalProps> = ({
@@ -1635,6 +1767,9 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({
   onWhatsApp,
   onSaveNewBill,
   onGenerateGatewayLink,
+  isCommitted = false,
+  paymentCompletedInfo = null,
+  activePaymentLink = null,
 }) => {
   const showroom = useShowroomSettings();
   const customer = sale.customer;
@@ -1642,7 +1777,7 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({
 
   const [showGatewayMenu, setShowGatewayMenu] = useState(false);
   const [modalGenerating, setModalGenerating] = useState(false);
-  const [modalActiveLink, setModalActiveLink] = useState<string | null>(sale.paymentLink || null);
+  const [modalActiveLink, setModalActiveLink] = useState<string | null>(sale.paymentLink || activePaymentLink?.url || null);
 
   const handleModalGenerateLink = async (provider: "cashfree" | "phonepe" | "razorpay" = "cashfree") => {
     if (!onGenerateGatewayLink) {
@@ -1689,6 +1824,35 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({
             <X className="h-4 w-4" />
           </button>
         </div>
+
+        {/* Real-time Payment Status Banners */}
+        {(isCommitted || paymentCompletedInfo) && (
+          <div className="mx-6 mt-4 rounded-2xl bg-emerald-50 border border-emerald-200 p-3.5 flex items-center gap-3 no-print animate-fade-in shadow-xs">
+            <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <CheckCircle2 className="h-6 w-6" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <h4 className="text-xs font-bold text-emerald-900">
+                  Payment Completed &amp; Sale Auto-Recorded!
+                </h4>
+                <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-emerald-200 text-emerald-900">
+                  ✓ DONE
+                </span>
+              </div>
+              <p className="text-[11px] text-emerald-700 mt-0.5">
+                Patron paid {currency(trueNetPayable)} via Cashfree (Ref: {paymentCompletedInfo?.paymentId || sale.transactionId || "Confirmed"}). The sale is already committed to Transaction History &amp; inventory has been updated. No manual save needed!
+              </p>
+            </div>
+          </div>
+        )}
+
+        {!isCommitted && !paymentCompletedInfo && (modalActiveLink || activePaymentLink) && (
+          <div className="mx-6 mt-4 rounded-2xl bg-amber-50 border border-amber-200 p-3 flex items-center gap-2.5 text-xs text-amber-900 no-print animate-pulse">
+            <Loader2 className="h-4 w-4 animate-spin text-amber-600 shrink-0" />
+            <span>Payment link active. When customer completes payment on their device, this invoice will automatically show DONE &amp; record the sale!</span>
+          </div>
+        )}
 
         <div
           id="printable-invoice"
@@ -1820,7 +1984,21 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({
                 <span>{currency(trueNetPayable)}</span>
               </div>
 
-              {modalActiveLink && (
+              {(isCommitted || paymentCompletedInfo || sale.paymentMethod === "cashfree") && (
+                <div className="mt-2 rounded-lg bg-emerald-50 border border-emerald-200 p-2 text-center text-[10px] text-emerald-800">
+                  <span className="font-bold flex items-center justify-center gap-1">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                    PAID VIA CASHFREE (AUTO-RECORDED)
+                  </span>
+                  {(paymentCompletedInfo?.paymentId || sale.transactionId) && (
+                    <span className="font-mono text-[9px] text-emerald-700 block mt-0.5">
+                      Ref / Txn ID: {paymentCompletedInfo?.paymentId || sale.transactionId}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {modalActiveLink && !isCommitted && !paymentCompletedInfo && (
                 <div className="mt-2 rounded-lg bg-purple-50 border border-purple-200 p-2 text-center text-[10px] font-mono text-purple-800 break-all">
                   <span>Payment Link: </span>
                   <a href={modalActiveLink} target="_blank" rel="noreferrer" className="underline font-semibold">{modalActiveLink}</a>
@@ -1851,15 +2029,17 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({
             Close
           </button>
 
-          {/* Share Cashfree Payment Link */}
-          <button
-            type="button"
-            onClick={() => handleModalGenerateLink("cashfree")}
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-stone-200 bg-white px-4 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 transition-colors"
-          >
-            {modalGenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Share2 className="h-3.5 w-3.5" />}
-            <span>Share Cashfree Link</span>
-          </button>
+          {/* Share Cashfree Payment Link (hidden if already settled) */}
+          {!isCommitted && !paymentCompletedInfo && (
+            <button
+              type="button"
+              onClick={() => handleModalGenerateLink("cashfree")}
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-stone-200 bg-white px-4 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 transition-colors"
+            >
+              {modalGenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Share2 className="h-3.5 w-3.5" />}
+              <span>Share Cashfree Link</span>
+            </button>
+          )}
 
           <button
             type="button"
@@ -1870,14 +2050,25 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({
             Print Receipt
           </button>
 
-          <button
-            type="button"
-            onClick={onSaveNewBill}
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700"
-          >
-            <Check className="h-3.5 w-3.5" />
-            Save Sale
-          </button>
+          {isCommitted || paymentCompletedInfo ? (
+            <button
+              type="button"
+              onClick={onSaveNewBill}
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-5 py-2 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 active:scale-[0.99] transition-all"
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              <span>✓ Sale Recorded — Start Next Bill</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onSaveNewBill}
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700"
+            >
+              <Check className="h-3.5 w-3.5" />
+              <span>Save Sale</span>
+            </button>
+          )}
         </div>
       </div>
 

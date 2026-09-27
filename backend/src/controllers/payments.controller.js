@@ -321,6 +321,9 @@ export async function verifyCashfreePayment(req, res) {
     const paymentMethod = successfulPayment.payment_group || "cashfree";
 
     if (isPaid) {
+      // Auto-record POS sale to database if this order had pending items from Counter Billing
+      await autoRecordPosSale(orderId, paymentId, successfulPayment);
+
       // Update Payment Attempt Status
       updatePaymentAttemptStatus(orderId, "PAID", {
         paymentId,
@@ -452,6 +455,75 @@ function getPublicClientUrl(req) {
   return "https://rs-fashions.vercel.app";
 }
 
+// In-memory registry for pending POS counter sales linked to Cashfree orders
+export const posPendingSales = new Map();
+
+/**
+ * Automatically persists a completed Counter POS sale into Supabase orders table
+ * and deducts inventory stock when Cashfree confirms payment.
+ */
+async function autoRecordPosSale(orderId, paymentId, paymentData = {}) {
+  const pending = posPendingSales.get(orderId);
+  if (!pending || pending.committed) return false;
+
+  pending.committed = true;
+  if (!supabase || !Array.isArray(pending.items) || pending.items.length === 0) {
+    return false;
+  }
+
+  try {
+    const finalInvoiceNumber = pending.invoiceNumber;
+    const { data: existing } = await supabase
+      .from("orders")
+      .select("id")
+      .or(`order_number.eq.${finalInvoiceNumber},invoice_number.eq.${finalInvoiceNumber}`)
+      .limit(1)
+      .maybeSingle();
+
+    if (!existing) {
+      const saleId = `pos-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+      await supabase.from("orders").insert([{
+        id: saleId,
+        order_number: finalInvoiceNumber,
+        invoice_number: finalInvoiceNumber,
+        customer_name: pending.customerName || "Patron",
+        phone: pending.customerPhone,
+        email: pending.customerEmail,
+        shipping_address: pending.customerAddress || "In-Store Showroom Counter",
+        items: pending.items,
+        subtotal: Number(pending.subtotal) || Number(pending.total) || 0,
+        discount_amount: Number(pending.discount) || 0,
+        total: Number(pending.total) || 0,
+        payment_method: "cashfree",
+        payment_status: "paid",
+        order_status: "completed",
+        billing_type: pending.billingType || "gst",
+        notes: `Paid via Cashfree Payment Link (${paymentId})`,
+      }]);
+
+      // Decrement stock for each item
+      for (const item of pending.items) {
+        const prodId = item.productId || item.id || item.sku;
+        const qtyToDeduct = Math.max(1, Number(item.qty || item.quantity) || 1);
+        try {
+          const { data: currentProd } = await supabase.from("products").select("stock").eq("id", prodId).single();
+          if (currentProd) {
+            const newStock = Math.max(0, (Number(currentProd.stock) || 0) - qtyToDeduct);
+            await supabase.from("products").update({ stock: newStock }).eq("id", prodId);
+          }
+        } catch {}
+      }
+
+      invalidateBootstrapCache();
+      console.log(`[Cashfree POS] Auto-recorded sale for invoice ${finalInvoiceNumber} (Ref: ${paymentId})`);
+      return true;
+    }
+  } catch (err) {
+    console.warn(`[Cashfree POS] Auto-record sale warning for order ${orderId}:`, err.message);
+  }
+  return false;
+}
+
 /**
  * 4. CREATE CASHFREE PAYMENT LINK (POS / Showroom Counter Billing)
  * POST /api/payments/cashfree/create-payment-link
@@ -463,6 +535,12 @@ export async function createCashfreePaymentLink(req, res) {
     customerPhone = "9999999999",
     customerEmail = "customer@rsfashions.in",
     invoiceNumber = `RSF-POS-${Date.now().toString().slice(-6)}`,
+    items = [],
+    subtotal = 0,
+    discount = 0,
+    total = 0,
+    billingType = "gst",
+    customerAddress,
   } = req.body;
 
   const amountInRupees = Number(amount) || 0;
@@ -554,6 +632,23 @@ export async function createCashfreePaymentLink(req, res) {
       createdAt: new Date().toISOString(),
     });
 
+    const pendingSaleData = {
+      orderId,
+      invoiceNumber,
+      customerName: customerName.trim(),
+      customerPhone: cleanPhone,
+      customerEmail: customerEmail.trim(),
+      customerAddress: customerAddress || req.body.address || "In-Store Showroom Counter",
+      items,
+      subtotal: Number(subtotal) || amountInRupees,
+      discount: Number(discount) || 0,
+      total: amountInRupees,
+      billingType,
+      committed: false,
+    };
+    posPendingSales.set(orderId, pendingSaleData);
+    posPendingSales.set(posKey, pendingSaleData);
+
     return successResponse(
       res,
       {
@@ -619,6 +714,9 @@ export async function handleCashfreeWebhook(req, res) {
     // 3. Process Event based on State Machine
     if (cfOrderId) {
       if (paymentStatus === "SUCCESS") {
+        // Auto-record POS sale to database if this order had pending items from Counter Billing
+        await autoRecordPosSale(cfOrderId, eventId, paymentData);
+
         // Record Attempt Status as PAID
         updatePaymentAttemptStatus(cfOrderId, "PAID", {
           paymentId: eventId,

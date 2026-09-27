@@ -80,8 +80,24 @@ export async function handleCheckout(req, res) {
     const saleId = `inv-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
     const finalInvoiceNumber = await resolveSequentialInvoiceNumber(invoiceNumber, orderNumber);
 
-
     if (supabase) {
+      // 0. Idempotency check: don't double-insert or double-deduct stock if already recorded
+      const { data: existingOrder } = await supabase
+        .from("orders")
+        .select("id, order_number, invoice_number")
+        .or(`order_number.eq.${finalInvoiceNumber},invoice_number.eq.${finalInvoiceNumber}`)
+        .limit(1)
+        .maybeSingle();
+
+      if (existingOrder) {
+        return successResponse(res, {
+          saleId: existingOrder.id,
+          invoiceNumber: existingOrder.invoice_number || existingOrder.order_number,
+          order: existingOrder,
+          alreadyRecorded: true,
+        }, "Sale already recorded in database.");
+      }
+
       // 1. Record order in orders table
       const { data: orderData, error: orderErr } = await supabase.from("orders").insert([{
         id: saleId,
