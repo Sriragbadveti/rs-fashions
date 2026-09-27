@@ -119,10 +119,10 @@ export default function TrendingProducts() {
     products.length >= 3 ? [...products, ...products] : products;
 
   return (
-    <section className="relative overflow-hidden bg-[#FAF7F2] py-14 sm:py-24 font-sans select-none border-t border-stone-200/50">
+    <section className="relative overflow-hidden bg-linear-to-b from-[#F7EBEC] via-[#CBC0D3]/35 to-[#F4E7E4] py-14 sm:py-24 font-sans select-none border-t border-[#CBC0D3]/45">
       {/* Ambient Luxury Lighting Accents */}
-      <div className="pointer-events-none absolute -top-20 left-1/4 h-80 w-80 rounded-full bg-linear-to-br from-[#E8D4C8]/35 to-[#8E3D51]/8 blur-3xl" />
-      <div className="pointer-events-none absolute bottom-0 right-10 h-96 w-96 rounded-full bg-linear-to-tl from-[#F0E6DD]/60 to-transparent blur-3xl" />
+      <div className="pointer-events-none absolute -top-20 left-1/4 h-80 w-80 rounded-full bg-linear-to-br from-[#CBC0D3]/55 to-[#E9C9C3]/40 blur-3xl" />
+      <div className="pointer-events-none absolute bottom-0 right-10 h-96 w-96 rounded-full bg-linear-to-tl from-[#E9C9C3]/65 to-[#F4E7E4]/50 blur-3xl" />
 
       {/* Header Container */}
       <div className="relative mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-10">
@@ -184,7 +184,7 @@ export default function TrendingProducts() {
                 className="group relative flex w-72 shrink-0 flex-col sm:w-[320px] lg:w-80"
               >
                 {/* Saree Card Frame */}
-                <div className="relative block aspect-[0.78] w-full overflow-hidden rounded-[26px] bg-[#EDE8E0] shadow-[0_8px_30px_rgba(42,36,33,0.04)] border border-stone-200/60 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(142,61,81,0.14)] hover:-translate-y-1">
+                <div className="relative block aspect-[0.78] w-full overflow-hidden rounded-[26px] bg-[#E9C9C3]/55 shadow-[0_8px_30px_rgba(42,36,33,0.04)] border border-[#CBC0D3]/50 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(142,61,81,0.14)] hover:-translate-y-1">
                   <Link to={`/product/${item.id}`} className="absolute inset-0 z-0">
                     {/* Primary Image */}
                     {primaryImage ? (

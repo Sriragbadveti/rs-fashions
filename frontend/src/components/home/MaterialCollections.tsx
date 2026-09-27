@@ -56,7 +56,7 @@ export default function MaterialCollections() {
   const repeatedMaterials = [...materials, ...materials, ...materials];
 
   return (
-    <section className="relative overflow-hidden bg-[#FAF7F2] py-10 font-sans select-none sm:py-14">
+    <section className="relative overflow-hidden bg-linear-to-b from-[#F7EBEC] via-[#F4E7E4] to-[#E9C9C3]/45 py-10 font-sans select-none sm:py-14">
       <style>{`
         @keyframes continuousMarquee {
           0% {
@@ -80,8 +80,8 @@ export default function MaterialCollections() {
       `}</style>
 
       {/* Jewel-Tone Background Light */}
-      <div className="pointer-events-none absolute -left-24 top-1/4 h-80 w-80 rounded-full bg-linear-to-br from-[#8E3D51]/15 to-rose-400/10 blur-[120px]" />
-      <div className="pointer-events-none absolute -right-24 bottom-1/4 h-80 w-80 rounded-full bg-linear-to-tl from-[#D47E37]/15 to-amber-300/10 blur-[120px]" />
+      <div className="pointer-events-none absolute -left-24 top-1/4 h-80 w-80 rounded-full bg-linear-to-br from-[#CBC0D3]/55 to-[#E9C9C3]/40 blur-[120px]" />
+      <div className="pointer-events-none absolute -right-24 bottom-1/4 h-80 w-80 rounded-full bg-linear-to-tl from-[#E9C9C3]/60 to-[#CBC0D3]/35 blur-[120px]" />
 
       <div className="mx-auto max-w-[1600px] px-3.5 sm:px-6 lg:px-8">
         {/* Header */}

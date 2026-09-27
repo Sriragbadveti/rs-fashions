@@ -44,9 +44,9 @@ function Cart() {
     }).format(val);
 
   return (
-    <main className="relative min-h-screen bg-[#FAF8F5] px-4 pb-32 pt-8 sm:px-6 sm:pt-12 md:px-10 lg:px-16 selection:bg-[#8E3D51] selection:text-white font-sans">
+    <main className="relative min-h-screen bg-linear-to-b from-[#F7EBEC] via-[#F4E7E4] to-[#E9C9C3]/40 px-4 pb-32 pt-8 sm:px-6 sm:pt-12 md:px-10 lg:px-16 selection:bg-[#8E3D51] selection:text-white font-sans">
       {/* Ambient background glow */}
-      <div className="pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 h-[500px] w-full max-w-7xl rounded-full bg-linear-to-b from-[#8E3D51]/[0.03] to-transparent blur-3xl" />
+      <div className="pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 h-[500px] w-full max-w-7xl rounded-full bg-linear-to-b from-[#CBC0D3]/45 via-[#E9C9C3]/35 to-transparent blur-3xl" />
 
       <div className="relative mx-auto w-full max-w-6xl">
         {/* =====================================================
@@ -79,7 +79,7 @@ function Cart() {
             SPECIAL TIERED OFFER PROGRESS BANNER
         ====================================================== */}
         {items.length > 0 && (
-          <div className="mb-8 overflow-hidden rounded-2xl sm:rounded-3xl border border-amber-200/90 bg-linear-to-r from-amber-50/90 via-[#FDF9F2] to-amber-50/90 p-4 sm:p-5 shadow-xs">
+          <div className="mb-8 overflow-hidden rounded-2xl sm:rounded-3xl border border-amber-200/90 bg-linear-to-r from-amber-50/90 via-[#F4E7E4] to-amber-50/90 p-4 sm:p-5 shadow-xs">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-start sm:items-center gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-linear-to-br from-[#8E3D51] to-[#692637] text-white shadow-xs">
@@ -142,7 +142,7 @@ function Cart() {
             transition={{ duration: 0.5 }}
             className="flex min-h-[50vh] flex-col items-center justify-center rounded-3xl border border-stone-200/80 bg-white/50 p-8 text-center backdrop-blur-xl shadow-xs"
           >
-            <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-linear-to-br from-stone-100 to-[#F0EAE3] text-[#8E3D51] shadow-xs">
+            <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-linear-to-br from-[#F7EBEC] to-[#E9C9C3]/60 text-[#8E3D51] shadow-xs">
               <FiShoppingBag size={30} strokeWidth={1.2} />
             </div>
 
@@ -189,7 +189,7 @@ function Cart() {
                     >
                       <div className="flex gap-4 sm:gap-6">
                         {/* SAREE VISUAL CONTAINER */}
-                        <div className="relative aspect-[3/4] w-24 sm:w-32 shrink-0 overflow-hidden rounded-2xl bg-[#F4EFEA]">
+                        <div className="relative aspect-[3/4] w-24 sm:w-32 shrink-0 overflow-hidden rounded-2xl bg-[#E9C9C3]/55">
                           <img
                             src={item.product.images?.[0]}
                             alt={item.product.name}
@@ -328,13 +328,13 @@ function Cart() {
                       Automatic special offer discount applied
                     </p>
                   </div>
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#F7EFE9] text-[#8E3D51]">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#F4E7E4] text-[#8E3D51]">
                     <FiShoppingBag size={16} />
                   </div>
                 </div>
 
                 {/* COMPLIMENTARY SHIPPING MILESTONE */}
-                <div className="rounded-2xl border border-stone-200/70 bg-[#FAF8F5] p-4 text-xs">
+                <div className="rounded-2xl border border-[#CBC0D3]/50 bg-[#F4E7E4] p-4 text-xs">
                   {finalSubtotal >= FREE_SHIPPING_THRESHOLD ? (
                     <div className="flex items-center gap-2 text-emerald-700 font-medium">
                       <FiCheckCircle size={15} className="shrink-0" />

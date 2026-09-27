@@ -333,7 +333,7 @@ export default function ForSaleProducts() {
   if (!saleConfig || !saleConfig.isEnabled || displayItems.length === 0) return null;
 
   return (
-    <section className="border-b border-[#8E3D51]/10 bg-linear-to-b from-[#FAF7F2] via-[#F4EDE4] to-[#FAF7F2] py-10 font-sans select-none sm:py-14">
+    <section className="border-b border-[#CBC0D3]/45 bg-linear-to-b from-[#F4E7E4] via-[#E9C9C3]/55 to-[#F7EBEC] py-10 font-sans select-none sm:py-14">
       <div className="mx-auto max-w-400 px-3.5 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-6 flex flex-col gap-2 border-b border-black/8 pb-5 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">

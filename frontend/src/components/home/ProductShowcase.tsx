@@ -279,16 +279,16 @@ export default function ProductShowcase() {
     <section className="psc-section" aria-label="Featured Saree Lookbook Showcase">
       <style>{`
         .psc-section {
-          --bg-color: #faf6f2;
+          --bg-color: #F7EBEC;
           --accent: #7a1332;
           --accent-hover: #961b40;
           --text-dark: #1b1614;
           --text-muted: #6b635f;
           width: 100%;
           min-height: calc(100vh - 60px);
-          background: radial-gradient(circle at 18% 25%, rgba(217, 164, 65, 0.08), transparent 45%),
-                      radial-gradient(circle at 82% 75%, rgba(122, 19, 50, 0.05), transparent 40%),
-                      var(--bg-color);
+          background: radial-gradient(circle at 18% 25%, rgba(203, 192, 211, 0.45), transparent 50%),
+                      radial-gradient(circle at 82% 75%, rgba(233, 201, 195, 0.5), transparent 48%),
+                      linear-gradient(180deg, #F4E7E4 0%, #F7EBEC 100%);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -323,7 +323,7 @@ export default function ProductShowcase() {
           cursor: pointer;
           border: 2px solid #ffffff;
           padding: 0;
-          background: #e8dcc8;
+          background: #E9C9C3;
           box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
           transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1),
                       border-color 0.25s ease,

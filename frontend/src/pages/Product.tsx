@@ -180,7 +180,7 @@ export default function Product() {
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#FAF7F2]">
+      <main className="flex min-h-screen items-center justify-center bg-[#F7EBEC]">
         <div className="flex flex-col items-center gap-3">
           <div className="h-9 w-9 animate-spin rounded-full border-2 border-[#8E3D51] border-t-transparent" />
           <p className="text-xs uppercase tracking-widest text-[#8C7A6B]">Loading Saree Details...</p>
@@ -191,7 +191,7 @@ export default function Product() {
 
   if (!product) {
     return (
-      <main className="flex min-h-[70vh] flex-col items-center justify-center bg-[#FAF7F2] px-6 text-center">
+      <main className="flex min-h-[70vh] flex-col items-center justify-center bg-[#F7EBEC] px-6 text-center">
         <h1 className="font-serif text-3xl font-light text-[#2A2421]">We couldn't find this saree</h1>
         <p className="mt-2 text-sm text-[#756A60]">It might have been sold out or moved to our archive.</p>
         <Link
@@ -208,7 +208,7 @@ export default function Product() {
   const relatedProducts = allProducts.filter((item) => item.id !== product.id).slice(0, 4);
 
   return (
-    <main className="min-h-screen bg-[#FAF7F2] font-sans text-[#2A2421] select-none pb-24 sm:pb-16">
+    <main className="min-h-screen bg-linear-to-b from-[#F7EBEC] via-[#F4E7E4] to-[#E9C9C3]/40 font-sans text-[#2A2421] select-none pb-24 sm:pb-16">
       {/* Social Share Drawer Modal */}
       <AnimatePresence>
         {showShareModal && (
@@ -225,7 +225,7 @@ export default function Product() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
               transition={{ duration: 0.2 }}
-              className="relative z-10 w-full max-w-sm rounded-3xl border border-stone-200 bg-[#FAF7F2] p-5 shadow-2xl"
+              className="relative z-10 w-full max-w-sm rounded-3xl border border-[#CBC0D3]/60 bg-[#F7EBEC] p-5 shadow-2xl"
             >
               <div className="flex items-center justify-between border-b border-stone-200 pb-3">
                 <div className="flex items-center gap-2">

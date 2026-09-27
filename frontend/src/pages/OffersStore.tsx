@@ -145,7 +145,7 @@ export default function OffersStore() {
   }, [offerProducts, searchQuery, sortBy]);
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] text-[#2A2421] pb-24 font-sans">
+    <div className="min-h-screen bg-linear-to-b from-[#F7EBEC] via-[#F4E7E4] to-[#E9C9C3]/40 text-[#2A2421] pb-24 font-sans">
       {/* =========================================================
           HERO BANNER & BUNDLE TIERS SHOWCASE
       ========================================================== */}
@@ -157,7 +157,7 @@ export default function OffersStore() {
               <span>Dedicated Offers Vault</span>
             </span>
 
-            <h1 className="font-serif text-4xl sm:text-6xl lg:text-7xl font-light tracking-tight text-[#FAF8F5]">
+            <h1 className="font-serif text-4xl sm:text-6xl lg:text-7xl font-light tracking-tight text-[#F7EBEC]">
               Exclusive <span className="italic font-normal text-amber-200">Offers Store.</span>
             </h1>
 
@@ -305,7 +305,7 @@ export default function OffersStore() {
                   className="group relative flex flex-col rounded-3xl border border-stone-200 bg-white p-3 shadow-xs hover:shadow-xl transition-all duration-500"
                 >
                   {/* Image Container with Badge */}
-                  <div className="relative aspect-[0.78] w-full overflow-hidden rounded-2xl bg-stone-100">
+                  <div className="relative aspect-[0.78] w-full overflow-hidden rounded-2xl bg-[#E9C9C3]/55">
                     <img
                       src={item.imageUrl}
                       alt={item.name}
@@ -358,7 +358,7 @@ export default function OffersStore() {
                       </div>
 
                       {/* Bundle Tier Tagline */}
-                      <p className="mt-1.5 text-[10px] font-medium text-[#8E3D51] bg-[#FAF4ED] px-2 py-1 rounded-md border border-[#8E3D51]/15">
+                      <p className="mt-1.5 text-[10px] font-medium text-[#8E3D51] bg-[#F4E7E4] px-2 py-1 rounded-md border border-[#8E3D51]/15">
                         Buy 1 @ ₹2500 · Buy 2 @ ₹4900 · Buy 3 @ ₹4800
                       </p>
                     </div>

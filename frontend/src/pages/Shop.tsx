@@ -89,7 +89,7 @@ function ProductCard({ product }: { product: CardProduct }) {
 
   return (
     <article className="group relative flex h-full flex-col font-sans select-none overflow-hidden rounded-2xl sm:rounded-3xl border border-white/60 bg-white p-2 sm:p-3 shadow-xs transition-shadow duration-200 hover:shadow-md">
-      <div className="relative aspect-[3/4.2] w-full overflow-hidden rounded-xl sm:rounded-2xl bg-[#EFEAE2]">
+      <div className="relative aspect-[3/4.2] w-full overflow-hidden rounded-xl sm:rounded-2xl bg-[#E9C9C3]/55">
         <Link to={`/product/${product.id}`} state={{ product }} className="block h-full w-full">
           <img
             src={primaryImage}
@@ -119,7 +119,7 @@ function ProductCard({ product }: { product: CardProduct }) {
         </div>
 
         <div className="absolute bottom-2.5 inset-x-2.5 transition-all duration-200 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 hidden sm:block">
-          <button type="button" onClick={handleQuickAdd} className={`w-full h-9 rounded-xl text-xs font-semibold uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md transition-all ${inCart ? "bg-emerald-600 text-white cursor-default scale-95" : "bg-[#2A2421]/90 text-[#FAF7F2] hover:bg-[#8E3D51] active:scale-95 cursor-pointer"}`}>
+          <button type="button" onClick={handleQuickAdd} className={`w-full h-9 rounded-xl text-xs font-semibold uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md transition-all ${inCart ? "bg-emerald-600 text-white cursor-default scale-95" : "bg-[#2A2421]/90 text-[#F7EBEC] hover:bg-[#8E3D51] active:scale-95 cursor-pointer"}`}>
             {inCart ? (<><FiCheck size={13} className="stroke-[2.5]" /><span>Added</span></>) : (<><FiShoppingBag size={13} /><span>Quick Add</span></>)}
           </button>
         </div>
@@ -165,7 +165,7 @@ function HorizontalProductCard({ product, isOffer, offerBadgeText }: { product: 
   return (
     <article className="group relative flex w-full overflow-hidden rounded-2xl border border-white/60 bg-white p-2.5 shadow-xs font-sans select-none items-stretch">
       {/* Image — stretched to fill the full card height */}
-      <Link to={`/product/${product.id}`} state={{ product }} className="relative w-32 shrink-0 overflow-hidden rounded-xl bg-[#EFEAE2] min-h-30">
+      <Link to={`/product/${product.id}`} state={{ product }} className="relative w-32 shrink-0 overflow-hidden rounded-xl bg-[#E9C9C3]/55 min-h-30">
         <img
           src={primaryImage}
           alt={product.name}
