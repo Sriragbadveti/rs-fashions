@@ -8,3 +8,13 @@ declare module "heic2any" {
   function heic2any(options: Heic2AnyOptions): Promise<Blob | Blob[]>;
   export default heic2any;
 }
+
+declare module "heic-to" {
+  export interface HeicToOptions {
+    blob: Blob;
+    type?: string;
+    quality?: number;
+  }
+  export function heicTo(options: HeicToOptions | Blob): Promise<Blob>;
+}
+

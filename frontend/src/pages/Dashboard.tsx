@@ -54,8 +54,27 @@ import {
   MOCK_STOCK_HISTORY,
   MOCK_CUSTOMERS,
 } from "../types/inventory";
+import { syncColorsToRuntime } from "../types/catalog";
 import { getSavedCrmCustomers } from "../types/useBilling";
 import { getDeviceUUID, getDeviceMetadata } from "../utils/userSession";
+import {
+  isUnrenderedHeicDataUrl,
+  convertHeicDataUrlToJpeg,
+  recoverHeicUrlIfNeeded,
+} from "../utils/imageConverter";
+
+const DUMMY_PRODUCT_IDS = new Set([
+  "emerald-sico-gadwal",
+  "midnight-sico-gadwal",
+  "rose-sico-gadwal",
+  "ivory-sico-gadwal",
+]);
+
+const DUMMY_ORDER_IDS = new Set([
+  "inv-mu7lz088-ba09",
+  "inv-mu7jzpbh-tfl1",
+  "RSF-921901",
+]);
 
 interface DashboardProps {
   user: { name: string; email: string; role: string };
@@ -139,7 +158,17 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       const saved = localStorage.getItem("rs_admin_inventory");
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed)) {
+          const cleaned = parsed.filter(
+            (p: any) => p && p.id && !DUMMY_PRODUCT_IDS.has(String(p.id))
+          );
+          if (cleaned.length !== parsed.length) {
+            try {
+              localStorage.setItem("rs_admin_inventory", JSON.stringify(cleaned));
+            } catch {}
+          }
+          return cleaned;
+        }
       }
     } catch { }
     return [];
@@ -161,7 +190,20 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       const saved = localStorage.getItem("rs_admin_sales_history");
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed)) {
+          const cleaned = parsed.filter(
+            (s: any) =>
+              s &&
+              !DUMMY_ORDER_IDS.has(String((s as any).id || "")) &&
+              !DUMMY_ORDER_IDS.has(String(s.invoiceNumber || ""))
+          );
+          if (cleaned.length !== parsed.length) {
+            try {
+              localStorage.setItem("rs_admin_sales_history", JSON.stringify(cleaned));
+            } catch {}
+          }
+          return cleaned;
+        }
       }
     } catch { }
     return [];
@@ -234,7 +276,10 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
 
   const syncInventoryToStorefront = useCallback((inventoryList: Product[]) => {
     try {
-      const storeProducts = (inventoryList || []).map((p: any) => {
+      const cleanList = (inventoryList || []).filter(
+        (p: any) => p && p.id && !DUMMY_PRODUCT_IDS.has(String(p.id))
+      );
+      const storeProducts = cleanList.map((p: any) => {
         const variants = Array.isArray(p.variants) ? p.variants : [];
         const variantImages = variants.map((v: any) => v.imageUrl).filter(Boolean) as string[];
         const primaryImg =
@@ -272,7 +317,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
           originalPrice,
           stock: totalStock,
           rating: Number(p.rating) || 4.8,
-          reviewCount: Number(p.reviewCount) || 28,
+          reviewCount: Number(p.reviewCount) || 0,
           images: images.length > 0 ? images : [primaryImg],
           colors: colors.length > 0 ? colors : ["Standard"],
           sizes: ["Free Size (5.5m + 0.8m Blouse)"],
@@ -287,16 +332,129 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
 
       safeStorageSet("rs_fashions_products", storeProducts);
       window.dispatchEvent(new Event("rs_inventory_updated"));
+      window.dispatchEvent(new Event("catalogUpdated"));
     } catch (e) {
       console.warn("Storefront sync notice:", e);
     }
   }, []);
 
   useEffect(() => {
-    if (inventory && inventory.length > 0) {
-      syncInventoryToStorefront(inventory);
-    }
-  }, [syncInventoryToStorefront]);
+    syncInventoryToStorefront(inventory);
+  }, [inventory, syncInventoryToStorefront]);
+
+  // Automatically convert any already-uploaded HEIC images in inventory to visible JPEGs
+  useEffect(() => {
+    if (!inventory || inventory.length === 0) return;
+    let cancelled = false;
+
+    (async () => {
+      let anyChanged = false;
+      const healedInventory = await Promise.all(
+        inventory.map(async (p) => {
+          let prodChanged = false;
+          let nextImageUrl = p.imageUrl;
+
+          if (nextImageUrl) {
+            if (isUnrenderedHeicDataUrl(nextImageUrl)) {
+              const converted = await convertHeicDataUrlToJpeg(nextImageUrl);
+              if (converted !== nextImageUrl) {
+                nextImageUrl = converted;
+                prodChanged = true;
+              }
+            } else if (nextImageUrl.startsWith("http")) {
+              const recovered = await recoverHeicUrlIfNeeded(nextImageUrl);
+              if (recovered) {
+                nextImageUrl = recovered;
+                prodChanged = true;
+              }
+            }
+          }
+
+          let nextImages = p.images;
+          if (Array.isArray(p.images) && p.images.length > 0) {
+            const updatedImgs = await Promise.all(
+              p.images.map(async (img) => {
+                if (!img) return img;
+                if (isUnrenderedHeicDataUrl(img)) {
+                  const c = await convertHeicDataUrlToJpeg(img);
+                  if (c !== img) prodChanged = true;
+                  return c;
+                }
+                if (img.startsWith("http")) {
+                  const r = await recoverHeicUrlIfNeeded(img);
+                  if (r) {
+                    prodChanged = true;
+                    return r;
+                  }
+                }
+                return img;
+              })
+            );
+            nextImages = updatedImgs;
+          }
+
+          let nextVariants = p.variants;
+          if (Array.isArray(p.variants) && p.variants.length > 0) {
+            const updatedVars = await Promise.all(
+              p.variants.map(async (v) => {
+                if (!v.imageUrl) return v;
+                if (isUnrenderedHeicDataUrl(v.imageUrl)) {
+                  const c = await convertHeicDataUrlToJpeg(v.imageUrl);
+                  if (c !== v.imageUrl) {
+                    prodChanged = true;
+                    return { ...v, imageUrl: c };
+                  }
+                } else if (v.imageUrl.startsWith("http")) {
+                  const r = await recoverHeicUrlIfNeeded(v.imageUrl);
+                  if (r) {
+                    prodChanged = true;
+                    return { ...v, imageUrl: r };
+                  }
+                }
+                return v;
+              })
+            );
+            nextVariants = updatedVars;
+          }
+
+          if (!nextImageUrl) {
+            nextImageUrl =
+              nextImages?.[0] ||
+              nextVariants?.find((v) => v.imageUrl)?.imageUrl ||
+              undefined;
+            if (nextImageUrl !== p.imageUrl) prodChanged = true;
+          }
+
+          if (prodChanged) {
+            anyChanged = true;
+            const updatedProduct: Product = {
+              ...p,
+              imageUrl: nextImageUrl,
+              images: nextImages,
+              variants: nextVariants,
+            };
+            fetch(`${API_BASE}/catalog/${encodeURIComponent(p.id)}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(updatedProduct),
+            }).catch(() => {});
+            return updatedProduct;
+          }
+          return p;
+        })
+      );
+
+      if (!cancelled && anyChanged) {
+        setInventory(healedInventory);
+        safeStorageSet("rs_admin_inventory", healedInventory);
+        syncInventoryToStorefront(healedInventory);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [inventory.length, syncInventoryToStorefront]);
 
   const loadLiveBootstrap = useCallback(async (forceRefresh = false) => {
     try {
@@ -309,18 +467,60 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
           setCategories(d.categories);
           safeStorageSet("rs_admin_categories", d.categories);
         }
+        if (Array.isArray(d.colors)) {
+          syncColorsToRuntime(d.colors);
+        }
         if (Array.isArray(d.products)) {
-          setInventory(d.products);
-          safeStorageSet("rs_admin_inventory", d.products);
-          syncInventoryToStorefront(d.products);
+          const remoteProducts = d.products.filter(
+            (p: any) => p && p.id && !DUMMY_PRODUCT_IDS.has(String(p.id))
+          );
+
+          // Merge any local non-dummy products created while backend was offline
+          let localProducts: Product[] = [];
+          try {
+            const rawLocal = localStorage.getItem("rs_admin_inventory");
+            if (rawLocal) {
+              const parsedLocal = JSON.parse(rawLocal);
+              if (Array.isArray(parsedLocal)) {
+                localProducts = parsedLocal.filter(
+                  (p: any) => p && p.id && !DUMMY_PRODUCT_IDS.has(String(p.id))
+                );
+              }
+            }
+          } catch {}
+
+          const mergedMap = new Map<string, Product>();
+          remoteProducts.forEach((p: Product) => mergedMap.set(p.id, p));
+          localProducts.forEach((lp: Product) => {
+            if (!mergedMap.has(lp.id)) {
+              mergedMap.set(lp.id, lp);
+              // Push offline-created product to backend store
+              fetch(`${API_BASE}/catalog`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(lp),
+              }).catch(() => {});
+            }
+          });
+
+          const finalProducts = Array.from(mergedMap.values());
+          setInventory(finalProducts);
+          safeStorageSet("rs_admin_inventory", finalProducts);
+          syncInventoryToStorefront(finalProducts);
         }
         if (Array.isArray(d.stockMovements)) {
           setStockHistory(d.stockMovements);
           safeStorageSet("rs_admin_stock_history", d.stockMovements);
         }
         if (Array.isArray(d.sales)) {
-          setSalesHistory(d.sales);
-          safeStorageSet("rs_admin_sales_history", d.sales);
+          const cleanSales = d.sales.filter(
+            (s: any) =>
+              s &&
+              !DUMMY_ORDER_IDS.has(String(s.id || "")) &&
+              !DUMMY_ORDER_IDS.has(String(s.invoiceNumber || ""))
+          );
+          setSalesHistory(cleanSales);
+          safeStorageSet("rs_admin_sales_history", cleanSales);
         }
         if (Array.isArray(d.customers)) {
           setCustomers(d.customers);

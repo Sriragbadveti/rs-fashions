@@ -6,9 +6,19 @@ import {
   deleteProduct,
   getCategories,
   createCategory,
+  getColors,
+  registerColor,
 } from "../controllers/catalog.controller.js";
 
 const router = Router();
+
+// Color Palette Endpoints
+router.get("/colors", getColors);
+router.post("/colors", registerColor);
+
+// Categories Endpoints
+router.get("/categories", getCategories);
+router.post("/categories", createCategory);
 
 // Products Endpoints (supports both /api/catalog and /api/catalog/products)
 router.get("/", getProducts);
@@ -20,8 +30,5 @@ router.put("/products/:id", updateProduct);
 router.delete("/:id", deleteProduct);
 router.delete("/products/:id", deleteProduct);
 
-// Categories Endpoints
-router.get("/categories", getCategories);
-router.post("/categories", createCategory);
-
 export default router;
+

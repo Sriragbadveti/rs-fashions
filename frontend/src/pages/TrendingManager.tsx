@@ -21,6 +21,11 @@ import {
 } from "lucide-react";
 import type { Product } from "../types/inventory";
 import { useModal } from "../context/ModalContext";
+import {
+  IMAGE_ACCEPT_ATTR,
+  isSupportedImageFile,
+  fileToVisibleDataUrl,
+} from "../utils/imageConverter";
 
 export interface TrendingItem {
   id: string;
@@ -151,15 +156,16 @@ export default function TrendingManager({ inventory }: TrendingManagerProps) {
     toast?.("Image updated. Click 'Save Changes' to publish.", "success");
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const result = event.target?.result as string;
+    e.target.value = "";
+    if (!file || !isSupportedImageFile(file)) return;
+    try {
+      const result = await fileToVisibleDataUrl(file);
       if (result) handleApplyImage(result);
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.warn("Failed to process image:", err);
+    }
   };
 
   const handleMove = (index: number, direction: "up" | "down") => {
@@ -586,10 +592,10 @@ export default function TrendingManager({ inventory }: TrendingManagerProps) {
               <label className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-stone-200 bg-stone-50/60 p-4 hover:bg-stone-50 cursor-pointer transition-colors">
                 <UploadCloud size={24} className="text-stone-400 mb-1" />
                 <span className="text-xs font-semibold text-stone-700">Click to browse image file</span>
-                <span className="text-[10px] text-stone-400">JPG, PNG, or WebP up to 5MB</span>
+                <span className="text-[10px] text-stone-400">JPG, PNG, WebP, or HEIC up to 10MB</span>
                 <input
                   type="file"
-                  accept="image/*"
+                  accept={IMAGE_ACCEPT_ATTR}
                   onChange={handleFileUpload}
                   className="hidden"
                 />

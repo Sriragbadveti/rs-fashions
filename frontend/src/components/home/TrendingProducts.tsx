@@ -5,102 +5,16 @@ import { FiArrowUpRight, FiCompass } from "react-icons/fi";
 import { Sparkles, Package } from "lucide-react";
 import { API_BASE } from "../../config/api";
 import type { Product } from "../../types/inventory";
+import { handleSareeImageError } from "../../utils/imageConverter";
 
-const INITIAL_TRENDING_FALLBACK: Product[] = [
-  {
-    id: "emerald-sico-gadwal",
-    name: "Emerald Royal Kaddi SiCo Gadwal Saree",
-    categoryId: "c1",
-    purchasePrice: 6200,
-    salePrice: 8499,
-    tags: ["limited_edition", "special_offer", "trending"],
-    variants: [
-      {
-        color: "Emerald Green",
-        colorSlug: "EME",
-        stock: 5,
-        sku: "SGS-EME-001",
-        imageUrl: "https://medias.utsavfashion.com/media/catalog/product/cache/1/image/1000x/040ec09b1e35df139433887a97daa66f/w/o/woven-art-silk-saree-in-emerald-green-v1-ssf833_2.jpg",
-      },
-      {
-        color: "Royal Antique Gold",
-        colorSlug: "GLD",
-        stock: 3,
-        sku: "SGS-GLD-001",
-        imageUrl: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1200&auto=format&fit=crop",
-      },
-    ],
-    images: [
-      "https://medias.utsavfashion.com/media/catalog/product/cache/1/image/1000x/040ec09b1e35df139433887a97daa66f/w/o/woven-art-silk-saree-in-emerald-green-v1-ssf833_2.jpg",
-      "https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1200&auto=format&fit=crop",
-    ],
-    imageUrl: "https://medias.utsavfashion.com/media/catalog/product/cache/1/image/1000x/040ec09b1e35df139433887a97daa66f/w/o/woven-art-silk-saree-in-emerald-green-v1-ssf833_2.jpg",
-    isLimitedEdition: true,
-    isSpecialOffer: true,
-  },
-  {
-    id: "midnight-sico-gadwal",
-    name: "Midnight Heritage Checks SiCo Gadwal",
-    categoryId: "c1",
-    purchasePrice: 5800,
-    salePrice: 7999,
-    tags: ["limited_edition", "special_offer", "trending"],
-    variants: [
-      {
-        color: "Midnight Blue",
-        colorSlug: "MID",
-        stock: 4,
-        sku: "SGS-MID-002",
-        imageUrl: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1200&auto=format&fit=crop",
-      },
-      {
-        color: "Burnished Gold",
-        colorSlug: "BGD",
-        stock: 2,
-        sku: "SGS-BGD-002",
-        imageUrl: "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?q=80&w=1200&auto=format&fit=crop",
-      },
-    ],
-    images: [
-      "https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1200&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?q=80&w=1200&auto=format&fit=crop",
-    ],
-    imageUrl: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1200&auto=format&fit=crop",
-    isLimitedEdition: true,
-    isSpecialOffer: true,
-  },
-  {
-    id: "rose-sico-gadwal",
-    name: "Rose Quartz Silver Zari SiCo Gadwal",
-    categoryId: "c1",
-    purchasePrice: 3800,
-    salePrice: 4999,
-    tags: ["limited_edition", "special_offer", "trending"],
-    variants: [
-      {
-        color: "Rose Pink",
-        colorSlug: "ROS",
-        stock: 6,
-        sku: "SGS-ROS-003",
-        imageUrl: "https://medias.utsavfashion.com/media/catalog/product/cache/1/image/1000x/040ec09b1e35df139433887a97daa66f/e/m/embroidered-viscose-silk-saree-in-baby-pink-v1-sgsa847_1.jpg",
-      },
-      {
-        color: "Silver Frost",
-        colorSlug: "SLV",
-        stock: 3,
-        sku: "SGS-SLV-003",
-        imageUrl: "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?q=80&w=1200&auto=format&fit=crop",
-      },
-    ],
-    images: [
-      "https://medias.utsavfashion.com/media/catalog/product/cache/1/image/1000x/040ec09b1e35df139433887a97daa66f/e/m/embroidered-viscose-silk-saree-in-baby-pink-v1-sgsa847_1.jpg",
-      "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?q=80&w=1200&auto=format&fit=crop",
-    ],
-    imageUrl: "https://medias.utsavfashion.com/media/catalog/product/cache/1/image/1000x/040ec09b1e35df139433887a97daa66f/e/m/embroidered-viscose-silk-saree-in-baby-pink-v1-sgsa847_1.jpg",
-    isLimitedEdition: true,
-    isSpecialOffer: true,
-  },
-];
+const DUMMY_PRODUCT_IDS = new Set([
+  "emerald-sico-gadwal",
+  "midnight-sico-gadwal",
+  "rose-sico-gadwal",
+  "ivory-sico-gadwal",
+]);
+
+const INITIAL_TRENDING_FALLBACK: Product[] = [];
 
 export default function TrendingProducts() {
   const [products, setProducts] = useState<Product[]>(INITIAL_TRENDING_FALLBACK);
@@ -109,47 +23,73 @@ export default function TrendingProducts() {
   useEffect(() => {
     let isMounted = true;
 
+    function filterRealTrending(list: Product[]): Product[] {
+      const realList = (list || []).filter(
+        (p) => p && p.id && !DUMMY_PRODUCT_IDS.has(String(p.id))
+      );
+      let trendingItems = realList.filter((p) => {
+        const isLimited =
+          p.isLimitedEdition === true ||
+          (Array.isArray(p.tags) &&
+            p.tags.some(
+              (tag) => String(tag).trim().toLowerCase() === "limited_edition"
+            ));
+        const isSpecial =
+          p.isSpecialOffer === true ||
+          (Array.isArray(p.tags) &&
+            p.tags.some(
+              (tag) => String(tag).trim().toLowerCase() === "special_offer"
+            ));
+        return isLimited || isSpecial;
+      });
+      if (trendingItems.length === 0 && realList.length > 0) {
+        trendingItems = realList.slice(0, 6);
+      }
+      return trendingItems;
+    }
+
     async function fetchTrendingProducts() {
       try {
         const res = await fetch(`${API_BASE}/catalog/products?trending=true`);
-        if (!res.ok) {
-          return;
+        if (res.ok) {
+          const data = await res.json();
+          const list: Product[] = Array.isArray(data)
+            ? data
+            : Array.isArray(data?.products)
+            ? data.products
+            : [];
+          const trendingItems = filterRealTrending(list);
+          if (isMounted && trendingItems.length > 0) {
+            setProducts(trendingItems);
+            setLoading(false);
+            return;
+          }
         }
-        const data = await res.json();
-        const list: Product[] = Array.isArray(data)
-          ? data
-          : Array.isArray(data?.products)
-          ? data.products
-          : [];
+      } catch {
+        // Fallback to localStorage below
+      }
 
-        // Sarees marked as Limited Edition or Special Offer
-        let trendingItems = list.filter((p) => {
-          const isLimited =
-            p.isLimitedEdition === true ||
-            (Array.isArray(p.tags) &&
-              p.tags.some(
-                (tag) => String(tag).trim().toLowerCase() === "limited_edition"
-              ));
-          const isSpecial =
-            p.isSpecialOffer === true ||
-            (Array.isArray(p.tags) &&
-              p.tags.some(
-                (tag) => String(tag).trim().toLowerCase() === "special_offer"
-              ));
-          return isLimited || isSpecial;
-        });
-
-        // If no sarees match the tag yet, showcase available curated sarees
-        if (trendingItems.length === 0 && list.length > 0) {
-          trendingItems = list.slice(0, 6);
+      // Check local admin inventory or storefront products if backend is offline or empty
+      try {
+        const rawAdmin = localStorage.getItem("rs_admin_inventory");
+        if (rawAdmin) {
+          const parsed = JSON.parse(rawAdmin);
+          if (Array.isArray(parsed)) {
+            const trendingItems = filterRealTrending(parsed);
+            if (isMounted) {
+              setProducts(trendingItems);
+              setLoading(false);
+              return;
+            }
+          }
         }
+      } catch {
+        // Ignore
+      }
 
-        if (isMounted && trendingItems.length > 0) {
-          setProducts(trendingItems);
-          setLoading(false);
-        }
-      } catch (err) {
-        console.warn("Failed to fetch trending sarees, using fallback:", err);
+      if (isMounted) {
+        setProducts([]);
+        setLoading(false);
       }
     }
 
@@ -255,6 +195,7 @@ export default function TrendingProducts() {
                         src={primaryImage}
                         alt={item.name}
                         loading="lazy"
+                        onError={(e) => handleSareeImageError(e, primaryImage)}
                         className="h-full w-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-105"
                       />
                     ) : (
@@ -269,6 +210,7 @@ export default function TrendingProducts() {
                         src={hoverImage}
                         alt={`${item.name} alternate view`}
                         loading="lazy"
+                        onError={(e) => handleSareeImageError(e, hoverImage)}
                         className="absolute inset-0 h-full w-full object-cover object-center opacity-0 transition-opacity duration-700 ease-out group-hover:opacity-100 group-hover:scale-105"
                       />
                     )}

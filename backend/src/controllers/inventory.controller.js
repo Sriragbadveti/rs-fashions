@@ -2,6 +2,11 @@ import { supabase } from "../config/supabase.js";
 import { successResponse, errorResponse } from "../utils/response.js";
 import { invalidateCatalogCache } from "./catalog.controller.js";
 import { uploadImageToSupabaseStorage } from "./upload.controller.js";
+import {
+  saveProductToStore,
+  saveColorToStore,
+  getColorsFromStore,
+} from "../database/localStore.js";
 
 /**
  * Controller: Stock Movements Audit Trail, Bulk Loom Intake & Low Stock Alerts
@@ -132,7 +137,31 @@ export async function handleBulkIntake(req, res) {
     const insertedProducts = [];
     const insertedMovements = [];
 
+    // Register any custom colors used in this bulk intake batch
+    for (const p of products) {
+      const colorList = p.colors || (p.variants ? p.variants.map((v) => v.color) : []);
+      for (const colStr of colorList) {
+        if (!colStr) continue;
+        const parts = String(colStr).split(/[/,&+]/).map((s) => s.trim()).filter(Boolean);
+        for (const part of parts) {
+          if (part.toLowerCase() !== "standard") {
+            saveColorToStore(part);
+          }
+        }
+      }
+    }
+
     if (supabase) {
+      try {
+        await supabase.from("settings").upsert({
+          key: "color_palette",
+          value: getColorsFromStore(),
+          updated_at: new Date().toISOString(),
+        });
+      } catch {
+        // ignore
+      }
+
       for (const p of products) {
         const prodId = p.id || `RSF-${(p.designSlug || 'BULK').toUpperCase()}-${Date.now().toString().slice(-4)}`;
         const priceVal = Math.max(0, Number(p.salePrice || p.price) || 0);
@@ -172,7 +201,12 @@ export async function handleBulkIntake(req, res) {
           updated_at: new Date().toISOString(),
         }).select().single();
 
-        if (prodData) insertedProducts.push(prodData);
+        if (prodData) {
+          insertedProducts.push(prodData);
+          saveProductToStore({ ...p, ...prodData, id: prodId });
+        } else {
+          saveProductToStore({ ...p, id: prodId, price: priceVal, salePrice: priceVal, stock: stockTotal, colors: colorList, images });
+        }
 
         // Movement record
         const { data: movData } = await supabase.from("stock_movements").insert([{
@@ -206,12 +240,28 @@ export async function handleBulkIntake(req, res) {
         count: insertedProducts.length,
         products: insertedProducts,
         movements: insertedMovements,
+        colors: getColorsFromStore(),
       }, `Successfully ingested ${insertedProducts.length} sarees into admin vault!`, 201);
+    }
+
+    for (const p of products) {
+      const prodId = p.id || `RSF-${(p.designSlug || 'BULK').toUpperCase()}-${Date.now().toString().slice(-4)}`;
+      const priceVal = Math.max(0, Number(p.salePrice || p.price) || 0);
+      const stockTotal = Number(p.stock) || (p.variants ? p.variants.reduce((s, v) => s + (Number(v.stock) || 0), 0) : 1);
+      const colorList = p.colors || (p.variants ? p.variants.map((v) => v.color) : ["Standard"]);
+      saveProductToStore({
+        ...p,
+        id: prodId,
+        price: priceVal,
+        salePrice: priceVal,
+        stock: stockTotal,
+        colors: colorList,
+      });
     }
 
     invalidateCatalogCache();
     invalidateInventoryCache();
-    return successResponse(res, { count: products.length }, "Bulk intake recorded locally", 201);
+    return successResponse(res, { count: products.length, colors: getColorsFromStore() }, "Bulk intake recorded locally", 201);
   } catch (err) {
     console.error("Bulk intake error:", err);
     return errorResponse(res, err.message, 500);

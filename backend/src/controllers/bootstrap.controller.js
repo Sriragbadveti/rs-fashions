@@ -1,6 +1,10 @@
 import { supabase } from "../config/supabase.js";
 import { successResponse, errorResponse } from "../utils/response.js";
-import { getProductsFromStore } from "../database/localStore.js";
+import {
+  getProductsFromStore,
+  getColorsFromStore,
+  saveColorsToStore,
+} from "../database/localStore.js";
 
 let bootstrapCache = null;
 let bootstrapCacheTimestamp = 0;
@@ -28,6 +32,7 @@ export async function getBootstrapData(req, res) {
           { id: "c1", name: "SiCo Gadwal Sarees", slug: "SICO-GADWAL", hsn: "5208", nextSequence: 10 },
         ],
         products: fallbackProducts,
+        colors: getColorsFromStore(),
         stockMovements: [],
         sales: [],
         customers: [],
@@ -261,9 +266,14 @@ export async function getBootstrapData(req, res) {
       settings[s.key] = s.value;
     });
 
+    const colors = Array.isArray(settings.color_palette)
+      ? saveColorsToStore(settings.color_palette)
+      : getColorsFromStore();
+
     const payload = {
       categories,
       products,
+      colors,
       stockMovements,
       sales,
       customers,
