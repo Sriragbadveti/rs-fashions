@@ -9,17 +9,20 @@ import {
   getColors,
   registerColor,
 } from "../controllers/catalog.controller.js";
+import { requireAdminAuth } from "../middleware/adminAuth.js";
 
 const router = Router();
 
-router.get("/", getMovements);
-router.get("/stock-history", getMovements);
-router.get("/movements", getMovements);
-router.post("/movements", createMovement);
-router.post("/bulk-intake", handleBulkIntake);
-router.get("/low-stock", getLowStockAlerts);
+// Public Catalog Colors Lookup
 router.get("/colors", getColors);
-router.post("/colors", registerColor);
+
+// Protected Admin Stock & Inventory Endpoints
+router.get("/", requireAdminAuth, getMovements);
+router.get("/stock-history", requireAdminAuth, getMovements);
+router.get("/movements", requireAdminAuth, getMovements);
+router.post("/movements", requireAdminAuth, createMovement);
+router.post("/bulk-intake", requireAdminAuth, handleBulkIntake);
+router.get("/low-stock", requireAdminAuth, getLowStockAlerts);
+router.post("/colors", requireAdminAuth, registerColor);
 
 export default router;
-

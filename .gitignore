@@ -28,4 +28,5 @@ dist-ssr
 .env.*
 !.env.example
 rsfashiondashboardapp/
+backend/src/database/data/admin_accounts.json
 

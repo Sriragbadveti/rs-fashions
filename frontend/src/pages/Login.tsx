@@ -1,6 +1,19 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Lock, Mail, ShieldCheck, Loader2, ArrowRight, Eye, EyeOff, Store } from "lucide-react";
+import {
+  Lock,
+  Mail,
+  ShieldCheck,
+  Loader2,
+  ArrowRight,
+  Eye,
+  EyeOff,
+  Store,
+  UserPlus,
+  X,
+  KeyRound,
+  CheckCircle2,
+} from "lucide-react";
 import { API_BASE } from "../config/api";
 import { setAdminSession, AdminUser } from "../utils/adminSession";
 
@@ -15,6 +28,19 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
+
+  // Add Admin Modal State
+  const [isAddAdminOpen, setIsAddAdminOpen] = useState(false);
+  const [masterEmail, setMasterEmail] = useState("");
+  const [masterPassword, setMasterPassword] = useState("");
+  const [showMasterPassword, setShowMasterPassword] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [addAdminLoading, setAddAdminLoading] = useState(false);
+  const [addAdminError, setAddAdminError] = useState("");
+  const [addAdminSuccess, setAddAdminSuccess] = useState("");
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -74,6 +100,69 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     }
   }
 
+  async function handleAddAdminSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setAddAdminError("");
+    setAddAdminSuccess("");
+
+    if (!masterEmail.trim() || !masterPassword) {
+      setAddAdminError("Authorizing master administrator credentials are required.");
+      return;
+    }
+
+    if (!newName.trim() || !newEmail.trim() || !newPassword) {
+      setAddAdminError("All fields for the new administrator are required.");
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setAddAdminError("New administrator passkey must be at least 6 characters.");
+      return;
+    }
+
+    setAddAdminLoading(true);
+
+    try {
+      const res = await fetch(`${API_BASE}/auth/admin-create-authorized`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          masterEmail: masterEmail.trim().toLowerCase(),
+          masterPassword,
+          name: newName.trim(),
+          email: newEmail.trim().toLowerCase(),
+          password: newPassword,
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok || json.success === false) {
+        throw new Error(json.message || "Failed to authorize and create administrator account.");
+      }
+
+      const registeredAdmin = json.data?.admin;
+      setAddAdminSuccess(
+        `Administrator account for ${registeredAdmin?.email || newEmail} created successfully!`
+      );
+      setEmail(newEmail.trim().toLowerCase());
+      setPassword("");
+
+      // Clear form
+      setTimeout(() => {
+        setIsAddAdminOpen(false);
+        setAddAdminSuccess("");
+        setMasterPassword("");
+        setNewName("");
+        setNewEmail("");
+        setNewPassword("");
+      }, 2000);
+    } catch (err: any) {
+      setAddAdminError(err.message || "Failed to create administrator account.");
+    } finally {
+      setAddAdminLoading(false);
+    }
+  }
+
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-[#F8F6F2] flex items-center justify-center p-6 md:p-12 select-none font-sans">
       {/* Dynamic Ambient Background Blobs */}
@@ -81,7 +170,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
       <div className="absolute bottom-[-10%] right-[-5%] w-[580px] h-[580px] rounded-full bg-linear-to-tl from-[#E2D4E0] to-[#F7EFE9] blur-3xl opacity-60 pointer-events-none" />
 
       {/* Main Glassmorphic Container */}
-      <div className="glass-panel relative z-10 w-full max-w-4xl h-[560px] rounded-3xl overflow-hidden flex flex-col md:flex-row shadow-2xl border border-white/80">
+      <div className="glass-panel relative z-10 w-full max-w-4xl min-h-[560px] rounded-3xl overflow-hidden flex flex-col md:flex-row shadow-2xl border border-white/80">
         {/* Left Brand Panel */}
         <div className="relative md:w-5/12 bg-linear-to-br from-[#38152B] via-[#2A0E20] to-[#1E0916] text-white p-8 md:p-10 flex flex-col justify-between overflow-hidden">
           <div
@@ -189,6 +278,22 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                 )}
               </button>
             </form>
+
+            {/* Secure Add Administrator Option */}
+            <div className="mt-4 pt-3 border-t border-stone-200/50 text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsAddAdminOpen(true);
+                  setAddAdminError("");
+                  setAddAdminSuccess("");
+                }}
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-stone-600 hover:text-[#8E3D51] transition-colors"
+              >
+                <UserPlus size={14} className="text-[#D4A373]" />
+                <span>Add Administrator Account</span>
+              </button>
+            </div>
           </div>
 
           <div className="pt-4 border-t border-stone-200/60 flex items-center justify-between text-[11px] text-stone-500">
@@ -203,6 +308,153 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           </div>
         </div>
       </div>
+
+      {/* Authorize & Add Admin Modal */}
+      {isAddAdminOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 sm:p-8 border border-stone-200 animate-in fade-in zoom-in-95 duration-200 relative">
+            <button
+              type="button"
+              onClick={() => setIsAddAdminOpen(false)}
+              className="absolute top-5 right-5 text-stone-400 hover:text-stone-700 p-1 rounded-lg transition-colors"
+            >
+              <X size={18} />
+            </button>
+
+            <div className="flex items-center gap-3 mb-5">
+              <div className="p-2.5 rounded-2xl bg-[#2A0E20] text-[#D4A373]">
+                <KeyRound size={20} />
+              </div>
+              <div>
+                <h3 className="font-serif text-lg font-bold text-stone-900">
+                  Authorize New Administrator
+                </h3>
+                <p className="text-xs text-stone-500">
+                  Master administrator authorization is required to register new accounts.
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleAddAdminSubmit} className="space-y-4">
+              {/* Section 1: Master Admin Authorization */}
+              <div className="bg-amber-50/70 border border-amber-200/70 rounded-2xl p-3.5 space-y-2.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-900 block">
+                  Step 1: Master Admin Authorization
+                </span>
+                <div>
+                  <input
+                    type="email"
+                    placeholder="Authorizing Admin Email (e.g. admin@rsfashions.in)"
+                    value={masterEmail}
+                    onChange={(e) => setMasterEmail(e.target.value)}
+                    className="w-full px-3 py-2 text-xs bg-white rounded-xl border border-amber-200 focus:outline-none focus:border-[#8E3D51]"
+                    required
+                  />
+                </div>
+                <div className="relative flex items-center">
+                  <input
+                    type={showMasterPassword ? "text" : "password"}
+                    placeholder="Authorizing Admin Passkey"
+                    value={masterPassword}
+                    onChange={(e) => setMasterPassword(e.target.value)}
+                    className="w-full px-3 py-2 pr-9 text-xs bg-white rounded-xl border border-amber-200 focus:outline-none focus:border-[#8E3D51]"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowMasterPassword(!showMasterPassword)}
+                    className="absolute right-2.5 text-stone-400 hover:text-stone-600 p-1"
+                  >
+                    {showMasterPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Section 2: New Admin Details */}
+              <div className="space-y-2.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-stone-600 block">
+                  Step 2: New Administrator Details
+                </span>
+                <div>
+                  <input
+                    type="text"
+                    placeholder="Full Name (e.g. Rajesh Kumar)"
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    className="w-full px-3.5 py-2.5 text-xs bg-stone-50 rounded-xl border border-stone-200 focus:outline-none focus:border-[#D4A373]"
+                    required
+                  />
+                </div>
+                <div>
+                  <input
+                    type="email"
+                    placeholder="Corporate Email (e.g. rajesh@rsfashions.in)"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    className="w-full px-3.5 py-2.5 text-xs bg-stone-50 rounded-xl border border-stone-200 focus:outline-none focus:border-[#D4A373]"
+                    required
+                  />
+                </div>
+                <div className="relative flex items-center">
+                  <input
+                    type={showNewPassword ? "text" : "password"}
+                    placeholder="Set Security Passkey (Min. 6 characters)"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="w-full px-3.5 py-2.5 pr-9 text-xs bg-stone-50 rounded-xl border border-stone-200 focus:outline-none focus:border-[#D4A373]"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-2.5 text-stone-400 hover:text-stone-600 p-1"
+                  >
+                    {showNewPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
+                </div>
+              </div>
+
+              {addAdminError && (
+                <div className="text-xs text-rose-700 bg-rose-50 border border-rose-200 p-3 rounded-xl flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+                  <span>{addAdminError}</span>
+                </div>
+              )}
+
+              {addAdminSuccess && (
+                <div className="text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 p-3 rounded-xl flex items-center gap-2">
+                  <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                  <span>{addAdminSuccess}</span>
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddAdminOpen(false)}
+                  className="px-4 py-2 text-xs font-semibold text-stone-600 hover:text-stone-900"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={addAdminLoading || Boolean(addAdminSuccess)}
+                  className="px-5 py-2.5 rounded-xl bg-[#2A0E20] hover:bg-[#3D142E] text-amber-100 text-xs font-bold uppercase tracking-wider shadow-sm flex items-center gap-2 disabled:opacity-60"
+                >
+                  {addAdminLoading ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin text-[#D4A373]" />
+                      <span>Authorizing…</span>
+                    </>
+                  ) : (
+                    <span>Create Administrator</span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

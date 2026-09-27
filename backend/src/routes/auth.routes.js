@@ -10,6 +10,7 @@ import {
   adminLogin,
   adminLogout,
   verifyAdminSession,
+  createAdminAuthorized,
 } from "../controllers/auth.controller.js";
 
 const router = Router();
@@ -18,6 +19,7 @@ const router = Router();
 router.post("/admin-login", adminLogin);
 router.post("/admin-logout", adminLogout);
 router.get("/admin-verify", verifyAdminSession);
+router.post("/admin-create-authorized", createAdminAuthorized);
 
 // Google OAuth 2.0 routes
 router.get("/google", initiateGoogleAuth);

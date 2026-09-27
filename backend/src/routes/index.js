@@ -12,6 +12,7 @@ import settingsRoutes from "./settings.routes.js";
 import uploadRoutes from "./upload.routes.js";
 import reviewsRoutes from "./reviews.routes.js";
 import authRoutes from "./auth.routes.js";
+import adminManagementRoutes from "./adminManagement.routes.js";
 import { requireAdminAuth } from "../middleware/adminAuth.js";
 
 const apiRouter = Router();
@@ -36,6 +37,7 @@ adminRouter.use("/tracking", trackingRoutes);
 adminRouter.use("/sales", salesRoutes);
 adminRouter.use("/settings", settingsRoutes);
 adminRouter.use("/reviews", reviewsRoutes);
+adminRouter.use("/admins", adminManagementRoutes);
 
 adminRouter.use("/", bootstrapRoutes);
 adminRouter.use("/", catalogRoutes);
@@ -45,6 +47,7 @@ adminRouter.use("/", crmRoutes);
 adminRouter.use("/", trackingRoutes);
 adminRouter.use("/", salesRoutes);
 adminRouter.use("/", settingsRoutes);
+adminRouter.use("/", adminManagementRoutes);
 
 apiRouter.use("/admin", adminRouter);
 
@@ -63,12 +66,9 @@ apiRouter.use("/reviews", reviewsRoutes);
 apiRouter.use("/upload", uploadRoutes);
 
 // Backward-compatible storefront fallback mounts
-apiRouter.use("/", bootstrapRoutes);
 apiRouter.use("/", catalogRoutes);
 apiRouter.use("/", billingRoutes);
-apiRouter.use("/", crmRoutes);
 apiRouter.use("/", trackingRoutes);
-apiRouter.use("/", salesRoutes);
 apiRouter.use("/", settingsRoutes);
 
 export default apiRouter;

@@ -1,0 +1,38 @@
+[
+  {
+    "name": "Violet",
+    "code": "VLT"
+  },
+  {
+    "name": "Indigo",
+    "code": "IND"
+  },
+  {
+    "name": "Blue",
+    "code": "BLU"
+  },
+  {
+    "name": "Green",
+    "code": "GRN"
+  },
+  {
+    "name": "Yellow",
+    "code": "YEL"
+  },
+  {
+    "name": "Orange",
+    "code": "ORG"
+  },
+  {
+    "name": "Red",
+    "code": "RED"
+  },
+  {
+    "name": "Sky Blue",
+    "code": "SB"
+  },
+  {
+    "name": "Royal Blue",
+    "code": "RB"
+  }
+]

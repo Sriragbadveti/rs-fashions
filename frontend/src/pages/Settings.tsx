@@ -9,6 +9,13 @@ import {
   FileText,
   FileCheck,
   ReceiptIndianRupee,
+  ShieldCheck,
+  UserPlus,
+  Trash2,
+  KeyRound,
+  Users,
+  Loader2,
+  CheckCircle2,
 } from "lucide-react";
 import type { Device, Product, CompletedSale, StockMovement } from "../types/inventory";
 import {
@@ -19,6 +26,7 @@ import {
 import type { ShowroomSettings } from "../types/settings";
 import { useModal } from "../context/ModalContext";
 import { API_BASE } from "../config/api";
+import { adminFetch } from "../utils/adminSession";
 
 interface SettingsProps {
   devices?: Device[];
@@ -30,7 +38,18 @@ interface SettingsProps {
   onRestoreInventory?: (importedProducts: Product[]) => void;
 }
 
-type SettingsSection = "store" | "billing" | "backup";
+type SettingsSection = "store" | "billing" | "backup" | "admins";
+
+interface AdminAccount {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  isPrimary?: boolean;
+  createdAt?: string;
+  lastLoginAt?: string | null;
+  createdBy?: string;
+}
 
 function SectionHeader({
   eyebrow,
@@ -63,6 +82,7 @@ function SectionHeader({
 
 export default function SettingsView({
   devices = [],
+  currentUser,
   inventory,
   salesHistory,
   stockHistory,
@@ -84,8 +104,101 @@ export default function SettingsView({
   const [weaverPoPrefix] = useState(settings.weaverPoPrefix);
   const [whatsappReceipts] = useState(settings.whatsappReceipts);
 
+  // Admin Team Management State
+  const [adminAccounts, setAdminAccounts] = useState<AdminAccount[]>([]);
+  const [loadingAdmins, setLoadingAdmins] = useState(false);
+  const [isAddingAdmin, setIsAddingAdmin] = useState(false);
+  const [newAdminName, setNewAdminName] = useState("");
+  const [newAdminEmail, setNewAdminEmail] = useState("");
+  const [newAdminPassword, setNewAdminPassword] = useState("");
+  const [creatingAdmin, setCreatingAdmin] = useState(false);
+  const [adminActionError, setAdminActionError] = useState("");
+
+  const loadAdminAccounts = () => {
+    setLoadingAdmins(true);
+    adminFetch(`${API_BASE}/admin/admins`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (json?.data?.admins) {
+          setAdminAccounts(json.data.admins);
+        }
+      })
+      .catch((err) => console.warn("Failed to load admins:", err))
+      .finally(() => setLoadingAdmins(false));
+  };
+
   useEffect(() => {
-    fetch(`${API_BASE}/settings`)
+    if (activeSection === "admins") {
+      loadAdminAccounts();
+    }
+  }, [activeSection]);
+
+  const handleCreateAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAdminActionError("");
+
+    if (!newAdminName.trim() || !newAdminEmail.trim() || !newAdminPassword) {
+      setAdminActionError("All fields are required.");
+      return;
+    }
+    if (newAdminPassword.length < 6) {
+      setAdminActionError("Passkey must be at least 6 characters.");
+      return;
+    }
+
+    setCreatingAdmin(true);
+    try {
+      const res = await adminFetch(`${API_BASE}/admin/admins`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newAdminName.trim(),
+          email: newAdminEmail.trim().toLowerCase(),
+          password: newAdminPassword,
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok || json.success === false) {
+        throw new Error(json.message || "Failed to create administrator account.");
+      }
+
+      toast("Administrator Created", `Account for ${newAdminEmail} created successfully.`, "success");
+      setNewAdminName("");
+      setNewAdminEmail("");
+      setNewAdminPassword("");
+      setIsAddingAdmin(false);
+      loadAdminAccounts();
+    } catch (err: any) {
+      setAdminActionError(err.message || "Failed to create administrator.");
+    } finally {
+      setCreatingAdmin(false);
+    }
+  };
+
+  const handleDeleteAdmin = async (id: string, email: string) => {
+    if (!window.confirm(`Are you sure you want to remove administrator access for ${email}?`)) {
+      return;
+    }
+
+    try {
+      const res = await adminFetch(`${API_BASE}/admin/admins/${id}`, {
+        method: "DELETE",
+      });
+      const json = await res.json();
+      if (!res.ok || json.success === false) {
+        throw new Error(json.message || "Failed to remove administrator.");
+      }
+
+      toast("Administrator Removed", `Access revoked for ${email}.`, "success");
+      loadAdminAccounts();
+    } catch (err: any) {
+      toast("Error", err.message || "Could not remove administrator.", "error");
+    }
+  };
+
+  useEffect(() => {
+    adminFetch(`${API_BASE}/settings`)
       .then((res) => (res.ok ? res.json() : null))
       .then((json) => {
         if (json?.settings && Object.keys(json.settings).length > 0) {
@@ -110,7 +223,7 @@ export default function SettingsView({
 
     // Sync with backend API in Supabase
     Object.entries(updatedFields).forEach(([key, value]) => {
-      fetch(`${API_BASE}/settings/${encodeURIComponent(key)}`, {
+      adminFetch(`${API_BASE}/settings/${encodeURIComponent(key)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ value }),
@@ -169,6 +282,12 @@ export default function SettingsView({
       label: "Snapshots & Cloud Sync",
       desc: "Multi-format backup & restore",
       icon: Database,
+    },
+    {
+      id: "admins" as const,
+      label: "Admin Accounts & Access",
+      desc: "Multi-admin management & security",
+      icon: ShieldCheck,
     },
   ];
 
@@ -430,6 +549,184 @@ export default function SettingsView({
                     <span className="text-xs font-semibold text-stone-700">Click to upload JSON backup file</span>
                     <span className="text-[10px] text-stone-400">Restores catalog records and inventory balances</span>
                   </label>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ADMIN TEAM & ACCESS CONTROL */}
+          {activeSection === "admins" && (
+            <div className="glass-panel rounded-3xl p-6 space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-200/70 pb-4.5">
+                <SectionHeader
+                  eyebrow="Access Control"
+                  title="Administrator Accounts & Permissions"
+                  description="Only explicitly authorized administrators can access this showroom console."
+                  icon={<ShieldCheck size={20} />}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAddingAdmin(!isAddingAdmin);
+                    setAdminActionError("");
+                  }}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#2A0E20] hover:bg-[#3D142E] text-amber-100 text-xs font-semibold shadow-xs transition-all active:scale-95 shrink-0 self-start sm:self-auto"
+                >
+                  <UserPlus size={14} className="text-[#D4A373]" />
+                  <span>{isAddingAdmin ? "Cancel" : "Add Administrator"}</span>
+                </button>
+              </div>
+
+              {/* Add Admin Form */}
+              {isAddingAdmin && (
+                <form
+                  onSubmit={handleCreateAdmin}
+                  className="rounded-2xl bg-amber-50/70 border border-amber-200/80 p-5 space-y-3.5 animate-in fade-in zoom-in-95 duration-200"
+                >
+                  <div className="flex items-center gap-2">
+                    <KeyRound size={16} className="text-[#8E3D51]" />
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-stone-900">
+                      Register New Administrator
+                    </h4>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-stone-600 mb-1">
+                        Full Name
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Srirag Badveti"
+                        value={newAdminName}
+                        onChange={(e) => setNewAdminName(e.target.value)}
+                        className="w-full px-3 py-2 text-xs bg-white rounded-xl border border-stone-200 focus:outline-none focus:border-[#8E3D51]"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-stone-600 mb-1">
+                        Corporate Email
+                      </label>
+                      <input
+                        type="email"
+                        placeholder="e.g. srirag@rsfashions.in"
+                        value={newAdminEmail}
+                        onChange={(e) => setNewAdminEmail(e.target.value)}
+                        className="w-full px-3 py-2 text-xs bg-white rounded-xl border border-stone-200 focus:outline-none focus:border-[#8E3D51]"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-stone-600 mb-1">
+                        Security Passkey (Min. 6 chars)
+                      </label>
+                      <input
+                        type="password"
+                        placeholder="••••••••••••"
+                        value={newAdminPassword}
+                        onChange={(e) => setNewAdminPassword(e.target.value)}
+                        className="w-full px-3 py-2 text-xs bg-white rounded-xl border border-stone-200 focus:outline-none focus:border-[#8E3D51]"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {adminActionError && (
+                    <div className="text-xs text-rose-700 bg-rose-50 border border-rose-200 p-2.5 rounded-lg flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+                      <span>{adminActionError}</span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-end gap-2.5 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingAdmin(false)}
+                      className="px-3.5 py-1.5 text-xs text-stone-600 hover:text-stone-900"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={creatingAdmin}
+                      className="px-4 py-2 rounded-xl bg-[#2A0E20] hover:bg-[#3D142E] text-amber-100 text-xs font-bold shadow-xs flex items-center gap-1.5 disabled:opacity-60"
+                    >
+                      {creatingAdmin ? (
+                        <>
+                          <Loader2 size={13} className="animate-spin text-[#D4A373]" />
+                          <span>Creating…</span>
+                        </>
+                      ) : (
+                        <span>Save Account</span>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* Admin Accounts List */}
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between text-xs text-stone-500 px-1">
+                  <span>Authorized Accounts ({adminAccounts.length})</span>
+                  {loadingAdmins && <Loader2 size={13} className="animate-spin text-stone-400" />}
+                </div>
+
+                <div className="divide-y divide-stone-100 rounded-2xl border border-stone-200/80 bg-white/70 overflow-hidden shadow-2xs">
+                  {adminAccounts.map((admin) => {
+                    const isSelf = currentUser?.email && admin.email.toLowerCase() === currentUser.email.toLowerCase();
+                    return (
+                      <div
+                        key={admin.id}
+                        className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-white/90 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-[#2A0E20] text-[#D4A373] font-serif font-bold text-sm flex items-center justify-center shrink-0">
+                            {admin.name?.charAt(0)?.toUpperCase() || "A"}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h5 className="text-xs font-bold text-stone-900">{admin.name}</h5>
+                              {admin.isPrimary ? (
+                                <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-200">
+                                  Primary
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-stone-100 text-stone-700">
+                                  Admin
+                                </span>
+                              )}
+                              {isSelf && (
+                                <span className="text-[10px] text-emerald-600 font-semibold">(You)</span>
+                              )}
+                            </div>
+                            <p className="text-xs text-stone-500 font-mono mt-0.5">{admin.email}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-4 sm:self-auto text-xs text-stone-500">
+                          {admin.lastLoginAt ? (
+                            <span className="text-[11px] text-stone-400">
+                              Active: {new Date(admin.lastLoginAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-stone-400">No logins yet</span>
+                          )}
+
+                          {!admin.isPrimary && !isSelf && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteAdmin(admin.id, admin.email)}
+                              title="Revoke administrator access"
+                              className="p-1.5 text-stone-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>

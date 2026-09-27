@@ -103,3 +103,18 @@ export function getAdminAuthHeaders(): Record<string, string> {
     Authorization: `Bearer ${token}`,
   };
 }
+
+/**
+ * Unified authenticated fetch for all admin endpoints.
+ * Automatically injects Authorization: Bearer <token>.
+ */
+export async function adminFetch(url: string, init: RequestInit = {}): Promise<Response> {
+  const authHeaders = getAdminAuthHeaders();
+  return fetch(url, {
+    ...init,
+    headers: {
+      ...authHeaders,
+      ...(init.headers || {}),
+    },
+  });
+}

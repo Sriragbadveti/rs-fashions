@@ -38,6 +38,7 @@ import { sound } from "../types/soundEngine";
 import BulkStock from "./BulkStock";
 import { OrderFulfillmentProvider } from "../context/OrderFulfillmentContext";
 import { API_BASE } from "../config/api";
+import { adminFetch, getAdminToken, clearAdminSession } from "../utils/adminSession";
 import logo from "../assets/logo/logo1.png";
 import type {
   Product,
@@ -103,6 +104,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
   });
 
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState("");
@@ -433,7 +435,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
               images: nextImages,
               variants: nextVariants,
             };
-            fetch(`${API_BASE}/catalog/${encodeURIComponent(p.id)}`, {
+            adminFetch(`${API_BASE}/catalog/${encodeURIComponent(p.id)}`, {
               method: "PUT",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(updatedProduct),
@@ -458,8 +460,17 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
 
   const loadLiveBootstrap = useCallback(async (forceRefresh = false) => {
     try {
-      const res = await fetch(`${API_BASE}/admin/bootstrap${forceRefresh ? "?refresh=true" : ""}`);
-      if (!res.ok) return;
+      setSyncError(null);
+      const res = await adminFetch(`${API_BASE}/admin/bootstrap${forceRefresh ? "?refresh=true" : ""}`);
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          console.warn("[Dashboard] Admin session invalid or expired. Logging out.");
+          await clearAdminSession();
+          onLogout();
+          return;
+        }
+        throw new Error(`Data sync failed (Server HTTP ${res.status})`);
+      }
       const json = await res.json();
       const d = json?.data || json;
       if (d) {
@@ -495,7 +506,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
             if (!mergedMap.has(lp.id)) {
               mergedMap.set(lp.id, lp);
               // Push offline-created product to backend store
-              fetch(`${API_BASE}/catalog`, {
+              adminFetch(`${API_BASE}/catalog`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(lp),
@@ -564,7 +575,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
 
         // Fetch Real Authorized Terminal Sessions
         try {
-          const sessRes = await fetch(`${API_BASE}/auth/sessions`);
+          const sessRes = await adminFetch(`${API_BASE}/auth/sessions`);
           if (sessRes.ok) {
             const sessJson = await sessRes.json();
             const rawList = sessJson?.data?.devices || sessJson?.devices || [];
@@ -598,13 +609,33 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
           console.warn("Sessions fetch notice:", sessErr);
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.warn("Bootstrap sync notice:", err);
+      setSyncError(err.message || "Unable to sync with live database");
     }
-  }, []);
+  }, [onLogout, syncInventoryToStorefront]);
 
+  // Synchronize on mount and whenever tab/screen becomes visible
   useEffect(() => {
     loadLiveBootstrap();
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        loadLiveBootstrap();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [loadLiveBootstrap]);
+
+  // Periodic automatic cross-device telemetry sync every 25 seconds
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        loadLiveBootstrap();
+      }
+    }, 25000);
+    return () => clearInterval(timer);
   }, [loadLiveBootstrap]);
 
   const triggerRefresh = useCallback(() => {
@@ -669,7 +700,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
         ...prev,
       ]);
     });
-    fetch(`${API_BASE}/catalog`, {
+    adminFetch(`${API_BASE}/catalog`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(newProduct),
@@ -712,7 +743,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
     });
     setStockHistory((prev) => [...bulkMovements, ...prev]);
 
-    fetch(`${API_BASE}/inventory/bulk-intake`, {
+    adminFetch(`${API_BASE}/inventory/bulk-intake`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ products: newProducts, performer: user.name }),
@@ -760,7 +791,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
           };
           newMovements.push(mov);
 
-          fetch(`${API_BASE}/inventory/movements`, {
+          adminFetch(`${API_BASE}/inventory/movements`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(mov),
@@ -780,7 +811,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       return updated;
     });
 
-    fetch(`${API_BASE}/catalog/${updatedProduct.id}`, {
+    adminFetch(`${API_BASE}/catalog/${updatedProduct.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updatedProduct),
@@ -796,7 +827,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       return updated;
     });
 
-    fetch(`${API_BASE}/catalog/${productId}`, {
+    adminFetch(`${API_BASE}/catalog/${productId}`, {
       method: "DELETE",
     }).catch((err) => console.warn("Catalog delete error:", err));
   }
@@ -813,7 +844,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
     });
 
     productIds.forEach((id) => {
-      fetch(`${API_BASE}/catalog/${id}`, {
+      adminFetch(`${API_BASE}/catalog/${id}`, {
         method: "DELETE",
       }).catch((err) => console.warn("Batch delete error:", err));
     });
@@ -822,7 +853,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
   function revokeDevice(id: string) {
     sound.playClick();
     setDevices((prev) => prev.filter((d) => d.id !== id && d.uuid !== id));
-    fetch(`${API_BASE}/auth/sessions/${id}`, {
+    adminFetch(`${API_BASE}/auth/sessions/${id}`, {
       method: "DELETE",
     }).catch((err) => console.warn("Revoke device error:", err));
   }
@@ -904,7 +935,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       });
     }
 
-    fetch(`${API_BASE}/billing/checkout`, {
+    adminFetch(`${API_BASE}/billing/checkout`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -943,7 +974,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       return updated;
     });
 
-    fetch(`${API_BASE}/inventory/movements`, {
+    adminFetch(`${API_BASE}/inventory/movements`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(movement),
@@ -962,7 +993,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       safeStorageSet("rs_admin_customers", updated);
       return updated;
     });
-    fetch(`${API_BASE}/crm/customers`, {
+    adminFetch(`${API_BASE}/crm/customers`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(newCustomer),
@@ -1224,6 +1255,22 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
 
           <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-7 [scrollbar-width:thin] [scrollbar-color:rgba(168,162,158,0.5)_transparent]">
             <div className="mx-auto max-w-[1600px] animate-in fade-in duration-200">
+              {syncError && (
+                <div className="mb-4 rounded-2xl bg-amber-50 border border-amber-200/80 p-3.5 flex items-center justify-between text-xs text-amber-900 shadow-xs animate-in fade-in">
+                  <div className="flex items-center gap-2.5">
+                    <AlertTriangle size={16} className="text-amber-600 shrink-0" />
+                    <span>Live data sync note: {syncError}. Displaying current state.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={triggerRefresh}
+                    className="px-3 py-1 rounded-lg bg-amber-200/80 hover:bg-amber-300 font-semibold text-amber-950 transition-colors active:scale-95"
+                  >
+                    Retry Sync
+                  </button>
+                </div>
+              )}
+
               {activeTab === "overview" && (
                 <Overview
                   salesHistory={salesHistory}

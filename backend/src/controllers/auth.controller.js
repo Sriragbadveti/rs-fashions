@@ -5,6 +5,12 @@ import {
   revokeAdminToken,
   verifyAdminToken,
 } from "../middleware/adminAuth.js";
+import {
+  authenticateAdmin,
+  createAdminAccount,
+  listAdminAccounts,
+  deleteAdminAccount,
+} from "../services/admin.service.js";
 
 // In-memory sessions store fallback
 const memorySessions = new Map();
@@ -539,16 +545,27 @@ export async function adminLogin(req, res) {
     if (!email || typeof email !== "string" || !email.trim()) {
       return errorResponse(res, "Administrator email is required", 400);
     }
+    if (!password || typeof password !== "string" || !password.trim()) {
+      return errorResponse(res, "Administrator passkey is required", 400);
+    }
 
     const cleanEmail = email.trim().toLowerCase();
-    const expectedPassword = process.env.ADMIN_PASSWORD || "admin2026";
-    if (password !== expectedPassword) {
-      return errorResponse(res, "Invalid administrator security key. Access denied.", 401);
+    const adminUser = await authenticateAdmin(cleanEmail, password);
+
+    if (!adminUser) {
+      return errorResponse(
+        res,
+        "Invalid administrator email or security passkey. Access denied.",
+        401
+      );
     }
 
     const { token, claims } = generateAdminToken({
-      name: "Sindhuja",
-      email: cleanEmail,
+      id: adminUser.id,
+      name: adminUser.name,
+      email: adminUser.email,
+      role: "admin",
+      isPrimary: adminUser.isPrimary,
     });
 
     return successResponse(
@@ -556,16 +573,115 @@ export async function adminLogin(req, res) {
       {
         token,
         user: {
-          name: "Sindhuja",
-          email: cleanEmail,
+          id: adminUser.id,
+          name: adminUser.name,
+          email: adminUser.email,
           role: "admin",
+          isPrimary: adminUser.isPrimary,
           sessionId: claims.jti,
         },
       },
       "Admin authenticated successfully"
     );
   } catch (err) {
+    console.error("[AdminLogin] Error during authentication:", err);
+    return errorResponse(res, "Authentication service error. Please try again.", 500);
+  }
+}
+
+/**
+ * 7.5 Authorize and Create Admin from Entry Point / Login
+ * POST /api/auth/admin-create-authorized
+ * Requires master administrator credentials to authorize creation
+ */
+export async function createAdminAuthorized(req, res) {
+  try {
+    const { masterEmail, masterPassword, name, email, password } = req.body;
+
+    if (!masterEmail || !masterPassword) {
+      return errorResponse(res, "Authorizing administrator credentials are required", 400);
+    }
+
+    const masterAdmin = await authenticateAdmin(masterEmail, masterPassword);
+    if (!masterAdmin) {
+      return errorResponse(
+        res,
+        "Master administrator authorization failed. Invalid authorizing credentials.",
+        401
+      );
+    }
+
+    const createdAdmin = await createAdminAccount({
+      name,
+      email,
+      password,
+      creatorEmail: masterAdmin.email,
+    });
+
+    return successResponse(
+      res,
+      { admin: createdAdmin },
+      "New administrator account authorized and registered successfully",
+      201
+    );
+  } catch (err) {
+    return errorResponse(res, err.message || "Failed to create administrator account", 400);
+  }
+}
+
+/**
+ * 7.6 List All Authorized Admins (Protected)
+ * GET /api/admin/admins
+ */
+export async function getAdminsList(req, res) {
+  try {
+    const admins = await listAdminAccounts();
+    return successResponse(res, { admins, count: admins.length }, "Authorized administrators loaded");
+  } catch (err) {
     return errorResponse(res, err.message, 500);
+  }
+}
+
+/**
+ * 7.7 Create New Admin (Protected - called by logged-in admin)
+ * POST /api/admin/admins
+ */
+export async function createNewAdmin(req, res) {
+  try {
+    const { name, email, password } = req.body;
+    const creatorEmail = req.adminUser?.email || "system_admin";
+
+    const createdAdmin = await createAdminAccount({
+      name,
+      email,
+      password,
+      creatorEmail,
+    });
+
+    return successResponse(
+      res,
+      { admin: createdAdmin },
+      "Administrator account created successfully",
+      201
+    );
+  } catch (err) {
+    return errorResponse(res, err.message || "Failed to create administrator account", 400);
+  }
+}
+
+/**
+ * 7.8 Remove Admin Account (Protected)
+ * DELETE /api/admin/admins/:id
+ */
+export async function removeAdmin(req, res) {
+  try {
+    const { id } = req.params;
+    const requestingEmail = req.adminUser?.email;
+
+    const result = await deleteAdminAccount(id, requestingEmail);
+    return successResponse(res, result, "Administrator account removed successfully");
+  } catch (err) {
+    return errorResponse(res, err.message, 400);
   }
 }
 

@@ -6,16 +6,19 @@ import {
   getAnalyticsSummary,
   updateFulfillment,
 } from "../controllers/sales.controller.js";
+import { requireAdminAuth } from "../middleware/adminAuth.js";
 
 const router = Router();
 
-router.get("/", getTransactions);
+// Public Customer Self-Service Order Lookup (restricted to user's phone/email)
 router.get("/customer-orders", getCustomerOrders);
 router.get("/orders", getCustomerOrders);
-router.get("/transactions", getTransactions);
-router.post("/refund", processRefund);
-router.get("/analytics/summary", getAnalyticsSummary);
-router.put("/:invoiceNumber/fulfillment", updateFulfillment);
+
+// Protected Admin Sales & Intelligence Endpoints
+router.get("/", requireAdminAuth, getTransactions);
+router.get("/transactions", requireAdminAuth, getTransactions);
+router.post("/refund", requireAdminAuth, processRefund);
+router.get("/analytics/summary", requireAdminAuth, getAnalyticsSummary);
+router.put("/:invoiceNumber/fulfillment", requireAdminAuth, updateFulfillment);
 
 export default router;
-
