@@ -1171,8 +1171,10 @@ export const StoreService = {
     return initialOrders;
   },
 
-  async createOrder(orderData: Omit<StoreOrder, "id" | "orderNumber" | "createdAt" | "orderStatus">): Promise<StoreOrder> {
-    const orderNumber = `RSF-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+  async createOrder(orderData: Omit<StoreOrder, "id" | "orderNumber" | "createdAt" | "orderStatus"> & { orderNumber?: string }): Promise<StoreOrder> {
+    const orderNumber = orderData.orderNumber && !orderData.orderNumber.toUpperCase().startsWith("BEC")
+      ? orderData.orderNumber
+      : `RSF-2026-${Math.floor(1000 + Math.random() * 9000)}`;
     const sessionId = this.getSessionId();
     const newOrder: StoreOrder = {
       ...orderData,
@@ -1188,6 +1190,8 @@ export const StoreService = {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          orderNumber: newOrder.orderNumber,
+          order_number: newOrder.orderNumber,
           customerName: newOrder.customerName,
           customer_name: newOrder.customerName,
           email: newOrder.email,
