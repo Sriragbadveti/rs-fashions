@@ -163,6 +163,7 @@ export async function getProducts(req, res) {
             isLimitedEdition,
             description: p.description || `${p.name} - Handcrafted Gadwal saree.`,
             featured: Boolean(p.featured),
+            borderColor: p.border_color || p.borderColor || undefined,
           };
         });
 
@@ -415,6 +416,7 @@ export async function createProduct(req, res) {
       rating: 4.8,
       reviewCount: 0,
       featured: Boolean(featured),
+      borderColor: req.body.borderColor || undefined,
       description: description || `Handcrafted ${name} saree drape.`,
     };
 

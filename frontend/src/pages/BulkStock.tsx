@@ -25,6 +25,7 @@ import { MOCK_DESIGNS, COLOR_CODES } from "../types/inventory";
 import { generateColorSlug, normalizeText } from "../types/catalog";
 import { sound } from "../types/soundEngine";
 import { StoreService } from "../services/supabase";
+import { processImageFileToDataUrl, isHeicFile } from "../utils/imageUtils";
 
 interface BulkStockProps {
   inventory: Product[];
@@ -443,17 +444,16 @@ export default function BulkStock({
     );
   };
 
-  const handleSingleImageUpload = (
+  const handleSingleImageUpload = async (
     id: string,
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onloadend = async () => {
+    try {
       sound.playClick();
-      const dataUrl = reader.result as string;
+      const dataUrl = await processImageFileToDataUrl(file);
       updateRow(id, "imageUrl", dataUrl);
 
       try {
@@ -464,9 +464,11 @@ export default function BulkStock({
       } catch (err) {
         console.warn("Bulk image upload notice:", err);
       }
-    };
-    reader.readAsDataURL(file);
-    e.target.value = "";
+    } catch (err) {
+      console.warn("Single image conversion error:", err);
+    } finally {
+      e.target.value = "";
+    }
   };
 
   const handleBulkImagesUpload = (
@@ -476,13 +478,13 @@ export default function BulkStock({
     if (!files || files.length === 0) return;
 
     sound.playGunReload();
-    const fileList = Array.from(files);
+    const fileList = Array.from(files).filter(
+      (f) => f.type.startsWith("image/") || isHeicFile(f)
+    );
 
-    fileList.forEach((file, index) => {
-      const reader = new FileReader();
-
-      reader.onloadend = async () => {
-        const dataUrl = reader.result as string;
+    fileList.forEach(async (file, index) => {
+      try {
+        const dataUrl = await processImageFileToDataUrl(file);
         const rowId = `bulk-row-${Date.now()}-${index}`;
 
         setBulkRows((prev) => {
@@ -509,9 +511,9 @@ export default function BulkStock({
         } catch (err) {
           console.warn("Bulk image batch sync notice:", err);
         }
-      };
-
-      reader.readAsDataURL(file);
+      } catch (err) {
+        console.warn("Bulk image item conversion notice:", err);
+      }
     });
 
     e.target.value = "";
@@ -772,7 +774,7 @@ export default function BulkStock({
             <input
               type="file"
               multiple
-              accept="image/*"
+              accept="image/*,.heic,.HEIC,.heif,.HEIF"
               onChange={handleBulkImagesUpload}
               className="absolute inset-0 z-10 cursor-pointer opacity-0"
               title="Upload multiple saree photos"
@@ -914,7 +916,7 @@ export default function BulkStock({
                   )}
                   <input
                     type="file"
-                    accept="image/*"
+                    accept="image/*,.heic,.HEIC,.heif,.HEIF"
                     onChange={(e) => handleSingleImageUpload(row.id, e)}
                     className="absolute inset-0 cursor-pointer opacity-0"
                     title="Upload or change drape photograph"

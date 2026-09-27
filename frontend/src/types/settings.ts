@@ -137,124 +137,182 @@ export async function fetchRealClientIP(): Promise<string> {
 }
 
 // Comprehensive Export Engine (JSON, CSV, XML, PDF)
+// Comprehensive Export Engine (JSON, CSV, XML, PDF)
 export function exportDatabaseBackup(
   format: "json" | "csv" | "xml" | "pdf",
   inventory: Product[],
   salesHistory: CompletedSale[],
   stockHistory: StockMovement[],
-  devices: Device[]
-) {
+  devices: Device[] = []
+): { success: boolean; message: string } {
   const timestamp = new Date().toISOString().slice(0, 10);
   const settings = loadSettings();
 
-  if (format === "json") {
-    const data = {
-      exportedAt: new Date().toISOString(),
-      store: settings,
-      inventory,
-      salesHistory,
-      stockHistory,
-      devices,
-    };
-    downloadFile(JSON.stringify(data, null, 2), `RSFashions_Complete_Backup_${timestamp}.json`, "application/json");
-  } else if (format === "csv") {
-    let csv = "--- INVENTORY CATALOG ---\nSKU,Product Name,Category,Purchase Price,Sale Price,Total Stock\n";
-    inventory.forEach((p) => {
-      const totalStock = p.variants.reduce((s, v) => s + v.stock, 0);
-      csv += `"${p.id}","${p.name}","${p.categoryId}",${p.purchasePrice},${p.salePrice},${totalStock}\n`;
-    });
+  try {
+    if (format === "json") {
+      const data = {
+        exportedAt: new Date().toISOString(),
+        store: settings,
+        inventory,
+        salesHistory,
+        stockHistory,
+        devices,
+      };
+      downloadFile(JSON.stringify(data, null, 2), `RSFashions_Complete_Backup_${timestamp}.json`, "application/json;charset=utf-8");
+      return { success: true, message: `Full JSON backup exported (${inventory.length} products, ${salesHistory.length} sales).` };
+    } else if (format === "csv") {
+      let csv = "--- INVENTORY CATALOG ---\nSKU,Product Name,Category,Purchase Price,Sale Price,Total Stock\n";
+      inventory.forEach((p) => {
+        const totalStock = p.variants?.reduce((s, v) => s + (v.stock || 0), 0) ?? 0;
+        csv += `"${p.id}","${p.name.replace(/"/g, '""')}","${p.categoryId || ""}",${p.purchasePrice || 0},${p.salePrice || 0},${totalStock}\n`;
+      });
 
-    csv += "\n\n--- TRANSACTION HISTORY ---\nInvoice No,Date,Customer Name,Phone,Billing Type,Total,Payment Mode\n";
-    salesHistory.forEach((s) => {
-      const bType = (s.billingType ?? "retail").toUpperCase();
-      csv += `"${s.invoiceNumber}","${s.date}","${s.customerName}","${s.customerPhone}","${bType}",${s.total},"${s.paymentMethod}"\n`;
-    });
+      csv += "\n\n--- TRANSACTION HISTORY ---\nInvoice No,Date,Customer Name,Phone,Billing Type,Total,Payment Mode\n";
+      salesHistory.forEach((s) => {
+        const bType = ((s.billingType || (s as any).billing_type) ?? "retail").toUpperCase();
+        csv += `"${s.invoiceNumber || ""}","${s.date || ""}","${(s.customerName || "").replace(/"/g, '""')}","${s.customerPhone || ""}","${bType}",${s.total || 0},"${s.paymentMethod || ""}"\n`;
+      });
 
-    csv += "\n\n--- STOCK HISTORY AUDIT TRAIL ---\nDate,SKU,Product Name,Color,Type,Quantity,Reference\n";
-    stockHistory.forEach((sh) => {
-      csv += `"${sh.date}","${sh.sku}","${sh.productName}","${sh.color}","${sh.type}",${sh.quantity},"${sh.referenceNumber}"\n`;
-    });
+      csv += "\n\n--- STOCK HISTORY AUDIT TRAIL ---\nDate,SKU,Product Name,Color,Type,Quantity,Reference\n";
+      stockHistory.forEach((sh) => {
+        csv += `"${sh.date || ""}","${sh.sku || ""}","${(sh.productName || "").replace(/"/g, '""')}","${sh.color || ""}","${sh.type || ""}",${sh.quantity || 0},"${sh.referenceNumber || ""}"\n`;
+      });
 
-    downloadFile(csv, `RSFashions_Ledger_Export_${timestamp}.csv`, "text/csv");
-  } else if (format === "xml") {
-    let xml = `<?xml version="1.0" encoding="UTF-8"?>\n<RSFashionsShowroom>\n`;
-    xml += `  <StoreName>${settings.storeName}</StoreName>\n`;
-    
-    xml += `  <Inventory>\n`;
-    inventory.forEach((p) => {
-      xml += `    <Product id="${p.id}"><Name>${p.name}</Name><Price>${p.salePrice}</Price></Product>\n`;
-    });
-    xml += `  </Inventory>\n`;
+      downloadFile("\uFEFF" + csv, `RSFashions_Ledger_Export_${timestamp}.csv`, "text/csv;charset=utf-8");
+      return { success: true, message: "CSV spreadsheet ledger exported successfully." };
+    } else if (format === "xml") {
+      let xml = `<?xml version="1.0" encoding="UTF-8"?>\n<RSFashionsShowroom>\n`;
+      xml += `  <ExportedAt>${new Date().toISOString()}</ExportedAt>\n`;
+      xml += `  <StoreName>${settings.storeName || "RS Fashions"}</StoreName>\n`;
+      xml += `  <GSTIN>${settings.gstin || ""}</GSTIN>\n`;
+      
+      xml += `  <Inventory total="${inventory.length}">\n`;
+      inventory.forEach((p) => {
+        const stock = p.variants?.reduce((s, v) => s + (v.stock || 0), 0) ?? 0;
+        xml += `    <Product id="${p.id}">\n      <Name><![CDATA[${p.name}]]></Name>\n      <SalePrice>${p.salePrice || 0}</SalePrice>\n      <Stock>${stock}</Stock>\n    </Product>\n`;
+      });
+      xml += `  </Inventory>\n`;
 
-    xml += `  <SalesHistory>\n`;
-    salesHistory.forEach((s) => {
-      xml += `    <Sale invoice="${s.invoiceNumber}"><Customer>${s.customerName}</Customer><Total>${s.total}</Total></Sale>\n`;
-    });
-    xml += `  </SalesHistory>\n`;
+      xml += `  <SalesHistory total="${salesHistory.length}">\n`;
+      salesHistory.forEach((s) => {
+        xml += `    <Sale invoice="${s.invoiceNumber || ""}">\n      <Customer><![CDATA[${s.customerName || ""}]]></Customer>\n      <Date>${s.date || ""}</Date>\n      <Total>${s.total || 0}</Total>\n      <PaymentMode>${s.paymentMethod || ""}</PaymentMode>\n    </Sale>\n`;
+      });
+      xml += `  </SalesHistory>\n`;
 
-    xml += `</RSFashionsShowroom>`;
-    downloadFile(xml, `RSFashions_Export_${timestamp}.xml`, "application/xml");
-  } else if (format === "pdf") {
-    const salesRows = salesHistory
-      .map(
-        (s) => `
+      xml += `</RSFashionsShowroom>`;
+      downloadFile(xml, `RSFashions_Export_${timestamp}.xml`, "application/xml;charset=utf-8");
+      return { success: true, message: "XML structured ledger exported successfully." };
+    } else if (format === "pdf") {
+      const salesRows = salesHistory
+        .map(
+          (s) => `
+          <tr>
+            <td>${s.invoiceNumber || "-"}</td>
+            <td>${s.date ? new Date(s.date).toLocaleDateString("en-IN") : "-"}</td>
+            <td>${s.customerName || "Counter Patron"}</td>
+            <td>${((s.billingType || (s as any).billing_type) ?? "retail").toUpperCase()}</td>
+            <td>${(s.paymentMethod || "").toUpperCase()}</td>
+            <td style="text-align: right; font-weight: bold;">₹${(s.total || 0).toLocaleString("en-IN")}</td>
+          </tr>
+        `
+        )
+        .join("");
+
+      const totalRevenue = salesHistory.reduce((sum, s) => sum + (s.total || 0), 0);
+
+      const pdfHtml = `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>RS_Fashions_Transaction_Ledger_${timestamp}</title>
+    <style>
+      @page { size: A4 landscape; margin: 15mm; }
+      body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; padding: 24px; color: #1c1917; background: #FFF; }
+      .header { border-bottom: 2px solid #2A0E20; padding-bottom: 12px; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: flex-end; }
+      h1 { font-size: 22px; color: #2A0E20; margin: 0; font-family: serif; }
+      .subtitle { font-size: 11px; color: #78716c; margin-top: 4px; }
+      .summary-box { background: #fafaf9; border: 1px solid #e7e5e4; border-radius: 8px; padding: 12px 16px; margin-bottom: 18px; font-size: 12px; display: flex; gap: 24px; }
+      table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11px; }
+      th, td { border: 1px solid #e7e5e4; padding: 8px 10px; text-align: left; }
+      th { background: #2A0E20; color: #FFF; font-weight: 600; text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em; }
+      tr:nth-child(even) { background: #fdfbf7; }
+      .total-row { background: #f5f5f4 !important; font-weight: bold; }
+      .footer { margin-top: 24px; font-size: 10px; color: #a8a29e; text-align: center; border-top: 1px solid #e7e5e4; padding-top: 10px; }
+      @media print {
+        body { padding: 0; }
+        .no-print { display: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <div>
+        <h1>${settings.storeName || "RS Fashions"} &bull; Official Sales Ledger</h1>
+        <div class="subtitle">GSTIN: ${settings.gstin || "Unregistered"} | Phone: ${settings.storePhone || "Not Configured"}</div>
+      </div>
+      <div style="text-align: right; font-size: 11px; color: #57534e;">
+        <strong>Export Date:</strong> ${new Date().toLocaleDateString("en-IN")}<br/>
+        <strong>Total Invoices:</strong> ${salesHistory.length}
+      </div>
+    </div>
+
+    <div class="summary-box">
+      <div><strong>Total Turnover:</strong> ₹${totalRevenue.toLocaleString("en-IN")}</div>
+      <div><strong>Active Catalog Styles:</strong> ${inventory.length}</div>
+      <div><strong>Snapshot Mode:</strong> Statutory Audit Ledger</div>
+    </div>
+
+    <table>
+      <thead>
         <tr>
-          <td>${s.invoiceNumber}</td>
-          <td>${s.date}</td>
-          <td>${s.customerName}</td>
-          <td>${(s.billingType ?? "retail").toUpperCase()}</td>
-          <td style="text-align: right;">₹${s.total.toLocaleString("en-IN")}</td>
+          <th>Invoice #</th>
+          <th>Date</th>
+          <th>Customer</th>
+          <th>Billing Mode</th>
+          <th>Payment Mode</th>
+          <th style="text-align: right;">Amount (INR)</th>
         </tr>
-      `
-      )
-      .join("");
+      </thead>
+      <tbody>
+        ${salesRows || '<tr><td colspan="6" style="text-align:center; padding: 20px;">No sales transactions recorded yet</td></tr>'}
+        <tr class="total-row">
+          <td colspan="5" style="text-align: right;">GRAND TOTAL TURNOVER:</td>
+          <td style="text-align: right; color: #2A0E20;">₹${totalRevenue.toLocaleString("en-IN")}</td>
+        </tr>
+      </tbody>
+    </table>
 
-    const pdfHtml = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8" />
-          <title>RS_Fashions_Transaction_Ledger_${timestamp}</title>
-          <style>
-            body { font-family: Arial, sans-serif; padding: 20px; color: #111; }
-            h1 { font-size: 20px; color: #2A0E20; margin-bottom: 2px; }
-            p { font-size: 11px; color: #555; }
-            table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 11px; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-            th { background: #2A0E20; color: #FFF; }
-          </style>
-        </head>
-        <body>
-          <h1>${settings.storeName} - Transaction Ledger</h1>
-          <p>Generated on ${new Date().toLocaleString("en-IN")} | GSTIN: ${settings.gstin}</p>
-          <table>
-            <thead>
-              <tr>
-                <th>Invoice #</th>
-                <th>Date</th>
-                <th>Customer</th>
-                <th>Type</th>
-                <th style="text-align: right;">Total (INR)</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${salesRows || '<tr><td colspan="5" style="text-align:center;">No transactions recorded</td></tr>'}
-            </tbody>
-          </table>
-          <script>
-            window.onload = () => { window.print(); };
-          </script>
-        </body>
-      </html>
-    `;
+    <div class="footer">
+      Generated automatically by RS Fashions Showroom Core &bull; Authentic Gadwal Handlooms &bull; Confidential Business Record
+    </div>
 
-    const printWin = window.open("", "_blank", "width=800,height=600");
-    if (printWin) {
-      printWin.document.open();
-      printWin.document.write(pdfHtml);
-      printWin.document.close();
+    <script>
+      window.onload = function() {
+        setTimeout(function() {
+          window.print();
+        }, 200);
+      };
+    </script>
+  </body>
+</html>`;
+
+      const printWin = window.open("", "_blank", "width=960,height=720");
+      if (printWin) {
+        printWin.document.open();
+        printWin.document.write(pdfHtml);
+        printWin.document.close();
+        return { success: true, message: "PDF print preview launched. Save as PDF from your browser dialog." };
+      } else {
+        // Direct download of print-ready HTML document when popup blocker is active
+        downloadFile(pdfHtml, `RSFashions_Transaction_Ledger_${timestamp}.html`, "text/html;charset=utf-8");
+        return { success: true, message: "Ledger HTML document downloaded. Open and press Print / Save as PDF." };
+      }
     }
+  } catch (err: any) {
+    return { success: false, message: err.message || "Failed to export data snapshot." };
   }
+
+  return { success: false, message: "Unsupported export format" };
 }
 
 function downloadFile(content: string, filename: string, mimeType: string) {

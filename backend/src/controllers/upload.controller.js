@@ -45,7 +45,8 @@ export async function uploadImageToSupabaseStorage(base64OrDataUrl, customFilena
     extension = "svg";
   }
 
-  const fileName = customFilename || `saree-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${extension}`;
+  const cleanCustomName = customFilename ? customFilename.replace(/\.(heic|heif)$/i, ".jpg") : null;
+  const fileName = cleanCustomName || `saree-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${extension}`;
   const filePath = `uploads/${fileName}`;
 
   const { data, error } = await supabase.storage

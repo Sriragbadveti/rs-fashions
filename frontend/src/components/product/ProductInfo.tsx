@@ -133,6 +133,19 @@ function ProductInfo({ product, onAddToCart, onBuyNow }: ProductInfoProps) {
         </span>
       </div>
 
+      {product.borderColor && (
+        <div className="pt-1">
+          <div className="inline-flex items-center gap-2 rounded-xl border border-amber-200/70 bg-amber-50/60 px-3 py-1.5 text-xs">
+            <span className="font-semibold text-stone-500 uppercase tracking-wider text-[10px]">
+              Border Shade:
+            </span>
+            <span className="font-serif font-bold text-[#8E3D51]">
+              {product.borderColor}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* 3. Color Swatches */}
       {product.colors && product.colors.length > 0 && (
         <div className="pt-2">

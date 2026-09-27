@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import {TrendingUp, IndianRupee, ShoppingBag, CreditCard, QrCode, Banknote, Flame, Clock, ArrowUpRight, Percent, ReceiptIndianRupee, PieChart, WalletCards, Award, Scale, Zap, Gem, Activity} from "lucide-react";
+import {TrendingUp, IndianRupee, ShoppingBag, CreditCard, QrCode, Banknote, Flame, Clock, ArrowUpRight, Percent, ReceiptIndianRupee, PieChart, WalletCards, Award, Scale, Zap, Gem, Activity, CheckCircle2} from "lucide-react";
 import type { Product, CompletedSale, StockMovement, Category } from "../types/inventory";
 
 interface AnalysisProps {
@@ -122,29 +122,12 @@ export default function Analysis({
   const formatInteger = (value: number) =>
     new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(Math.round(value));
 
-  const horizonMultiplier = useMemo(() => {
-    switch (timeHorizon) {
-      case "week":
-        return 0.28;
-      case "month":
-        return 1;
-      case "quarter":
-        return 2.85;
-      case "year":
-        return 11.4;
-      case "festive":
-        return 4.2;
-      default:
-        return 1;
-    }
-  }, [timeHorizon]);
-
   const horizonLabel = useMemo(() => {
     switch (timeHorizon) {
       case "week":
-        return "This Past Week";
+        return "This Past Week (7 Days)";
       case "month":
-        return "This Month";
+        return "This Month (30 Days)";
       case "quarter":
         return "This Quarter";
       case "year":
@@ -154,34 +137,59 @@ export default function Analysis({
     }
   }, [timeHorizon]);
 
-  // Core Metrics Aggregation
-  const metrics = useMemo(() => {
-    const rawSales = salesHistory.reduce((sum, sale) => sum + sale.total, 0);
-    const baseRevenue = rawSales > 0 ? rawSales : 348500;
-    const adjustedRevenue = Math.round(baseRevenue * horizonMultiplier);
-    const baseCost = Math.round(adjustedRevenue * 0.58);
-    const grossProfit = adjustedRevenue - baseCost;
-    const marginPercent =
-      adjustedRevenue > 0 ? Math.round((grossProfit / adjustedRevenue) * 100) : 0;
+  const productMap = useMemo(() => new Map(inventory.map((p) => [p.id, p])), [inventory]);
 
-    const basePieces = salesHistory.reduce(
-      (sum, sale) => sum + sale.items.reduce((acc, it) => acc + it.qty, 0),
+  // Real Filtered Sales based on Time Horizon
+  const filteredSales = useMemo(() => {
+    if (!salesHistory || salesHistory.length === 0) return [];
+    const now = Date.now();
+    return salesHistory.filter((s) => {
+      const saleDateMs = new Date(s.date || (s as any).created_at || (s as any).createdAt || now).getTime();
+      if (isNaN(saleDateMs)) return true;
+      const diffMs = now - saleDateMs;
+      if (timeHorizon === "week") return diffMs <= 7 * 86400000;
+      if (timeHorizon === "month") return diffMs <= 30 * 86400000;
+      if (timeHorizon === "quarter") return diffMs <= 90 * 86400000;
+      if (timeHorizon === "year") return diffMs <= 365 * 86400000;
+      return true; // festive = all
+    });
+  }, [salesHistory, timeHorizon]);
+
+  // Core Metrics Aggregation 100% Real
+  const metrics = useMemo(() => {
+    const adjustedRevenue = filteredSales.reduce((sum, s) => sum + (Number(s.total) || 0), 0);
+
+    let totalCost = 0;
+    let totalPiecesSold = 0;
+    filteredSales.forEach((s) => {
+      (s.items || []).forEach((item) => {
+        const qty = Number(item.qty) || 1;
+        totalPiecesSold += qty;
+        const prod = productMap.get(item.productId);
+        const unitCost = prod?.purchasePrice || Math.round((Number(item.unitPrice) || 0) * 0.58);
+        totalCost += unitCost * qty;
+      });
+    });
+
+    const grossProfit = Math.max(0, adjustedRevenue - totalCost);
+    const marginPercent = adjustedRevenue > 0 ? Math.round((grossProfit / adjustedRevenue) * 100) : 0;
+    const avgTicketValue = filteredSales.length > 0 ? Math.round(adjustedRevenue / filteredSales.length) : 0;
+
+    const totalGst = filteredSales.reduce(
+      (sum, s) => sum + (Number(s.cgst) || 0) + (Number(s.sgst) || 0) + (Number(s.totalTax) || 0),
       0
     );
-    const totalPiecesSold = Math.max(
-      18,
-      Math.round((basePieces || 22) * horizonMultiplier)
-    );
-    const avgTicketValue =
-      totalPiecesSold > 0 ? Math.round(adjustedRevenue / totalPiecesSold) : 0;
-    const totalGst = Math.round(adjustedRevenue * 0.107);
 
-    const gstSales = salesHistory.filter((s) => s.billingType === "gst");
-    const retailSales = salesHistory.filter((s) => s.billingType !== "gst");
+    const gstSales = filteredSales.filter(
+      (s) => s.billingType === "gst" || (s as any).billing_type === "gst"
+    );
+    const retailSales = filteredSales.filter(
+      (s) => s.billingType !== "gst" && (s as any).billing_type !== "gst"
+    );
 
     return {
       adjustedRevenue,
-      baseCost,
+      baseCost: totalCost,
       grossProfit,
       marginPercent,
       totalPiecesSold,
@@ -189,52 +197,89 @@ export default function Analysis({
       totalGst,
       gstSales,
       retailSales,
+      salesCount: filteredSales.length,
     };
-  }, [salesHistory, horizonMultiplier]);
+  }, [filteredSales, productMap]);
 
-  const trendLabels = useMemo(() => {
-    const labelsMap: Record<TimeHorizon, string[]> = {
-      week: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-      month: ["1st", "5th", "10th", "15th", "20th", "25th", "30th"],
-      quarter: ["Apr", "May", "Jun", "Jul", "Aug", "Sep"],
-      year: ["Q1 Apr", "Q2 Jul", "Q3 Oct", "Q4 Jan"],
-      festive: ["Navratri", "Dussehra", "Karva Chauth", "Diwali", "Muhurat Days"],
-    };
-    return labelsMap[timeHorizon];
-  }, [timeHorizon]);
+  // Real Trend Points for Revenue and Profit
+  const { revenueTrend, pandlTrend } = useMemo(() => {
+    const buckets: { label: string; startMs: number; endMs: number }[] = [];
+    const now = Date.now();
 
-  const trendPattern = useMemo(() => {
-    const patternMap: Record<TimeHorizon, number[]> = {
-      week: [0.09, 0.11, 0.13, 0.12, 0.16, 0.22, 0.17],
-      month: [0.1, 0.13, 0.18, 0.14, 0.19, 0.23, 0.18],
-      quarter: [0.13, 0.14, 0.16, 0.17, 0.19, 0.21],
-      year: [0.2, 0.23, 0.35, 0.22],
-      festive: [0.12, 0.18, 0.22, 0.28, 0.2],
-    };
-    return patternMap[timeHorizon];
-  }, [timeHorizon]);
+    if (timeHorizon === "week") {
+      const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(now - i * 86400000);
+        const dayLabel = i === 0 ? "Today" : dayNames[d.getDay()];
+        const startMs = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+        const endMs = startMs + 86400000 - 1;
+        buckets.push({ label: dayLabel, startMs, endMs });
+      }
+    } else if (timeHorizon === "month") {
+      for (let i = 4; i >= 0; i--) {
+        const spanDays = 6;
+        const endMs = now - i * spanDays * 86400000;
+        const startMs = endMs - spanDays * 86400000;
+        const label = i === 0 ? "Latest" : `-${(i + 1) * 6}d`;
+        buckets.push({ label, startMs, endMs });
+      }
+    } else if (timeHorizon === "quarter") {
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      for (let i = 2; i >= 0; i--) {
+        const d = new Date(now);
+        d.setMonth(d.getMonth() - i);
+        buckets.push({
+          label: monthNames[d.getMonth()],
+          startMs: new Date(d.getFullYear(), d.getMonth(), 1).getTime(),
+          endMs: new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59).getTime(),
+        });
+      }
+    } else {
+      buckets.push(
+        { label: "Q1 Apr-Jun", startMs: 0, endMs: 0 },
+        { label: "Q2 Jul-Sep", startMs: 0, endMs: 0 },
+        { label: "Q3 Oct-Dec", startMs: 0, endMs: 0 },
+        { label: "Q4 Jan-Mar", startMs: 0, endMs: 0 }
+      );
+    }
 
-  // 1. REVENUE DATASET
-  const revenueTrend = useMemo<ChartPoint[]>(() => {
-    const total = trendPattern.reduce((sum, v) => sum + v, 0);
-    return trendLabels.map((label, idx) => ({
-      label,
-      value: Math.round(metrics.adjustedRevenue * (trendPattern[idx] / total)),
-    }));
-  }, [metrics.adjustedRevenue, trendLabels, trendPattern]);
+    const revPoints: ChartPoint[] = [];
+    const pnlPoints: PandLPoint[] = [];
 
-  // 2. INDEPENDENT PROFIT & LOSS DATASET
-  const pandlTrend = useMemo<PandLPoint[]>(() => {
-    const total = trendPattern.reduce((sum, v) => sum + v, 0);
-    return trendLabels.map((label, idx) => {
-      const revenue = Math.round(metrics.adjustedRevenue * (trendPattern[idx] / total));
-      const costRate = 0.58 + ((idx % 3) * 0.015 - 0.015);
-      const cost = Math.round(revenue * costRate);
-      const profit = revenue - cost;
-      const marginPct = revenue > 0 ? Math.round((profit / revenue) * 100) : 0;
-      return { label, revenue, cost, profit, marginPct };
+    buckets.forEach((b, idx) => {
+      let bucketSales = filteredSales;
+      if (b.startMs > 0 && b.endMs > 0) {
+        bucketSales = filteredSales.filter((s) => {
+          const t = new Date(s.date || (s as any).created_at || (s as any).createdAt || now).getTime();
+          return t >= b.startMs && t <= b.endMs;
+        });
+      } else if (buckets.length === 4) {
+        bucketSales = filteredSales.filter((s) => {
+          const m = new Date(s.date || (s as any).created_at || (s as any).createdAt || now).getMonth();
+          const qIdx = Math.floor(m / 3);
+          return qIdx === idx;
+        });
+      }
+
+      const rev = bucketSales.reduce((sum, s) => sum + (Number(s.total) || 0), 0);
+      let cost = 0;
+      bucketSales.forEach((s) => {
+        (s.items || []).forEach((item) => {
+          const qty = Number(item.qty) || 1;
+          const prod = productMap.get(item.productId);
+          const unitCost = prod?.purchasePrice || Math.round((Number(item.unitPrice) || 0) * 0.58);
+          cost += unitCost * qty;
+        });
+      });
+      const profit = Math.max(0, rev - cost);
+      const marginPct = rev > 0 ? Math.round((profit / rev) * 100) : 0;
+
+      revPoints.push({ label: b.label, value: rev });
+      pnlPoints.push({ label: b.label, revenue: rev, cost, profit, marginPct });
     });
-  }, [metrics.adjustedRevenue, trendLabels, trendPattern]);
+
+    return { revenueTrend: revPoints, pandlTrend: pnlPoints };
+  }, [filteredSales, productMap, timeHorizon]);
 
   // Revenue Spline Geometry
   const revenueChart = useMemo(() => {
@@ -309,31 +354,21 @@ export default function Analysis({
     return { width, height, points, linePath, areaPath, yTicks };
   }, [pandlTrend]);
 
-  // Top Performing Products
+  // Top Performing Products (100% Real from filteredSales)
   const topDesigns = useMemo(() => {
     const map = new Map<string, { name: string; revenue: number; units: number }>();
 
-    inventory.forEach((p) => {
-      map.set(p.name, {
-        name: p.name,
-        revenue:
-          p.salePrice * Math.max(1, Math.floor(3 * horizonMultiplier)),
-        units: Math.max(1, Math.floor(3 * horizonMultiplier)),
-      });
-    });
-
-    salesHistory.forEach((sale) => {
-      sale.items.forEach((item) => {
-        const existing = map.get(item.name);
+    filteredSales.forEach((sale) => {
+      (sale.items || []).forEach((item) => {
+        const name = item.name || "Gadwal Saree";
+        const revenue = (Number(item.unitPrice) || 0) * (Number(item.qty) || 1);
+        const units = Number(item.qty) || 1;
+        const existing = map.get(name);
         if (existing) {
-          existing.revenue += item.unitPrice * item.qty;
-          existing.units += item.qty;
+          existing.revenue += revenue;
+          existing.units += units;
         } else {
-          map.set(item.name, {
-            name: item.name,
-            revenue: item.unitPrice * item.qty,
-            units: item.qty,
-          });
+          map.set(name, { name, revenue, units });
         }
       });
     });
@@ -341,40 +376,83 @@ export default function Analysis({
     return Array.from(map.values())
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 5);
-  }, [inventory, salesHistory, horizonMultiplier]);
+  }, [filteredSales]);
 
   const maxProductRevenue = Math.max(...topDesigns.map((d) => d.revenue), 1);
 
-  // Payment Methods
-  const paymentMethods = useMemo<PaymentMethod[]>(
-    () => [
+  // Payment Methods (100% Real from filteredSales)
+  const paymentMethods = useMemo<PaymentMethod[]>(() => {
+    let upiAmount = 0;
+    let cardAmount = 0;
+    let cashAmount = 0;
+    let otherAmount = 0;
+
+    filteredSales.forEach((s) => {
+      const pm = (s.paymentMethod || (s as any).payment_method || "").toLowerCase();
+      const amount = Number(s.total) || 0;
+      if (
+        pm.includes("upi") ||
+        pm.includes("phonepe") ||
+        pm.includes("qr") ||
+        pm.includes("cashfree") ||
+        pm.includes("razorpay")
+      ) {
+        upiAmount += amount;
+      } else if (
+        pm.includes("card") ||
+        pm.includes("pos") ||
+        pm.includes("credit") ||
+        pm.includes("debit")
+      ) {
+        cardAmount += amount;
+      } else if (pm.includes("cash")) {
+        cashAmount += amount;
+      } else {
+        otherAmount += amount;
+      }
+    });
+
+    const total = upiAmount + cardAmount + cashAmount + otherAmount;
+
+    return [
       {
-        label: "UPI & Scanner QR",
+        label: "UPI & Online Gateway",
         shortLabel: "UPI",
-        share: 58,
-        amount: metrics.adjustedRevenue * 0.58,
+        share: total > 0 ? Math.round((upiAmount / total) * 100) : 0,
+        amount: upiAmount,
         icon: QrCode,
         color: "#6366F1",
       },
       {
         label: "Credit & Debit Cards",
         shortLabel: "Cards",
-        share: 30,
-        amount: metrics.adjustedRevenue * 0.3,
+        share: total > 0 ? Math.round((cardAmount / total) * 100) : 0,
+        amount: cardAmount,
         icon: CreditCard,
         color: "#D97706",
       },
       {
         label: "Cash at Desk",
         shortLabel: "Cash",
-        share: 12,
-        amount: metrics.adjustedRevenue * 0.12,
+        share: total > 0 ? Math.round((cashAmount / total) * 100) : 0,
+        amount: cashAmount,
         icon: Banknote,
         color: "#10B981",
       },
-    ],
-    [metrics.adjustedRevenue]
-  );
+      ...(otherAmount > 0
+        ? [
+            {
+              label: "Split / Other Modes",
+              shortLabel: "Other",
+              share: total > 0 ? Math.round((otherAmount / total) * 100) : 0,
+              amount: otherAmount,
+              icon: WalletCards,
+              color: "#8B5CF6",
+            },
+          ]
+        : []),
+    ];
+  }, [filteredSales]);
 
   const paymentDonut = useMemo(() => {
     const radius = 72;
@@ -391,29 +469,31 @@ export default function Analysis({
 
   // Billing Split (GST vs Retail)
   const billingSplit = useMemo(() => {
-    const actualGstRevenue = metrics.gstSales.reduce((sum, s) => sum + s.total, 0);
+    const actualGstRevenue = metrics.gstSales.reduce((sum, s) => sum + (Number(s.total) || 0), 0);
     const actualRetailRevenue = metrics.retailSales.reduce(
-      (sum, s) => sum + s.total,
+      (sum, s) => sum + (Number(s.total) || 0),
       0
     );
-
-    if (actualGstRevenue > 0 || actualRetailRevenue > 0) {
-      const total = actualGstRevenue + actualRetailRevenue;
-      return {
-        gst: actualGstRevenue,
-        retail: actualRetailRevenue,
-        gstPercent: total > 0 ? Math.round((actualGstRevenue / total) * 100) : 0,
-        retailPercent: total > 0 ? Math.round((actualRetailRevenue / total) * 100) : 0,
-      };
-    }
+    const total = actualGstRevenue + actualRetailRevenue;
 
     return {
-      gst: Math.round(metrics.adjustedRevenue * 0.72),
-      retail: Math.round(metrics.adjustedRevenue * 0.28),
-      gstPercent: 72,
-      retailPercent: 28,
+      gst: actualGstRevenue,
+      retail: actualRetailRevenue,
+      gstPercent: total > 0 ? Math.round((actualGstRevenue / total) * 100) : 0,
+      retailPercent: total > 0 ? Math.round((actualRetailRevenue / total) * 100) : 0,
     };
-  }, [metrics.adjustedRevenue, metrics.gstSales, metrics.retailSales]);
+  }, [metrics.gstSales, metrics.retailSales]);
+
+  // Real Low Stock Items from Inventory
+  const lowStockItems = useMemo(() => {
+    return inventory
+      .map((p) => {
+        const totalStock = p.variants?.reduce((s, v) => s + (v.stock || 0), 0) ?? 0;
+        return { name: p.name, stock: totalStock };
+      })
+      .filter((p) => p.stock <= 2)
+      .slice(0, 3);
+  }, [inventory]);
 
   // Swatch Inventory Data
   const colorVelocity = useMemo(() => {
@@ -482,7 +562,7 @@ export default function Analysis({
             formatter: currency,
             icon: IndianRupee,
             iconClass: "bg-emerald-50 text-emerald-800 border-emerald-200/80",
-            trend: "+24.8% higher than before",
+            trend: `${metrics.salesCount} sale${metrics.salesCount === 1 ? "" : "s"} recorded in ${horizonLabel.toLowerCase()}`,
             trendClass: "text-emerald-700",
             trendIcon: TrendingUp,
           },
@@ -493,7 +573,7 @@ export default function Analysis({
             formatter: currency,
             icon: Percent,
             iconClass: "bg-amber-50 text-amber-900 border-amber-200/80",
-            trend: `${metrics.marginPercent}% healthy profit margin`,
+            trend: `${metrics.marginPercent}% gross margin on turnover`,
             trendClass: "text-amber-800",
             trendIcon: Award,
           },
@@ -504,7 +584,7 @@ export default function Analysis({
             formatter: formatInteger,
             icon: ShoppingBag,
             iconClass: "bg-purple-50 text-purple-900 border-purple-200/80",
-            trend: `Averaged ${currency(metrics.avgTicketValue)} per saree`,
+            trend: `Avg ${currency(metrics.avgTicketValue)} per transaction`,
             trendClass: "text-stone-500",
             trendIcon: null,
           },
@@ -1136,54 +1216,60 @@ export default function Analysis({
           </span>
         </div>
 
-        <div className="space-y-3.5 pt-1">
-          {topDesigns.map((d, idx) => {
-            const percentage = Math.round((d.revenue / maxProductRevenue) * 100);
+        {topDesigns.length === 0 ? (
+          <div className="py-8 text-center text-xs text-stone-400">
+            No saree purchases recorded in this time horizon yet. Top performers will appear here in real-time as sales transactions take place.
+          </div>
+        ) : (
+          <div className="space-y-3.5 pt-1">
+            {topDesigns.map((d, idx) => {
+              const percentage = Math.round((d.revenue / maxProductRevenue) * 100);
 
-            return (
-              <div key={d.name} className="space-y-1.5 group">
-                <div className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span
-                      className={`w-5 h-5 rounded-md flex items-center justify-center font-display font-bold text-[10px] shrink-0 ${
-                        idx === 0
-                          ? "bg-amber-100 text-amber-950 border border-amber-300"
-                          : idx === 1
-                          ? "bg-stone-200 text-stone-700"
-                          : "bg-stone-100 text-stone-600"
-                      }`}
-                    >
-                      #{idx + 1}
-                    </span>
-                    <span className="font-semibold text-stone-900 truncate group-hover:text-brand-plum transition-colors">
-                      {d.name}
-                    </span>
-                    <span className="text-[11px] text-stone-400 font-mono">
-                      ({d.units} drapes chosen)
-                    </span>
+              return (
+                <div key={d.name} className="space-y-1.5 group">
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span
+                        className={`w-5 h-5 rounded-md flex items-center justify-center font-display font-bold text-[10px] shrink-0 ${
+                          idx === 0
+                            ? "bg-amber-100 text-amber-950 border border-amber-300"
+                            : idx === 1
+                            ? "bg-stone-200 text-stone-700"
+                            : "bg-stone-100 text-stone-600"
+                        }`}
+                      >
+                        #{idx + 1}
+                      </span>
+                      <span className="font-semibold text-stone-900 truncate group-hover:text-brand-plum transition-colors">
+                        {d.name}
+                      </span>
+                      <span className="text-[11px] text-stone-400 font-mono">
+                        ({d.units} drapes chosen)
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="font-display font-bold text-stone-950">
+                        {currency(d.revenue)}
+                      </span>
+                      <span className="text-[10px] font-mono text-stone-400 w-10 text-right">
+                        ({percentage}%)
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="font-display font-bold text-stone-950">
-                      {currency(d.revenue)}
-                    </span>
-                    <span className="text-[10px] font-mono text-stone-400 w-10 text-right">
-                      ({percentage}%)
-                    </span>
+                  {/* Progress Indicator */}
+                  <div className="h-2 w-full rounded-full bg-stone-100 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-linear-to-r from-[#2A0E20] via-[#7B2E58] to-[#D4A373] transition-all duration-500"
+                      style={{ width: `${Math.max(6, percentage)}%` }}
+                    />
                   </div>
                 </div>
-
-                {/* Progress Indicator */}
-                <div className="h-2 w-full rounded-full bg-stone-100 overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-linear-to-r from-[#2A0E20] via-[#7B2E58] to-[#D4A373] transition-all duration-500"
-                    style={{ width: `${Math.max(6, percentage)}%` }}
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </section>
 
       {/* COLOR CONCENTRATION & WEAVER PROCUREMENT (12 COLUMNS) */}
@@ -1245,7 +1331,7 @@ export default function Analysis({
                   <h2 className="font-display font-medium text-lg text-stone-950">
                     Re-Stock Suggestions
                   </h2>
-                  <p className="text-xs text-stone-500">Smart advice on what to order from the looms for {horizonLabel}.</p>
+                  <p className="text-xs text-stone-500">Live inventory intelligence from your showroom shelves.</p>
                 </div>
               </div>
               <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold">
@@ -1254,26 +1340,40 @@ export default function Analysis({
             </div>
 
             <div className="space-y-3 pt-3 text-xs">
-              <div className="p-3.5 rounded-2xl bg-emerald-50/60 border border-emerald-200/60 flex items-start gap-3">
-                <ArrowUpRight size={16} className="text-emerald-800 mt-0.5 shrink-0" />
-                <div>
-                  <p className="font-bold text-emerald-950">
-                    Ask for more suggestions
-                  </p>
-                  <p className="text-[11px] text-emerald-800 mt-1 leading-relaxed">
-                    Over 70% of these drapes sold out quickly this period. Book extra pit-looms with our master weavers in Gadwal before the rush.
-                  </p>
+              {lowStockItems.length > 0 ? (
+                <div className="p-3.5 rounded-2xl bg-amber-50/60 border border-amber-200/60 flex items-start gap-3">
+                  <ArrowUpRight size={16} className="text-amber-800 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="font-bold text-amber-950">
+                      Loom Restock Priority ({lowStockItems.length} styles running low)
+                    </p>
+                    <p className="text-[11px] text-amber-900 mt-1 leading-relaxed">
+                      {lowStockItems.map((it) => `${it.name} (${it.stock} pcs left)`).join(", ")}. Book replenishment orders with master weavers in Gadwal before stockouts occur.
+                    </p>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="p-3.5 rounded-2xl bg-emerald-50/60 border border-emerald-200/60 flex items-start gap-3">
+                  <CheckCircle2 size={16} className="text-emerald-800 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="font-bold text-emerald-950">
+                      Showroom Stock Adequately Buffered
+                    </p>
+                    <p className="text-[11px] text-emerald-800 mt-1 leading-relaxed">
+                      All {inventory.length} Gadwal saree designs currently maintain healthy stock levels above minimum buffer thresholds.
+                    </p>
+                  </div>
+                </div>
+              )}
 
-              <div className="p-3.5 rounded-2xl bg-amber-50/60 border border-amber-200/60 flex items-start gap-3">
-                <Clock size={16} className="text-amber-900 mt-0.5 shrink-0" />
+              <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200/60 flex items-start gap-3">
+                <Clock size={16} className="text-stone-700 mt-0.5 shrink-0" />
                 <div>
-                  <p className="font-bold text-amber-950">
-                    Keep wedding colors ready on hand
+                  <p className="font-bold text-stone-950">
+                    Real-Time Counter Synchronization
                   </p>
-                  <p className="text-[11px] text-amber-800 mt-1 leading-relaxed">
-                    Crimson Red [RD], Maroon Gold [MG], and Emerald Green [GR] make up 60% of all bridal purchases. Keep at least 10 pieces of each color in stock so clients always have choices.
+                  <p className="text-[11px] text-stone-600 mt-1 leading-relaxed">
+                    Every billing sale and stock adjustment instantly reflects across these charts, margins, and procurement projections without delay.
                   </p>
                 </div>
               </div>

@@ -171,6 +171,7 @@ export const StoreService = {
           description: d.description || "",
           longDescription: d.longDescription || d.description || "",
           featured: Boolean(d.featured),
+          borderColor: d.borderColor || d.border_color || undefined,
         }));
         try {
           localStorage.setItem(LOCAL_STORAGE_PRODUCTS, JSON.stringify(mapped));
@@ -202,6 +203,7 @@ export const StoreService = {
           description: d.description || "",
           longDescription: d.long_description || d.description || "",
           featured: Boolean(d.featured),
+          borderColor: d.border_color || d.borderColor || undefined,
         }));
       }
     }
@@ -245,6 +247,7 @@ export const StoreService = {
               description: d.description || "Handcrafted pure heirloom SiCo Gadwal drape.",
               longDescription: d.longDescription || d.description || "Handcrafted pure heirloom SiCo Gadwal drape with certified zari and rich pallu motifs.",
               featured: Boolean(d.featured ?? true),
+              borderColor: d.borderColor || d.border_color || undefined,
             };
           });
         }

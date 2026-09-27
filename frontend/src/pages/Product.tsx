@@ -515,6 +515,18 @@ export default function Product() {
               <h1 className="mt-2 font-serif text-3xl sm:text-4xl font-normal leading-snug text-[#2A2421]">
                 {product.name}
               </h1>
+
+              {product.borderColor && (
+                <div className="mt-3 inline-flex items-center gap-2 rounded-xl border border-amber-200/80 bg-gradient-to-r from-amber-50 to-orange-50/40 px-3.5 py-1.5 shadow-2xs">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">
+                    Border Shade:
+                  </span>
+                  <span className="text-xs font-serif font-bold text-[#8E3D51] flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-[#D4A373] ring-2 ring-[#8E3D51]/20 shadow-2xs" />
+                    {product.borderColor}
+                  </span>
+                </div>
+              )}
               
               <div className="mt-4 flex items-baseline gap-3">
                 <span className="text-3xl font-bold text-[#2A2421]">
@@ -584,7 +596,16 @@ export default function Product() {
               </div>
 
               {/* Drape Specifications */}
-              <div className="mt-5 rounded-2xl border border-stone-200 bg-stone-50/70 p-3.5 text-xs text-stone-700">
+              <div className="mt-5 rounded-2xl border border-stone-200 bg-stone-50/70 p-4 text-xs text-stone-700 space-y-2.5">
+                {product.borderColor && (
+                  <div className="flex items-center justify-between border-b border-stone-200/60 pb-2.5">
+                    <span className="text-stone-500 font-medium">Border &amp; Contrast Zari:</span>
+                    <span className="font-semibold text-stone-900 flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full border border-stone-300 bg-[#8E3D51]" />
+                      {product.borderColor}
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-center justify-between font-medium">
                   <span>Standard Length: 5.5m Saree + 0.8m Unstitched Blouse</span>
                   <span className="text-emerald-700 font-semibold flex items-center gap-1">
@@ -697,7 +718,9 @@ export default function Product() {
             <div>
               <h3 className="font-serif text-base text-stone-900">Interlocked Zari</h3>
               <p className="mt-1 text-xs text-stone-500 font-light">
-                Authentic kuttu border technique ensuring the rich golden threads never unravel.
+                {product.borderColor
+                  ? `Authentic kuttu border in ${product.borderColor} ensuring rich zari threads never unravel.`
+                  : "Authentic kuttu border technique ensuring the rich golden threads never unravel."}
               </p>
             </div>
             <div>

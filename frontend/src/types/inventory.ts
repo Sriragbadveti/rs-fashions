@@ -417,6 +417,11 @@ export interface Product {
    * Limited edition flag (Admin marked for Limited Edition saree showcase).
    */
   isLimitedEdition?: boolean;
+
+  /**
+   * Border color / contrast zari shade (e.g. 'Contrast Maroon Zari', 'Royal Gold Zari').
+   */
+  borderColor?: string;
 }
 
 

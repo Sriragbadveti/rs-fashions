@@ -31,4 +31,5 @@ export interface Product {
   isBestSeller?: boolean;
 
   badge?: string;
+  borderColor?: string;
 }
