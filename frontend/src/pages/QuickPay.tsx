@@ -178,7 +178,7 @@ export default function QuickPay() {
       {/* Container */}
       <div className="w-full max-w-md bg-white rounded-3xl border border-stone-200 shadow-xl overflow-hidden animate-fade-in">
         {/* Header Ribbon */}
-        <div className="bg-gradient-to-r from-[#783144] via-[#8E3D51] to-[#A34B62] p-6 text-white text-center relative overflow-hidden">
+        <div className="bg-linear-to-r from-[#783144] via-[#8E3D51] to-[#A34B62] p-6 text-white text-center relative overflow-hidden">
           <div className="absolute top-0 right-0 translate-x-4 -translate-y-4 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none" />
           <div className="relative z-10 flex flex-col items-center">
             <div className="w-12 h-12 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 flex items-center justify-center mb-3 shadow-inner">
@@ -299,7 +299,7 @@ export default function QuickPay() {
                 type="button"
                 onClick={handlePayNow}
                 disabled={isLoading || isVerifying}
-                className="w-full h-12 rounded-2xl bg-gradient-to-r from-[#783144] via-[#8E3D51] to-[#783144] hover:opacity-95 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-[#8E3D51]/30 transition-all active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full h-12 rounded-2xl bg-linear-to-r from-[#783144] via-[#8E3D51] to-[#783144] hover:opacity-95 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-[#8E3D51]/30 transition-all active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading || isVerifying ? (
                   <>

@@ -711,12 +711,12 @@ export default function Account() {
 
       <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8">
         {/* Banner Section */}
-        <header className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-[#240A1A] via-[#351429] to-[#4A1B37] text-white p-4.5 sm:p-7 lg:p-8 shadow-lg sm:shadow-xl border border-white/10 transition-all">
+        <header className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-linear-to-br from-[#240A1A] via-[#351429] to-[#4A1B37] text-white p-4.5 sm:p-7 lg:p-8 shadow-lg sm:shadow-xl border border-white/10 transition-all">
           <div className="absolute top-0 right-0 w-64 sm:w-96 h-64 sm:h-96 bg-amber-400/10 rounded-full blur-3xl pointer-events-none" />
 
           <div className="relative z-10 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-5 sm:gap-6">
             <div className="flex items-center gap-3.5 sm:gap-5">
-              <div className="w-14 h-14 sm:w-18 sm:h-18 rounded-2xl bg-gradient-to-br from-amber-300 via-amber-400 to-amber-600 text-stone-900 font-serif font-bold text-xl sm:text-2xl flex items-center justify-center shrink-0 shadow-md border-2 border-white/30 transform transition-transform duration-300 hover:rotate-3">
+              <div className="w-14 h-14 sm:w-18 sm:h-18 rounded-2xl bg-linear-to-br from-amber-300 via-amber-400 to-amber-600 text-stone-900 font-serif font-bold text-xl sm:text-2xl flex items-center justify-center shrink-0 shadow-md border-2 border-white/30 transform transition-transform duration-300 hover:rotate-3">
                 {currentUser.name ? currentUser.name[0].toUpperCase() : "U"}
               </div>
 
@@ -1012,7 +1012,7 @@ export default function Account() {
 
                       {/* Courier & AWB Track Box */}
                       {order.awbNumber ? (
-                        <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-amber-50/80 to-orange-50/50 border border-amber-200/70 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                        <div className="p-3.5 sm:p-4 rounded-2xl bg-linear-to-r from-amber-50/80 to-orange-50/50 border border-amber-200/70 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-[#8E3D51] flex items-center justify-center shrink-0">
                               <Truck size={18} />
@@ -1792,7 +1792,7 @@ export default function Account() {
                 <>
                   {/* Dynamic Card Artwork */}
                   <div
-                    className={`rounded-2xl p-3.5 text-white bg-gradient-to-br ${cardValidation.network.cardGradient} shadow-md border border-white/15 space-y-2 transition-all duration-300`}
+                    className={`rounded-2xl p-3.5 text-white bg-linear-to-br ${cardValidation.network.cardGradient} shadow-md border border-white/15 space-y-2 transition-all duration-300`}
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-[9px] uppercase tracking-wider text-white/70">

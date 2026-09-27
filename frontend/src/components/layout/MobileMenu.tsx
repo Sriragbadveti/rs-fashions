@@ -255,7 +255,7 @@ function MobileMenu({ onClose }: MobileMenuProps) {
           role="dialog"
           aria-modal="true"
           aria-label="Navigation Menu"
-          className="rsfasion-menu-drawer relative flex h-full w-full max-w-105 flex-col bg-[#FAF7F2] shadow-2xl"
+          className="rsfasion-menu-drawer relative flex h-full w-full max-w-105 flex-col bg-[#F7EBEC] shadow-2xl"
           style={{
             animation: isClosing
               ? "rsfasionDrawerOut 230ms cubic-bezier(0.32, 0, 0.67, 0) both"
@@ -286,7 +286,7 @@ function MobileMenu({ onClose }: MobileMenuProps) {
           </header>
 
           {/* Filter / Price Panel */}
-          <section className="shrink-0 border-b border-black/6 bg-[#F3EFE9]/70 px-6 py-4">
+          <section className="shrink-0 border-b border-black/6 bg-[#F4E7E4]/85 px-6 py-4">
             <div className="mb-2.5 flex items-center justify-between gap-3">
               <span className="text-[9.5px] font-semibold uppercase tracking-[0.24em] text-[#8C7A6B]">
                 Price Range
@@ -430,7 +430,7 @@ function MobileMenu({ onClose }: MobileMenuProps) {
                   }`}
                 >
                   <div className="overflow-hidden">
-                    <div className="space-y-1 border-t border-black/5 bg-[#FAF7F2]/75 p-2">
+                    <div className="space-y-1 border-t border-black/5 bg-[#F4E7E4]/80 p-2">
                       {sareeSubcategories.map((item, index) => (
                         <Link
                           key={item.label}

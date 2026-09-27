@@ -1336,13 +1336,13 @@ function ProductCard({
         )}
 
         {(product.isLimitedEdition || (product.tags || []).includes("limited_edition")) && (
-          <span className="absolute right-3 bottom-3 z-10 flex items-center gap-1 rounded-full bg-gradient-to-r from-purple-950 via-purple-900 to-amber-700 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-200 shadow-sm backdrop-blur-xs border border-amber-400/30">
+          <span className="absolute right-3 bottom-3 z-10 flex items-center gap-1 rounded-full bg-linear-to-r from-purple-950 via-purple-900 to-amber-700 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-200 shadow-sm backdrop-blur-xs border border-amber-400/30">
             <Sparkles size={10} className="text-amber-300" /> Limited Edition
           </span>
         )}
 
         {!(product.isLimitedEdition || (product.tags || []).includes("limited_edition")) && (product.isSpecialOffer || (product.tags || []).includes("special_offer")) && (
-          <span className="absolute right-3 bottom-3 z-10 flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-600 to-amber-500 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white shadow-sm backdrop-blur-xs">
+          <span className="absolute right-3 bottom-3 z-10 flex items-center gap-1 rounded-full bg-linear-to-r from-amber-600 to-amber-500 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white shadow-sm backdrop-blur-xs">
             <Sparkles size={10} /> Special Offer
           </span>
         )}

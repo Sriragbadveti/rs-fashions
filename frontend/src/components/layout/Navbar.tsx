@@ -175,11 +175,11 @@ function Navbar() {
 
   const showHeader = !isOurStory || isNavVisible || isMenuOpen || isSearchOpen || cartOpen;
 
-  const iconButton = "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#2A2421] transition-colors duration-200 hover:bg-[#EFEAE2] active:scale-95 sm:h-10 sm:w-10";
+  const iconButton = "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#2A2421] transition-colors duration-200 hover:bg-[#E9C9C3]/55 active:scale-95 sm:h-10 sm:w-10";
 
-  const clusterLeft = "flex shrink-0 items-center rounded-full border border-stone-200/80 bg-white/75 p-0.5 shadow-[0_2px_12px_rgba(42,36,33,0.04)] backdrop-blur-md gap-0.5 sm:gap-1 sm:p-1";
+  const clusterLeft = "flex shrink-0 items-center rounded-full border border-[#CBC0D3]/60 bg-[#F7EBEC]/85 p-0.5 shadow-[0_2px_12px_rgba(42,36,33,0.04)] backdrop-blur-md gap-0.5 sm:gap-1 sm:p-1";
 
-  const clusterRight = "flex shrink-0 items-center rounded-full border border-stone-200/80 bg-white/75 p-0.5 shadow-[0_2px_12px_rgba(42,36,33,0.04)] backdrop-blur-md gap-0.5 sm:gap-1.5 sm:p-1";
+  const clusterRight = "flex shrink-0 items-center rounded-full border border-[#CBC0D3]/60 bg-[#F7EBEC]/85 p-0.5 shadow-[0_2px_12px_rgba(42,36,33,0.04)] backdrop-blur-md gap-0.5 sm:gap-1.5 sm:p-1";
 
   const dividerSmall = "block h-3.5 w-px bg-stone-300 shrink-0";
   // Visible ONLY on large screens (sm:block)
@@ -193,7 +193,7 @@ function Navbar() {
         transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
         className={`fixed inset-x-0 top-0 z-50 select-none font-sans ${showHeader ? "pointer-events-auto" : "pointer-events-none"}`}
       >
-        <motion.div style={{ height: tickerHeight, opacity: tickerOpacity }} className="relative overflow-hidden bg-[#2A2421] text-[#FDFBF7]">
+        <motion.div style={{ height: tickerHeight, opacity: tickerOpacity }} className="relative overflow-hidden bg-[#2A2421] text-[#F7EBEC]">
           <div className="flex h-7 items-center overflow-hidden">
             <motion.div
               animate={{ x: ["0%", "-50%"] }}
@@ -222,8 +222,8 @@ function Navbar() {
           transition={{ layout: { duration: 0.4, ease: [0.22, 1, 0.36, 1] } }}
           className={`mx-auto overflow-hidden border transition-[background-color,border-color,box-shadow] duration-300 ease-out ${
             isScrolled || isOurStory
-              ? "border-[#8E3D51]/15 bg-[#FAF7F2]/95 shadow-[0_12px_40px_rgba(42,36,33,0.12)] backdrop-blur-xl"
-              : "border-stone-200/50 bg-[#FAF7F2]/80 backdrop-blur-md sm:border-transparent sm:bg-transparent sm:backdrop-blur-none"
+              ? "border-[#CBC0D3]/60 bg-[#F7EBEC]/95 shadow-[0_12px_40px_rgba(42,36,33,0.12)] backdrop-blur-xl"
+              : "border-[#CBC0D3]/50 bg-[#F7EBEC]/85 backdrop-blur-md sm:border-transparent sm:bg-transparent sm:backdrop-blur-none"
           }`}
         >
           <div className="grid w-full grid-cols-[auto_1fr_auto] items-center gap-0.5 px-2 py-2 sm:grid-cols-[1fr_auto_1fr] sm:gap-4 sm:px-4 sm:py-2.5 md:px-5 lg:px-7">
@@ -252,7 +252,7 @@ function Navbar() {
 
             <div className="flex min-w-0 justify-end">
               <div className={clusterRight}>
-                <Link to="/shop" aria-label="Explore Saree Shop Collection" title="Shop Saree Collection" className={`${iconButton} ${location.pathname === "/shop" ? "bg-[#EFEAE2] text-[#8E3D51]" : ""}`}>
+                <Link to="/shop" aria-label="Explore Saree Shop Collection" title="Shop Saree Collection" className={`${iconButton} ${location.pathname === "/shop" ? "bg-[#E9C9C3]/70 text-[#8E3D51]" : ""}`}>
                   <Store size={16} strokeWidth={1.75} />
                 </Link>
 

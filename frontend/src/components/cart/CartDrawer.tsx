@@ -83,7 +83,7 @@ function CartDrawer({ open, onClose }: CartDrawerProps) {
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ duration: 0.38, ease }}
-            className="cart-drawer-gpu absolute right-0 top-0 flex h-full w-full max-w-[420px] flex-col bg-[#FAF7F2] shadow-[-20px_0_60px_rgba(30,20,15,0.12)]"
+            className="cart-drawer-gpu absolute right-0 top-0 flex h-full w-full max-w-[420px] flex-col bg-[#F7EBEC] shadow-[-20px_0_60px_rgba(30,20,15,0.12)]"
           >
             {/* Header */}
             <div className="flex shrink-0 items-center justify-between border-b border-black/[0.05] px-5 py-4 sm:px-6 pt-[max(1.2rem,env(safe-area-inset-top))]">
@@ -128,7 +128,7 @@ function CartDrawer({ open, onClose }: CartDrawerProps) {
                       onClose();
                       navigate("/shop");
                     }}
-                    className="mt-6 rounded-full bg-[#2A2421] px-6 py-3 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-[#FAF7F2] transition-transform active:scale-95"
+                    className="mt-6 rounded-full bg-[#2A2421] px-6 py-3 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-[#F7EBEC] transition-transform active:scale-95"
                   >
                     Explore Collection
                   </button>
@@ -148,7 +148,7 @@ function CartDrawer({ open, onClose }: CartDrawerProps) {
                           onClose();
                           navigate(`/product/${item.product.id}`);
                         }}
-                        className="h-24 w-18.5 shrink-0 overflow-hidden rounded-xl bg-[#EFEAE2] border border-black/5"
+                        className="h-24 w-18.5 shrink-0 overflow-hidden rounded-xl bg-[#E9C9C3]/55 border border-black/5"
                       >
                         <img
                           src={item.product.images[0]}
@@ -245,7 +245,7 @@ function CartDrawer({ open, onClose }: CartDrawerProps) {
 
             {/* Footer Summary & Checkout */}
             {items.length > 0 && (
-              <div className="shrink-0 border-t border-black/6 bg-white p-5 sm:p-6 pb-[max(1.2rem,env(safe-area-inset-bottom))]">
+              <div className="shrink-0 border-t border-black/6 bg-[#F4E7E4] p-5 sm:p-6 pb-[max(1.2rem,env(safe-area-inset-bottom))]">
                 <div className="space-y-1.5 mb-3">
                   <div className="flex items-center justify-between text-stone-600 text-xs">
                     <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-[#8C7A6B]">

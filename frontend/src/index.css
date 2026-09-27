@@ -3,16 +3,20 @@
 @import "tailwindcss";
 
 :root {
+  --bg-lavender-blush: #F7EBEC;
+  --bg-pale-dogwood: #E9C9C3;
+  --bg-thistle: #CBC0D3;
+  --bg-seashell: #F4E7E4;
   font-family: "Inter", "DM Sans", sans-serif;
   color: #2a2421;
-  background: #faf8f5;
+  background: #F7EBEC;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }
 
 html {
   scroll-behavior: smooth;
-  background: #faf8f5;
+  background: #F7EBEC;
   -ms-overflow-style: none; /* IE and Edge */
   scrollbar-width: none; /* Firefox */
 }
@@ -20,7 +24,12 @@ html {
 body {
   margin: 0;
   min-width: 320px;
-  background: #faf8f5;
+  background-color: #F7EBEC;
+  background-image:
+    radial-gradient(at 15% 15%, rgba(203, 192, 211, 0.35) 0px, transparent 50%),
+    radial-gradient(at 85% 25%, rgba(233, 201, 195, 0.4) 0px, transparent 50%),
+    radial-gradient(at 50% 80%, rgba(244, 231, 228, 0.75) 0px, transparent 60%);
+  background-attachment: fixed;
   -ms-overflow-style: none; /* IE and Edge */
   scrollbar-width: none; /* Firefox */
 }
