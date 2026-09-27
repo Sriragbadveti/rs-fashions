@@ -21,8 +21,8 @@ import { type Product } from "../data/products";
 
 const DEFAULT_TIERS: SaleTierOffer[] = [
   { id: "tier-1", qty: 1, price: 2500, label: "Buy 1 @2500/-", savingsText: "Special Single Drape Offer" },
-  { id: "tier-2", qty: 2, price: 4900, label: "Buy 2 @4900/-", savingsText: "Popular Double Drape Combo" },
-  { id: "tier-3", qty: 3, price: 4800, label: "Buy 3 @4800/-", savingsText: "Grand Celebration Value" },
+  { id: "tier-2", qty: 2, price: 4900, label: "Buy 2@4900/-", savingsText: "Popular Double Drape Combo" },
+  { id: "tier-3", qty: 3, price: 4800, label: "Buy 3@4800/-", savingsText: "Grand Celebration Value" },
 ];
 
 export default function OffersStore() {
@@ -81,15 +81,8 @@ export default function OffersStore() {
 
   // Count offer items in cart for bundle progress bar
   const offerCountInCart = useMemo(() => {
-    const offerIdSet = new Set(offerProducts.map((p) => String(p.id)));
-    return cartItems.reduce((acc, item) => {
-      const pid = String(item.product?.id || (item as any).id || "");
-      if (offerIdSet.has(pid)) {
-        return acc + item.quantity;
-      }
-      return acc;
-    }, 0);
-  }, [cartItems, offerProducts]);
+    return cartItems.reduce((acc, item) => acc + item.quantity, 0);
+  }, [cartItems]);
 
   // Current active tier
   const activeTier = useMemo(() => {

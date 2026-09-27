@@ -27,8 +27,8 @@ interface SaleManagerProps {
 
 const DEFAULT_OFFERS: SaleTierOffer[] = [
   { id: "tier-1", qty: 1, price: 2500, label: "Buy 1 @2500/-", savingsText: "Special Single Drape Offer" },
-  { id: "tier-2", qty: 2, price: 4900, label: "Buy 2 @4900/-", savingsText: "Popular Double Drape Combo" },
-  { id: "tier-3", qty: 3, price: 4800, label: "Buy 3 @4800/-", savingsText: "Grand Celebration Value" },
+  { id: "tier-2", qty: 2, price: 4900, label: "Buy 2@4900/-", savingsText: "Popular Double Drape Combo" },
+  { id: "tier-3", qty: 3, price: 4800, label: "Buy 3@4800/-", savingsText: "Grand Celebration Value" },
 ];
 
 const PRESET_LOOM_IMAGES: string[] = [];

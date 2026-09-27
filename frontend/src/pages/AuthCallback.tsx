@@ -5,12 +5,16 @@ import { API_BASE } from "../config/api";
 import { supabase } from "../services/supabase";
 import logo from "../assets/logo/logo1.png";
 import { CheckCircle2, AlertTriangle, Loader2 } from "lucide-react";
+import GooglePhoneModal from "../components/auth/GooglePhoneModal";
 
 export default function AuthCallback() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showPhoneModal, setShowPhoneModal] = useState(false);
+  const [pendingUser, setPendingUser] = useState<any>(null);
+  const [pendingRedirect, setPendingRedirect] = useState("/shop");
 
   useEffect(() => {
     async function processCallback() {
@@ -18,6 +22,7 @@ export default function AuthCallback() {
       const success = searchParams.get("success");
       const userParam = searchParams.get("user");
       const redirect = searchParams.get("redirect") || "/shop";
+      setPendingRedirect(redirect);
 
       if (error) {
         setStatus("error");
@@ -98,8 +103,17 @@ export default function AuthCallback() {
             }).catch(() => {});
           } catch {}
 
-          setStatus("success");
+          const cleanP = (session.phone || "").replace(/\D/g, "").slice(-10);
+          const hasPhone = cleanP.length === 10 && !session.phone.startsWith("G-");
 
+          if (!hasPhone) {
+            setPendingUser(session);
+            setShowPhoneModal(true);
+            setStatus("success");
+            return;
+          }
+
+          setStatus("success");
           setTimeout(() => {
             const destination = redirect.startsWith("/") ? redirect : `/${redirect}`;
             navigate(destination, { replace: true });
@@ -122,7 +136,18 @@ export default function AuthCallback() {
             throw new Error(data.message || "Failed to exchange Google authorization code");
           }
 
-          setUserSession(data.data.user);
+          const user = data.data.user;
+          const session = setUserSession(user);
+          const cleanP = (user.phone || "").replace(/\D/g, "").slice(-10);
+          const hasPhone = cleanP.length === 10 && !user.phone.startsWith("G-");
+
+          if (!hasPhone) {
+            setPendingUser(session);
+            setShowPhoneModal(true);
+            setStatus("success");
+            return;
+          }
+
           setStatus("success");
           setTimeout(() => {
             const dest = data.data.redirect || redirect;
@@ -148,7 +173,7 @@ export default function AuthCallback() {
             const { data } = await supabase.auth.getSession();
             if (data?.session?.user) {
               const u = data.session.user;
-              setUserSession({
+              const session = setUserSession({
                 id: `user-g-${u.id.slice(-12)}`,
                 name: u.user_metadata?.full_name || u.user_metadata?.name || "Google Patron",
                 email: u.email || "",
@@ -156,6 +181,14 @@ export default function AuthCallback() {
                 role: "user",
                 authProvider: "google",
               });
+              const cleanP = (u.phone || "").replace(/\D/g, "").slice(-10);
+              const hasPhone = cleanP.length === 10 && !u.phone?.startsWith("G-");
+              if (!hasPhone) {
+                setPendingUser(session);
+                setShowPhoneModal(true);
+                setStatus("success");
+                return;
+              }
               setStatus("success");
               setTimeout(() => {
                 navigate(redirect, { replace: true });
@@ -233,6 +266,21 @@ export default function AuthCallback() {
           </div>
         )}
       </div>
+
+      {showPhoneModal && pendingUser && (
+        <GooglePhoneModal
+          isOpen={showPhoneModal}
+          user={pendingUser}
+          onSuccess={(_phone) => {
+            setShowPhoneModal(false);
+            const destination = pendingRedirect.startsWith("/") ? pendingRedirect : `/${pendingRedirect}`;
+            navigate(destination, { replace: true });
+          }}
+          onCancel={() => {
+            navigate("/login", { replace: true });
+          }}
+        />
+      )}
     </main>
   );
 }

@@ -79,6 +79,7 @@ interface OrderSnapshot {
   date: string;
   items: Array<{
     id: string;
+    sareeCode?: string;
     name: string;
     material: string;
     color: string;
@@ -92,6 +93,106 @@ interface OrderSnapshot {
   total: number;
   paymentMethod: PaymentMethod;
   recipient: AddressForm;
+}
+
+/**
+ * Resolves the specific saree code (e.g. RSF-GAD-DRKPNK-001) assigned to a saree item.
+ * Searches product SKU, variants matching color, and admin inventory cache.
+ * Guarantees that no temporary or 'BECHO' / 'BEC-' prefix is ever used.
+ */
+function resolveSareeCode(item: any): string {
+  if (!item) return "";
+
+  // 1. If explicit sareeCode or sku already on item and does not start with BEC
+  if (item.sareeCode && typeof item.sareeCode === "string" && !item.sareeCode.toUpperCase().startsWith("BEC")) {
+    return item.sareeCode.trim();
+  }
+  if (item.sku && typeof item.sku === "string" && !item.sku.toUpperCase().startsWith("BEC")) {
+    return item.sku.trim();
+  }
+
+  const p = item.product || {};
+  const selectedColor = (item.selectedColor || item.color || "").trim().toLowerCase();
+
+  // 2. Direct SKU on product
+  if (p.sku && typeof p.sku === "string" && !p.sku.toUpperCase().startsWith("BEC")) {
+    return p.sku.trim();
+  }
+
+  // 3. Search product's own variants for selected color
+  if (Array.isArray(p.variants) && p.variants.length > 0) {
+    if (selectedColor) {
+      const match = p.variants.find(
+        (v: any) =>
+          v.color?.toLowerCase() === selectedColor ||
+          v.colorSlug?.toLowerCase() === selectedColor
+      );
+      if (match?.sku && !match.sku.toUpperCase().startsWith("BEC")) {
+        return match.sku.trim();
+      }
+    }
+    if (p.variants[0]?.sku && !p.variants[0].sku.toUpperCase().startsWith("BEC")) {
+      return p.variants[0].sku.trim();
+    }
+  }
+
+  // 4. Look up in localStorage inventory (rs_admin_inventory and rs_fashions_products)
+  try {
+    const pId = String(p.id || item.id || "");
+    const pName = String(p.name || "").toLowerCase().trim();
+
+    const rawInv = localStorage.getItem("rs_admin_inventory");
+    if (rawInv) {
+      const inv = JSON.parse(rawInv);
+      if (Array.isArray(inv)) {
+        const found = inv.find((prod: any) => {
+          if (!prod) return false;
+          if (pId && String(prod.id) === pId) return true;
+          if (pName && prod.name && prod.name.toLowerCase().trim() === pName) return true;
+          return false;
+        });
+        if (found) {
+          if (Array.isArray(found.variants) && found.variants.length > 0) {
+            if (selectedColor) {
+              const vMatch = found.variants.find(
+                (v: any) =>
+                  v.color?.toLowerCase() === selectedColor ||
+                  v.colorSlug?.toLowerCase() === selectedColor
+              );
+              if (vMatch?.sku && !vMatch.sku.toUpperCase().startsWith("BEC")) {
+                return vMatch.sku.trim();
+              }
+            }
+            if (found.variants[0]?.sku && !found.variants[0].sku.toUpperCase().startsWith("BEC")) {
+              return found.variants[0].sku.trim();
+            }
+          }
+          if (found.id && typeof found.id === "string" && found.id.startsWith("RSF-")) {
+            return found.id.trim();
+          }
+        }
+      }
+    }
+  } catch {}
+
+  // 5. If product.id itself is a valid saree code starting with RSF-
+  const candidateId = String(p.id || item.id || "").trim();
+  if (candidateId.toUpperCase().startsWith("RSF-") && !candidateId.toUpperCase().startsWith("RSF-ORD-")) {
+    return candidateId;
+  }
+
+  // 6. Build canonical saree code from design title and color
+  const cleanNameSlug = (p.name || "SAREE")
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .slice(0, 4)
+    .toUpperCase();
+  const cleanColorSlug = (selectedColor || "STD")
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .slice(0, 3)
+    .toUpperCase();
+  const serial = candidateId.replace(/\D/g, "").slice(-3) || "001";
+
+  return `RSF-${cleanNameSlug}-${cleanColorSlug}-${serial.padStart(3, "0")}`;
 }
 
 const loadCashfreeScript = (): Promise<boolean> => {
@@ -243,16 +344,24 @@ function Checkout() {
       setPaymentMethod(methodParam);
     }
 
-    if (orderNumberParam) setExistingOrderNumber(orderNumberParam);
-    if (orderIdParam) setExistingOrderId(orderIdParam);
+    if (orderNumberParam && !orderNumberParam.toUpperCase().startsWith("BEC")) {
+      setExistingOrderNumber(orderNumberParam);
+    }
+    if (orderIdParam && !orderIdParam.toUpperCase().startsWith("BEC")) {
+      setExistingOrderId(orderIdParam);
+    }
 
     // If orderNumber or orderId is provided, attempt to fetch full order from DB
     const lookupId = orderNumberParam || orderIdParam;
     if (lookupId) {
       StoreService.getOrderByIdOrNumber(lookupId).then((foundOrder) => {
         if (foundOrder) {
-          setExistingOrderNumber(foundOrder.orderNumber);
-          setExistingOrderId(foundOrder.id);
+          if (foundOrder.orderNumber && !foundOrder.orderNumber.toUpperCase().startsWith("BEC")) {
+            setExistingOrderNumber(foundOrder.orderNumber);
+          }
+          if (foundOrder.id && !foundOrder.id.toUpperCase().startsWith("BEC")) {
+            setExistingOrderId(foundOrder.id);
+          }
 
           // Pre-populate address from database
           const addr = foundOrder.address;
@@ -523,7 +632,32 @@ function Checkout() {
   const completeCashfreeSuccess = async (orderId: string, paymentId?: string) => {
     setIsProcessing(true);
 
-    const effectiveOrderId = existingOrderNumber || orderId || `RSF-${Date.now().toString().slice(-6)}`;
+    const resolvedItems = items.map((item) => {
+      const sareeCode = resolveSareeCode(item);
+      return {
+        id: sareeCode || String(item.product.id),
+        sareeCode,
+        name: item.product.name,
+        material: item.product.material,
+        color: item.selectedColor || "Standard",
+        size: item.selectedSize || "Standard Drape (5.5m + 0.8m Blouse)",
+        quantity: item.quantity,
+        price: item.product.price,
+        image: item.product.images?.[0] || (item.product as any).image || "",
+      };
+    });
+
+    const primarySareeCode = resolvedItems[0]?.sareeCode || "";
+    let effectiveOrderId = existingOrderNumber || orderId;
+    if (!effectiveOrderId || effectiveOrderId.toUpperCase().startsWith("BEC")) {
+      if (resolvedItems.length === 1 && primarySareeCode) {
+        effectiveOrderId = primarySareeCode;
+      } else if (primarySareeCode) {
+        effectiveOrderId = `${primarySareeCode}-${resolvedItems.length}PCS`;
+      } else {
+        effectiveOrderId = `RSF-${Date.now().toString().slice(-6)}`;
+      }
+    }
 
     const snapshot: OrderSnapshot = {
       orderId: effectiveOrderId,
@@ -532,16 +666,7 @@ function Checkout() {
         month: "short",
         year: "numeric",
       }),
-      items: items.map((item) => ({
-        id: item.product.id,
-        name: item.product.name,
-        material: item.product.material,
-        color: item.selectedColor || "Standard",
-        size: item.selectedSize || "Standard Drape (5.5m + 0.8m Blouse)",
-        quantity: item.quantity,
-        price: item.product.price,
-        image: item.product.images[0] || "",
-      })),
+      items: resolvedItems,
       subtotal,
       shipping,
       total,
@@ -588,6 +713,7 @@ function Checkout() {
         );
       } else {
         await StoreService.createOrder({
+          orderNumber: effectiveOrderId,
           customerName: `${address.firstName} ${address.lastName}`.trim(),
           email: address.email,
           phone: `${address.countryDial} ${address.phone}`,
@@ -741,8 +867,34 @@ function Checkout() {
     }
 
 
-    // Save snapshot of order before clearing state
-    const effectiveOrderId = existingOrderNumber || `BEC-${Date.now().toString().slice(-8)}`;
+    // Resolve specific saree codes for all purchased sarees
+    const resolvedItems = items.map((item) => {
+      const sareeCode = resolveSareeCode(item);
+      return {
+        id: sareeCode || String(item.product.id),
+        sareeCode,
+        name: item.product.name,
+        material: item.product.material,
+        color: item.selectedColor || "Standard",
+        size: item.selectedSize || "Standard Drape (5.5m + 0.8m Blouse)",
+        quantity: item.quantity,
+        price: item.product.price,
+        image: item.product.images?.[0] || (item.product as any).image || "",
+      };
+    });
+
+    const primarySareeCode = resolvedItems[0]?.sareeCode || "";
+    let effectiveOrderId = existingOrderNumber;
+    if (!effectiveOrderId || effectiveOrderId.toUpperCase().startsWith("BEC")) {
+      if (resolvedItems.length === 1 && primarySareeCode) {
+        effectiveOrderId = primarySareeCode;
+      } else if (primarySareeCode) {
+        effectiveOrderId = `${primarySareeCode}-${resolvedItems.length}PCS`;
+      } else {
+        effectiveOrderId = `RSF-${Date.now().toString().slice(-6)}`;
+      }
+    }
+
     const snapshot: OrderSnapshot = {
       orderId: effectiveOrderId,
       date: new Date().toLocaleDateString("en-IN", {
@@ -750,16 +902,7 @@ function Checkout() {
         month: "short",
         year: "numeric",
       }),
-      items: items.map((item) => ({
-        id: item.product.id,
-        name: item.product.name,
-        material: item.product.material,
-        color: item.selectedColor || "Standard",
-        size: item.selectedSize || "Standard Drape (5.5m + 0.8m Blouse)",
-        quantity: item.quantity,
-        price: item.product.price,
-        image: item.product.images[0] || "",
-      })),
+      items: resolvedItems,
       subtotal,
       shipping,
       total,
@@ -773,10 +916,11 @@ function Checkout() {
           existingOrderId || existingOrderNumber!,
           paymentMethod === "cod" ? "pending" : "paid",
           paymentMethod,
-          `COD_${Date.now()}`
+          paymentMethod === "cod" ? `COD_${Date.now()}` : `PAY_${Date.now()}`
         );
       } else {
         await StoreService.createOrder({
+          orderNumber: effectiveOrderId,
           customerName: `${address.firstName} ${address.lastName}`.trim(),
           email: address.email,
           phone: `${address.countryDial} ${address.phone}`,
@@ -859,7 +1003,7 @@ function Checkout() {
 
                 <div className="text-right">
                   <span className="text-[8px] uppercase tracking-widest text-[#8C7A6B] block">
-                    Reference
+                    Saree Code / Ref
                   </span>
                   <span className="font-mono text-xs font-semibold text-[#2A2421]">
                     {completedOrder.orderId}
@@ -920,9 +1064,14 @@ function Checkout() {
                           <p className="truncate font-serif text-xs font-medium text-[#2A2421]">
                             {item.name}
                           </p>
-                          <p className="text-[9px] text-[#8C7A6B]">
-                            {item.color} · Qty {item.quantity}
-                          </p>
+                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                            <span className="font-mono text-[9.5px] font-bold text-[#8E3D51] bg-[#8E3D51]/10 px-1.5 py-0.5 rounded border border-[#8E3D51]/20">
+                              Saree Code: {item.sareeCode || item.id}
+                            </span>
+                            <span className="text-[9px] text-[#8C7A6B]">
+                              {item.color} · Qty {item.quantity}
+                            </span>
+                          </div>
                         </div>
                       </div>
 
@@ -1243,7 +1392,7 @@ function Checkout() {
 
                   {offerDiscount > 0 && (
                     <div className="flex justify-between text-emerald-700 font-medium bg-emerald-50 px-2 py-0.5 rounded">
-                      <span>Special Offer ({tierOffer.percent}% Off)</span>
+                      <span className="text-xs font-semibold">{tierOffer.label}</span>
                       <span className="font-mono font-semibold">-₹{offerDiscount.toLocaleString("en-IN")}</span>
                     </div>
                   )}
@@ -1879,7 +2028,7 @@ function Checkout() {
 
                   {offerDiscount > 0 && (
                     <div className="flex justify-between text-emerald-700 font-medium bg-emerald-50 px-2.5 py-1 rounded-lg">
-                      <span>Special Offer ({tierOffer.percent}% Off)</span>
+                      <span className="text-xs font-semibold">{tierOffer.label}</span>
                       <span className="font-mono font-semibold">-₹{offerDiscount.toLocaleString("en-IN")}</span>
                     </div>
                   )}

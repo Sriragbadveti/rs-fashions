@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion, useScroll, useTransform } from "framer-motion";
 import { FiMenu, FiSearch, FiShoppingBag, FiX, FiArrowUpRight, FiUser } from "react-icons/fi";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Store, Package, MapPin, LogOut, User as UserIcon, ChevronDown } from "lucide-react";
+import { Store, Package, MapPin, LogOut, User as UserIcon, ChevronDown, Tag } from "lucide-react";
 
 import { useCart } from "../../context/CartContext";
 import { getUserSession, clearUserSession, USER_SESSION_EVENT, type UserSession } from "../../utils/userSession";
@@ -254,6 +254,10 @@ function Navbar() {
               <div className={clusterRight}>
                 <Link to="/shop" aria-label="Explore Saree Shop Collection" title="Shop Saree Collection" className={`${iconButton} ${location.pathname === "/shop" ? "bg-[#E9C9C3]/70 text-[#8E3D51]" : ""}`}>
                   <Store size={16} strokeWidth={1.75} />
+                </Link>
+
+                <Link to="/offers" aria-label="Offer Zone" title="Offer Zone (Buy 1 @2500/-, Buy 2@4900/-, Buy 3@4800/-)" className={`${iconButton} ${location.pathname === "/offers" ? "bg-[#EFEAE2] text-[#8E3D51]" : ""}`}>
+                  <Tag size={16} strokeWidth={1.75} />
                 </Link>
 
                 <span className={dividerRight} />

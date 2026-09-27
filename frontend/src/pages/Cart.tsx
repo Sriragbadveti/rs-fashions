@@ -88,27 +88,27 @@ function Cart() {
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="rounded-full bg-[#8E3D51] px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-white">
-                      Special Offer
+                      Offer Zone
                     </span>
                     <span className="text-xs sm:text-sm font-semibold text-stone-900">
-                      {tierOffer.tier > 0 ? tierOffer.label : "Tiered Bundle Savings Active"}
+                      {tierOffer.tier > 0 ? tierOffer.label : "Offer Zone Bundle Offers Active"}
                     </span>
                   </div>
                   <p className="mt-0.5 text-xs text-stone-600">
-                    {!tierOffer.isMaxTier ? (
+                    {!tierOffer.isMaxTier && tierOffer.nextTierLabel ? (
                       <>
                         Add{" "}
                         <strong className="text-[#8E3D51] font-bold">
-                          {tierOffer.nextTierNeeded} more saree
+                          {tierOffer.nextTierNeeded} more {tierOffer.nextTierNeeded === 1 ? "saree" : "sarees"}
                         </strong>{" "}
                         to unlock{" "}
                         <strong className="text-stone-900 font-bold">
-                          {tierOffer.nextTierPercent}% Instant Order Discount!
+                          {tierOffer.nextTierLabel}!
                         </strong>
                       </>
                     ) : (
                       <span className="text-emerald-700 font-medium">
-                        🎉 Maximum Tier Unlocked: Extra 15% discount automatically subtracted!
+                        🎉 Buy 3@4800/- Mega Offer Unlocked! Special celebration bundle pricing applied.
                       </span>
                     )}
                   </p>
@@ -117,14 +117,14 @@ function Cart() {
 
               <div className="flex items-center gap-2 self-start sm:self-auto">
                 <div className="flex gap-1.5 text-[10px] font-bold">
-                  <span className={`px-2.5 py-1 rounded-full border transition-all ${itemCount >= 1 ? "bg-amber-100 border-amber-300 text-amber-900" : "bg-white/60 border-stone-200 text-stone-400"}`}>
-                    Buy 1: 5% Off
+                  <span className={`px-2.5 py-1 rounded-full border transition-all ${itemCount === 1 ? "bg-[#8E3D51] border-[#8E3D51] text-white shadow-xs" : itemCount > 1 ? "bg-amber-100 border-amber-300 text-amber-900" : "bg-white/60 border-stone-200 text-stone-400"}`}>
+                    Buy 1 @2500/-
                   </span>
-                  <span className={`px-2.5 py-1 rounded-full border transition-all ${itemCount >= 2 ? "bg-amber-200 border-amber-400 text-amber-950 font-extrabold shadow-2xs" : "bg-white/60 border-stone-200 text-stone-400"}`}>
-                    Buy 2: 10% Off
+                  <span className={`px-2.5 py-1 rounded-full border transition-all ${itemCount === 2 ? "bg-[#8E3D51] border-[#8E3D51] text-white shadow-xs" : itemCount > 2 ? "bg-amber-200 border-amber-400 text-amber-950 font-extrabold shadow-2xs" : "bg-white/60 border-stone-200 text-stone-400"}`}>
+                    Buy 2@4900/-
                   </span>
                   <span className={`px-2.5 py-1 rounded-full border transition-all ${itemCount >= 3 ? "bg-[#8E3D51] border-[#8E3D51] text-white shadow-xs" : "bg-white/60 border-stone-200 text-stone-400"}`}>
-                    Buy 3+: 15% Off
+                    Buy 3@4800/-
                   </span>
                 </div>
               </div>
@@ -372,7 +372,7 @@ function Cart() {
                     <div className="flex items-center justify-between rounded-xl bg-emerald-50/80 px-3 py-2 text-emerald-800 border border-emerald-200/60">
                       <span className="flex items-center gap-1.5 font-semibold text-xs">
                         <FiTag size={13} className="text-emerald-600" />
-                        <span>{tierOffer.percent}% Special Offer Discount</span>
+                        <span>{tierOffer.label}</span>
                       </span>
                       <span className="font-mono font-bold text-emerald-700">
                         -{formatCurrency(offerDiscount)}

@@ -50,6 +50,10 @@ const secondaryLinks = [
     path: "/shop",
   },
   {
+    label: "Offer Zone",
+    path: "/offers",
+  },
+  {
     label: "Our Story",
     path: "/our-story",
   },

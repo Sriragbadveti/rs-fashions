@@ -357,6 +357,7 @@ export async function handleGoogleCallback(req, res) {
 
     // 3. Upsert Patron in Database / Supabase
     if (supabase) {
+      let customerPhone = "";
       try {
         const { data: existing } = await supabase
           .from("customers")
@@ -365,6 +366,9 @@ export async function handleGoogleCallback(req, res) {
           .maybeSingle();
 
         if (existing) {
+          if (existing.phone && !existing.phone.startsWith("G-") && existing.phone.replace(/\D/g, "").length >= 10) {
+            customerPhone = existing.phone.trim();
+          }
           await supabase
             .from("customers")
             .update({
@@ -396,13 +400,14 @@ export async function handleGoogleCallback(req, res) {
       id: patronId,
       name: displayName,
       email: cleanEmail,
-      phone: "",
+      phone: customerPhone,
       role: "user",
       authProvider: "google",
       avatarUrl: picture || undefined,
       loggedInAt: now,
       lastActiveAt: now,
       status: "active",
+      needsPhone: !customerPhone,
     };
 
     if (req.query.json === "true" || req.headers.accept?.includes("application/json")) {
@@ -477,6 +482,7 @@ export async function verifyGoogleToken(req, res) {
     const patronId = `user-g-${(profile.id || Date.now().toString(36)).slice(-12)}`;
     const now = new Date().toISOString();
 
+    let customerPhone = "";
     if (supabase) {
       try {
         const { data: existing } = await supabase
@@ -486,6 +492,9 @@ export async function verifyGoogleToken(req, res) {
           .maybeSingle();
 
         if (existing) {
+          if (existing.phone && !existing.phone.startsWith("G-") && existing.phone.replace(/\D/g, "").length >= 10) {
+            customerPhone = existing.phone.trim();
+          }
           await supabase
             .from("customers")
             .update({
@@ -516,13 +525,14 @@ export async function verifyGoogleToken(req, res) {
       id: patronId,
       name: displayName,
       email: cleanEmail,
-      phone: "",
+      phone: customerPhone,
       role: "user",
       authProvider: "google",
       avatarUrl: profile.picture || undefined,
       loggedInAt: now,
       lastActiveAt: now,
       status: "active",
+      needsPhone: !customerPhone,
     };
 
     return successResponse(
@@ -719,5 +729,64 @@ export async function verifyAdminSession(req, res) {
   }
 
   return successResponse(res, { valid: true, user: claims }, "Admin session is valid");
+}
+
+/**
+ * 10. Update Patron Mobile Number (Post Google Auth or Profile update)
+ * POST /api/auth/update-phone
+ */
+export async function updatePatronPhone(req, res) {
+  try {
+    const { email, phone, name, id } = req.body;
+    if (!email) {
+      return errorResponse(res, "Email address is required", 400);
+    }
+    const cleanPhone = (phone || "").replace(/\D/g, "").slice(-10);
+    if (!cleanPhone || cleanPhone.length !== 10) {
+      return errorResponse(res, "Please enter a valid 10-digit mobile number", 400);
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+    const now = new Date().toISOString();
+
+    if (supabase) {
+      const { data: existing } = await supabase
+        .from("customers")
+        .select("*")
+        .eq("email", cleanEmail)
+        .maybeSingle();
+
+      if (existing) {
+        await supabase
+          .from("customers")
+          .update({
+            phone: cleanPhone,
+            updated_at: now,
+          })
+          .eq("id", existing.id);
+      } else {
+        await supabase.from("customers").insert([
+          {
+            id: id || `user-g-${Date.now().toString(36)}`,
+            name: name || "Google Patron",
+            email: cleanEmail,
+            phone: cleanPhone,
+            city: "Hyderabad",
+            notes: "Registered via Google Auth",
+            created_at: now,
+            updated_at: now,
+          },
+        ]);
+      }
+    }
+
+    return successResponse(
+      res,
+      { phone: cleanPhone, email: cleanEmail },
+      "Patron mobile number verified and updated successfully"
+    );
+  } catch (err) {
+    return errorResponse(res, err.message || "Failed to update phone number", 500);
+  }
 }
 
