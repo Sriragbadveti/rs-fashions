@@ -1200,7 +1200,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
                           : activeTab === "tracking"
                             ? "Dispatch & Delivery Tracking"
                             : activeTab === "crm"
-                              ? "Patron Book & Profiles"
+                              ? "Customer Book & Profiles"
                               : activeTab === ("low-stock" as DashboardTab)
                                 ? "Low Stock Alerts & Weaver POs"
                                 : activeTab === ("sale" as DashboardTab)

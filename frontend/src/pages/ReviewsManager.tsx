@@ -251,17 +251,13 @@ export default function ReviewsManager({ inventory }: ReviewsManagerProps) {
   }, [reviews]);
 
   return (
-    <div className="space-y-8 p-4 sm:p-6 lg:p-8 max-w-[1500px] mx-auto">
+    <div className="space-y-8 p-4 sm:p-6 lg:p-8 max-w-375 mx-auto">
       {/* HEADER BANNER */}
       <div className="relative overflow-hidden rounded-3xl bg-linear-to-r from-[#2A2421] via-[#3A322D] to-[#1E1917] p-8 text-white shadow-lg">
         <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div>
-            <div className="flex items-center gap-2 text-[#D9C2A5] mb-2 text-xs font-bold uppercase tracking-[0.25em]">
-              <Sparkles size={16} />
-              <span>Operations &amp; CRM · Product Experience</span>
-            </div>
             <h1 className="font-serif text-3xl sm:text-4xl font-light text-[#FAF8F5]">
-              Patron Reviews &amp; <span className="italic font-normal text-[#D9C2A5]">Testimonials</span>
+              Customer Reviews
             </h1>
             <p className="mt-2 text-xs sm:text-sm text-stone-300 max-w-2xl font-light">
               Manually add, curate, and feature verified patron testimonials for handloom SiCo Gadwal drapes across our studio storefront.
@@ -334,7 +330,7 @@ export default function ReviewsManager({ inventory }: ReviewsManagerProps) {
           <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
           <input
             type="text"
-            placeholder="Search by patron name, saree, location, or keyword..."
+            placeholder="Search by name, saree, location, or keyword..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full rounded-xl border border-stone-200 pl-10 pr-4 py-2.5 text-xs text-stone-800 placeholder:text-stone-400 focus:border-[#8E3D51] focus:outline-hidden"
@@ -358,7 +354,7 @@ export default function ReviewsManager({ inventory }: ReviewsManagerProps) {
           <select
             value={selectedProductFilter}
             onChange={(e) => setSelectedProductFilter(e.target.value)}
-            className="rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-xs text-stone-700 focus:border-[#8E3D51] focus:outline-hidden max-w-[200px] truncate"
+            className="rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-xs text-stone-700 focus:border-[#8E3D51] focus:outline-hidden max-w-40 truncate"
           >
             <option value="all">All Sarees</option>
             {inventory.map((p) => (
@@ -482,9 +478,6 @@ export default function ReviewsManager({ inventory }: ReviewsManagerProps) {
               <Sparkles size={14} />
               <span>{editingReview ? "Edit Review" : "Add New Review"}</span>
             </div>
-            <h2 className="font-serif text-2xl font-light text-stone-900">
-              {editingReview ? "Modify Patron Review" : "Curate Patron Testimonial"}
-            </h2>
             <p className="text-xs text-stone-500 mt-1 mb-6">
               This review will be featured in the store and linked directly to the selected saree.
             </p>
@@ -521,7 +514,7 @@ export default function ReviewsManager({ inventory }: ReviewsManagerProps) {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[11px] font-bold uppercase tracking-wider text-stone-600 mb-1.5">
-                    Patron Full Name *
+                    Customer Full Name *
                   </label>
                   <input
                     type="text"

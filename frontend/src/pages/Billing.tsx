@@ -206,9 +206,9 @@ const Billing: React.FC<BillingProps> = ({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           amount: liveNetPayable,
-          customerName: customer.name?.trim() || "Patron",
+          customerName: customer.name?.trim() || "Name",
           customerPhone: cleanPhone,
-          customerEmail: customer.email?.trim() || "patron@rsfashions.in",
+          customerEmail: customer.email?.trim() || "name@rsfashions.in",
           customerAddress: customer.address?.trim() || customer.city || "In-Store Showroom Counter",
           invoiceNumber: stableInvoice,
           items: cart,
@@ -282,7 +282,7 @@ const Billing: React.FC<BillingProps> = ({
 
           const payId = actual.paymentId || orderIdToPoll;
           sound.playNotification();
-          triggerToast("🎉 Patron payment received! Sale automatically recorded.");
+          triggerToast("🎉 Customer payment received! Sale automatically recorded.");
 
           // Record auto-complete metadata
           setPaymentCompletedInfo({

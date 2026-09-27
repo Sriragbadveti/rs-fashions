@@ -834,7 +834,7 @@ function Checkout() {
             </h1>
 
             <p className="mx-auto mt-2 max-w-md text-[11px] sm:text-xs font-light leading-relaxed text-[#756A60]">
-              Your heirloom saree is being packed in our luxury double-walled box. A copy of this receipt has been dispatched to <span className="font-medium text-[#2A2421]">{completedOrder.recipient.email}</span>.
+              Your saree is being packed. A copy of this receipt will be also sent to <span className="font-medium text-[#2A2421]">{completedOrder.recipient.email}</span>.
             </p>
           </div>
 
@@ -849,10 +849,10 @@ function Checkout() {
                     Tax Invoice & Receipt
                   </span>
                   <h2 className="font-serif text-xl sm:text-2xl text-[#2A2421] tracking-tight mt-0.5">
-                    RS FASHIONS
+                    FASHIONS
                   </h2>
                   <p className="text-[9px] text-[#8C7A6B] leading-relaxed mt-0.5">
-                    Heirloom SiCo Gadwal Sarees · Jubilee Hills, Hyderabad<br />
+                    · SiCo Gadwal Sarees · Jubilee Hills, Hyderabad<br />
                     GSTIN: <span className="font-mono">36AAACB1234F1Z5</span>
                   </p>
                 </div>
@@ -896,9 +896,6 @@ function Checkout() {
                       : completedOrder.paymentMethod === "upi"
                         ? "UPI Transfer (Verified)"
                         : "Online Prepaid (Verified)"}
-                  </span>
-                  <span className="text-[9px] text-emerald-700 font-medium block mt-1">
-                    ✦ Silk Mark Verified
                   </span>
                 </div>
               </div>
@@ -968,10 +965,6 @@ function Checkout() {
                 <div className="font-mono text-[9px] tracking-[0.35em] text-[#8C7A6B] uppercase">
                   * {completedOrder.orderId} *
                 </div>
-                <div className="mt-1 h-7 w-48 bg-[repeating-linear-gradient(90deg,#2A2421,#2A2421_2px,transparent_2px,transparent_4px,#2A2421_4px,#2A2421_7px,transparent_7px,transparent_9px)] opacity-65" />
-                <span className="mt-2 text-[8px] uppercase tracking-widest text-[#8C7A6B]">
-                  Authentic Handloom Certificate Enclosed
-                </span>
               </div>
             </div>
           </LuxuryReceiptPrinter>

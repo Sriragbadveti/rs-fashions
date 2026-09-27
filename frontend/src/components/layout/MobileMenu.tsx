@@ -482,10 +482,10 @@ function MobileMenu({ onClose }: MobileMenuProps) {
               </div>
             </div>
 
-            {/* Section 3: Patron Account */}
+            {/* Section 3: Customer Account */}
               <div className="mt-6 border-t border-black/6 pt-5">
                 <p className="mb-3 text-[9.5px] font-semibold uppercase tracking-[0.26em] text-[#8C7A6B]">
-                  Patron Account
+                  Your Account
                 </p>
 
                 {currentUser ? (

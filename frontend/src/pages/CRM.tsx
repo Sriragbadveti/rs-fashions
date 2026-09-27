@@ -616,7 +616,7 @@ export default function CRM({
   }, [customers]);
 
   /* ---------------------------------------------------------------------- */
-  /* PATRON LIFECYCLE & ACTIVITY STATUS (Active vs Inactive > 30 Days)       */
+  /* Customer LIFECYCLE & ACTIVITY STATUS (Active vs Inactive > 30 Days)       */
   /* ---------------------------------------------------------------------- */
 
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
@@ -699,7 +699,7 @@ export default function CRM({
           `✨ *Namaste ${client.name} Ji!* ✨\n\n` +
           `Wishing you a very Happy Birthday from all of us at *${storeName}*! 💐\n\n` +
           `May your year ahead be blessed with good health, grace, and timeless happiness.\n\n` +
-          `As a token of our appreciation for being our valued patron, we are delighted to offer you an *${offerText}* (Use code: *${discountCode}*) valid on our curated SiCo Gadwal & Heritage Handloom collections.\n\n` +
+          `As a token of our appreciation for being our valued Customer, we are delighted to offer you an *${offerText}* (Use code: *${discountCode}*) valid on our curated SiCo Gadwal & Heritage Handloom collections.\n\n` +
           `We look forward to welcoming you at our showroom.\n\n` +
           `Warm regards,\n*${storeName}*`
         );
@@ -719,7 +719,7 @@ export default function CRM({
         return (
           `✨ *Namaste ${client.name} Ji! We Miss You at ${storeName}* ✨\n\n` +
           `It has been a little while since your last visit to our boutique. We have recently arrived with a breathtaking new festive collection of authentic SiCo Gadwal handloom drapes woven by master artisans.\n\n` +
-          `As our esteemed patron, we would love to welcome you back with an exclusive welcome-back privilege: *${offerText}* (Code: *${discountCode}*).\n\n` +
+          `As our esteemed Customer, we would love to welcome you back with an exclusive welcome-back privilege: *${offerText}* (Code: *${discountCode}*).\n\n` +
           `Explore our latest online gallery: https://rsfashions.in/shop\n` +
           `Or visit our flagship showroom: *${showroomLocation}*\n\n` +
           `With sincere regards,\n*${storeName} Team*`
@@ -729,7 +729,7 @@ export default function CRM({
       return (
         `✨ *Exclusive Handloom Showcase for ${client.name} Ji* ✨\n\n` +
         `We have just unveiled our fresh weaver consignments directly from the artisan looms of Gadwal.\n\n` +
-        `As our valued patron, we cordially invite you for a private viewing of our newest *${
+        `As our valued Customer, we cordially invite you for a private viewing of our newest *${
           client.preferredWeave ||
           "Pure Gadwal Silk & Zari"
         }* designs.\n\n` +
@@ -1151,7 +1151,7 @@ export default function CRM({
         <div className="min-w-0">
 
           <h1 className="text-3xl lg:text-4xl font-display font-medium text-stone-950 tracking-tight leading-tight">
-            Client Directory &amp; WhatsApp Concierge
+            Client Directory &amp; WhatsApp support
           </h1>
 
           <p className="text-xs text-stone-500 mt-1.5 max-w-2xl">
@@ -1216,7 +1216,7 @@ export default function CRM({
           <input
             ref={searchInputRef}
             type="text"
-            placeholder="Search client by name, phone, weave..."
+            placeholder="Search client by name, phone..."
             value={searchQuery}
             onChange={(event) =>
               setSearchQuery(event.target.value)
@@ -1250,7 +1250,7 @@ export default function CRM({
                 : "bg-white text-stone-600 hover:bg-stone-100 border border-stone-200/80"
             }`}
           >
-            All Patrons ({customers.length})
+            All Customer ({customers.length})
           </button>
           <button
             type="button"
@@ -1399,7 +1399,7 @@ export default function CRM({
                           return act.status === "active" ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200/80 text-[10px] font-semibold text-emerald-700">
                               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                              <span>Active Patron</span>
+                              <span>Active Customer</span>
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-300/80 text-[10px] font-semibold text-amber-800">
@@ -1520,7 +1520,7 @@ export default function CRM({
                                 "birthday"
                               )
                             }
-                            title={hasBirthday ? "Birthday Wish" : "No birthday submitted by patron (Action Disabled)"}
+                            title={hasBirthday ? "Birthday Wish" : "No birthday submitted by Customer (Action Disabled)"}
                             className={`group/action flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border text-xs font-semibold transition-all duration-200 focus:outline-none ${
                               hasBirthday
                                 ? "bg-emerald-50 hover:bg-emerald-100 border-emerald-200/80 text-emerald-800 hover:-translate-y-0.5 hover:shadow-sm active:scale-[0.97] cursor-pointer"
@@ -1551,7 +1551,7 @@ export default function CRM({
                                 "anniversary"
                               )
                             }
-                            title={hasAnniversary ? "Anniversary Message" : "No anniversary submitted by patron (Action Disabled)"}
+                            title={hasAnniversary ? "Anniversary Message" : "No anniversary submitted by Customer (Action Disabled)"}
                             className={`group/action flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border text-xs font-semibold transition-all duration-200 focus:outline-none ${
                               hasAnniversary
                                 ? "bg-amber-50 hover:bg-amber-100 border-amber-200/80 text-amber-900 hover:-translate-y-0.5 hover:shadow-sm active:scale-[0.97] cursor-pointer"
@@ -1613,7 +1613,7 @@ export default function CRM({
               <ChevronDown className="h-4 w-4 text-stone-400 group-hover:translate-y-0.5 transition-transform" />
             </button>
             <p className="text-[11px] text-stone-400">
-              Showing {displayedCustomers.length} of {filteredCustomers.length} total patron profiles
+              Showing {displayedCustomers.length} of {filteredCustomers.length} total Customer profiles
             </p>
           </div>
         )}
@@ -1746,7 +1746,7 @@ export default function CRM({
                           disabled={isTemplateDisabled}
                           title={
                             isTemplateDisabled
-                              ? `No ${isBirthday ? "birthday" : "anniversary"} submitted by patron`
+                              ? `No ${isBirthday ? "birthday" : "anniversary"} submitted by Customer`
                               : undefined
                           }
                           onClick={() =>

@@ -579,7 +579,7 @@ export default function Analysis({
           },
           {
             label: "Sarees Handed Over",
-            sub: "Drapes taken home by patrons",
+            sub: "Drapes taken home by customers",
             value: metrics.totalPiecesSold,
             formatter: formatInteger,
             icon: ShoppingBag,
