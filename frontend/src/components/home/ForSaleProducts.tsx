@@ -8,9 +8,9 @@ import type { SaleConfig, SaleProductItem, SaleTierOffer } from "../../types/inv
 import { useCart } from "../../context/CartContext";
 
 const DEFAULT_TIER_OFFERS: SaleTierOffer[] = [
-  { id: "tier-1", qty: 1, price: 2500, label: "Buy 1 @ ₹2,500", savingsText: "Single Piece Special" },
-  { id: "tier-2", qty: 2, price: 4900, label: "Buy 2 @ ₹4,900", savingsText: "Twin Celebration Savings" },
-  { id: "tier-3", qty: 3, price: 4800, label: "Buy 3 @ ₹4,800", savingsText: "Trio Festive Mega Offer" },
+  { id: "tier-1", qty: 1, price: 2500, label: "Buy 1 @2500/-", savingsText: "Special Single Drape Offer" },
+  { id: "tier-2", qty: 2, price: 4900, label: "Buy 2@4900/-", savingsText: "Popular Double Drape Combo" },
+  { id: "tier-3", qty: 3, price: 4800, label: "Buy 3@4800/-", savingsText: "Grand Celebration Value" },
 ];
 
 const DEFAULT_SALE_CONFIG: SaleConfig = {

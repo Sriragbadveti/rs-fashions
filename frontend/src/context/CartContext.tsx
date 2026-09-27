@@ -34,7 +34,9 @@ export interface TierOfferInfo {
   label: string;
   nextTierNeeded: number;
   nextTierPercent: number;
+  nextTierLabel?: string;
   isMaxTier: boolean;
+  bundleTargetPrice?: number;
 }
 
 /* ============================================================
@@ -186,56 +188,83 @@ export function CartProvider({ children }: { children: ReactNode }) {
     [items]
   );
 
-  /* Tiered Offer Calculation (Buy 1 get 5%, Buy 2 get 10%, Buy 3+ get 15%) */
+  /* Offer Zone Bundle Pricing:
+     - Buy 1 @2500/-
+     - Buy 2@4900/-
+     - Buy 3@4800/-
+     (Replaces the previous generic 5%/10%/15% / ₹150 discount)
+  */
   const tierOffer: TierOfferInfo = useMemo(() => {
     if (itemCount === 0) {
       return {
         tier: 0,
         percent: 0,
         discountAmount: 0,
-        label: "Buy 1 Get 5% Off • Buy 2 Get 10% Off • Buy 3+ Get 15% Off",
+        label: "Buy 1 @2500/- • Buy 2@4900/- • Buy 3@4800/-",
         nextTierNeeded: 1,
-        nextTierPercent: 5,
+        nextTierPercent: 0,
+        nextTierLabel: "Buy 1 @2500/-",
         isMaxTier: false,
       };
     }
 
     if (itemCount === 1) {
-      const discount = Math.round(subtotal * 0.05);
+      const targetPrice = 2500;
+      const discount = Math.max(0, subtotal - targetPrice);
+      const effectivePercent = subtotal > 0 ? Math.round((discount / subtotal) * 100) : 0;
       return {
         tier: 1,
-        percent: 5,
+        percent: effectivePercent,
         discountAmount: discount,
-        label: "Tier 1 Unlocked: 5% Special Offer Discount",
+        label: "Buy 1 @2500/- Applied",
         nextTierNeeded: 1,
-        nextTierPercent: 10,
+        nextTierPercent: effectivePercent,
+        nextTierLabel: "Buy 2@4900/-",
         isMaxTier: false,
+        bundleTargetPrice: targetPrice,
       };
     }
 
     if (itemCount === 2) {
-      const discount = Math.round(subtotal * 0.10);
+      const targetPrice = 4900;
+      const discount = Math.max(0, subtotal - targetPrice);
+      const effectivePercent = subtotal > 0 ? Math.round((discount / subtotal) * 100) : 0;
       return {
         tier: 2,
-        percent: 10,
+        percent: effectivePercent,
         discountAmount: discount,
-        label: "Tier 2 Unlocked: 10% Bundle Offer Discount",
+        label: "Buy 2@4900/- Applied",
         nextTierNeeded: 1,
-        nextTierPercent: 15,
+        nextTierPercent: effectivePercent,
+        nextTierLabel: "Buy 3@4800/-",
         isMaxTier: false,
+        bundleTargetPrice: targetPrice,
       };
     }
 
     // 3 or more sarees
-    const discount = Math.round(subtotal * 0.15);
+    const bundlesOf3 = Math.floor(itemCount / 3);
+    const remainder = itemCount % 3;
+    let targetPrice = bundlesOf3 * 4800;
+    if (remainder === 1) targetPrice += 2500;
+    if (remainder === 2) targetPrice += 4900;
+
+    const discount = Math.max(0, subtotal - targetPrice);
+    const effectivePercent = subtotal > 0 ? Math.round((discount / subtotal) * 100) : 0;
+
     return {
       tier: 3,
-      percent: 15,
+      percent: effectivePercent,
       discountAmount: discount,
-      label: "VIP Tier 3 Unlocked: 15% Mega Special Offer Discount",
-      nextTierNeeded: 0,
-      nextTierPercent: 15,
-      isMaxTier: true,
+      label:
+        itemCount === 3
+          ? "Buy 3@4800/- Mega Offer Applied"
+          : `Buy 3@4800/- Combo (${itemCount} Sarees) Applied`,
+      nextTierNeeded: remainder === 0 ? 0 : 3 - remainder,
+      nextTierPercent: effectivePercent,
+      nextTierLabel: remainder === 0 ? undefined : "Buy 3@4800/- Multi-Pack",
+      isMaxTier: remainder === 0,
+      bundleTargetPrice: targetPrice,
     };
   }, [itemCount, subtotal]);
 
