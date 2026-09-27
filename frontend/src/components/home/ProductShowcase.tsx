@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { StoreService } from "../../services/supabase";
-import type { Product } from "../../data/products";
 import { handleSareeImageError } from "../../utils/imageConverter";
 import tempImg1 from "../../assets/images/Home.jpg";
 import tempImg2 from "../../assets/images/Home1.jpg";
@@ -45,7 +43,6 @@ export interface ShowcaseItem {
   pattern: string;
   category: string;
   material: string;
-  rawProduct?: Product;
 }
 
 export const FALLBACK_SHOWCASE_ITEMS: ShowcaseItem[] = [
@@ -111,13 +108,6 @@ export const FALLBACK_SHOWCASE_ITEMS: ShowcaseItem[] = [
   },
 ];
 
-const DUMMY_PRODUCT_IDS = new Set([
-  "emerald-sico-gadwal",
-  "midnight-sico-gadwal",
-  "rose-sico-gadwal",
-  "ivory-sico-gadwal",
-]);
-
 function bezierPoint(
   t: number,
   p0: { x: number; y: number },
@@ -132,7 +122,6 @@ function bezierPoint(
 export default function ProductShowcase() {
   const navigate = useNavigate();
 
-  const [backendItems, setBackendItems] = useState<ShowcaseItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [slideState, setSlideState] = useState<
     | "slide-settled"
@@ -151,79 +140,7 @@ export default function ProductShowcase() {
   const touchStartX = useRef<number | null>(null);
   const touchEndX = useRef<number | null>(null);
 
-  useEffect(() => {
-    let isMounted = true;
-
-    function mapProductsToShowcase(products: Product[]): ShowcaseItem[] {
-      const valid = (products || []).filter(
-        (p) => p && p.id && !DUMMY_PRODUCT_IDS.has(String(p.id)) && (p.stock ?? 1) > 0
-      );
-      if (valid.length === 0) return [];
-
-      const paletteBgs = ["#d8b98a", "#e8a3ab", "#a01e2e", "#0f766e", "#7a1332", "#d99b26", "#0e7490"];
-
-      return valid.map((p, idx) => {
-        const detectedPattern =
-          (p as any).pattern ||
-          (p.name?.toLowerCase().includes("check")
-            ? "Vintage Checks"
-            : p.name?.toLowerCase().includes("kanchi")
-            ? "Kanchi Borders"
-            : p.name?.toLowerCase().includes("gatti")
-            ? "Gatti Borders"
-            : p.category || "SiCo Gadwal");
-
-        return {
-          id: String(p.id),
-          name: (p.name || "Handloom SiCo Gadwal").toUpperCase(),
-          desc:
-            p.description ||
-            "Authentic handwoven Telangana SiCo Gadwal saree crafted with pure zari borders and heirloom artistry.",
-          image: p.images?.[0] || FALLBACK_SHOWCASE_ITEMS[idx % FALLBACK_SHOWCASE_ITEMS.length].image,
-          bgColor: paletteBgs[idx % paletteBgs.length],
-          pattern: detectedPattern,
-          category: p.category || "SiCo Gadwal Sarees",
-          material: p.material || "SiCo",
-          rawProduct: p,
-        };
-      });
-    }
-
-    async function loadRealProducts() {
-      try {
-        const data = await StoreService.getProducts();
-        if (isMounted && Array.isArray(data)) {
-          const mapped = mapProductsToShowcase(data);
-          setBackendItems(mapped);
-        }
-      } catch (err) {
-        console.warn("ProductShowcase fallback to default items:", err);
-      }
-    }
-
-    loadRealProducts();
-
-    const handleSync = () => loadRealProducts();
-    window.addEventListener("rs_inventory_updated", handleSync);
-    window.addEventListener("catalogUpdated", handleSync);
-    window.addEventListener("storage", handleSync);
-
-    const unsubscribe = StoreService.subscribeToRealtime(() => {
-      loadRealProducts();
-    });
-
-    return () => {
-      isMounted = false;
-      window.removeEventListener("rs_inventory_updated", handleSync);
-      window.removeEventListener("catalogUpdated", handleSync);
-      window.removeEventListener("storage", handleSync);
-      unsubscribe();
-    };
-  }, []);
-
-  const items = useMemo(() => {
-    return backendItems.length > 0 ? backendItems : FALLBACK_SHOWCASE_ITEMS;
-  }, [backendItems]);
+  const items = FALLBACK_SHOWCASE_ITEMS;
 
   const safeIndex = currentIndex < items.length ? currentIndex : 0;
   const activeItem = items[safeIndex] || FALLBACK_SHOWCASE_ITEMS[0];

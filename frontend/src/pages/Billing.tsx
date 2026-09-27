@@ -594,7 +594,7 @@ const Billing: React.FC<BillingProps> = ({
 
               <div className="p-4 md:p-5">
                 {filteredProducts.length === 0 ? (
-                  <div className="flex min-h-[220px] flex-col items-center justify-center rounded-2xl border border-dashed border-stone-200 bg-stone-50/40 p-6 text-center">
+                  <div className="flex min-h-55 flex-col items-center justify-center rounded-2xl border border-dashed border-stone-200 bg-stone-50/40 p-6 text-center">
                     <Package className="mb-2 h-8 w-8 text-stone-300" />
 
                     <h3 className="text-xs font-semibold text-stone-700">
@@ -892,9 +892,9 @@ const Billing: React.FC<BillingProps> = ({
                 </div>
               </div>
 
-              <div className="max-h-[300px] overflow-y-auto divide-y divide-stone-100 p-2">
+              <div className="max-h-75 overflow-y-auto divide-y divide-stone-100 p-2">
                 {cart.length === 0 ? (
-                  <div className="flex min-h-[175px] flex-col items-center justify-center px-6 text-center">
+                  <div className="flex min-h-43.75 flex-col items-center justify-center px-6 text-center">
                     <div className="mb-2 flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-50 text-brand-gold">
                       <ShoppingBag className="h-5 w-5" />
                     </div>
@@ -1438,7 +1438,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
   return (
     <div className="group flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-stone-200/80 bg-white transition-all duration-200 hover:border-[#D4A373]/70 hover:shadow-md">
       <div className="flex min-w-0 gap-3.5 p-3.5">
-        <div className="h-[72px] w-[72px] shrink-0 overflow-visible rounded-xl border border-stone-200/70 bg-stone-100 flex items-center justify-center">
+        <div className="h-18 w-18 shrink-0 overflow-visible rounded-xl border border-stone-200/70 bg-stone-100 flex items-center justify-center">
           {product.imageUrl ? (
             <img
               src={product.imageUrl}
@@ -1803,7 +1803,7 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-9999 flex items-center justify-center bg-stone-900/60 p-4 backdrop-blur-md select-none w-screen h-screen overflow-hidden" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', margin: 0 }}>
-      <div className="flex max-h-[100vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl z-10000">
+      <div className="flex max-h-screen w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl z-10000">
         <div className="flex items-center justify-between border-b border-stone-200 bg-stone-50 px-6 py-4 no-print">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">

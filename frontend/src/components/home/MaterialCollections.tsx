@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { motion, useMotionValue, animate } from "framer-motion";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { FiArrowUpRight, FiChevronLeft, FiChevronRight } from "react-icons/fi";
+import { FiArrowUpRight } from "react-icons/fi";
 import tempImg1 from "../../assets/images/Home.jpg";
 import tempImg2 from "../../assets/images/Home1.jpg";
 import tempImg3 from "../../assets/images/Home_laptop_1.png";
@@ -50,146 +49,36 @@ const materials: MaterialItem[] = [
   },
 ];
 
-// Buffer size for smooth seamless wrap-around loop
-const CARD_BUFFER = 4;
-
 export default function MaterialCollections() {
-  const [internalCardIndex, setInternalCardIndex] = useState(CARD_BUFFER);
-  const [isHovered, setIsHovered] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const firstCardRef = useRef<HTMLDivElement>(null);
-  const isCardAnimating = useRef(false);
-  const lastWheelTime = useRef(0);
-  const x = useMotionValue(0);
-
-  // Multi-item clone buffers on both sides
-  const clonedMaterials = useMemo(() => {
-    const n = materials.length;
-    if (n === 0) return [];
-    const prefix: MaterialItem[] = [];
-    const suffix: MaterialItem[] = [];
-    for (let i = 0; i < CARD_BUFFER; i++) {
-      prefix.unshift(materials[n - 1 - (i % n)]);
-      suffix.push(materials[i % n]);
-    }
-    return [...prefix, ...materials, ...suffix];
-  }, []);
-
-  // Compute active pagination index (0 to materials.length - 1)
-  const activeDotIndex = useMemo(() => {
-    const n = materials.length;
-    if (n === 0) return 0;
-    return (((internalCardIndex - CARD_BUFFER) % n) + n) % n;
-  }, [internalCardIndex]);
-
-  // Compute full card step dynamically
-  const getCardStep = useCallback(() => {
-    if (!firstCardRef.current) return window.innerWidth >= 640 ? 294 : 256;
-    const cardWidth = firstCardRef.current.offsetWidth;
-    const gap = window.innerWidth >= 640 ? 24 : 16;
-    return cardWidth + gap;
-  }, []);
-
-  // Sync initial offset and handle resize
-  useEffect(() => {
-    const syncPosition = () => {
-      const step = getCardStep();
-      x.set(-internalCardIndex * step);
-    };
-    syncPosition();
-    window.addEventListener("resize", syncPosition);
-    return () => window.removeEventListener("resize", syncPosition);
-  }, [getCardStep, internalCardIndex, x]);
-
-  // Slide transition with silent buffer teleportation
-  const slideToCardIndex = (targetIdx: number) => {
-    const n = materials.length;
-    if (n <= 1) return;
-
-    isCardAnimating.current = true;
-    const step = getCardStep();
-    const targetX = -targetIdx * step;
-
-    animate(x, targetX, {
-      type: "spring",
-      stiffness: 260,
-      damping: 30,
-      onComplete: () => {
-        isCardAnimating.current = false;
-        let finalIdx = targetIdx;
-
-        if (targetIdx >= CARD_BUFFER + n) {
-          finalIdx = targetIdx - n;
-          x.set(-finalIdx * step);
-          setInternalCardIndex(finalIdx);
-        } else if (targetIdx < CARD_BUFFER) {
-          finalIdx = targetIdx + n;
-          x.set(-finalIdx * step);
-          setInternalCardIndex(finalIdx);
-        }
-      },
-    });
-    setInternalCardIndex(targetIdx);
-  };
-
-  // Automated step interval (pauses on hover / drag)
-  useEffect(() => {
-    if (isHovered || isDragging || materials.length <= 1) return;
-    const interval = setInterval(() => {
-      if (isCardAnimating.current) return;
-      slideToCardIndex(internalCardIndex + 1);
-    }, 3400);
-    return () => clearInterval(interval);
-  }, [isHovered, isDragging, internalCardIndex]);
-
-  // Mouse Wheel & Trackpad Horizontal Scrolling Support
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-
-    const handleWheel = (e: WheelEvent) => {
-      const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.shiftKey ? e.deltaY : 0;
-      if (Math.abs(delta) < 18) return;
-
-      const now = Date.now();
-      if (now - lastWheelTime.current < 280) return;
-      lastWheelTime.current = now;
-
-      e.preventDefault();
-      if (delta > 0) {
-        slideToCardIndex(internalCardIndex + 1);
-      } else {
-        slideToCardIndex(internalCardIndex - 1);
-      }
-    };
-
-    el.addEventListener("wheel", handleWheel, { passive: false });
-    return () => el.removeEventListener("wheel", handleWheel);
-  }, [internalCardIndex]);
-
-  // Drag and flick handling
-  const handleCardDragEnd = (_: any, info: { offset: { x: number }; velocity: { x: number } }) => {
-    setIsDragging(false);
-    const step = getCardStep();
-    const currentX = x.get();
-    const dragOffset = info.offset.x;
-    const velocity = info.velocity.x;
-
-    let target = internalCardIndex;
-    if (dragOffset < -35 || velocity < -260) {
-      target = internalCardIndex + 1;
-    } else if (dragOffset > 35 || velocity > 260) {
-      target = internalCardIndex - 1;
-    } else {
-      target = Math.round(Math.abs(currentX) / step);
-    }
-    slideToCardIndex(target);
-  };
+  // Triple the items to ensure seamless infinite looping on all screen sizes
+  const repeatedMaterials = [...materials, ...materials, ...materials];
 
   return (
     <section className="relative overflow-hidden bg-[#FAF7F2] py-10 font-sans select-none sm:py-14">
+      <style>{`
+        @keyframes continuousMarquee {
+          0% {
+            transform: translateX(0);
+          }
+          100% {
+            transform: translateX(calc(-100% / 3));
+          }
+        }
+
+        .marquee-track {
+          display: flex;
+          width: max-content;
+          animation: continuousMarquee 32s linear infinite;
+          will-change: transform;
+        }
+
+        .marquee-track.paused {
+          animation-play-state: paused;
+        }
+      `}</style>
+
       {/* Jewel-Tone Background Light */}
       <div className="pointer-events-none absolute -left-24 top-1/4 h-80 w-80 rounded-full bg-gradient-to-br from-[#8E3D51]/15 to-rose-400/10 blur-[120px]" />
       <div className="pointer-events-none absolute -right-24 bottom-1/4 h-80 w-80 rounded-full bg-gradient-to-tl from-[#D47E37]/15 to-amber-300/10 blur-[120px]" />
@@ -207,59 +96,29 @@ export default function MaterialCollections() {
             </h2>
           </div>
 
-          <div className="flex items-center justify-between sm:justify-end gap-4">
-            <p className="max-w-xs text-xs text-stone-600 hidden sm:block">
-              Handcrafted heritage weaves celebrating classic textures, heirloom, and contrasting borders.
-            </p>
-
-            {/* Manual Scroll Arrow Controls */}
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => slideToCardIndex(internalCardIndex - 1)}
-                aria-label="Previous Weave"
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-stone-200 bg-white text-stone-700 shadow-sm transition-all hover:bg-[#8E3D51] hover:text-white hover:border-[#8E3D51] active:scale-95 cursor-pointer"
-              >
-                <FiChevronLeft size={16} />
-              </button>
-              <button
-                type="button"
-                onClick={() => slideToCardIndex(internalCardIndex + 1)}
-                aria-label="Next Weave"
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-stone-200 bg-white text-stone-700 shadow-sm transition-all hover:bg-[#8E3D51] hover:text-white hover:border-[#8E3D51] active:scale-95 cursor-pointer"
-              >
-                <FiChevronRight size={16} />
-              </button>
-            </div>
-          </div>
+          <p className="max-w-xs text-xs text-stone-600 hidden sm:block">
+            Handcrafted heritage weaves celebrating classic textures, heirloom, and contrasting borders.
+          </p>
         </div>
       </div>
 
-      {/* Snap-to-Card Carousel Container with free drag and mouse wheel scrolling */}
+      {/* Continuous Marquee Rail */}
       <div
-        ref={containerRef}
-        className="relative w-full overflow-hidden cursor-grab active:cursor-grabbing px-3.5 sm:px-6 lg:px-8 py-4 -my-4 touch-pan-x"
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
+        className="relative w-full overflow-hidden py-4 -my-4"
+        onMouseEnter={() => setIsPaused(true)}
+        onMouseLeave={() => setIsPaused(false)}
+        onTouchStart={() => setIsPaused(true)}
+        onTouchEnd={() => setIsPaused(false)}
       >
-        <motion.div
-          style={{ x }}
-          drag="x"
-          dragElastic={0.15}
-          onDragStart={() => setIsDragging(true)}
-          onDragEnd={handleCardDragEnd}
-          className="flex w-max gap-4 sm:gap-6 py-2"
-        >
-          {clonedMaterials.map((mat, idx) => (
+        <div className={`marquee-track gap-4 sm:gap-6 px-3.5 sm:px-6 lg:px-8 ${isPaused ? "paused" : ""}`}>
+          {repeatedMaterials.map((mat, idx) => (
             <div
-              key={`material-card-${mat.id}-${idx}`}
-              ref={idx === 0 ? firstCardRef : null}
-              className="w-60 shrink-0 sm:w-67.5"
+              key={`marquee-card-${mat.id}-${idx}`}
+              className="w-56 shrink-0 sm:w-64"
             >
-              {/* Borderless Card Frame */}
               <Link
                 to={mat.link}
-                className="group relative flex aspect-[3/4.2] w-full flex-col justify-between overflow-hidden rounded-2xl sm:rounded-3xl bg-black p-4 shadow-sm transition-all duration-300 hover:shadow-xl hover:-translate-y-1 active:scale-[0.98]"
+                className="group relative flex aspect-[3/4.2] w-full flex-col justify-between overflow-hidden rounded-2xl sm:rounded-3xl bg-black p-4 shadow-sm transition-all duration-300 hover:shadow-xl hover:-translate-y-1.5 active:scale-[0.98]"
               >
                 {/* Saree Image */}
                 <img
@@ -292,27 +151,7 @@ export default function MaterialCollections() {
               </Link>
             </div>
           ))}
-        </motion.div>
-      </div>
-
-      {/* Pagination Indicator Dots */}
-      <div className="mt-6 flex items-center justify-center gap-2">
-        {materials.map((mat, idx) => {
-          const isActive = activeDotIndex === idx;
-          return (
-            <button
-              key={`dot-${mat.id}-${idx}`}
-              type="button"
-              aria-label={`Go to slide ${idx + 1}: ${mat.name}`}
-              onClick={() => slideToCardIndex(CARD_BUFFER + idx)}
-              className={`h-2 rounded-full transition-all duration-300 ease-out focus:outline-none cursor-pointer ${
-                isActive
-                  ? "w-6 bg-[#8E3D51] shadow-sm"
-                  : "w-2 bg-[#8E3D51]/25 hover:bg-[#8E3D51]/50"
-              }`}
-            />
-          );
-        })}
+        </div>
       </div>
     </section>
   );

@@ -186,15 +186,8 @@ export default function Login({ onLoginSuccess }: LoginProps) {
               RS Fashions
             </h1>
             <p className="mt-2 text-xs text-amber-200/90 uppercase tracking-[0.2em] font-medium">
-              SiCo Gadwal Sarees &bull; Admin Portal
+              SiCo Gadwal Sarees<br />Admin Portal
             </p>
-          </div>
-
-          <div className="relative z-10 flex items-center gap-2.5 text-xs text-stone-400 font-light">
-            <div className="p-1.5 rounded-lg bg-white/5 border border-white/10">
-              <ShieldCheck size={14} className="text-emerald-400" />
-            </div>
-            <span>Encrypted Session &bull; Hyderabad Flagship</span>
           </div>
         </div>
 
@@ -216,7 +209,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-stone-700 mb-1.5">
-                  Corporate Email
+                  Email
                 </label>
                 <div className="group relative flex items-center rounded-xl bg-white/90 border border-stone-200 shadow-xs focus-within:border-[#D4A373] focus-within:ring-2 focus-within:ring-[#D4A373]/20 transition-all duration-200">
                   <Mail size={16} className="absolute left-3.5 text-stone-400 group-focus-within:text-[#8E3D51] transition-colors" />
@@ -232,7 +225,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
 
               <div>
                 <label className="block text-xs font-semibold text-stone-700 mb-1.5">
-                  Security Passkey
+                  Passkey
                 </label>
                 <div className="group relative flex items-center rounded-xl bg-white/90 border border-stone-200 shadow-xs focus-within:border-[#D4A373] focus-within:ring-2 focus-within:ring-[#D4A373]/20 transition-all duration-200">
                   <Lock size={16} className="absolute left-3.5 text-stone-400 group-focus-within:text-[#8E3D51] transition-colors" />
@@ -278,26 +271,10 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                 )}
               </button>
             </form>
-
-            {/* Secure Add Administrator Option */}
-            <div className="mt-4 pt-3 border-t border-stone-200/50 text-center">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsAddAdminOpen(true);
-                  setAddAdminError("");
-                  setAddAdminSuccess("");
-                }}
-                className="inline-flex items-center gap-1.5 text-xs font-medium text-stone-600 hover:text-[#8E3D51] transition-colors"
-              >
-                <UserPlus size={14} className="text-[#D4A373]" />
-                <span>Add Administrator Account</span>
-              </button>
-            </div>
           </div>
 
           <div className="pt-4 border-t border-stone-200/60 flex items-center justify-between text-[11px] text-stone-500">
-            <span>RS Fashions POS v1.0.1</span>
+            <span>RS Fashions v 1.0.0</span>
             <Link
               to="/"
               className="inline-flex items-center gap-1.5 text-stone-600 hover:text-[#8E3D51] transition-colors"
