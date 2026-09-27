@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { motion, useMotionValue, animate } from "framer-motion";
 import { Link } from "react-router-dom";
-import { FiArrowUpRight, FiLayers, FiChevronLeft, FiChevronRight } from "react-icons/fi";
+import { FiArrowUpRight, FiChevronLeft, FiChevronRight } from "react-icons/fi";
+import tempImg1 from "../../assets/images/Home.jpg";
+import tempImg2 from "../../assets/images/Home1.jpg";
+import tempImg3 from "../../assets/images/Home_laptop_1.png";
 
 export interface MaterialItem {
   id: string;
@@ -19,8 +22,7 @@ const materials: MaterialItem[] = [
     accent: "from-rose-500/80 to-amber-500/80",
     borderGlow: "hover:border-rose-400/60",
     link: "/shop?material=SiCo",
-    image:
-      "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=1200&q=85",
+    image: tempImg1,
   },
   {
     id: "gatti-border",
@@ -28,8 +30,7 @@ const materials: MaterialItem[] = [
     accent: "from-emerald-600/80 to-teal-500/80",
     borderGlow: "hover:border-emerald-400/60",
     link: "/shop?search=Gatti+Borders",
-    image:
-      "https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?auto=format&fit=crop&w=1200&q=85",
+    image: tempImg2,
   },
   {
     id: "checks-gadwal",
@@ -37,8 +38,7 @@ const materials: MaterialItem[] = [
     accent: "from-amber-500/80 to-orange-600/80",
     borderGlow: "hover:border-amber-400/60",
     link: "/shop?search=Vintage+Checks",
-    image:
-      "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&w=1200&q=85",
+    image: tempImg3,
   },
   {
     id: "kanchi-border",
@@ -46,8 +46,7 @@ const materials: MaterialItem[] = [
     accent: "from-fuchsia-600/80 to-[#8E3D51]/80",
     borderGlow: "hover:border-fuchsia-400/60",
     link: "/shop?search=Big+Kanchi",
-    image:
-      "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&w=1200&q=85",
+    image: tempImg1,
   },
 ];
 
@@ -192,20 +191,16 @@ export default function MaterialCollections() {
   return (
     <section className="relative overflow-hidden bg-[#FAF7F2] py-10 font-sans select-none sm:py-14">
       {/* Jewel-Tone Background Light */}
-      <div className="pointer-events-none absolute -left-24 top-1/4 h-80 w-80 rounded-full bg-linear-to-br from-[#8E3D51]/15 to-rose-400/10 blur-[120px]" />
-      <div className="pointer-events-none absolute -right-24 bottom-1/4 h-80 w-80 rounded-full bg-linear-to-tl from-[#D47E37]/15 to-amber-300/10 blur-[120px]" />
+      <div className="pointer-events-none absolute -left-24 top-1/4 h-80 w-80 rounded-full bg-gradient-to-br from-[#8E3D51]/15 to-rose-400/10 blur-[120px]" />
+      <div className="pointer-events-none absolute -right-24 bottom-1/4 h-80 w-80 rounded-full bg-gradient-to-tl from-[#D47E37]/15 to-amber-300/10 blur-[120px]" />
 
       <div className="mx-auto max-w-[1600px] px-3.5 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-6 flex flex-col gap-2 pb-5 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.26em] text-[#8E3D51]">
-              <FiLayers size={11} />
-              <span>Signature Weaves</span>
-            </span>
             <h2 className="mt-2 font-serif text-2xl font-light tracking-tight text-[#2B1B17] sm:text-4xl lg:text-5xl">
               Feel the{" "}
-              <span className="bg-linear-to-r from-[#8E3D51] via-[#C94A67] to-[#D47E37] bg-clip-text italic font-normal text-transparent">
+              <span className="bg-gradient-to-r from-[#8E3D51] via-[#C94A67] to-[#D47E37] bg-clip-text italic font-normal text-transparent">
                 weave
               </span>
               .
@@ -214,7 +209,7 @@ export default function MaterialCollections() {
 
           <div className="flex items-center justify-between sm:justify-end gap-4">
             <p className="max-w-xs text-xs text-stone-600 hidden sm:block">
-              Handcrafted heritage weaves celebrating classic textures, heirloom pallus, and contrasting zari borders.
+              Handcrafted heritage weaves celebrating classic textures, heirloom, and contrasting borders.
             </p>
 
             {/* Manual Scroll Arrow Controls */}
@@ -223,7 +218,7 @@ export default function MaterialCollections() {
                 type="button"
                 onClick={() => slideToCardIndex(internalCardIndex - 1)}
                 aria-label="Previous Weave"
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-stone-200 bg-white text-stone-700 shadow-xs transition-all hover:bg-[#8E3D51] hover:text-white hover:border-[#8E3D51] active:scale-95 cursor-pointer"
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-stone-200 bg-white text-stone-700 shadow-sm transition-all hover:bg-[#8E3D51] hover:text-white hover:border-[#8E3D51] active:scale-95 cursor-pointer"
               >
                 <FiChevronLeft size={16} />
               </button>
@@ -231,7 +226,7 @@ export default function MaterialCollections() {
                 type="button"
                 onClick={() => slideToCardIndex(internalCardIndex + 1)}
                 aria-label="Next Weave"
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-stone-200 bg-white text-stone-700 shadow-xs transition-all hover:bg-[#8E3D51] hover:text-white hover:border-[#8E3D51] active:scale-95 cursor-pointer"
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-stone-200 bg-white text-stone-700 shadow-sm transition-all hover:bg-[#8E3D51] hover:text-white hover:border-[#8E3D51] active:scale-95 cursor-pointer"
               >
                 <FiChevronRight size={16} />
               </button>
@@ -272,11 +267,11 @@ export default function MaterialCollections() {
                   alt={mat.name}
                   loading="lazy"
                   draggable={false}
-                  className="absolute inset-0 h-full w-full object-cover object-center saturate-[1.2] contrast-[1.05] transition-transform duration-700 ease-out group-hover:scale-108 pointer-events-none"
+                  className="absolute inset-0 h-full w-full object-cover object-center saturate-[1.2] contrast-[1.05] transition-transform duration-700 ease-out group-hover:scale-105 pointer-events-none"
                 />
 
                 {/* Dark Gradient Overlay */}
-                <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/25 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-transparent" />
 
                 {/* Top Action Row */}
                 <div className="relative z-10 flex items-center justify-end">
@@ -312,7 +307,7 @@ export default function MaterialCollections() {
               onClick={() => slideToCardIndex(CARD_BUFFER + idx)}
               className={`h-2 rounded-full transition-all duration-300 ease-out focus:outline-none cursor-pointer ${
                 isActive
-                  ? "w-6 bg-[#8E3D51] shadow-xs"
+                  ? "w-6 bg-[#8E3D51] shadow-sm"
                   : "w-2 bg-[#8E3D51]/25 hover:bg-[#8E3D51]/50"
               }`}
             />

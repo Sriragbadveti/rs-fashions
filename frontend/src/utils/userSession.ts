@@ -40,6 +40,8 @@ export interface SavedPayment {
   title: string;
   details: string;
   expiry?: string;
+  brand?: string;
+  cardholderName?: string;
   isDefault: boolean;
 }
 

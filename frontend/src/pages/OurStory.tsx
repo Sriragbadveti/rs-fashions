@@ -1,21 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  motion,
-  useScroll,
-  useTransform,
-  useSpring,
-} from "framer-motion";
+import { motion, useScroll, useTransform, useSpring } from "framer-motion";
 import { Link } from "react-router-dom";
-import {
-  FiVolume2,
-  FiVolumeX,
-  FiChevronDown,
-  FiHeart,
-  FiArrowRight,
-  FiHelpCircle,
-} from "react-icons/fi";
+import { FiVolume2, FiVolumeX, FiChevronDown, FiHeart, FiArrowRight, FiHelpCircle } from "react-icons/fi";
 import { Sparkles } from "lucide-react";
-import { ambientSound } from "../utils/ambientAudio";
 
 /* ============================================================================
    STORY CHAPTER ARCHIVES & DATA
@@ -102,12 +89,6 @@ export default function OurStory() {
   });
 
   useEffect(() => {
-    return () => {
-      ambientSound.stop();
-    };
-  }, []);
-
-  useEffect(() => {
     const handleScroll = () => {
       const scrollPos = window.scrollY + window.innerHeight * 0.45;
       for (const chap of chapters) {
@@ -137,11 +118,6 @@ export default function OurStory() {
     }
   };
 
-  const toggleSound = () => {
-    const newState = ambientSound.toggle();
-    setIsPlayingSound(newState);
-  };
-
   return (
     <motion.main
       initial={{ opacity: 0 }}
@@ -151,7 +127,7 @@ export default function OurStory() {
     >
       {/* Precision Scroll Progress Header */}
       <motion.div
-        className="fixed left-0 top-0 z-[100] h-[2.5px] origin-left bg-gradient-to-r from-[#8E3D51] via-[#D4AF37] to-[#FAF7F2]"
+        className="fixed left-0 top-0 z-100 h-[2.5px] origin-left bg-linear-to-r from-[#8E3D51] via-[#D4AF37] to-[#FAF7F2]"
         style={{ scaleX: smoothProgress }}
       />
 
@@ -204,22 +180,6 @@ export default function OurStory() {
         </div>
       </nav>
 
-      {/* Floating Ambient Audio Toggle */}
-      <div className="fixed bottom-6 left-6 z-[80] select-none">
-        <button
-          type="button"
-          onClick={toggleSound}
-          className={`flex items-center gap-2.5 rounded-full border px-4 py-2.5 text-[10px] font-bold uppercase tracking-[0.2em] shadow-2xl backdrop-blur-xl transition-all duration-300 ${
-            isPlayingSound
-              ? "border-[#D4AF37]/60 bg-[#D4AF37]/20 text-[#D4AF37] shadow-[0_0_20px_rgba(212,175,55,0.3)]"
-              : "border-white/10 bg-[#161210]/80 text-stone-400 hover:border-white/30 hover:text-white"
-          }`}
-        >
-          {isPlayingSound ? <FiVolume2 size={14} /> : <FiVolumeX size={14} />}
-          <span>{isPlayingSound ? "Ambient Audio On" : "Loom Soundscape"}</span>
-        </button>
-      </div>
-
       {/* ======================================================================
           HERO SECTION: OUR STORY
       ====================================================================== */}
@@ -238,7 +198,7 @@ export default function OurStory() {
             className="h-full w-full object-cover object-center filter contrast-105 brightness-[0.42]"
           />
           <div className="absolute inset-0 bg-radial from-transparent via-[#100D0B]/70 to-[#100D0B]" />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#100D0B]/80 via-transparent to-[#100D0B]" />
+          <div className="absolute inset-0 bg-linear-to-b from-[#100D0B]/80 via-transparent to-[#100D0B]" />
         </motion.div>
 
         <AmbientGlow color="burgundy" className="-left-40 top-10 h-135 w-135" />
@@ -246,15 +206,7 @@ export default function OurStory() {
 
         <motion.div
           style={{ opacity: heroOpacity }}
-          className="relative z-10 mx-auto w-full max-w-5xl px-6 text-center text-white"
-        >
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#D4AF37]/30 bg-[#161210]/75 px-5 py-2 backdrop-blur-md">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#D4AF37] animate-pulse" />
-            <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.3em] text-[#D4AF37]">
-              RS Fashions Heritage
-            </span>
-          </div>
-
+          className="relative z-10 mx-auto w-full max-w-5xl px-6 text-center text-white">
           <motion.h1
             initial={{ opacity: 0, y: 35 }}
             animate={{ opacity: 1, y: 0 }}
@@ -270,7 +222,7 @@ export default function OurStory() {
             transition={{ delay: 0.45, duration: 1 }}
             className="mx-auto mt-8 max-w-2xl font-serif text-lg sm:text-2xl md:text-3xl font-light italic leading-relaxed text-[#E8D4BE]"
           >
-            I’m Kanneboina Sindhuja, Founder &amp; Proprietor of RS Fashions.
+            I’m Kanneboina Sindhuja, Founder & Proprietor of RS Fashions.
           </motion.p>
 
           <motion.p
@@ -313,7 +265,7 @@ export default function OurStory() {
         <div className="max-w-5xl mx-auto relative z-10">
           <Reveal>
             <div className="flex items-center gap-3 text-[10px] uppercase tracking-[0.3em] text-[#D4AF37] font-semibold">
-              <span>Chapter 01</span>
+              {/* <span>Chapter 01</span> */}
               <span className="h-px w-8 bg-[#D4AF37]/40" />
               <span>A Dream Waiting to Begin</span>
             </div>
@@ -353,7 +305,7 @@ export default function OurStory() {
                     alt="Handloom weaving threads and tradition"
                     className="h-full w-full object-cover filter contrast-105 brightness-90 transition-transform duration-700 group-hover:scale-105"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#100D0B] via-transparent to-transparent opacity-85" />
+                  <div className="absolute inset-0 bg-linear-to-t from-[#100D0B] via-transparent to-transparent opacity-85" />
                   <div className="absolute bottom-6 inset-x-6 text-center">
                     <p className="font-serif italic text-base sm:text-lg text-[#FAF7F2]">
                       "Why not give our dream a chance?"
@@ -381,7 +333,7 @@ export default function OurStory() {
         <div className="max-w-5xl mx-auto relative z-10">
           <Reveal>
             <div className="flex items-center gap-3 text-[10px] uppercase tracking-[0.3em] text-[#D4AF37] font-semibold">
-              <span>Chapter 02</span>
+              {/* <span>Chapter 02</span> */}
               <span className="h-px w-8 bg-[#D4AF37]/40" />
               <span>A Generational Gift</span>
             </div>
@@ -401,7 +353,7 @@ export default function OurStory() {
                     alt="Authentic SiCo Gadwal drape weaving"
                     className="h-full w-full object-cover filter contrast-105 brightness-90 transition-transform duration-700 group-hover:scale-105"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#100D0B] via-transparent to-transparent opacity-85" />
+                  <div className="absolute inset-0 bg-linear-to-t from-[#100D0B] via-transparent to-transparent opacity-85" />
                   <div className="absolute bottom-6 inset-x-6 text-center">
                     <p className="font-serif italic text-base sm:text-lg text-[#FAF7F2]">
                       Silk-Cotton Harmony
@@ -428,7 +380,7 @@ export default function OurStory() {
               </Reveal>
 
               <Reveal delay={0.4}>
-                <div className="rounded-2xl border border-[#D4AF37]/25 bg-gradient-to-br from-[#1C1613] to-[#14100E] p-6 backdrop-blur-md">
+                <div className="rounded-2xl border border-[#D4AF37]/25 bg-linear-to-br from-[#1C1613] to-[#14100E] p-6 backdrop-blur-md">
                   <p className="font-serif italic text-xl sm:text-2xl text-[#FAF7F2] leading-snug">
                     "And that became our purpose."
                   </p>
@@ -453,10 +405,6 @@ export default function OurStory() {
 
         <div className="max-w-4xl mx-auto relative z-10 text-center">
           <Reveal>
-            <div className="inline-flex items-center gap-2 rounded-full border border-[#D4AF37]/30 bg-[#14100E]/80 px-4 py-1.5 text-[10px] uppercase tracking-[0.28em] text-[#D4AF37] font-semibold mb-6">
-              <Sparkles size={12} />
-              <span>More Than Commerce</span>
-            </div>
 
             <h2 className="font-serif text-3xl sm:text-5xl lg:text-6xl font-light tracking-tight text-[#FAF7F2] leading-tight">
               Not Just to Sell Sarees. <br />
@@ -486,7 +434,7 @@ export default function OurStory() {
             <div className="lg:col-span-7 space-y-6 text-sm sm:text-base md:text-lg text-[#D4C8BC] font-light leading-relaxed">
               <Reveal>
                 <div className="flex items-center gap-3 text-[10px] uppercase tracking-[0.3em] text-[#D4AF37] font-semibold mb-4">
-                  <span>Chapter 03</span>
+                  {/* <span>Chapter 03</span> */}
                   <span className="h-px w-8 bg-[#D4AF37]/40" />
                   <span>A Growing Family</span>
                 </div>
@@ -512,7 +460,7 @@ export default function OurStory() {
 
             <div className="lg:col-span-5 relative">
               <Reveal delay={0.2}>
-                <div className="relative aspect-square w-full overflow-hidden rounded-3xl border border-[#D4AF37]/30 bg-gradient-to-br from-[#1C1513] to-[#120E0C] p-8 sm:p-10 flex flex-col justify-center text-center shadow-2xl">
+                <div className="relative aspect-square w-full overflow-hidden rounded-3xl border border-[#D4AF37]/30 bg-linear-to-br from-[#1C1513] to-[#120E0C] p-8 sm:p-10 flex flex-col justify-center text-center shadow-2xl">
                   <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#8E3D51]/30 text-[#E892A2] mb-5 border border-[#8E3D51]/50">
                     <FiHeart size={24} />
                   </div>
@@ -544,7 +492,7 @@ export default function OurStory() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
-            className="relative rounded-3xl border border-[#D4AF37]/25 bg-gradient-to-b from-[#1A1412] via-[#140F0D] to-[#100D0B] p-8 sm:p-14 lg:p-20 shadow-[0_25px_70px_-15px_rgba(0,0,0,0.8)]"
+            className="relative rounded-3xl border border-[#D4AF37]/25 bg-linear-to-b from-[#1A1412] via-[#140F0D] to-[#100D0B] p-8 sm:p-14 lg:p-20 shadow-[0_25px_70px_-15px_rgba(0,0,0,0.8)]"
           >
             {/* Wax Seal Emblem */}
             <div className="flex flex-col items-center text-center mb-10">
@@ -563,7 +511,7 @@ export default function OurStory() {
             {/* Letter Prose */}
             <div className="space-y-6 text-sm sm:text-base md:text-lg text-[#D4C8BC] font-light leading-relaxed font-sans text-center">
               <p className="font-serif text-xl sm:text-2xl md:text-3xl text-[#FAF7F2] italic leading-relaxed">
-                "to bring beautiful Gadwal sarees closer to you, with authenticity, knowledge and a lot of heart."
+                "To bring beautiful Gadwal sarees closer to you, with authenticity, knowledge and a lot of heart."
               </p>
 
               <div className="mx-auto h-px w-24 bg-[#D4AF37]/40 my-8" />
@@ -590,9 +538,6 @@ export default function OurStory() {
 
           {/* Final Call to Action */}
           <div className="mt-20 text-center">
-            <span className="text-[10px] uppercase tracking-[0.3em] text-[#8E3D51] font-semibold">
-              Explore The Heritage
-            </span>
             <h3 className="mt-3 font-serif text-3xl sm:text-5xl font-light text-[#FAF7F2]">
               Discover Authentic SiCo Gadwal Sarees
             </h3>

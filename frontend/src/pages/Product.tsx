@@ -1,26 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import {
-  ArrowRight,
-  Check,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  Copy,
-  FileText,
-  Minus,
-  Package,
-  Plus,
-  Send,
-  Share2,
-  ShieldCheck,
-  ShoppingBag,
-  Star,
-  Truck,
-  X,
-} from "lucide-react";
-
+import {ArrowRight, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, FileText, Minus, Package, Plus, Share2, ShieldCheck, ShoppingBag, Truck, X} from "lucide-react";
 import { type Product as ProductType } from "../data/products";
 import { useCart } from "../context/CartContext";
 import { StoreService } from "../services/supabase";
@@ -418,7 +399,7 @@ export default function Product() {
                     key={idx}
                     type="button"
                     onClick={() => setSelectedImage(idx)}
-                    className={`relative aspect-3/4 w-full overflow-hidden rounded-xl border-2 transition-all ${
+                    className={`relative aspect-3/4 w-full overflow-hidden rounded- border-2 transition-all ${
                       selectedImage === idx
                         ? "border-[#8E3D51] shadow-sm scale-102"
                         : "border-transparent opacity-70 hover:opacity-100"
@@ -462,7 +443,7 @@ export default function Product() {
                   </span>
                 </div>
               </div>
-            </div>
+            </div>  
 
             {/* Mobile Swipe Gallery */}
             <div className="relative sm:hidden -mx-4">
@@ -517,7 +498,7 @@ export default function Product() {
               </h1>
 
               {product.borderColor && (
-                <div className="mt-3 inline-flex items-center gap-2 rounded-xl border border-amber-200/80 bg-gradient-to-r from-amber-50 to-orange-50/40 px-3.5 py-1.5 shadow-2xs">
+                <div className="mt-3 inline-flex items-center gap-2 rounded-xl border border-amber-200/80 bg-linear-to-r from-amber-50 to-orange-50/40 px-3.5 py-1.5 shadow-2xs">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">
                     Border Shade:
                   </span>
@@ -607,7 +588,7 @@ export default function Product() {
                   </div>
                 )}
                 <div className="flex items-center justify-between font-medium">
-                  <span>Standard Length: 5.5m Saree + 0.8m Unstitched Blouse</span>
+                  <span>Standard Length Saree</span>
                   <span className="text-emerald-700 font-semibold flex items-center gap-1">
                     <Check size={13} /> Fall &amp; Pico Ready
                   </span>

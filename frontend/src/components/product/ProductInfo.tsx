@@ -41,10 +41,7 @@ function ProductInfo({ product, onAddToCart, onBuyNow }: ProductInfoProps) {
       )
     : 0;
 
-  const promoCode = "RSFASHION10";
-
   const handleCopyCoupon = () => {
-    navigator.clipboard?.writeText(promoCode);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -224,9 +221,6 @@ function ProductInfo({ product, onAddToCart, onBuyNow }: ProductInfoProps) {
           <span className="text-[9px] font-semibold uppercase tracking-[0.24em] text-[#8E3D51]">
             Studio Privilege
           </span>
-          <p className="font-mono text-sm font-semibold tracking-wider text-[#2A2421] mt-0.5">
-            {promoCode}
-          </p>
           <p className="text-[10px] text-[#8C7A6B]">
             Flat 10% savings on your bridal/festive order
           </p>

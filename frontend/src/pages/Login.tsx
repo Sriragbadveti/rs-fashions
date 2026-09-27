@@ -166,11 +166,11 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-[#F8F6F2] flex items-center justify-center p-6 md:p-12 select-none font-sans">
       {/* Dynamic Ambient Background Blobs */}
-      <div className="absolute top-[-10%] left-[-5%] w-[520px] h-[520px] rounded-full bg-linear-to-br from-[#F4E3D7] to-[#E9D5C4] blur-3xl opacity-70 pointer-events-none animate-pulse" />
-      <div className="absolute bottom-[-10%] right-[-5%] w-[580px] h-[580px] rounded-full bg-linear-to-tl from-[#E2D4E0] to-[#F7EFE9] blur-3xl opacity-60 pointer-events-none" />
+      <div className="absolute top-[-10%] left-[-5%] w-130 h-130 rounded-full bg-linear-to-br from-[#F4E3D7] to-[#E9D5C4] blur-3xl opacity-70 pointer-events-none animate-pulse" />
+      <div className="absolute bottom-[-10%] right-[-5%] w-145 h-145 rounded-full bg-linear-to-tl from-[#E2D4E0] to-[#F7EFE9] blur-3xl opacity-60 pointer-events-none" />
 
       {/* Main Glassmorphic Container */}
-      <div className="glass-panel relative z-10 w-full max-w-4xl min-h-[560px] rounded-3xl overflow-hidden flex flex-col md:flex-row shadow-2xl border border-white/80">
+      <div className="glass-panel relative z-10 w-full max-w-4xl min-h-140 rounded-3xl overflow-hidden flex flex-col md:flex-row shadow-2xl border border-white/80">
         {/* Left Brand Panel */}
         <div className="relative md:w-5/12 bg-linear-to-br from-[#38152B] via-[#2A0E20] to-[#1E0916] text-white p-8 md:p-10 flex flex-col justify-between overflow-hidden">
           <div

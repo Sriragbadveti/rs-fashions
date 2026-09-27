@@ -439,7 +439,15 @@ export default function Shop() {
     if (search.trim()) {
       const query = search.toLowerCase();
       result = result.filter((product: Product) =>
-        [product.name, product.category, product.material, product.description]
+        [
+          product.name,
+          product.category,
+          product.material,
+          product.description,
+          ...(Array.isArray(product.colors) ? product.colors : []),
+          (product as any).color || "",
+          (product as any).pattern || "",
+        ]
           .join(" ")
           .toLowerCase()
           .includes(query)

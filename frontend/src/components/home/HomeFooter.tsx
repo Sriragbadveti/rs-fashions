@@ -112,7 +112,7 @@ function HomeFooter() {
                     Need Help Choosing?
                   </span>
                   <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15 text-white">
-                    <FiHeart size={13} className="fill-current text-[#F3C68F]" />
+                    <FiHeart size={13} className="fill-red-500 text-[#D8CBC3]" />
                   </span>
                 </div>
 
@@ -228,7 +228,7 @@ function HomeFooter() {
 
       {/* WHATSAPP OPTIONS MODAL */}
       {whatsappModalOpen && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs font-sans">
+        <div className="fixed inset-0 z-120 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs font-sans">
           <div className="relative w-full max-w-sm overflow-hidden rounded-3xl bg-white p-6 shadow-2xl border border-stone-200">
             <button
               type="button"

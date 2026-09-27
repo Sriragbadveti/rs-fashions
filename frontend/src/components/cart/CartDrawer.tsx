@@ -148,7 +148,7 @@ function CartDrawer({ open, onClose }: CartDrawerProps) {
                           onClose();
                           navigate(`/product/${item.product.id}`);
                         }}
-                        className="h-24 w-[74px] shrink-0 overflow-hidden rounded-xl bg-[#EFEAE2] border border-black/5"
+                        className="h-24 w-18.5 shrink-0 overflow-hidden rounded-xl bg-[#EFEAE2] border border-black/5"
                       >
                         <img
                           src={item.product.images[0]}
@@ -188,7 +188,7 @@ function CartDrawer({ open, onClose }: CartDrawerProps) {
                         {/* Attribute Badges */}
                         <div className="mt-1.5 flex flex-wrap gap-1 text-[9.5px] text-[#756A60]">
                           {item.selectedColor && (
-                            <span className="rounded bg-black/[0.04] px-1.5 py-0.5">
+                            <span className="rounded bg-black/4 px-1.5 py-0.5">
                               {item.selectedColor}
                             </span>
                           )}

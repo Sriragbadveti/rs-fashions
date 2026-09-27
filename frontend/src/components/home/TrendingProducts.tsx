@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { FiArrowUpRight, FiCompass } from "react-icons/fi";
-import { Sparkles, Package } from "lucide-react";
+import { Sparkles, Package, StarIcon } from "lucide-react";
 import { API_BASE } from "../../config/api";
 import type { Product } from "../../types/inventory";
 import { handleSareeImageError } from "../../utils/imageConverter";
@@ -157,9 +157,6 @@ export default function TrendingProducts() {
 
       {/* Marquee Track Container with Fade Edges */}
       <div className="group/track relative w-full overflow-hidden">
-        {/* Soft edge gradients */}
-        <div className="pointer-events-none absolute inset-y-0 left-0 z-20 w-16 bg-linear-to-r from-[#FAF7F2] to-transparent sm:w-28" />
-        <div className="pointer-events-none absolute inset-y-0 right-0 z-20 w-16 bg-linear-to-l from-[#FAF7F2] to-transparent sm:w-28" />
 
         {/* Moving Track */}
         <motion.div
@@ -215,7 +212,7 @@ export default function TrendingProducts() {
                       />
                     )}
 
-                    {/* Ambient Dark Gradient Layer */}
+                    {/* Ambient Dark linear Layer */}
                     <div className="absolute inset-0 bg-linear-to-t from-stone-950/75 via-stone-950/20 to-black/10 opacity-70 transition-opacity duration-300 group-hover:opacity-85" />
                   </Link>
 
@@ -228,15 +225,15 @@ export default function TrendingProducts() {
                           (t) => String(t).trim().toLowerCase() === "limited_edition"
                         ));
                     return isLimited ? (
-                      <div className="absolute left-3.5 top-3.5 z-10 flex items-center gap-1.5 rounded-full bg-gradient-to-r from-purple-950 via-purple-900 to-amber-700 px-3 py-1 shadow-md backdrop-blur-xs border border-amber-300/40">
+                      <div className="absolute left-3.5 top-3.5 z-10 flex items-center gap-1.5 rounded-full bg-linear-to-r from-purple-950 via-purple-900 to-amber-700 px-3 py-1 shadow-md backdrop-blur-xs border border-amber-300/40">
                         <Sparkles size={11} className="text-amber-300 animate-pulse" />
                         <span className="text-[9.5px] font-bold uppercase tracking-wider text-amber-100">
                           ✨ Limited Edition
                         </span>
                       </div>
                     ) : (
-                      <div className="absolute left-3.5 top-3.5 z-10 flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 px-3 py-1 shadow-md backdrop-blur-xs">
-                        <Sparkles size={11} className="text-white animate-pulse" />
+                      <div className="absolute left-3.5 top-3.5 z-10 flex items-center gap-1.5 rounded-full bg-linear-to-r from-amber-600 via-amber-500 to-amber-600 px-3 py-1 shadow-md backdrop-blur-xs">
+                        <StarIcon size={11} className="text-white animate-pulse" />
                         <span className="text-[9.5px] font-bold uppercase tracking-wider text-white">
                           Special Offer
                         </span>

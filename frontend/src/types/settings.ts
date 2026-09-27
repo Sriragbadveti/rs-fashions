@@ -30,9 +30,9 @@ export interface ShowroomSettings {
 }
 
 export const DEFAULT_SETTINGS: ShowroomSettings = {
-  storeName: "RS Fashions",
+  storeName: "Fashions",
   gstin: "36AAAAA0000A1Z5",
-  storeAddress: "Plot No. 42, Jubilee Hills Road No. 36, Hyderabad, Telangana 500033",
+  storeAddress: "Hyderabad, Telangana 500033",
   storePhone: "+91 98765 43210",
   storeEmail: "concierge@rsfashions.in",
   invoicePrefix: "RSF/",

@@ -1,97 +1,140 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { FiArrowDownRight } from "react-icons/fi";
-import { StoreService, type CMSContent } from "../../services/supabase";
+import homePortraitImg from "../../assets/images/Home.jpg";
+import homeLandscapeImg from "../../assets/images/Home_laptop_1.png";
+
+// Tip: You can either import an image from "../../assets/..." like above,
+// or type a relative path string from src/assets (e.g., "../assets/images/Home.jpg")
+const localAssets = import.meta.glob<string>("../../assets/**/*", {
+  eager: true,
+  import: "default",
+});
+
+function resolveAssetSrc(src: string): string {
+  if (!src) return "";
+  if (src.startsWith("http") || src.startsWith("data:") || src.startsWith("/@fs/") || src.startsWith("/src/")) {
+    return src;
+  }
+  const normalized = src.replace(/^(\.\.\/)+/, "../../");
+  if (localAssets[normalized]) {
+    return localAssets[normalized];
+  }
+  const matchKey = Object.keys(localAssets).find((key) =>
+    key.toLowerCase().endsWith(src.replace(/^(\.\.?\/)+/, "").toLowerCase())
+  );
+  return matchKey ? localAssets[matchKey] : src;
+}
+
+export const heroBanner = {
+  title: "moment.",
+  // 1. Portrait Image -> Shown on Mobile (Android/iPhone) & Portrait iPad/Tablets
+  portraitImageSrc: homePortraitImg, // e.g., "../assets/images/Home.jpg"
+  // 2. Landscape Image -> Shown on Laptops, Monitors & Landscape Large Screens
+  landscapeImageSrc: homeLandscapeImg, // Replace with your 16:9 landscape banner image (e.g., "../assets/images/HomeLandscape.jpg")
+  // Optional Top-Left Brand Logo
+  logoSrc: "", // e.g., "../assets/logo/logo1.png"
+  link: "/shop",
+};
 
 export default function Hero() {
-  const [cms, setCms] = useState<CMSContent["heroBanner"]>({
-    title: "moment.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=1600&q=90",
-    link: "/shop",
-  });
-
-  useEffect(() => {
-    async function loadCMS() {
-      try {
-        const data = await StoreService.getCMSContent();
-        if (data?.heroBanner) {
-          setCms(data.heroBanner);
-        }
-      } catch (err) {
-        console.warn("Failed to load CMS content for Hero:", err);
-      }
-    }
-    loadCMS();
-  }, []);
+  const resolvedPortraitSrc = resolveAssetSrc(heroBanner.portraitImageSrc);
+  const resolvedLandscapeSrc = resolveAssetSrc(
+    heroBanner.landscapeImageSrc || heroBanner.portraitImageSrc
+  );
+  const resolvedLogoSrc = resolveAssetSrc(heroBanner.logoSrc);
 
   return (
-    <section className="relative min-h-[calc(100dvh-76px)] overflow-hidden px-3.5 pb-4 pt-3 sm:px-6 sm:pb-6 sm:pt-4">
-      <div className="relative mx-auto flex min-h-[calc(100dvh-96px)] max-w-[1600px] overflow-hidden rounded-3xl sm:rounded-[2.5rem] bg-[#1E1614] shadow-md">
-        {/* Background image */}
-        <motion.img
-          key={cms.imageUrl}
+    <section className="relative overflow-hidden px-3.5 pb-4 pt-1 sm:px-6 sm:pb-6 sm:pt-1">
+      <motion.div
+        initial={{ opacity: 0, y: 18, scale: 0.985 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+        className="relative mx-auto flex h-[calc(100dvh-96px)] min-h-130 max-w-[1600px] overflow-hidden rounded-3xl sm:rounded-[2.25rem] bg-[#1A1513] shadow-[0_20px_50px_rgba(26,21,19,0.14)]"
+      >
+        {/* Single Responsive Hero Image (Portrait on Mobile/Tablet, Landscape on Laptop/Desktop) */}
+        <motion.picture
           initial={{ scale: 1.08 }}
           animate={{ scale: 1 }}
-          transition={{ duration: 1.6, ease: [0.22, 1, 0.36, 1] }}
-          src={cms.imageUrl}
-          alt="RS Fashions SiCo collection"
-          className="absolute inset-0 h-full w-full object-cover object-center saturate-[1.1]"
-        />
+          transition={{ duration: 1.6, ease: [0.16, 1, 0.3, 1] }}
+          className="absolute inset-0 block h-full w-full"
+        >
+          <source
+            media="(min-width: 1920px), (min-width: 1080px) and (orientation: landscape)"
+            srcSet={resolvedLandscapeSrc}
+          />
+          <img
+            src={resolvedPortraitSrc}
+            alt="RS Fashions SiCo collection"
+            className="h-full w-full object-cover object-top lg:object-[center_18%]"
+          />
+        </motion.picture>
 
-        {/* Cinematic Vignette */}
-        <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/35 to-black/15" />
-        <div className="absolute -left-20 top-0 h-96 w-96 rounded-full bg-[#8E3D51]/20 blur-[130px]" />
+        {/* Clean Bottom Scrim for Text Legibility */}
+        <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-black/80 via-black/20 to-transparent" />
 
-        {/* Hero Content */}
-        <div className="relative z-10 flex min-h-full w-full flex-col justify-between p-6 sm:p-10 lg:p-14">
+        {/* Hero Content — Clean Bottom-Aligned Editorial Layout */}
+        <div className="relative z-10 flex h-full w-full flex-col justify-between p-6 sm:p-10 lg:p-14">
+          {/* Optional Top-Left Brand Logo (only renders if logoSrc is set) */}
           <div>
+            {resolvedLogoSrc && (
+              <img
+                src={resolvedLogoSrc}
+                alt="RS Fashions Logo"
+                className="h-15 sm:h-14 w-auto object-contain"
+              />
+            )}
           </div>
 
-          <div className="flex w-full items-end justify-between gap-4">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.7 }}
-              className="max-w-xl"
-            >
-              <h1 className="font-serif text-3xl font-light tracking-tight text-white sm:text-5xl lg:text-6xl leading-[1.1]">
+          {/* Bottom Row: Left-Aligned Typography & Right-Aligned Action Button */}
+          <div className="flex w-full items-end justify-between gap-6">
+            <div className="max-w-xl overflow-hidden">
+              <motion.h1
+                initial={{ opacity: 0, y: 28 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.25, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                className="font-serif text-3xl font-light tracking-tight text-[#F5E6C8]  sm:text-5xl lg:text-6xl leading-[1.08]"
+              >
                 Draped in timeless{" "}
-                <span className="italic font-normal bg-linear-to-r from-rose-200 via-amber-200 to-amber-100 bg-clip-text text-transparent">
+                <span className="italic font-normal text-[#F5E6C8]">
                   grace
                 </span>
                 .
-              </h1>
-              <p className="mt-2 text-xs sm:text-sm text-stone-200/90 font-light max-w-md">
-                Direct handloom dispatches of authentic SiCo Gadwal sarees from Telangana pit-looms.
-              </p>
-            </motion.div>
+              </motion.h1>
+
+              <motion.p
+                initial={{ opacity: 0, y: 18 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                className="mt-2.5 text-xs sm:text-sm lg:text-base text-white/85 font-light max-w-md leading-relaxed"
+              >
+                Direct handloom dispatches of authentic SiCo Gadwal sarees.
+              </motion.p>
+            </div>
 
             <motion.div
-              initial={{ opacity: 0, scale: 0.85 }}
+              initial={{ opacity: 0, scale: 0.88 }}
               animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.5, duration: 0.5 }}
+              transition={{ delay: 0.5, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
             >
               <Link
-                to={cms.link || "/shop"}
-                className="group flex h-12 w-12 sm:h-14 sm:w-14 shrink-0 items-center justify-center rounded-full bg-[#FAF7F2] text-[#2A2421] shadow-xl transition-all duration-300 hover:scale-110 hover:bg-white active:scale-95"
+                to={heroBanner.link || "/shop"}
+                className="group flex h-12 w-auto min-w-12 sm:h-14 sm:min-w-14 px-4 sm:px-5 shrink-0 items-center justify-center rounded-full bg-[#FAF7F2] text-[#2A2421] shadow-lg transition-all duration-300 hover:scale-105 hover:bg-white active:scale-95 gap-2"
                 aria-label="Shop the collection"
               >
+                <span className="text-base sm:text-lg font-medium tracking-tight">
+                  Explore
+                </span>
                 <FiArrowDownRight
-                  size={24}
-                  className="transition-transform duration-300 group-hover:translate-x-0.5 group-hover:translate-y-0.5 text-[#8E3D51]"
+                  size={22}
+                  className="transition-transform duration-300 group-hover:translate-x-0.5 group-hover:translate-y-0.5 text-[#2A2421]"
                 />
               </Link>
             </motion.div>
           </div>
         </div>
-
-        {/* Vertical watermark */}
-        <div className="absolute bottom-8 right-6 hidden origin-right rotate-90 text-[9px] uppercase tracking-[0.35em] text-white/40 sm:block pointer-events-none">
-          RS FASHIONS &middot; TELANGANA LOOMS
-        </div>
-      </div>
+      </motion.div>
     </section>
   );
 }

@@ -36,7 +36,7 @@ import {
 
 import type { CartItem, CompletedSale, Product, CustomerProfile } from "../types/inventory";
 import { API_BASE } from "../config/api";
-import logo from "../assets/logo/logo1.png";
+import logo from "../assets/logo/logo1.jpeg";
 import { sound } from "../types/soundEngine";
 
 import {
@@ -1869,7 +1869,7 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({
               {showroom.storeName}
             </h1>
             <p className="text-xs font-light text-stone-700 mt-0.5">
-              SiCo Gadwal Sarees &bull; Pure Handlooms &bull; Heritage Silks
+              &bull; SiCo Gadwal Sarees &bull;
             </p>
             <p className="mt-1 max-w-md text-[10px] text-stone-600">
               {showroom.storeAddress} | {showroom.storePhone}

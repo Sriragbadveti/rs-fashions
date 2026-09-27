@@ -435,11 +435,11 @@ export default function Auth() {
             <ul className="relative z-10 mt-8 space-y-2.5 text-xs text-[#F7F4EE]/85">
               <li className="flex items-center gap-2">
                 <FiCheckCircle className="shrink-0 text-[#D4A373]" size={14} />
-                Handpicked weaves, sourced with care
+                SiCo Gadwal Sarees
               </li>
               <li className="flex items-center gap-2">
                 <FiCheckCircle className="shrink-0 text-[#D4A373]" size={14} />
-                Safe checkout, easy returns
+                Safe checkout
               </li>
               <li className="flex items-center gap-2">
                 <FiCheckCircle className="shrink-0 text-[#D4A373]" size={14} />

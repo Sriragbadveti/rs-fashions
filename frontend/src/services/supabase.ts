@@ -84,28 +84,6 @@ export interface Coupon {
   expiresAt: string;
 }
 
-export interface CMSContent {
-  heroBanner: {
-    title: string;
-    imageUrl: string;
-    link: string;
-  };
-  festiveBanner: {
-    title: string;
-    subtitle: string;
-    badge: string;
-    imageUrl: string;
-    link: string;
-  };
-  storyBanner: {
-    title: string;
-    subtitle: string;
-    badge: string;
-    imageUrl: string;
-    link: string;
-  };
-}
-
 // Local Storage Keys for offline / caching
 const LOCAL_STORAGE_PRODUCTS = "rs_fashions_products";
 const LOCAL_STORAGE_CATEGORIES = "rs_fashions_categories";
@@ -115,30 +93,8 @@ const LOCAL_STORAGE_TRACKED_ORDERS = "rs_fashions_tracked_orders";
 const LOCAL_STORAGE_SALES = "rs_fashions_sales";
 const LOCAL_STORAGE_ORDERS = "rs_fashions_orders";
 const LOCAL_STORAGE_COUPONS = "rs_fashions_coupons";
-const LOCAL_STORAGE_CMS = "rs_fashions_cms";
 const initialCoupons: Coupon[] = [];
 const initialOrders: StoreOrder[] = [];
-const initialCMS: CMSContent = {
-  heroBanner: {
-    title: "Timeless Drapes for Every Generation",
-    imageUrl: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1600&auto=format&fit=crop",
-    link: "/shop",
-  },
-  festiveBanner: {
-    title: "Festive Weaves 2026",
-    subtitle: "Limited festive edition SiCo Gadwal sarees with certified zari.",
-    badge: "Exclusive Collection",
-    imageUrl: "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?q=80&w=1200&auto=format&fit=crop",
-    link: "/shop?category=SiCo+Gadwal+Sarees",
-  },
-  storyBanner: {
-    title: "Crafted for Every Story",
-    subtitle: "Preserving authentic Indian weaving traditions for three generations.",
-    badge: "Artisanal Heritage",
-    imageUrl: "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?q=80&w=1200&auto=format&fit=crop",
-    link: "/our-story",
-  },
-};
 
 // ==========================================
 // UNIFIED DATA SERVICE (Supabase + Fallback)
@@ -1490,76 +1446,7 @@ export const StoreService = {
     return true;
   },
 
-  // 4. CMS & WEBSITE IMAGES
-  async getCMSContent(): Promise<CMSContent> {
-    if (supabase) {
-      const { data, error } = await supabase.from("cms_content").select("*");
-      if (!error && data && data.length > 0) {
-        const hero = data.find((d: any) => d.section_key === "hero_banner");
-        const festive = data.find((d: any) => d.section_key === "festive_banner");
-        const story = data.find((d: any) => d.section_key === "story_banner");
-        return {
-          heroBanner: hero ? {
-            title: hero.title,
-            imageUrl: hero.image_url,
-            link: hero.link || "/shop",
-          } : initialCMS.heroBanner,
-          festiveBanner: festive ? {
-            title: festive.title,
-            subtitle: festive.subtitle,
-            badge: festive.badge,
-            imageUrl: festive.image_url,
-            link: festive.link || "/shop?category=Festive+Wear",
-          } : initialCMS.festiveBanner,
-          storyBanner: story ? {
-            title: story.title,
-            subtitle: story.subtitle,
-            badge: story.badge,
-            imageUrl: story.image_url,
-            link: story.link || "/our-story",
-          } : initialCMS.storyBanner,
-        };
-      }
-    }
-
-    const saved = localStorage.getItem(LOCAL_STORAGE_CMS);
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        // ignore
-      }
-    }
-    return initialCMS;
-  },
-
-  async updateCMSSection(section: keyof CMSContent, data: CMSContent[keyof CMSContent]): Promise<CMSContent> {
-    const current = await this.getCMSContent();
-    const updated = {
-      ...current,
-      [section]: data,
-    };
-
-    if (supabase) {
-      const sectionKey = section === "heroBanner" ? "hero_banner" : section === "festiveBanner" ? "festive_banner" : "story_banner";
-      try {
-        await supabase.from("cms_content").upsert({
-          section_key: sectionKey,
-          title: data.title,
-          image_url: data.imageUrl,
-          link: data.link,
-          updated_at: new Date().toISOString(),
-        });
-      } catch (err) {
-        console.warn("Supabase CMS update error:", err);
-      }
-    }
-
-    localStorage.setItem(LOCAL_STORAGE_CMS, JSON.stringify(updated));
-    return updated;
-  },
-
-  // 5. HYBRID TEMPORARY INVENTORY LOCKING (10-Minute Cart Hold)
+  // 4. HYBRID TEMPORARY INVENTORY LOCKING (10-Minute Cart Hold)
   getSessionId(): string {
     let sid = localStorage.getItem("rs_session_id");
     if (!sid) {
