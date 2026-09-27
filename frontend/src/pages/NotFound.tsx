@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -21,7 +21,7 @@ export default function NotFound() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAF7F2] font-sans text-[#2A2421] flex items-center justify-center px-4 py-16 sm:px-6 lg:px-8 select-none">
+    <div className="min-h-screen bg-linear-to-b from-[#F7EBEC] via-[#F4E7E4] to-[#E9C9C3]/45 font-sans text-[#2A2421] flex items-center justify-center px-4 py-16 sm:px-6 lg:px-8 select-none">
       <div className="max-w-2xl w-full text-center">
         {/* Editorial Pill */}
         <motion.div

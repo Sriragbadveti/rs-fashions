@@ -411,7 +411,7 @@ export default function Product() {
               </div>
 
               {/* Big Stage Image */}
-              <div className="relative aspect-3/4 w-full overflow-hidden rounded-3xl bg-[#EDE8E0] shadow-sm">
+              <div className="relative aspect-3/4 w-full overflow-hidden rounded-3xl bg-[#E9C9C3]/55 shadow-sm">
                 <img
                   src={enrichedImages[selectedImage] || enrichedImages[0]}
                   alt={product.name}
@@ -457,7 +457,7 @@ export default function Product() {
                 className="flex w-full snap-x snap-mandatory overflow-x-auto scrollbar-none"
               >
                 {enrichedImages.map((img: string, idx: number) => (
-                  <div key={idx} className="relative aspect-3/4 w-full shrink-0 snap-center bg-[#EDE8E0]">
+                  <div key={idx} className="relative aspect-3/4 w-full shrink-0 snap-center bg-[#E9C9C3]/55">
                     <img src={img} alt={`View ${idx + 1}`} className="h-full w-full object-cover" />
                   </div>
                 ))}
@@ -545,7 +545,7 @@ export default function Product() {
                         onClick={() => handleColorSelect(variant)}
                         className={`flex items-center gap-2.5 rounded-xl border p-2 text-left transition-all ${
                           isSelected
-                            ? "border-[#8E3D51] bg-[#FAF4ED] ring-2 ring-[#8E3D51]/20 shadow-xs"
+                            ? "border-[#8E3D51] bg-[#F4E7E4] ring-2 ring-[#8E3D51]/20 shadow-xs"
                             : "border-stone-200 bg-white hover:border-stone-300"
                         }`}
                       >
@@ -577,7 +577,7 @@ export default function Product() {
               </div>
 
               {/* Drape Specifications */}
-              <div className="mt-5 rounded-2xl border border-stone-200 bg-stone-50/70 p-4 text-xs text-stone-700 space-y-2.5">
+              <div className="mt-5 rounded-2xl border border-[#CBC0D3]/50 bg-[#F4E7E4]/80 p-4 text-xs text-stone-700 space-y-2.5">
                 {product.borderColor && (
                   <div className="flex items-center justify-between border-b border-stone-200/60 pb-2.5">
                     <span className="text-stone-500 font-medium">Border &amp; Contrast Zari:</span>

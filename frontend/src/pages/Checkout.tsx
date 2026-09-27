@@ -817,7 +817,7 @@ function Checkout() {
   ========================================================== */
   if (step === "success" && completedOrder) {
     return (
-      <main className="min-h-screen bg-[#FAF7F2] font-sans px-3.5 pb-20 pt-8 sm:px-6 md:px-8 text-[#2A2421] select-none print:bg-white print:p-0">
+      <main className="min-h-screen bg-linear-to-b from-[#F7EBEC] via-[#F4E7E4] to-[#E9C9C3]/40 font-sans px-3.5 pb-20 pt-8 sm:px-6 md:px-8 text-[#2A2421] select-none print:bg-white print:p-0">
         <div className="mx-auto max-w-xl">
           {/* Header Controls (Hidden during actual print) */}
           <div className="text-center mb-6 print:hidden">
@@ -913,7 +913,7 @@ function Checkout() {
                           <img
                             src={item.image}
                             alt=""
-                            className="h-10 w-8 rounded object-cover bg-[#FAF7F2] border border-black/5 shrink-0"
+                            className="h-10 w-8 rounded object-cover bg-[#F4E7E4] border border-black/5 shrink-0"
                           />
                         )}
                         <div className="min-w-0">
@@ -973,7 +973,7 @@ function Checkout() {
           <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3 print:hidden">
             <Link
               to="/"
-              className="w-full sm:w-auto rounded-full bg-[#2A2421] px-7 py-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#FAF7F2] transition-colors hover:bg-[#8E3D51] text-center"
+              className="w-full sm:w-auto rounded-full bg-[#2A2421] px-7 py-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#F7EBEC] transition-colors hover:bg-[#8E3D51] text-center"
             >
               Return to Boutique
             </Link>
@@ -981,7 +981,7 @@ function Checkout() {
             <button
               type="button"
               onClick={() => window.print()}
-              className="flex w-full sm:w-auto items-center justify-center gap-2 rounded-full border border-black/15 bg-white px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#2A2421] hover:bg-[#FAF7F2] shadow-sm active:scale-95"
+              className="flex w-full sm:w-auto items-center justify-center gap-2 rounded-full border border-black/15 bg-white px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#2A2421] hover:bg-[#F7EBEC] shadow-sm active:scale-95"
             >
               <FiPrinter size={13} className="text-[#8E3D51]" />
               <span>Print Official Invoice</span>
@@ -997,7 +997,7 @@ function Checkout() {
   ========================================================== */
   if (!currentUser) {
     return (
-      <main className="min-h-screen bg-[#FAF7F2] font-sans px-5 pb-20 pt-20 text-[#2A2421] select-none flex items-center justify-center">
+      <main className="min-h-screen bg-linear-to-b from-[#F7EBEC] via-[#F4E7E4] to-[#E9C9C3]/40 font-sans px-5 pb-20 pt-20 text-[#2A2421] select-none flex items-center justify-center">
         <div className="mx-auto max-w-md w-full rounded-3xl bg-white p-8 shadow-xl border border-black/8 text-center space-y-5">
           <div className="flex h-16 w-16 mx-auto items-center justify-center rounded-2xl bg-[#8E3D51]/10 text-[#8E3D51]">
             <FiLock size={28} />
@@ -1040,7 +1040,7 @@ function Checkout() {
   ========================================================== */
   if (items.length === 0) {
     return (
-      <main className="min-h-screen bg-[#FAF7F2] font-sans px-5 pb-20 pt-20 text-[#2A2421] select-none">
+      <main className="min-h-screen bg-linear-to-b from-[#F7EBEC] via-[#F4E7E4] to-[#E9C9C3]/40 font-sans px-5 pb-20 pt-20 text-[#2A2421] select-none">
         <div className="mx-auto flex min-h-[55vh] max-w-lg flex-col items-center justify-center text-center">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white border border-black/10 shadow-sm">
             <FiShoppingBag size={22} className="text-[#8E3D51]" />
@@ -1056,7 +1056,7 @@ function Checkout() {
 
           <Link
             to="/shop"
-            className="mt-6 rounded-full bg-[#2A2421] px-7 py-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#FAF7F2] transition-colors hover:bg-[#8E3D51]"
+            className="mt-6 rounded-full bg-[#2A2421] px-7 py-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#F7EBEC] transition-colors hover:bg-[#8E3D51]"
           >
             Explore Sarees
           </Link>
@@ -1069,7 +1069,7 @@ function Checkout() {
       3. MAIN CHECKOUT FORM WORKFLOW
   ========================================================== */
   return (
-    <main className="min-h-screen bg-[#FAF7F2] font-sans text-[#2A2421] select-none px-3.5 pb-20 pt-6 sm:px-6 md:px-8 lg:px-12">
+    <main className="min-h-screen bg-linear-to-b from-[#F7EBEC] via-[#F4E7E4] to-[#E9C9C3]/40 font-sans text-[#2A2421] select-none px-3.5 pb-20 pt-6 sm:px-6 md:px-8 lg:px-12">
       <div className="mx-auto max-w-325">
         {/* Navigation Bar */}
         <div className="mb-5 flex items-center justify-between border-b border-black/6 pb-3.5">

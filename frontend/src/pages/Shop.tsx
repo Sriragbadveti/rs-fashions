@@ -544,7 +544,7 @@ export default function Shop() {
   };
 
   return (
-    <main className="min-h-screen bg-[#FAF7F2] px-3.5 pb-16 pt-5 sm:px-6 lg:px-12 font-sans select-none text-[#2A2421]">
+    <main className="min-h-screen bg-linear-to-b from-[#F7EBEC] via-[#F4E7E4] to-[#E9C9C3]/40 px-3.5 pb-16 pt-5 sm:px-6 lg:px-12 font-sans select-none text-[#2A2421]">
       <div className="mx-auto max-w-[1600px]">
         {/* Top Search & Filter Bar */}
         <div className="relative z-30 mb-4">
@@ -585,9 +585,9 @@ export default function Shop() {
 
                 <AnimatePresence>
                   {showSort && (
-                    <motion.div initial={{ opacity: 0, y: 6, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 6, scale: 0.97 }} transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }} style={{ transform: "translate3d(0, 0, 0)" }} className="absolute right-0 top-[calc(100%+8px)] z-50 w-48 rounded-2xl border border-stone-200 bg-[#FAF7F2] p-1.5 shadow-xl will-change-transform">
+                    <motion.div initial={{ opacity: 0, y: 6, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 6, scale: 0.97 }} transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }} style={{ transform: "translate3d(0, 0, 0)" }} className="absolute right-0 top-[calc(100%+8px)] z-50 w-48 rounded-2xl border border-[#CBC0D3]/60 bg-[#F7EBEC] p-1.5 shadow-xl will-change-transform">
                       {sortOptionsList.map((option) => (
-                        <button key={option} type="button" onClick={() => { setSort(option); setShowSort(false); }} className={`w-full rounded-xl px-3 py-2.5 text-left text-xs transition-colors ${sort === option ? "bg-[#2A2421] text-[#FAF7F2] font-medium" : "text-[#4A4039] hover:bg-black/5"}`}>{option}</button>
+                        <button key={option} type="button" onClick={() => { setSort(option); setShowSort(false); }} className={`w-full rounded-xl px-3 py-2.5 text-left text-xs transition-colors ${sort === option ? "bg-[#2A2421] text-[#F7EBEC] font-medium" : "text-[#4A4039] hover:bg-black/5"}`}>{option}</button>
                       ))}
                     </motion.div>
                   )}
@@ -608,7 +608,7 @@ export default function Shop() {
             {categoryPills.map((cat) => {
               const isActive = filters.category === cat && !showOnlyOffers;
               return (
-                <button key={cat} type="button" onClick={() => { setShowOnlyOffers(false); setFilters({ ...filters, category: cat as FilterState["category"] }); }} className={`shrink-0 rounded-full px-3.5 sm:px-4 py-1.5 sm:py-2 text-xs font-medium tracking-wide transition-all active:scale-95 ${isActive ? "bg-[#2A2421] text-[#FAF7F2] shadow-xs border border-[#2A2421]" : "border border-stone-200 bg-white text-stone-600 hover:border-black/20 hover:bg-stone-50"}`}>{cat}</button>
+                <button key={cat} type="button" onClick={() => { setShowOnlyOffers(false); setFilters({ ...filters, category: cat as FilterState["category"] }); }} className={`shrink-0 rounded-full px-3.5 sm:px-4 py-1.5 sm:py-2 text-xs font-medium tracking-wide transition-all active:scale-95 ${isActive ? "bg-[#2A2421] text-[#F7EBEC] shadow-xs border border-[#2A2421]" : "border border-stone-200 bg-white text-stone-600 hover:border-black/20 hover:bg-stone-50"}`}>{cat}</button>
               );
             })}
           </div>

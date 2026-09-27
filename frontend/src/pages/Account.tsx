@@ -693,7 +693,7 @@ export default function Account() {
   if (!currentUser) return null;
 
   return (
-    <div className="min-h-screen bg-[#FAF7F2] py-4 sm:py-8 lg:py-10 px-3 sm:px-6 lg:px-10 text-[#2A2421]">
+    <div className="min-h-screen bg-linear-to-b from-[#F7EBEC] via-[#F4E7E4] to-[#E9C9C3]/40 py-4 sm:py-8 lg:py-10 px-3 sm:px-6 lg:px-10 text-[#2A2421]">
       <style>{`
         @keyframes fadeInScale {
           from { opacity: 0; transform: scale(0.97) translateY(8px); }

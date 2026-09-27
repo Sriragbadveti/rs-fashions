@@ -4,10 +4,10 @@ import { FiArrowLeft, FiLock } from "react-icons/fi";
 
 export default function PrivacyPolicy() {
   return (
-    <div className="relative min-h-screen bg-[#FAF7F2] font-sans text-[#2C2420] py-12 px-4 sm:px-6 lg:px-8 overflow-hidden selection:bg-[#8E3D51] selection:text-white">
+    <div className="relative min-h-screen bg-linear-to-b from-[#F7EBEC] via-[#F4E7E4] to-[#E9C9C3]/40 font-sans text-[#2C2420] py-12 px-4 sm:px-6 lg:px-8 overflow-hidden selection:bg-[#8E3D51] selection:text-white">
       {/* Soft warm silk accents */}
-      <div className="pointer-events-none absolute -top-24 -left-20 h-96 w-96 rounded-full bg-[#8E3D51]/10 blur-3xl" />
-      <div className="pointer-events-none absolute top-1/3 -right-24 h-96 w-96 rounded-full bg-[#D4A373]/15 blur-3xl" />
+      <div className="pointer-events-none absolute -top-24 -left-20 h-96 w-96 rounded-full bg-[#CBC0D3]/50 blur-3xl" />
+      <div className="pointer-events-none absolute top-1/3 -right-24 h-96 w-96 rounded-full bg-[#E9C9C3]/60 blur-3xl" />
 
       <div className="relative mx-auto max-w-3xl">
         {/* Back Link */}

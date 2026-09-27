@@ -348,7 +348,7 @@ export default function Auth() {
   };
 
   return (
-    <main className="relative min-h-[100dvh] w-full overflow-x-hidden bg-[#F7F4EE] font-sans text-[#2A2421] flex items-center justify-center py-4 px-3 sm:py-8 sm:px-6 select-none">
+    <main className="relative min-h-[100dvh] w-full overflow-x-hidden bg-linear-to-br from-[#F7EBEC] via-[#F4E7E4] to-[#E9C9C3]/55 font-sans text-[#2A2421] flex items-center justify-center py-4 px-3 sm:py-8 sm:px-6 select-none">
       <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="rsf-blob rsf-blob-1" />
         <div className="rsf-blob rsf-blob-2" />
@@ -369,9 +369,9 @@ export default function Auth() {
           100% { background-position: 200% 0; }
         }
         .rsf-blob { position: absolute; border-radius: 9999px; filter: blur(70px); animation: rsfFloat 13s ease-in-out infinite; }
-        .rsf-blob-1 { width: clamp(260px, 40vw, 420px); height: clamp(260px, 40vw, 420px); background: #8E3D51; opacity: 0.25; top: -100px; left: -100px; }
-        .rsf-blob-2 { width: clamp(240px, 35vw, 380px); height: clamp(240px, 35vw, 380px); background: #D4A373; opacity: 0.28; bottom: -120px; right: -90px; animation-delay: 2.2s; }
-        .rsf-blob-3 { width: clamp(180px, 25vw, 280px); height: clamp(180px, 25vw, 280px); background: #5B7B7A; opacity: 0.14; top: 45%; left: 55%; animation-delay: 4.4s; }
+        .rsf-blob-1 { width: clamp(260px, 40vw, 420px); height: clamp(260px, 40vw, 420px); background: #CBC0D3; opacity: 0.65; top: -100px; left: -100px; }
+        .rsf-blob-2 { width: clamp(240px, 35vw, 380px); height: clamp(240px, 35vw, 380px); background: #E9C9C3; opacity: 0.7; bottom: -120px; right: -90px; animation-delay: 2.2s; }
+        .rsf-blob-3 { width: clamp(180px, 25vw, 280px); height: clamp(180px, 25vw, 280px); background: #F4E7E4; opacity: 0.85; top: 45%; left: 55%; animation-delay: 4.4s; }
         .rsf-card-in { animation: rsfFadeUp 0.5s ease-out both; }
         .rsf-shimmer-btn { position: relative; overflow: hidden; }
         .rsf-shimmer-btn::after {
@@ -388,7 +388,7 @@ export default function Auth() {
         <div className="relative overflow-hidden rounded-3xl sm:rounded-4xl border border-white/90 bg-white/75 shadow-[0_20px_50px_rgba(42,36,33,0.1)] sm:shadow-[0_30px_70px_rgba(42,36,33,0.12)] backdrop-blur-[32px] lg:grid lg:grid-cols-5">
 
           {/* LEFT: brand panel (desktop only) */}
-          <div className="hidden lg:flex lg:col-span-2 relative flex-col justify-between overflow-hidden bg-linear-to-br from-[#8E3D51] via-[#8E3D51] to-[#722F40] p-7 xl:p-8 text-[#F7F4EE]">
+          <div className="hidden lg:flex lg:col-span-2 relative flex-col justify-between overflow-hidden bg-linear-to-br from-[#8E3D51] via-[#8E3D51] to-[#722F40] p-7 xl:p-8 text-[#F7EBEC]">
             <svg aria-hidden className="pointer-events-none absolute -right-16 -bottom-16 h-64 w-64 opacity-20" viewBox="0 0 200 200" fill="none">
               <circle cx="100" cy="100" r="98" stroke="#D4A373" strokeWidth="1" />
               <circle cx="100" cy="100" r="78" stroke="#D4A373" strokeWidth="1" strokeDasharray="3 7" />
@@ -399,17 +399,17 @@ export default function Auth() {
               <Link
                 to="/"
                 aria-label="Go to RS Fashions homepage"
-                className="flex h-18 w-18 items-center justify-center rounded-full bg-[#FAF7F2] shadow-lg ring-4 ring-white/20 transition-transform duration-200 hover:scale-105 active:scale-95"
+                className="flex h-18 w-18 items-center justify-center rounded-full bg-[#F7EBEC] shadow-lg ring-4 ring-white/20 transition-transform duration-200 hover:scale-105 active:scale-95"
               >
                 <img src={logo} alt="RS Fashions" className="h-11 w-auto object-contain" />
               </Link>
 
               <div className="mt-4 flex items-center gap-2">
-                <span className="h-px w-5 bg-[#F7F4EE]/40" />
-                <h1 className="font-serif text-xl xl:text-2xl font-semibold tracking-widest text-[#F7F4EE]">
+                <span className="h-px w-5 bg-[#F7EBEC]/40" />
+                <h1 className="font-serif text-xl xl:text-2xl font-semibold tracking-widest text-[#F7EBEC]">
                   Fashions
                 </h1>
-                <span className="h-px w-5 bg-[#F7F4EE]/40" />
+                <span className="h-px w-5 bg-[#F7EBEC]/40" />
               </div>
 
               <p className="mt-1 text-[10px] uppercase tracking-[0.25em] text-[#D4A373]">

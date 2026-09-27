@@ -174,7 +174,7 @@ export default function QuickPay() {
   const amountDisplay = amountStr ? Number(amountStr).toLocaleString("en-IN") : "---";
 
   return (
-    <div className="min-h-screen bg-[#FDFBF7] flex flex-col items-center justify-center p-4 selection:bg-[#8E3D51]/20">
+    <div className="min-h-screen bg-linear-to-b from-[#F7EBEC] via-[#F4E7E4] to-[#E9C9C3]/45 flex flex-col items-center justify-center p-4 selection:bg-[#8E3D51]/20">
       {/* Container */}
       <div className="w-full max-w-md bg-white rounded-3xl border border-stone-200 shadow-xl overflow-hidden animate-fade-in">
         {/* Header Ribbon */}
