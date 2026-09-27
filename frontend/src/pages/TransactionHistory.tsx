@@ -35,7 +35,7 @@ interface TransactionHistoryProps {
   salesHistory: CompletedSale[];
 }
 
-const STORE_LEGAL_NAME = "RS Fashions";
+const STORE_LEGAL_NAME = "Fashions";
 
 /* -------------------------------------------------------------------------- */
 /* HELPERS                                    */

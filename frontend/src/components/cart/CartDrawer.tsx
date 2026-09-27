@@ -43,7 +43,7 @@ function CartDrawer({ open, onClose }: CartDrawerProps) {
   return (
     <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 z-[100] font-sans select-none" style={{ touchAction: "none" }}>
+        <div className="fixed inset-0 z-100 font-sans select-none" style={{ touchAction: "none" }}>
           <style>{`
             .cart-scroll {
               -webkit-overflow-scrolling: touch;

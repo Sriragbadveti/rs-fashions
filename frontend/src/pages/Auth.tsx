@@ -118,7 +118,6 @@ export default function Auth() {
     return err ? decodeURIComponent(err) : null;
   });
 
-  // Birthday & Anniversary — optional, signup only.
   const [birthday, setBirthday] = useState("");
   const [anniversary, setAnniversary] = useState("");
 
@@ -136,7 +135,6 @@ export default function Auth() {
     const formattedPhone = cleanPhone ? `+91 ${cleanPhone}` : "";
     const isAdminEmail = cleanEmail === "admin@rsfashion.com" || cleanEmail === "admin@rsfashions.com";
 
-    // ---- ADMIN AUTHENTICATION DETECTED ----
     if (isAdminEmail) {
       if (password !== "admin2026") {
         setError("Invalid credentials. Access denied.");
@@ -159,7 +157,6 @@ export default function Auth() {
       return;
     }
 
-    // ---- CUSTOMER USER VALIDATION ----
     const emailError = validateEmail(email);
     if (emailError) {
       setError(emailError);
@@ -183,7 +180,6 @@ export default function Auth() {
     setLoading(true);
 
     try {
-      // Duplicate Check on Signup
       if (authMode === "signup") {
         const check = await StoreService.checkUserExists(cleanEmail, cleanPhone);
         if (check.exists) {
@@ -224,7 +220,6 @@ export default function Auth() {
         birthday: birthday || undefined,
       });
 
-      // Synchronize into CRM customers list
       try {
         const adminCustStr = localStorage.getItem("rs_admin_customers");
         const adminCusts = adminCustStr ? JSON.parse(adminCustStr) : [];
@@ -296,7 +291,6 @@ export default function Auth() {
     }
   };
 
-  // Google Sign-in Trigger
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     setError(null);
@@ -306,8 +300,6 @@ export default function Auth() {
       import.meta.env.VITE_GOOGLE_CLIENT_ID ||
       "762908526958-l9nfup2v64ad83ipr3uc90ifvh35ije9.apps.googleusercontent.com";
 
-    // 1. First priority: Google Identity Services (GIS) Token Popup
-    // Completely bypasses redirect_uri checks and opens Google's official fast sign-in popup
     if (typeof window !== "undefined" && (window as any).google?.accounts?.oauth2) {
       try {
         const tokenClient = (window as any).google.accounts.oauth2.initTokenClient({
@@ -352,13 +344,11 @@ export default function Auth() {
       }
     }
 
-    // 2. Fallback to server redirect flow
     await StoreService.signInWithGoogle(destination);
   };
 
   return (
-    <main className="relative min-h-screen w-full overflow-hidden bg-[#F7F4EE] font-sans text-[#2A2421] flex items-center justify-center py-6 px-4 sm:px-6 select-none">
-      {/* Soft floating color blobs behind everything */}
+    <main className="relative min-h-[100dvh] w-full overflow-x-hidden bg-[#F7F4EE] font-sans text-[#2A2421] flex items-center justify-center py-4 px-3 sm:py-8 sm:px-6 select-none">
       <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="rsf-blob rsf-blob-1" />
         <div className="rsf-blob rsf-blob-2" />
@@ -379,10 +369,10 @@ export default function Auth() {
           100% { background-position: 200% 0; }
         }
         .rsf-blob { position: absolute; border-radius: 9999px; filter: blur(70px); animation: rsfFloat 13s ease-in-out infinite; }
-        .rsf-blob-1 { width: 420px; height: 420px; background: #8E3D51; opacity: 0.28; top: -140px; left: -120px; }
-        .rsf-blob-2 { width: 380px; height: 380px; background: #D4A373; opacity: 0.3; bottom: -150px; right: -110px; animation-delay: 2.2s; }
-        .rsf-blob-3 { width: 280px; height: 280px; background: #5B7B7A; opacity: 0.16; top: 45%; left: 55%; animation-delay: 4.4s; }
-        .rsf-card-in { animation: rsfFadeUp 0.6s ease-out both; }
+        .rsf-blob-1 { width: clamp(260px, 40vw, 420px); height: clamp(260px, 40vw, 420px); background: #8E3D51; opacity: 0.25; top: -100px; left: -100px; }
+        .rsf-blob-2 { width: clamp(240px, 35vw, 380px); height: clamp(240px, 35vw, 380px); background: #D4A373; opacity: 0.28; bottom: -120px; right: -90px; animation-delay: 2.2s; }
+        .rsf-blob-3 { width: clamp(180px, 25vw, 280px); height: clamp(180px, 25vw, 280px); background: #5B7B7A; opacity: 0.14; top: 45%; left: 55%; animation-delay: 4.4s; }
+        .rsf-card-in { animation: rsfFadeUp 0.5s ease-out both; }
         .rsf-shimmer-btn { position: relative; overflow: hidden; }
         .rsf-shimmer-btn::after {
           content: "";
@@ -394,12 +384,11 @@ export default function Auth() {
         }
       `}</style>
 
-      {/* Card container */}
-      <div className="relative z-10 w-full sm:max-w-100 lg:max-w-3xl rsf-card-in">
-        <div className="relative overflow-hidden rounded-4xl border border-white/90 bg-white/70 shadow-[0_30px_70px_rgba(42,36,33,0.12)] backdrop-blur-[32px] lg:grid lg:grid-cols-5">
+      <div className="relative z-10 w-full max-w-sm sm:max-w-md lg:max-w-3xl rsf-card-in">
+        <div className="relative overflow-hidden rounded-3xl sm:rounded-4xl border border-white/90 bg-white/75 shadow-[0_20px_50px_rgba(42,36,33,0.1)] sm:shadow-[0_30px_70px_rgba(42,36,33,0.12)] backdrop-blur-[32px] lg:grid lg:grid-cols-5">
 
-          {/* ============ LEFT: brand panel ============ */}
-          <div className="hidden lg:flex lg:col-span-2 relative flex-col justify-between overflow-hidden bg-linear-to-br from-[#8E3D51] via-[#8E3D51] to-[#722F40] p-8 text-[#F7F4EE]">
+          {/* LEFT: brand panel (desktop only) */}
+          <div className="hidden lg:flex lg:col-span-2 relative flex-col justify-between overflow-hidden bg-linear-to-br from-[#8E3D51] via-[#8E3D51] to-[#722F40] p-7 xl:p-8 text-[#F7F4EE]">
             <svg aria-hidden className="pointer-events-none absolute -right-16 -bottom-16 h-64 w-64 opacity-20" viewBox="0 0 200 200" fill="none">
               <circle cx="100" cy="100" r="98" stroke="#D4A373" strokeWidth="1" />
               <circle cx="100" cy="100" r="78" stroke="#D4A373" strokeWidth="1" strokeDasharray="3 7" />
@@ -410,90 +399,88 @@ export default function Auth() {
               <Link
                 to="/"
                 aria-label="Go to RS Fashions homepage"
-                className="flex h-20 w-20 items-center justify-center rounded-full bg-[#FAF7F2] shadow-lg ring-4 ring-white/20 transition-transform duration-200 hover:scale-105 active:scale-95"
+                className="flex h-18 w-18 items-center justify-center rounded-full bg-[#FAF7F2] shadow-lg ring-4 ring-white/20 transition-transform duration-200 hover:scale-105 active:scale-95"
               >
-                <img src={logo} alt="RS Fashions" className="h-12 w-auto object-contain" />
+                <img src={logo} alt="RS Fashions" className="h-11 w-auto object-contain" />
               </Link>
 
-              <div className="mt-5 flex items-center gap-2.5">
-                <span className="h-px w-6 bg-[#F7F4EE]/40" />
-                <h1 className="font-serif text-2xl font-semibold tracking-widest text-[#F7F4EE]">
+              <div className="mt-4 flex items-center gap-2">
+                <span className="h-px w-5 bg-[#F7F4EE]/40" />
+                <h1 className="font-serif text-xl xl:text-2xl font-semibold tracking-widest text-[#F7F4EE]">
                   Fashions
                 </h1>
-                <span className="h-px w-6 bg-[#F7F4EE]/40" />
+                <span className="h-px w-5 bg-[#F7F4EE]/40" />
               </div>
 
-              <p className="mt-2 text-[11px] uppercase tracking-[0.3em] text-[#D4A373]">
-                Heritage Silks &amp; Handloom Sarees
+              <p className="mt-1 text-[10px] uppercase tracking-[0.25em] text-[#D4A373]">
+                Heritage Silks &amp; Handlooms
               </p>
 
-              <p className="mt-5 max-w-56 text-sm leading-relaxed text-[#F7F4EE]/80">
-                Sign in to track your orders and be the first to see new arrivals from our weavers.
+              <p className="mt-4 max-w-52 text-xs leading-relaxed text-[#F7F4EE]/80">
+                Sign in to track orders and be the first to view new loom drops.
               </p>
             </div>
 
-            <ul className="relative z-10 mt-8 space-y-2.5 text-xs text-[#F7F4EE]/85">
+            <ul className="relative z-10 my-6 space-y-2 text-xs text-[#F7F4EE]/85">
               <li className="flex items-center gap-2">
                 <FiCheckCircle className="shrink-0 text-[#D4A373]" size={14} />
-                SiCo Gadwal Sarees
+                <span>SiCo Gadwal Sarees</span>
               </li>
               <li className="flex items-center gap-2">
                 <FiCheckCircle className="shrink-0 text-[#D4A373]" size={14} />
-                Safe checkout
+                <span>100% Safe Checkout</span>
               </li>
               <li className="flex items-center gap-2">
                 <FiCheckCircle className="shrink-0 text-[#D4A373]" size={14} />
-                Real updates on WhatsApp, no spam
+                <span>Verified WhatsApp Updates</span>
               </li>
             </ul>
 
-            <p className="relative z-10 mt-8 text-center text-[10px] text-[#F7F4EE]/50">
+            <p className="relative z-10 text-center text-[10px] text-[#F7F4EE]/50">
               © {new Date().getFullYear()} RS Fashion
             </p>
           </div>
 
-          {/* ============ RIGHT: interactive form ============ */}
-          <div className="lg:col-span-3 p-6 sm:p-7 lg:p-8">
+          {/* RIGHT: interactive form */}
+          <div className="lg:col-span-3 p-5 sm:p-7 lg:p-8">
 
-            {/* Compact brand header — mobile & tablet only */}
-            <div className="lg:hidden mb-6 text-center">
-              <div className="inline-flex flex-col items-center">
-                <Link
-                  to="/"
-                  aria-label="Go to RS Fashion homepage"
-                  className="flex h-14 w-14 items-center justify-center rounded-full bg-[#FAF7F2] shadow-md ring-2 ring-[#8E3D51]/10 transition-transform duration-200 hover:scale-105 active:scale-95"
-                >
-                  <img src={logo} alt="RS Fashion" className="h-9 w-auto object-contain" />
-                </Link>
-                <div className="flex items-center gap-2 mt-2.5">
-                  <span className="h-px w-6 bg-[#8E3D51]/40" />
-                  <h1 className="font-serif text-lg font-semibold text-[#2A2421]">RS Fashion</h1>
-                  <span className="h-px w-6 bg-[#8E3D51]/40" />
-                </div>
-                <p className="mt-0.5 text-[10px] uppercase tracking-[0.25em] text-[#8E3D51]">
-                  Heritage Silks &amp; Handloom Sarees
-                </p>
+            {/* Mobile & Tablet Header */}
+            <div className="lg:hidden mb-4 text-center">
+              <Link
+                to="/"
+                aria-label="Go to RS Fashion homepage"
+                className="inline-flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full bg-[#FAF7F2] shadow-md ring-2 ring-[#8E3D51]/10 transition-transform duration-200 active:scale-95"
+              >
+                <img src={logo} alt="RS Fashion" className="h-8 sm:h-9 w-auto object-contain" />
+              </Link>
+              <div className="flex items-center justify-center gap-2 mt-2">
+                <span className="h-px w-4 bg-[#8E3D51]/40" />
+                <h1 className="font-serif text-base sm:text-lg font-semibold text-[#2A2421]">RS Fashion</h1>
+                <span className="h-px w-4 bg-[#8E3D51]/40" />
               </div>
+              <p className="text-[9px] sm:text-[10px] uppercase tracking-[0.2em] text-[#8E3D51]">
+                Heritage Silks &amp; Handloom Sarees
+              </p>
             </div>
 
-            {/* Checkout Redirection Notice */}
+            {/* Checkout Notification */}
             {redirectUrl && redirectUrl.includes("checkout") && (
-              <div className="mb-5 rounded-2xl bg-[#FAF3EC] border border-[#E6D5C3] p-3.5 flex items-start gap-3 text-[#5A4535] shadow-xs">
-                <FiCheckCircle className="shrink-0 mt-0.5 text-[#8E3D51]" size={17} />
-                <div className="text-xs leading-relaxed">
-                  <strong className="block font-semibold text-[#2A2421] mb-0.5">Sign in to continue</strong>
-                  Please sign in or create an account to complete your checkout. Your items are still saved.
+              <div className="mb-4 rounded-xl bg-[#FAF3EC] border border-[#E6D5C3] p-3 flex items-start gap-2.5 text-[#5A4535] shadow-xs">
+                <FiCheckCircle className="shrink-0 mt-0.5 text-[#8E3D51]" size={15} />
+                <div className="text-[11px] leading-relaxed">
+                  <strong className="block font-semibold text-[#2A2421]">Sign in to continue</strong>
+                  Sign in or create an account to complete checkout. Items remain in cart.
                 </div>
               </div>
             )}
 
-            {/* Google Sign-in */}
-            <div className="mb-5">
+            {/* Google OAuth */}
+            <div className="mb-4">
               <button
                 type="button"
                 onClick={handleGoogleSignIn}
                 disabled={googleLoading || loading}
-                className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-2xl border border-stone-200/90 bg-white hover:bg-stone-50/80 text-stone-800 text-xs font-medium tracking-wide shadow-xs hover:shadow-md transition-all duration-300 active:scale-[0.98] disabled:opacity-60"
+                className="w-full flex items-center justify-center gap-2.5 py-2.5 sm:py-3 px-4 rounded-xl sm:rounded-2xl border border-stone-200 bg-white hover:bg-stone-50/80 text-stone-800 text-xs font-medium tracking-wide shadow-xs hover:shadow-md transition-all active:scale-[0.98] disabled:opacity-60"
               >
                 {googleLoading ? (
                   <div className="w-4 h-4 border-2 border-stone-400 border-t-[#8E3D51] rounded-full animate-spin" />
@@ -505,28 +492,28 @@ export default function Auth() {
                     <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
                   </svg>
                 )}
-                <span>{googleLoading ? "Connecting to Google..." : "Continue with Google"}</span>
+                <span>{googleLoading ? "Connecting..." : "Continue with Google"}</span>
               </button>
 
-              <div className="relative my-5">
+              <div className="relative my-4">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-stone-200/80" />
                 </div>
                 <div className="relative flex justify-center text-[10px] uppercase tracking-widest">
-                  <span className="bg-[#FAF7F2] px-3 text-stone-400 font-medium">Or continue with email</span>
+                  <span className="bg-[#FAF7F2] px-2.5 text-stone-400 font-medium">Or continue with email</span>
                 </div>
               </div>
             </div>
 
-            {/* Mode Toggle (Sign In vs Create Account) */}
-            <div className="mb-5 flex border-b border-stone-200/80">
+            {/* Mode Switcher */}
+            <div className="mb-4 flex border-b border-stone-200/80">
               <button
                 type="button"
                 onClick={() => {
                   setAuthMode("signin");
                   setError(null);
                 }}
-                className={`flex-1 pb-2.5 text-xs font-semibold uppercase tracking-wider transition-all border-b-2 ${
+                className={`flex-1 pb-2 text-xs font-semibold uppercase tracking-wider transition-all border-b-2 ${
                   authMode === "signin"
                     ? "border-[#8E3D51] text-[#8E3D51]"
                     : "border-transparent text-[#7A6B5D] hover:text-[#2A2421]"
@@ -540,7 +527,7 @@ export default function Auth() {
                   setAuthMode("signup");
                   setError(null);
                 }}
-                className={`flex-1 pb-2.5 text-xs font-semibold uppercase tracking-wider transition-all border-b-2 ${
+                className={`flex-1 pb-2 text-xs font-semibold uppercase tracking-wider transition-all border-b-2 ${
                   authMode === "signup"
                     ? "border-[#8E3D51] text-[#8E3D51]"
                     : "border-transparent text-[#7A6B5D] hover:text-[#2A2421]"
@@ -550,57 +537,57 @@ export default function Auth() {
               </button>
             </div>
 
-            {/* Form */}
+            {/* Main Form Fields */}
             <form onSubmit={handleAuthSubmit} className="space-y-3">
               {authMode === "signup" && (
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-widest text-[#7A6B5D] mb-1.5">
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-[#7A6B5D] mb-1">
                     Full Name
                   </label>
                   <div className="relative">
-                    <FiUser className="absolute left-4 top-1/2 -translate-y-1/2 text-[#7A6B5D]" size={15} />
+                    <FiUser className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#7A6B5D]" size={14} />
                     <input
                       type="text"
                       required
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       placeholder="Full name"
-                      className="w-full rounded-2xl border border-stone-200/90 bg-white/90 py-2.5 pl-11 pr-4 text-xs font-light text-[#2A2421] outline-none transition-all focus:border-[#8E3D51] focus:bg-white focus:ring-2 focus:ring-[#8E3D51]/10"
+                      className="w-full rounded-xl sm:rounded-2xl border border-stone-200/90 bg-white/90 py-2.5 pl-10 pr-3 text-xs font-normal text-[#2A2421] outline-none transition-all focus:border-[#8E3D51] focus:bg-white focus:ring-2 focus:ring-[#8E3D51]/10"
                     />
                   </div>
                 </div>
               )}
 
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-widest text-[#7A6B5D] mb-1.5">
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-[#7A6B5D] mb-1">
                   Email Address
                 </label>
                 <div className="relative">
-                  <FiMail className="absolute left-4 top-1/2 -translate-y-1/2 text-[#7A6B5D]" size={15} />
+                  <FiMail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#7A6B5D]" size={14} />
                   <input
                     type="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Email address"
-                    className="w-full rounded-2xl border border-stone-200/90 bg-white/90 py-2.5 pl-11 pr-4 text-xs font-light text-[#2A2421] outline-none transition-all focus:border-[#8E3D51] focus:bg-white focus:ring-2 focus:ring-[#8E3D51]/10"
+                    className="w-full rounded-xl sm:rounded-2xl border border-stone-200/90 bg-white/90 py-2.5 pl-10 pr-3 text-xs font-normal text-[#2A2421] outline-none transition-all focus:border-[#8E3D51] focus:bg-white focus:ring-2 focus:ring-[#8E3D51]/10"
                   />
                 </div>
                 {authMode === "signup" && (
-                  <p className="mt-1 text-[10px] text-[#7A6B5D]">
-                    Temporary or disposable email addresses aren't accepted.
+                  <p className="mt-1 text-[9.5px] text-[#7A6B5D]/80">
+                    Disposable or temporary emails are not accepted.
                   </p>
                 )}
               </div>
 
               {authMode === "signup" && (
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-widest text-[#7A6B5D] mb-1.5">
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-[#7A6B5D] mb-1">
                     Mobile Number
                   </label>
-                  <div className="flex rounded-2xl border border-stone-200/90 bg-white/90 overflow-hidden focus-within:border-[#8E3D51] focus-within:ring-2 focus-within:ring-[#8E3D51]/10 transition-all">
-                    <div className="flex items-center gap-1.5 px-3.5 bg-stone-100/90 border-r border-stone-200/80 text-xs font-bold text-stone-700 select-none">
-                      <FiPhone size={13} className="text-[#7A6B5D]" />
+                  <div className="flex rounded-xl sm:rounded-2xl border border-stone-200/90 bg-white/90 overflow-hidden focus-within:border-[#8E3D51] focus-within:ring-2 focus-within:ring-[#8E3D51]/10 transition-all">
+                    <div className="flex items-center gap-1 px-3 bg-stone-100 border-r border-stone-200 text-xs font-bold text-stone-700 select-none">
+                      <FiPhone size={12} className="text-[#7A6B5D]" />
                       <span>+91</span>
                     </div>
                     <input
@@ -609,18 +596,18 @@ export default function Auth() {
                       maxLength={10}
                       value={phoneDigits}
                       onChange={handlePhoneChange}
-                      placeholder="9876543210"
-                      className="flex-1 min-w-0 py-2.5 px-3.5 text-xs font-mono font-medium tracking-wider text-[#2A2421] bg-transparent outline-none"
+                      placeholder="10-digit number"
+                      className="flex-1 min-w-0 py-2.5 px-3 text-xs font-mono font-medium tracking-wider text-[#2A2421] bg-transparent outline-none"
                     />
                   </div>
-                  <p className="mt-1 text-[10px] text-[#7A6B5D]">Order updates &amp; tracking will be sent via WhatsApp.</p>
+                  <p className="mt-1 text-[9.5px] text-[#7A6B5D]/80">Order updates will be sent via WhatsApp.</p>
                 </div>
               )}
 
               {authMode === "signup" && (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <div>
-                    <label className="mb-1.5 flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-[#7A6B5D]">
+                    <label className="mb-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-[#7A6B5D]">
                       <FiGift size={11} className="text-[#B23A55]" />
                       Birthday <span className="normal-case font-normal text-[9px] text-[#7A6B5D]/70">(Opt.)</span>
                     </label>
@@ -629,12 +616,12 @@ export default function Auth() {
                       value={birthday}
                       onChange={(e) => setBirthday(e.target.value)}
                       style={{ accentColor: "#B23A55" }}
-                      className="w-full rounded-2xl border border-[#E7B8C4] bg-[#FDF3F5] py-2.5 px-3 text-xs font-medium text-[#7A2E42] outline-none transition-all focus:border-[#B23A55] focus:ring-2 focus:ring-[#B23A55]/15"
+                      className="w-full rounded-xl sm:rounded-2xl border border-[#E7B8C4] bg-[#FDF3F5] py-2 px-2.5 text-xs font-medium text-[#7A2E42] outline-none transition-all focus:border-[#B23A55] focus:ring-2 focus:ring-[#B23A55]/15"
                     />
                   </div>
 
                   <div>
-                    <label className="mb-1.5 flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-[#7A6B5D]">
+                    <label className="mb-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-[#7A6B5D]">
                       <FiHeart size={11} className="text-[#A9812F]" />
                       Anniversary <span className="normal-case font-normal text-[9px] text-[#7A6B5D]/70">(Opt.)</span>
                     </label>
@@ -643,47 +630,46 @@ export default function Auth() {
                       value={anniversary}
                       onChange={(e) => setAnniversary(e.target.value)}
                       style={{ accentColor: "#A9812F" }}
-                      className="w-full rounded-2xl border border-[#E8D3A6] bg-[#FBF6EA] py-2.5 px-3 text-xs font-medium text-[#7A5E1F] outline-none transition-all focus:border-[#A9812F] focus:ring-2 focus:ring-[#A9812F]/15"
+                      className="w-full rounded-xl sm:rounded-2xl border border-[#E8D3A6] bg-[#FBF6EA] py-2 px-2.5 text-xs font-medium text-[#7A5E1F] outline-none transition-all focus:border-[#A9812F] focus:ring-2 focus:ring-[#A9812F]/15"
                     />
                   </div>
                 </div>
               )}
 
               {authMode === "signup" && (
-                <div className="flex items-center gap-1.5 text-[10.5px] text-[#8E3D51] bg-[#8E3D51]/5 px-3 py-2 rounded-xl border border-[#8E3D51]/10">
-                  <FiGift size={13} className="shrink-0" />
-                  <span>We'll send you a personalized surprise gift on these special days.</span>
+                <div className="flex items-center gap-1.5 text-[10px] text-[#8E3D51] bg-[#8E3D51]/5 px-2.5 py-1.5 rounded-lg border border-[#8E3D51]/10">
+                  <FiGift size={12} className="shrink-0" />
+                  <span>Receive surprise festive gift vouchers on special occasions.</span>
                 </div>
               )}
 
-              {/* Password field */}
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-widest text-[#7A6B5D] mb-1.5">
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-[#7A6B5D] mb-1">
                   Security Password
                 </label>
                 <div className="relative">
-                  <FiLock className="absolute left-4 top-1/2 -translate-y-1/2 text-[#7A6B5D]" size={15} />
+                  <FiLock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#7A6B5D]" size={14} />
                   <input
                     type={showPassword ? "text" : "password"}
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Password"
-                    className="w-full rounded-2xl border border-stone-200/90 bg-white/90 py-2.5 pl-11 pr-11 text-xs font-light text-[#2A2421] outline-none transition-all focus:border-[#8E3D51] focus:bg-white focus:ring-2 focus:ring-[#8E3D51]/10"
+                    className="w-full rounded-xl sm:rounded-2xl border border-stone-200/90 bg-white/90 py-2.5 pl-10 pr-10 text-xs font-normal text-[#2A2421] outline-none transition-all focus:border-[#8E3D51] focus:bg-white focus:ring-2 focus:ring-[#8E3D51]/10"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#7A6B5D] hover:text-[#2A2421] transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#7A6B5D] hover:text-[#2A2421] transition-colors p-1"
                     aria-label={showPassword ? "Hide password" : "Show password"}
                   >
-                    {showPassword ? <FiEyeOff size={15} /> : <FiEye size={15} />}
+                    {showPassword ? <FiEyeOff size={14} /> : <FiEye size={14} />}
                   </button>
                 </div>
               </div>
 
               {error && (
-                <p className="text-xs text-red-600 font-medium bg-red-50 p-3 rounded-xl border border-red-200 shadow-2xs">
+                <p className="text-xs text-red-600 font-medium bg-red-50 p-2.5 rounded-xl border border-red-200 shadow-2xs">
                   {error}
                 </p>
               )}
@@ -691,7 +677,7 @@ export default function Auth() {
               <button
                 type="submit"
                 disabled={loading || googleLoading}
-                className="rsf-shimmer-btn group mt-5 flex w-full items-center justify-center gap-2.5 rounded-full py-3.5 text-xs font-semibold uppercase tracking-[0.2em] text-white shadow-lg transition-all duration-300 hover:-translate-y-0.5 active:scale-[0.98] bg-[#2A2421] hover:bg-[#8E3D51] shadow-[#2A2421]/15"
+                className="rsf-shimmer-btn group mt-4 flex w-full items-center justify-center gap-2 rounded-full py-3 text-xs font-semibold uppercase tracking-[0.18em] text-white shadow-md transition-all active:scale-[0.98] bg-[#2A2421] hover:bg-[#8E3D51]"
               >
                 <span>
                   {loading
@@ -700,12 +686,11 @@ export default function Auth() {
                       ? "Create Account & Go to Shop"
                       : "Sign In to Shop"}
                 </span>
-                <FiArrowRight size={14} className="transition-transform duration-300 group-hover:translate-x-1" />
+                <FiArrowRight size={13} className="transition-transform duration-300 group-hover:translate-x-1" />
               </button>
             </form>
 
-            {/* Toggle link between Sign In & Sign Up */}
-            <div className="mt-5 text-center">
+            <div className="mt-4 text-center">
               {authMode === "signin" ? (
                 <button
                   type="button"
@@ -731,16 +716,16 @@ export default function Auth() {
               )}
             </div>
 
-            {/* Quick Direct Link to Catalog */}
-            <div className="mt-5 border-t border-stone-200/60 pt-4 text-center">
+            <div className="mt-4 border-t border-stone-200/60 pt-3 text-center">
               <Link
                 to="/shop"
-                className="inline-flex items-center gap-1.5 text-xs font-medium text-[#7A6B5D] hover:text-[#8E3D51] transition-colors group"
+                className="inline-flex items-center gap-1 text-xs font-medium text-[#7A6B5D] hover:text-[#8E3D51] transition-colors"
               >
                 <span>Browse sarees in collection</span>
-                <span className="transition-transform duration-300 group-hover:translate-x-0.5">→</span>
+                <span>→</span>
               </Link>
             </div>
+
           </div>
         </div>
       </div>
