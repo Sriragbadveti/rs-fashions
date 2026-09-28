@@ -208,7 +208,7 @@ export default function AuthCallback() {
 
   return (
     <main className="min-h-screen bg-[#FAF7F2] font-sans text-[#2A2421] flex flex-col justify-center items-center py-12 px-4 sm:px-6 select-none">
-      <div className="w-full max-w-md rounded-[2.5rem] border border-white/80 bg-white/70 p-8 sm:p-10 shadow-[0_20px_50px_rgba(42,36,33,0.08)] backdrop-blur-[24px] text-center">
+      <div className="w-full max-w-md rounded-[2.5rem] border border-white/80 bg-white/70 p-8 sm:p-10 shadow-[0_20px_50px_rgba(42,36,33,0.08)] backdrop-blur-xl text-center">
         <div className="mx-auto flex flex-col items-center justify-center p-2 mb-4">
           <img src={logo} alt="RS Fashions" className="h-14 w-auto object-contain" />
           <span className="mt-1 font-serif text-xs font-semibold uppercase tracking-[0.3em] text-[#8E3D51]">

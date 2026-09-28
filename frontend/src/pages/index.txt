@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Saree Intro</title>
+
+  <style>
+    /* =====================================================
+       1. EASY SETTINGS - change colours & timings here only
+       ===================================================== */
+    :root {
+      --curtain-dark:  #4a0610;  /* darkest part of the curtain folds */
+      --curtain-mid:   #8f0f1d;  /* middle tone of the folds */
+      --curtain-light: #c41e2f;  /* brightest part of the folds (royal red) */
+      --gold:          #d4af37;  /* gold trim + logo ring */
+      --open-time:     2.6s;     /* how long the curtains take to open */
+      --zoom-time:     1.8s;     /* how long the camera zoom takes */
+    }
+
+    /* Basic reset so spacing behaves the same in every browser */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    /* Page base: dark background, no scrollbars while the intro plays */
+    body {
+      font-family: Georgia, serif;
+      background: #0b0b0b;
+      color: #fff;
+      overflow-x: hidden;
+    }
+
+    /* =====================================================
+       2. THE INTRO LAYER (sits on top of the website)
+       ===================================================== */
+    #intro {
+      position: fixed;          /* covers the whole screen */
+      inset: 0;
+      z-index: 10;              /* above the website */
+      perspective: 1200px;      /* gives the 3D depth effect */
+      background: radial-gradient(circle at center, #1a1a1a, #000 70%); /* dark stage behind curtains */
+      overflow: hidden;
+      /* This transition is the "camera zoom + fade out" at the end */
+      transition: transform var(--zoom-time) cubic-bezier(.7,0,.3,1),
+                  opacity   var(--zoom-time) ease;
+    }
+
+    /* Added by JS at the end: camera pushes forward and the intro fades away */
+    #intro.zoom-out {
+      transform: scale(2.2);
+      opacity: 0;
+      pointer-events: none;     /* so you can click the website underneath */
+    }
+
+    /* =====================================================
+       3. THE CURTAINS
+       ===================================================== */
+    .curtain {
+      position: absolute;
+      top: 0;
+      width: 50%;               /* each curtain covers half the screen */
+      height: 100%;
+      /* Repeating stripes create the fabric folds */
+      background: repeating-linear-gradient(
+        90deg,
+        var(--curtain-dark)  0%,
+        var(--curtain-mid)   3%,
+        var(--curtain-light) 6%,
+        var(--curtain-mid)   9%,
+        var(--curtain-dark)  12%
+      );
+      /* Soft shadow so the curtain feels like it has depth */
+      box-shadow: inset 0 0 80px rgba(0,0,0,.55);
+      /* Smooth opening motion */
+      transition: transform var(--open-time) cubic-bezier(.77,0,.18,1);
+    }
+
+    /* Left curtain: anchored to the left edge, bunches up towards it */
+    .curtain.left  { left: 0;  transform-origin: left center;  border-right: 4px solid var(--gold); }
+
+    /* Right curtain: anchored to the right edge, bunches up towards it */
+    .curtain.right { right: 0; transform-origin: right center; border-left: 4px solid var(--gold); }
+
+    /* When the intro gets the "open" class, curtains squeeze to the sides
+       (scaleX shrinks them, rotateY tilts them slightly for the 3D feel) */
+    #intro.open .curtain.left  { transform: scaleX(.12) rotateY(-18deg); }
+    #intro.open .curtain.right { transform: scaleX(.12) rotateY(18deg); }
+
+    /* =====================================================
+       4. THE LOGO CIRCLE (black circle in the centre)
+       ===================================================== */
+    .logo {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;                 /* makes it a circle */
+      background: #000;                   /* black circle */
+      border: 3px solid var(--gold);      /* gold ring */
+      box-shadow: 0 0 40px rgba(212,175,55,.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transform: translate(-50%, -50%);   /* centres it exactly */
+      transition: transform var(--open-time) cubic-bezier(.77,0,.18,1),
+                  opacity 1s ease calc(var(--open-time) - 1s);
+      z-index: 5;                         /* above the curtains */
+    }
+
+    /* Logo content. To use your real logo, replace this text with:
+       <img src="your-logo.png" alt="Logo"> and it will fit the circle. */
+    .logo span {
+      font-size: 2.2rem;
+      letter-spacing: 4px;
+      color: var(--gold);
+    }
+    .logo img { width: 70%; height: 70%; object-fit: contain; }
+
+    /* When opening: logo slides to the right (with the right curtain)
+       and spins once in 3D, then fades out near the end */
+    #intro.open .logo {
+      transform: translate(calc(-50% + 46vw), -50%) rotateY(360deg);
+      opacity: 0;
+    }
+
+    /* =====================================================
+       5. THE WEBSITE (hidden until the camera zoom)
+       ===================================================== */
+    #site {
+      min-height: 100vh;
+      opacity: 0;
+      transform: scale(1.25);              /* starts slightly "too close" */
+      transition: opacity var(--zoom-time) ease,
+                  transform var(--zoom-time) cubic-bezier(.2,.8,.2,1);
+    }
+
+    /* Added by JS: website settles into place = camera zoom effect */
+    #site.show { opacity: 1; transform: scale(1); }
+
+    /* Temporary placeholder navbar (you'll tell me the real design later) */
+    nav {
+      display: flex;
+      justify-content: space-between;
+      padding: 24px 6%;
+      border-bottom: 1px solid rgba(212,175,55,.3);
+    }
+    nav a { color: #fff; text-decoration: none; margin-left: 24px; }
+
+    /* Temporary placeholder hero section */
+    .hero {
+      text-align: center;
+      padding: 120px 6%;
+    }
+    .hero h1 { font-size: 3.2rem; color: var(--gold); margin-bottom: 16px; }
+    .hero p  { opacity: .8; margin-bottom: 32px; }
+    .hero button {
+      padding: 14px 36px;
+      background: var(--curtain-light);
+      color: #fff;
+      border: none;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+
+    /* Everything with class "rise" fades up one after another */
+    .rise {
+      opacity: 0;
+      transform: translateY(40px);
+      transition: opacity .9s ease, transform .9s ease;
+    }
+    #site.show .rise { opacity: 1; transform: translateY(0); }
+    /* Delays make each item appear in sequence (stagger) */
+    #site.show .rise:nth-child(1) { transition-delay: .4s; }
+    #site.show .rise:nth-child(2) { transition-delay: .7s; }
+    #site.show .rise:nth-child(3) { transition-delay: 1s; }
+  </style>
+</head>
+
+<body>
+
+  <!-- ===== INTRO: curtains + logo ===== -->
+  <div id="intro">
+    <div class="curtain left"></div>    <!-- left curtain half -->
+    <div class="curtain right"></div>   <!-- right curtain half -->
+
+    <!-- Black circle with the logo, sitting in the centre -->
+    <div class="logo">
+      <span>LOGO</span>                 <!-- replace with <img src="logo.png"> -->
+    </div>
+  </div>
+
+  <!-- ===== WEBSITE (placeholder content for now) ===== -->
+  <div id="site">
+    <nav class="rise">
+      <strong>Your Saree Brand</strong>
+      <div><a href="#">Home</a><a href="#">Collection</a><a href="#">Contact</a></div>
+    </nav>
+
+    <section class="hero">
+      <h1 class="rise">Timeless Elegance</h1>
+      <p class="rise">Handpicked sarees for every occasion</p>
+      <button class="rise">Shop Now</button>
+    </section>
+  </div>
+
+  <script>
+    /* =====================================================
+       6. THE TIMELINE (controls the order of events)
+       ===================================================== */
+    const intro = document.getElementById('intro');  // the curtain layer
+    const site  = document.getElementById('site');   // the website
+
+    // Step 1: after 1.2s of closed curtains, open them (logo moves right too)
+    setTimeout(() => intro.classList.add('open'), 1200);
+
+    // Step 2: as the curtains finish opening, start the camera zoom:
+    // the intro flies past the camera while the website settles in
+    setTimeout(() => {
+      intro.classList.add('zoom-out');
+      site.classList.add('show');
+    }, 1200 + 2000);
+
+    // Step 3: once everything is done, remove the intro completely
+    setTimeout(() => intro.remove(), 1200 + 2000 + 2000);
+  </script>
+
+</body>
+</html>
