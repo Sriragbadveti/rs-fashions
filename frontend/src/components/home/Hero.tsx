@@ -2,7 +2,7 @@ import React from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { FiArrowDownRight } from "react-icons/fi";
-import homePortraitImg from "../../assets/images/Home.jpg";
+import homePortraitImg from "../../assets/images/home_banner.jpeg";
 import homeLandscapeImg from "../../assets/images/Home_laptop_1.png";
 
 // Tip: You can either import an image from "../../assets/..." like above,
