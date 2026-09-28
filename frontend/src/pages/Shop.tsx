@@ -276,6 +276,12 @@ export default function Shop() {
 
   const [allProducts, setAllProducts] = useState<Product[]>(() => {
     try {
+      if (!localStorage.getItem("rs_catalog_reset_v3")) {
+        localStorage.removeItem("rs_fashions_products");
+        localStorage.removeItem("rs_admin_inventory");
+        localStorage.setItem("rs_catalog_reset_v3", "true");
+        return [];
+      }
       const saved = localStorage.getItem("rs_fashions_products");
       if (saved) {
         const parsed = JSON.parse(saved);

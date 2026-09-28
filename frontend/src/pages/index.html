@@ -1,0 +1,1495 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AARYA HERITAGE | Haute Couture Silk & Handloom Sarees</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,400&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons & Tailwind CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            ruby: {
+              950: '#230207',
+              900: '#3d040c',
+              850: '#540713',
+              800: '#6e0a17',
+              700: '#8e0f21',
+              600: '#b1162b',
+            },
+            gold: {
+              100: '#fbf5df',
+              200: '#f5e8b6',
+              300: '#ecd386',
+              400: '#dfbc55',
+              500: '#cfa230',
+              600: '#b88921',
+              700: '#8f6815',
+            },
+            blush: {
+              50: '#fdf9f9',
+              100: '#f7ebec',
+              200: '#edd8da',
+              300: '#dfbcc0',
+            },
+            thistle: '#c5b8cc',
+            emeraldacc: '#0a3a2a'
+          },
+          fontFamily: {
+            cinzel: ['Cinzel', 'serif'],
+            cormorant: ['Cormorant Garamond', 'serif'],
+            sans: ['Montserrat', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    :root {
+      --gold-foil: linear-gradient(135deg, #bf953f 0%, #fcf6ba 25%, #b38728 50%, #fbf5b7 75%, #aa771c 100%);
+      --velvet-base: #49040d;
+      --velvet-depth: #1e0004;
+      --velvet-sheen: #961324;
+      --velvet-highlight: #d82b42;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #190104;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cfa230;
+      border-radius: 4px;
+    }
+
+    body {
+      background: #110204;
+      color: #f7ebec;
+      overflow-x: hidden;
+      font-family: 'Montserrat', sans-serif;
+    }
+
+    /* ========================================================
+       REALISTIC MULTI-PLEATED 3D VELVET DRAPERY SYSTEM
+       ======================================================== */
+    #curtain-stage {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      perspective: 1600px;
+      overflow: hidden;
+      pointer-events: all;
+      transition: opacity 1.2s cubic-bezier(0.4, 0, 0.2, 1), visibility 1.2s;
+    }
+
+    #curtain-stage.unlocked {
+      pointer-events: none;
+    }
+
+    #curtain-stage.faded-out {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    /* Velvet panel with multi-pleated wave lighting */
+    .velvet-curtain {
+      position: absolute;
+      top: 0;
+      height: 100%;
+      width: 53%; /* Slight overlap at the center seam */
+      display: flex;
+      transform-style: preserve-3d;
+      transition: transform 3.6s cubic-bezier(0.77, 0, 0.175, 1);
+      box-shadow: 0 25px 60px rgba(0,0,0,0.85);
+      will-change: transform;
+    }
+
+    .velvet-curtain.left {
+      left: 0;
+      transform-origin: left top;
+    }
+
+    .velvet-curtain.right {
+      right: 0;
+      transform-origin: right top;
+      flex-direction: row-reverse;
+    }
+
+    /* Individual physical fabric pleats */
+    .pleat {
+      flex: 1;
+      height: 100%;
+      position: relative;
+      background: 
+        linear-gradient(to bottom, rgba(0,0,0,0.65) 0%, transparent 12%, transparent 88%, rgba(0,0,0,0.7) 100%),
+        linear-gradient(90deg, 
+          rgba(15,0,3,0.92) 0%, 
+          rgba(95,8,19,0.85) 28%, 
+          rgba(195,28,48,0.95) 50%, 
+          rgba(120,12,25,0.88) 72%, 
+          rgba(20,1,4,0.95) 100%),
+        repeating-linear-gradient(45deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 2px, transparent 2px, transparent 4px),
+        #5e0813;
+      background-blend-mode: multiply, normal, overlay, normal;
+      box-shadow: inset 0 0 14px rgba(0,0,0,0.7);
+      transition: transform 3.6s cubic-bezier(0.77, 0, 0.175, 1), filter 3.6s;
+    }
+
+    /* Heavy gold brocade border on the curtain lead edges */
+    .zari-border-lead {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 48px;
+      z-index: 10;
+      background: 
+        repeating-linear-gradient(0deg, #d4af37 0px, #fbf5b7 6px, #8f6815 12px, #fbf5b7 18px),
+        radial-gradient(circle at 50% 50%, #fff2a3 20%, #9e7514 80%);
+      box-shadow: 0 0 18px rgba(212, 175, 55, 0.5), inset 0 0 5px rgba(0,0,0,0.6);
+      border-left: 2px solid #5a3c05;
+      border-right: 2px solid #fff5a5;
+    }
+
+    .velvet-curtain.left .zari-border-lead { right: 0; }
+    .velvet-curtain.right .zari-border-lead { left: 0; }
+
+    /* Open animation states - bunching physical pleats to the edges */
+    #curtain-stage.stage-open .velvet-curtain.left {
+      transform: translateX(-88%) scaleX(0.22) rotateY(-18deg);
+      filter: brightness(0.65) drop-shadow(10px 0 25px rgba(0,0,0,0.9));
+    }
+
+    #curtain-stage.stage-open .velvet-curtain.right {
+      transform: translateX(88%) scaleX(0.22) rotateY(18deg);
+      filter: brightness(0.65) drop-shadow(-10px 0 25px rgba(0,0,0,0.9));
+    }
+
+    /* Arch Valance / Pelmet at the top with scalloped velvet and bullion fringe */
+    .curtain-valance-box {
+      position: absolute;
+      top: 18px;
+      left: 0;
+      right: 0;
+      height: 95px;
+      z-index: 30;
+      pointer-events: none;
+      transition: transform 3.2s cubic-bezier(0.77, 0, 0.175, 1), opacity 2.8s;
+    }
+
+    .valance-swag-container {
+      width: 100%;
+      height: 70px;
+      display: flex;
+    }
+
+    .swag-scallop {
+      flex: 1;
+      height: 100%;
+      position: relative;
+      background: radial-gradient(ellipse at 50% -20%, #bf1930 25%, #630814 65%, #2a0207 100%);
+      border-radius: 0 0 55% 55% / 0 0 100% 100%;
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.8), inset 0 -6px 12px rgba(0,0,0,0.6);
+      border-bottom: 3.5px solid #dfbc55;
+    }
+
+    /* Bullion gold thread fringe hanging beneath valance */
+    .bullion-fringe {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      height: 24px;
+      background: repeating-linear-gradient(90deg, #ecd386 0px, #75520e 2px, #fff5b8 4px, transparent 4px, transparent 6px);
+      filter: drop-shadow(0 4px 6px rgba(0,0,0,0.7));
+    }
+
+    /* Brass Rod & Carved Royal Finials */
+    .brass-rod {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 22px;
+      background: linear-gradient(180deg, #fef1b8 0%, #caa03a 40%, #684809 85%, #d8b248 100%);
+      box-shadow: 0 5px 16px rgba(0,0,0,0.85);
+      z-index: 35;
+    }
+
+    .finial {
+      position: absolute;
+      top: -12px;
+      width: 48px;
+      height: 46px;
+      background: radial-gradient(circle at 35% 35%, #fff0b3, #b88a1e 60%, #462c03);
+      border-radius: 50% 50% 30% 30%;
+      box-shadow: 0 0 20px rgba(236,211,134,0.6);
+    }
+    .finial.left { left: 8px; }
+    .finial.right { right: 8px; }
+
+    /* Center Medallion Royal Emblem */
+    .royal-seal {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(1);
+      width: 260px;
+      height: 260px;
+      z-index: 25;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: radial-gradient(circle, #210206 0%, #0d0102 75%, #050001 100%);
+      border: 3px solid #dfbc55;
+      box-shadow: 0 0 50px rgba(223, 188, 85, 0.45), 0 20px 60px rgba(0,0,0,0.95);
+      transition: transform 3.2s cubic-bezier(0.77, 0, 0.175, 1), opacity 2.4s ease-out;
+    }
+
+    .mandala-spin {
+      position: absolute;
+      inset: 6px;
+      border-radius: 50%;
+      border: 1px dashed rgba(223, 188, 85, 0.55);
+      animation: rotateRing 32s linear infinite;
+    }
+
+    .mandala-inner {
+      position: absolute;
+      inset: 16px;
+      border-radius: 50%;
+      border: 1px dotted rgba(251, 245, 183, 0.75);
+      animation: rotateRingRev 22s linear infinite;
+    }
+
+    @keyframes rotateRing {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    @keyframes rotateRingRev {
+      0% { transform: rotate(360deg); }
+      100% { transform: rotate(0deg); }
+    }
+
+    #curtain-stage.stage-open .royal-seal {
+      transform: translate(-50%, -50%) scale(0.65) translateY(-60px);
+      opacity: 0;
+    }
+
+    #curtain-stage.stage-open .curtain-valance-box {
+      transform: translateY(-110%);
+      opacity: 0;
+    }
+
+    /* ========================================================
+       WEBSITE CONTENT & GLASSMORPHISM
+       ======================================================== */
+    .glass-panel {
+      background: rgba(43, 10, 16, 0.48);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid rgba(223, 188, 85, 0.22);
+      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7);
+    }
+
+    .glass-panel-subtle {
+      background: rgba(24, 4, 7, 0.65);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(247, 235, 236, 0.08);
+    }
+
+    .gold-shimmer-text {
+      background: linear-gradient(135deg, #fef1b8 0%, #caa03a 40%, #f7df86 65%, #946912 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    /* Silk Luster Sheen Animation on hover */
+    .silk-card {
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.4s ease;
+    }
+
+    .silk-card::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -150%;
+      width: 200%;
+      height: 200%;
+      background: linear-gradient(
+        60deg,
+        transparent 35%,
+        rgba(255, 245, 184, 0.22) 50%,
+        transparent 65%
+      );
+      transform: rotate(25deg);
+      transition: all 0.75s ease;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    .silk-card:hover::before {
+      left: 120%;
+    }
+
+    .silk-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 25px 45px rgba(0,0,0,0.8), 0 0 25px rgba(223, 188, 85, 0.35);
+    }
+
+    /* Ambient background gold dust particles */
+    .bg-ornament {
+      background-image: radial-gradient(rgba(223, 188, 85, 0.12) 1px, transparent 1px);
+      background-size: 32px 32px;
+    }
+
+    /* Badge glow */
+    .gold-badge {
+      border: 1px solid rgba(223, 188, 85, 0.4);
+      background: linear-gradient(145deg, rgba(223, 188, 85, 0.18), rgba(65, 8, 17, 0.35));
+    }
+  </style>
+</head>
+
+<body class="selection:bg-gold-500 selection:text-ruby-950">
+
+  <!-- ==================== CURTAIN INTRO LAYER ==================== -->
+  <aside id="curtain-stage" aria-label="Royal Curtain Reveal" class="stage-closed">
+    <!-- Top Brass Rod with Handcrafted Finials -->
+    <div class="brass-rod">
+      <div class="finial left"></div>
+      <div class="finial right"></div>
+    </div>
+
+    <!-- Valance Swags & Golden Bullion Fringe -->
+    <div class="curtain-valance-box">
+      <div class="valance-swag-container">
+        <div class="swag-scallop"></div>
+        <div class="swag-scallop"></div>
+        <div class="swag-scallop"></div>
+        <div class="swag-scallop"></div>
+        <div class="swag-scallop"></div>
+        <div class="swag-scallop"></div>
+        <div class="swag-scallop"></div>
+      </div>
+      <div class="bullion-fringe"></div>
+    </div>
+
+    <!-- Left Velvet Curtain with 10 Deep Folds -->
+    <div class="velvet-curtain left" id="left-curtain">
+      <div class="pleat"></div>
+      <div class="pleat"></div>
+      <div class="pleat"></div>
+      <div class="pleat"></div>
+      <div class="pleat"></div>
+      <div class="pleat"></div>
+      <div class="pleat"></div>
+      <div class="pleat"></div>
+      <div class="pleat"></div>
+      <div class="pleat"></div>
+      <!-- Zari Lead Edge -->
+      <div class="zari-border-lead"></div>
+    </div>
+
+    <!-- Right Velvet Curtain with 10 Deep Folds -->
+    <div class="velvet-curtain right" id="right-curtain">
+      <div class="pleat"></div>
+      <div class="pleat"></div>
+      <div class="pleat"></div>
+      <div class="pleat"></div>
+      <div class="pleat"></div>
+      <div class="pleat"></div>
+      <div class="pleat"></div>
+      <div class="pleat"></div>
+      <div class="pleat"></div>
+      <div class="pleat"></div>
+      <!-- Zari Lead Edge -->
+      <div class="zari-border-lead"></div>
+    </div>
+
+    <!-- Royal Zari Medallion / Center Crest -->
+    <div class="royal-seal" id="royal-seal">
+      <div class="mandala-spin"></div>
+      <div class="mandala-inner"></div>
+      
+      <!-- Crown Icon -->
+      <div class="text-gold-400 text-2xl mb-1 filter drop-shadow">
+        <i class="fa-solid fa-crown"></i>
+      </div>
+      
+      <span class="font-cinzel text-xs tracking-[0.35em] text-gold-300 font-bold uppercase mb-1">Rajgharana</span>
+      <h2 class="font-cinzel text-2xl tracking-[0.2em] font-bold text-white text-center gold-shimmer-text">
+        AARYA
+      </h2>
+      <p class="font-cormorant italic text-xs tracking-widest text-gold-200 mt-0.5">Haute Weaves • Est. 1892</p>
+
+      <div class="mt-4 flex items-center space-x-2">
+        <span class="h-[1px] w-6 bg-gold-400/50"></span>
+        <span class="text-[9px] font-sans tracking-widest uppercase text-gold-300/80">Kashi • Kanchipuram</span>
+        <span class="h-[1px] w-6 bg-gold-400/50"></span>
+      </div>
+    </div>
+
+    <!-- Curtain Overlay Action Controls -->
+    <div class="absolute bottom-10 left-1/2 -translate-x-1/2 z-40 flex items-center gap-4">
+      <button id="openCurtainsBtn" class="px-7 py-3 rounded-full bg-gradient-to-r from-gold-600 via-gold-400 to-gold-600 text-ruby-950 font-cinzel text-xs font-bold tracking-[0.25em] uppercase shadow-[0_0_30px_rgba(223,188,85,0.6)] hover:brightness-110 active:scale-95 transition-all">
+        Part The Velvets <i class="fa-solid fa-gem ml-1 text-[10px]"></i>
+      </button>
+
+      <button id="soundToggleCurtainBtn" title="Toggle Ambience" class="w-11 h-11 rounded-full bg-black/60 border border-gold-400/40 text-gold-300 hover:text-white flex items-center justify-center backdrop-blur-md transition-all">
+        <i class="fa-solid fa-volume-high text-xs"></i>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ==================== MAIN APPLICATION CONTENT ==================== -->
+  <div id="app-root" class="relative min-h-screen bg-ornament">
+    
+    <!-- Top Announcement Bar -->
+    <div class="bg-gradient-to-r from-ruby-950 via-ruby-900 to-ruby-950 border-b border-gold-500/20 py-2 px-4 text-center text-xs tracking-widest uppercase font-cinzel text-gold-300 flex justify-center items-center gap-4">
+      <span>✦ Complimentary Worldwide Insured Courier on Bespoke Bridal Sarees ✦</span>
+      <span class="hidden md:inline text-gold-500/60">•</span>
+      <span class="hidden md:inline">Silk Mark Authenticity Certified</span>
+    </div>
+
+    <!-- Royal Glassmorphic Header -->
+    <header class="sticky top-0 z-50 glass-panel border-x-0 border-t-0 px-6 lg:px-16 py-4 flex items-center justify-between transition-all duration-300">
+      <!-- Left: Mobile Menu & Heritage Brand -->
+      <div class="flex items-center gap-6">
+        <button id="mobileMenuBtn" class="lg:hidden text-gold-300 hover:text-white text-xl">
+          <i class="fa-solid fa-bars-staggered"></i>
+        </button>
+
+        <a href="#" class="group flex items-center gap-3">
+          <div class="w-10 h-10 rounded-full border border-gold-400/60 flex items-center justify-center bg-ruby-900/60 group-hover:border-gold-300 shadow-[0_0_12px_rgba(223,188,85,0.2)]">
+            <i class="fa-solid fa-crown text-gold-400 text-sm"></i>
+          </div>
+          <div>
+            <span class="font-cinzel text-lg lg:text-xl font-bold tracking-[0.25em] text-white block leading-tight gold-shimmer-text">
+              AARYA
+            </span>
+            <span class="font-cormorant text-xs tracking-widest text-gold-300 block -mt-1 italic">
+              Heritage Weaves
+            </span>
+          </div>
+        </a>
+      </div>
+
+      <!-- Center: Navigation Links -->
+      <nav class="hidden lg:flex items-center space-x-9 text-xs tracking-[0.22em] uppercase font-cinzel text-blush-100">
+        <a href="#masterpieces" class="hover:text-gold-300 transition-colors">Masterpieces</a>
+        <a href="#kanjivaram" class="hover:text-gold-300 transition-colors">Kanjivaram</a>
+        <a href="#banarasi" class="hover:text-gold-300 transition-colors">Banarasi Tanchoi</a>
+        <a href="#bridal" class="hover:text-gold-300 transition-colors">Bridal Troussier</a>
+        <a href="#heritage-story" class="hover:text-gold-300 transition-colors">The Royal Guild</a>
+      </nav>
+
+      <!-- Right: Utility Controls & Bag -->
+      <div class="flex items-center space-x-5">
+        <!-- Replay Curtain Intro Button -->
+        <button id="replayCurtainBtn" title="Replay Opening Curtain" class="text-gold-300/80 hover:text-gold-300 transition-colors p-2 text-sm flex items-center gap-1.5 font-cinzel text-[11px] tracking-wider">
+          <i class="fa-solid fa-masks-theater text-sm"></i>
+          <span class="hidden sm:inline">Replay Intro</span>
+        </button>
+
+        <!-- Currency Picker -->
+        <div class="relative hidden sm:block">
+          <select id="currencySelector" class="bg-ruby-950/70 text-gold-300 border border-gold-500/30 text-xs rounded-full px-3 py-1 font-cinzel tracking-wider focus:outline-none cursor-pointer">
+            <option value="INR">INR (₹)</option>
+            <option value="USD">USD ($)</option>
+            <option value="GBP">GBP (£)</option>
+            <option value="AED">AED (د.إ)</option>
+          </select>
+        </div>
+
+        <!-- Wishlist -->
+        <button class="relative text-gold-300 hover:text-white transition-colors p-2" title="Wishlist">
+          <i class="fa-regular fa-heart text-lg"></i>
+          <span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-gold-400"></span>
+        </button>
+
+        <!-- Cart Drawer Toggle -->
+        <button id="cartDrawerBtn" class="relative px-4 py-2 rounded-full bg-ruby-900/70 border border-gold-400/40 text-gold-200 hover:border-gold-300 transition-all flex items-center space-x-2">
+          <i class="fa-solid fa-bag-shopping text-sm text-gold-400"></i>
+          <span class="font-cinzel text-xs font-semibold" id="cartCounter">0</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- ==================== HERO SECTION ==================== -->
+    <section class="relative min-h-[92vh] flex items-center justify-center px-6 lg:px-16 py-12 overflow-hidden">
+      <!-- Glow & Ambiance Blobs -->
+      <div class="absolute -top-32 left-1/4 w-96 h-96 bg-ruby-700/20 rounded-full blur-[140px] pointer-events-none"></div>
+      <div class="absolute bottom-10 right-10 w-[480px] h-[480px] bg-gold-600/10 rounded-full blur-[160px] pointer-events-none"></div>
+
+      <div class="max-w-7xl w-full grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center relative z-10">
+        
+        <!-- Hero Editorial Column Left -->
+        <div class="lg:col-span-7 space-y-6 text-center lg:text-left">
+          <div class="inline-flex items-center space-x-3 px-4 py-1.5 rounded-full gold-badge">
+            <span class="w-2 h-2 rounded-full bg-gold-400 animate-pulse"></span>
+            <span class="font-cinzel text-xs uppercase tracking-[0.25em] text-gold-300 font-semibold">The 2026 Rajvansh Imperial Edition</span>
+          </div>
+
+          <h1 class="font-cinzel text-4xl sm:text-5xl lg:text-6xl font-black text-white tracking-wide leading-[1.12]">
+            Draped in Royalty.<br />
+            <span class="gold-shimmer-text italic font-cormorant font-normal">Woven with 24-Karat</span><br />
+            Timeless Immortality.
+          </h1>
+
+          <p class="font-cormorant text-lg sm:text-xl text-blush-200/90 max-w-xl mx-auto lg:mx-0 leading-relaxed font-light">
+            Indulge in authentic handwoven treasures born from the legendary looms of Varanasi and Kanchipuram. Real silver & dipped gold zari woven painstakingly over three seasons.
+          </p>
+
+          <div class="pt-4 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-5">
+            <a href="#masterpieces" class="w-full sm:w-auto px-9 py-4 rounded-full bg-gradient-to-r from-gold-500 via-gold-400 to-gold-600 text-ruby-950 font-cinzel text-xs font-bold tracking-[0.25em] uppercase hover:shadow-[0_0_35px_rgba(223,188,85,0.7)] transition-all transform hover:-translate-y-0.5 text-center">
+              Explore The Troussier
+            </a>
+
+            <button id="watchLoomCraftBtn" class="w-full sm:w-auto px-8 py-4 rounded-full glass-panel text-white hover:text-gold-300 font-cinzel text-xs tracking-[0.2em] uppercase flex items-center justify-center space-x-3 hover:border-gold-400/60 transition-all">
+              <span class="w-6 h-6 rounded-full bg-gold-500/20 flex items-center justify-center text-[10px] text-gold-300">
+                <i class="fa-solid fa-play"></i>
+              </span>
+              <span>The Zari Craft</span>
+            </button>
+          </div>
+
+          <!-- Trust Badges -->
+          <div class="pt-8 border-t border-gold-500/20 grid grid-cols-3 gap-4 max-w-lg mx-auto lg:mx-0 text-center lg:text-left">
+            <div>
+              <p class="font-cinzel text-xl lg:text-2xl font-bold text-gold-300">220+</p>
+              <p class="font-cormorant text-xs tracking-wider text-blush-300 uppercase">Hours Per Drape</p>
+            </div>
+            <div>
+              <p class="font-cinzel text-xl lg:text-2xl font-bold text-gold-300">100%</p>
+              <p class="font-cormorant text-xs tracking-wider text-blush-300 uppercase">Certified Mulberry Silk</p>
+            </div>
+            <div>
+              <p class="font-cinzel text-xl lg:text-2xl font-bold text-gold-300">Pure</p>
+              <p class="font-cormorant text-xs tracking-wider text-blush-300 uppercase">Tested Zari Hallmark</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Hero Saree Showcase Card Right -->
+        <div class="lg:col-span-5 relative flex justify-center">
+          <div class="relative w-full max-w-md">
+            
+            <!-- Background Ornate Halo Frame -->
+            <div class="absolute -inset-4 rounded-[40px] border border-gold-500/30 opacity-70 transform rotate-2 pointer-events-none"></div>
+            <div class="absolute -inset-2 rounded-[36px] border border-gold-400/20 opacity-90 transform -rotate-2 pointer-events-none"></div>
+
+            <!-- Master Showcase Image Card -->
+            <div class="relative rounded-[32px] overflow-hidden glass-panel border border-gold-400/40 p-3 shadow-[0_30px_70px_rgba(0,0,0,0.8)]">
+              <div class="relative h-[480px] rounded-[24px] overflow-hidden">
+                <img 
+                  id="heroSareeImg"
+                  src="https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=1000&q=80" 
+                  alt="Royal Crimson Kanjivaram Silk Saree"
+                  class="w-full h-full object-cover object-top filter brightness-95 contrast-105 hover:scale-105 transition-transform duration-700"
+                  onerror="this.src='https://placehold.co/600x900/3a040b/ecd386?text=Royal+Kanjivaram+Silk'"
+                />
+                
+                <div class="absolute inset-0 bg-gradient-to-t from-ruby-950 via-transparent to-transparent"></div>
+
+                <!-- Floating Editorial Badges -->
+                <div class="absolute top-4 left-4 glass-panel-subtle px-3 py-1.5 rounded-full border border-gold-400/40 flex items-center space-x-2">
+                  <i class="fa-solid fa-certificate text-gold-400 text-xs"></i>
+                  <span class="text-[11px] font-cinzel text-gold-200 tracking-wider">GI Certified Origin</span>
+                </div>
+
+                <div class="absolute bottom-5 left-5 right-5 glass-panel p-4 rounded-2xl border border-gold-400/30">
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="text-[10px] font-cinzel text-gold-400 uppercase tracking-widest">Imperial Bridal Edit</span>
+                    <span class="text-xs font-cinzel font-bold text-white tracking-widest" id="heroPriceTag">₹1,85,000</span>
+                  </div>
+                  <h4 class="font-cormorant text-xl text-white font-medium italic">Kalyani Swarnamala Kanjivaram</h4>
+                  <p class="text-xs text-blush-200/80 font-sans mt-0.5">Woven with 3-ply mulberry silk and dipped real silver tested zari.</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Floating Decorative Seal -->
+            <div class="absolute -bottom-6 -right-6 w-24 h-24 rounded-full bg-gradient-to-tr from-gold-600 via-gold-400 to-gold-200 p-0.5 shadow-2xl flex items-center justify-center animate-bounce duration-1000">
+              <div class="w-full h-full rounded-full bg-ruby-950 flex flex-col items-center justify-center text-center p-2">
+                <i class="fa-solid fa-award text-gold-400 text-base mb-0.5"></i>
+                <span class="text-[8px] font-cinzel uppercase tracking-tighter text-gold-300 font-bold">100% Pure Zari</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ==================== COLLECTION SECTION ==================== -->
+    <section id="masterpieces" class="py-20 px-6 lg:px-16 border-t border-gold-500/15">
+      <div class="max-w-7xl mx-auto">
+        
+        <!-- Section Header -->
+        <div class="text-center max-w-2xl mx-auto mb-14">
+          <div class="inline-flex items-center space-x-2 text-gold-400 text-xs font-cinzel tracking-[0.3em] uppercase mb-2">
+            <span>✦</span>
+            <span>The Curated Treasures</span>
+            <span>✦</span>
+          </div>
+          <h2 class="font-cinzel text-3xl sm:text-4xl lg:text-5xl font-bold text-white tracking-wide">
+            Masterpieces of the Loom
+          </h2>
+          <div class="w-24 h-0.5 bg-gradient-to-r from-transparent via-gold-400 to-transparent mx-auto mt-4 mb-4"></div>
+          <p class="font-cormorant text-lg text-blush-200 italic">
+            Each drape requires between 140 to 360 continuous hours on traditional Jacquard and pit looms.
+          </p>
+        </div>
+
+        <!-- Filter Tabs -->
+        <div class="flex flex-wrap items-center justify-center gap-3 mb-12">
+          <button class="filter-btn px-6 py-2.5 rounded-full text-xs font-cinzel tracking-widest uppercase transition-all bg-gold-500 text-ruby-950 font-bold shadow-lg shadow-gold-500/20" data-filter="all">
+            All Creations
+          </button>
+          <button class="filter-btn px-6 py-2.5 rounded-full text-xs font-cinzel tracking-widest uppercase transition-all glass-panel text-gold-200 hover:border-gold-300" data-filter="kanjivaram">
+            Kanjivaram Silk
+          </button>
+          <button class="filter-btn px-6 py-2.5 rounded-full text-xs font-cinzel tracking-widest uppercase transition-all glass-panel text-gold-200 hover:border-gold-300" data-filter="banarasi">
+            Banarasi Tanchoi
+          </button>
+          <button class="filter-btn px-6 py-2.5 rounded-full text-xs font-cinzel tracking-widest uppercase transition-all glass-panel text-gold-200 hover:border-gold-300" data-filter="patola">
+            Patan Patola & Ikat
+          </button>
+          <button class="filter-btn px-6 py-2.5 rounded-full text-xs font-cinzel tracking-widest uppercase transition-all glass-panel text-gold-200 hover:border-gold-300" data-filter="chanderi">
+            Tissue & Chanderi
+          </button>
+        </div>
+
+        <!-- Product Cards Grid -->
+        <div id="productGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <!-- Populated by JavaScript with high visual fidelity cards -->
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ==================== HERITAGE CRAFTSMANSHIP ==================== -->
+    <section id="heritage-story" class="py-24 px-6 lg:px-16 bg-gradient-to-b from-transparent via-ruby-950/80 to-transparent border-t border-gold-500/20 relative">
+      <div class="max-w-6xl mx-auto">
+        <div class="text-center mb-16">
+          <span class="text-xs font-cinzel text-gold-400 tracking-[0.3em] uppercase block mb-2">Ancestral Provenance</span>
+          <h2 class="font-cinzel text-3xl sm:text-4xl lg:text-5xl font-bold text-white tracking-wide">
+            From Loom to Heirloom
+          </h2>
+          <p class="font-cormorant text-lg text-blush-200 mt-2 max-w-xl mx-auto italic">
+            Witness the multi-generational devotion involved in crafting single drapes fit for royal courts.
+          </p>
+        </div>
+
+        <!-- Interactive Craft Steps -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <!-- Step 1 -->
+          <div class="glass-panel p-6 rounded-2xl border border-gold-500/25 relative group hover:border-gold-400 transition-all">
+            <div class="text-gold-400 text-3xl mb-4 font-cinzel opacity-40 group-hover:opacity-100 transition-opacity">01</div>
+            <h3 class="font-cinzel text-lg font-semibold text-white mb-2">Mulberry Sericulture</h3>
+            <p class="text-xs font-sans text-blush-300 leading-relaxed">
+              Harvesting Grade-A raw silk filament reels known for unparalleled tensile resilience and crystalline natural luster.
+            </p>
+          </div>
+
+          <!-- Step 2 -->
+          <div class="glass-panel p-6 rounded-2xl border border-gold-500/25 relative group hover:border-gold-400 transition-all">
+            <div class="text-gold-400 text-3xl mb-4 font-cinzel opacity-40 group-hover:opacity-100 transition-opacity">02</div>
+            <h3 class="font-cinzel text-lg font-semibold text-white mb-2">24K Pure Zari Gilding</h3>
+            <p class="text-xs font-sans text-blush-300 leading-relaxed">
+              Real silver wires flattened through diamond dies and electroplated in 24k melted gold bullion for eternal sheen.
+            </p>
+          </div>
+
+          <!-- Step 3 -->
+          <div class="glass-panel p-6 rounded-2xl border border-gold-500/25 relative group hover:border-gold-400 transition-all">
+            <div class="text-gold-400 text-3xl mb-4 font-cinzel opacity-40 group-hover:opacity-100 transition-opacity">03</div>
+            <h3 class="font-cinzel text-lg font-semibold text-white mb-2">Korvai Interlocking</h3>
+            <p class="text-xs font-sans text-blush-300 leading-relaxed">
+              Ancient technique requiring two weavers simultaneously linking heavy contrasting pallu borders to the body.
+            </p>
+          </div>
+
+          <!-- Step 4 -->
+          <div class="glass-panel p-6 rounded-2xl border border-gold-500/25 relative group hover:border-gold-400 transition-all">
+            <div class="text-gold-400 text-3xl mb-4 font-cinzel opacity-40 group-hover:opacity-100 transition-opacity">04</div>
+            <h3 class="font-cinzel text-lg font-semibold text-white mb-2">Guild Assaying</h3>
+            <p class="text-xs font-sans text-blush-300 leading-relaxed">
+              Every saree is tested for silver percentage, micro-hallmarked, and accompanied by physical silk mark certification.
+            </p>
+          </div>
+        </div>
+
+        <!-- Royal Seal Certificate Banner -->
+        <div class="mt-14 glass-panel rounded-3xl p-8 border border-gold-400/40 flex flex-col md:flex-row items-center justify-between gap-6 shadow-[0_20px_50px_rgba(0,0,0,0.6)]">
+          <div class="flex items-center space-x-5">
+            <div class="w-16 h-16 rounded-full bg-gradient-to-tr from-gold-500 to-gold-200 flex items-center justify-center text-ruby-950 text-2xl flex-shrink-0 shadow-lg">
+              <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <div>
+              <h4 class="font-cinzel text-xl font-bold text-white">The Sovereign Guild Guarantee</h4>
+              <p class="text-xs text-blush-200 mt-1">Inspected and sealed by the Handloom Board. Lifetime zari repolishing privilege.</p>
+            </div>
+          </div>
+          <button id="bookCuratorBtn" class="px-7 py-3 rounded-full bg-ruby-900 border border-gold-400 text-gold-300 hover:text-white hover:bg-gold-500 hover:text-ruby-950 font-cinzel text-xs uppercase tracking-widest transition-all whitespace-nowrap">
+            Schedule Private Concierge
+          </button>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ==================== ROYAL PATRONS ==================== -->
+    <section class="py-20 px-6 lg:px-16">
+      <div class="max-w-6xl mx-auto text-center">
+        <span class="text-xs font-cinzel text-gold-400 tracking-[0.3em] uppercase block mb-2">Patron Accolades</span>
+        <h2 class="font-cinzel text-3xl sm:text-4xl font-bold text-white tracking-wide mb-12">
+          Cherished Across Generations
+        </h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-left">
+          <div class="glass-panel p-8 rounded-2xl border border-gold-500/20 relative">
+            <div class="text-gold-400 text-xs mb-3">
+              <i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i>
+            </div>
+            <p class="font-cormorant italic text-blush-100 text-lg leading-relaxed mb-6">
+              "The weight of the pure gold zari in my bridal Kanjivaram was breathtaking. When unfolded under the chandeliers, the weave glistened like molten champagne."
+            </p>
+            <div>
+              <p class="font-cinzel text-xs font-bold text-gold-300 tracking-wider">Maharani Gayatri D.</p>
+              <p class="text-[11px] text-blush-300">Jaipur Heritage Collection</p>
+            </div>
+          </div>
+
+          <div class="glass-panel p-8 rounded-2xl border border-gold-500/20 relative">
+            <div class="text-gold-400 text-xs mb-3">
+              <i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i>
+            </div>
+            <p class="font-cormorant italic text-blush-100 text-lg leading-relaxed mb-6">
+              "Aarya's vintage Banarasi Tanchoi saree has become an heirloom my daughter will wear on her wedding day. The pure silver test certificate gave total peace of mind."
+            </p>
+            <div>
+              <p class="font-cinzel text-xs font-bold text-gold-300 tracking-wider">Dr. Radhika Sen</p>
+              <p class="text-[11px] text-blush-300">London & Kolkata</p>
+            </div>
+          </div>
+
+          <div class="glass-panel p-8 rounded-2xl border border-gold-500/20 relative">
+            <div class="text-gold-400 text-xs mb-3">
+              <i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i>
+            </div>
+            <p class="font-cormorant italic text-blush-100 text-lg leading-relaxed mb-6">
+              "The custom bridal trousseau consultation over video was flawless. The bespoke box arrived in New York with embroidered velvet casing and fragrant sandalwood sachets."
+            </p>
+            <div>
+              <p class="font-cinzel text-xs font-bold text-gold-300 tracking-wider">Ananya Swaminathan</p>
+              <p class="text-[11px] text-blush-300">Manhattan, NY</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== FOOTER ==================== -->
+    <footer class="border-t border-gold-500/25 bg-ruby-950/90 py-16 px-6 lg:px-16 text-blush-200">
+      <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
+        
+        <!-- Brand Info -->
+        <div class="lg:col-span-2 space-y-4">
+          <div class="flex items-center space-x-3">
+            <div class="w-9 h-9 rounded-full border border-gold-400 flex items-center justify-center text-gold-400">
+              <i class="fa-solid fa-crown text-xs"></i>
+            </div>
+            <span class="font-cinzel text-xl font-bold tracking-[0.25em] text-white gold-shimmer-text">AARYA</span>
+          </div>
+          <p class="font-cormorant italic text-sm text-blush-200/80 max-w-sm">
+            Curators of imperial Indian handlooms, conserving weaving traditions that have adorned aristocracy since the Mughal and Chola dynasties.
+          </p>
+          <div class="flex space-x-4 pt-2">
+            <a href="#" class="w-9 h-9 rounded-full glass-panel flex items-center justify-center text-gold-300 hover:text-white hover:border-gold-300 transition-colors"><i class="fa-brands fa-instagram"></i></a>
+            <a href="#" class="w-9 h-9 rounded-full glass-panel flex items-center justify-center text-gold-300 hover:text-white hover:border-gold-300 transition-colors"><i class="fa-brands fa-pinterest"></i></a>
+            <a href="#" class="w-9 h-9 rounded-full glass-panel flex items-center justify-center text-gold-300 hover:text-white hover:border-gold-300 transition-colors"><i class="fa-brands fa-youtube"></i></a>
+          </div>
+        </div>
+
+        <!-- Links 1 -->
+        <div>
+          <h4 class="font-cinzel text-xs font-bold uppercase tracking-[0.2em] text-gold-300 mb-4">Royal Looms</h4>
+          <ul class="space-y-2 text-xs font-sans text-blush-300">
+            <li><a href="#" class="hover:text-gold-200 transition-colors">Kanchipuram Silk</a></li>
+            <li><a href="#" class="hover:text-gold-200 transition-colors">Varanasi Tanchoi</a></li>
+            <li><a href="#" class="hover:text-gold-200 transition-colors">Patan Double Ikat</a></li>
+            <li><a href="#" class="hover:text-gold-200 transition-colors">Chanderi Tissue</a></li>
+            <li><a href="#" class="hover:text-gold-200 transition-colors">Bridal Brocades</a></li>
+          </ul>
+        </div>
+
+        <!-- Links 2 -->
+        <div>
+          <h4 class="font-cinzel text-xs font-bold uppercase tracking-[0.2em] text-gold-300 mb-4">Maison Services</h4>
+          <ul class="space-y-2 text-xs font-sans text-blush-300">
+            <li><a href="#" class="hover:text-gold-200 transition-colors">Private Atelier Visit</a></li>
+            <li><a href="#" class="hover:text-gold-200 transition-colors">Bridal Trousseau Styling</a></li>
+            <li><a href="#" class="hover:text-gold-200 transition-colors">Zari Certificate Check</a></li>
+            <li><a href="#" class="hover:text-gold-200 transition-colors">Custom Color Dyeing</a></li>
+            <li><a href="#" class="hover:text-gold-200 transition-colors">Insured Global Transit</a></li>
+          </ul>
+        </div>
+
+        <!-- Newsletter Subscription -->
+        <div>
+          <h4 class="font-cinzel text-xs font-bold uppercase tracking-[0.2em] text-gold-300 mb-4">The Atelier Gazette</h4>
+          <p class="text-xs text-blush-300 mb-3">Private previews of limited seasonal loom releases.</p>
+          <div class="space-y-2">
+            <input type="email" placeholder="Your royal address" class="w-full bg-ruby-900/50 border border-gold-500/30 rounded-lg px-3 py-2 text-xs text-white placeholder-blush-300/40 focus:outline-none focus:border-gold-400" />
+            <button class="w-full py-2 rounded-lg bg-gold-500 text-ruby-950 font-cinzel text-[11px] font-bold tracking-widest uppercase hover:bg-gold-400 transition-colors">
+              Subscribe
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="max-w-7xl mx-auto mt-12 pt-6 border-t border-gold-500/15 flex flex-col md:flex-row items-center justify-between text-xs text-blush-300/70">
+        <p>© 2026 Aarya Heritage Handloom Guild. All Rights Reserved.</p>
+        <p class="mt-2 md:mt-0 font-cinzel tracking-wider text-[11px]">Couture Handcraft • Pure Zari Standard ISO 9001</p>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- ==================== SHOPPING BAG DRAWER ==================== -->
+  <div id="cartDrawer" class="fixed inset-0 z-[1000] bg-black/70 backdrop-blur-md hidden transition-opacity duration-300">
+    <div class="absolute right-0 top-0 bottom-0 w-full max-w-md bg-ruby-950 border-l border-gold-400/30 p-6 flex flex-col shadow-2xl">
+      <!-- Drawer Header -->
+      <div class="flex items-center justify-between pb-4 border-b border-gold-500/20">
+        <div class="flex items-center space-x-2">
+          <i class="fa-solid fa-crown text-gold-400 text-sm"></i>
+          <h3 class="font-cinzel text-base font-bold text-white tracking-widest uppercase">The Royal Bag</h3>
+        </div>
+        <button id="closeCartBtn" class="text-gold-300 hover:text-white p-1 text-lg">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Items List -->
+      <div id="cartItemsList" class="flex-1 overflow-y-auto py-4 space-y-4">
+        <!-- Empty state or dynamically rendered items -->
+        <div class="text-center py-12 text-blush-300">
+          <i class="fa-solid fa-gem text-3xl text-gold-400/40 mb-3"></i>
+          <p class="font-cormorant italic text-lg">Your bag awaits timeless elegance.</p>
+        </div>
+      </div>
+
+      <!-- Drawer Footer -->
+      <div class="pt-4 border-t border-gold-500/20 space-y-3">
+        <div class="flex justify-between items-center text-sm font-cinzel">
+          <span class="text-gold-200">Subtotal:</span>
+          <span id="cartSubtotal" class="font-bold text-white">₹0</span>
+        </div>
+        <p class="text-[11px] text-blush-300 italic">Includes certified packaging, velvet protective sleeve & transit insurance.</p>
+        <button id="checkoutBtn" class="w-full py-3.5 rounded-full bg-gradient-to-r from-gold-500 to-gold-600 text-ruby-950 font-cinzel font-bold text-xs uppercase tracking-widest shadow-lg hover:brightness-110 transition-all">
+          Proceed to Royal Checkout
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== PRODUCT QUICK VIEW MODAL ==================== -->
+  <div id="quickViewModal" class="fixed inset-0 z-[1001] bg-black/80 backdrop-blur-md hidden items-center justify-center p-4 transition-opacity">
+    <div class="glass-panel max-w-4xl w-full rounded-3xl border border-gold-400/40 overflow-hidden relative shadow-[0_0_80px_rgba(0,0,0,0.9)] max-h-[90vh] flex flex-col md:flex-row">
+      <!-- Close Button -->
+      <button id="closeQuickViewBtn" class="absolute top-4 right-4 z-20 w-9 h-9 rounded-full bg-ruby-950/80 border border-gold-400 text-gold-300 flex items-center justify-center hover:text-white">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <!-- Modal Image with Silk Zoom Simulation -->
+      <div class="md:w-1/2 relative min-h-[320px] bg-black">
+        <img id="modalImg" src="" alt="Saree Detail" class="w-full h-full object-cover object-top" />
+        <div class="absolute bottom-4 left-4 glass-panel px-3 py-1 rounded-full text-[10px] font-cinzel text-gold-300">
+          <i class="fa-solid fa-magnifying-glass-plus mr-1"></i> Pure Mulberry Silk Weave
+        </div>
+      </div>
+
+      <!-- Modal Info Details -->
+      <div class="md:w-1/2 p-6 md:p-8 flex flex-col justify-between overflow-y-auto">
+        <div>
+          <div class="flex items-center space-x-2 mb-2">
+            <span class="text-[10px] uppercase font-cinzel text-gold-400 tracking-widest px-2 py-0.5 rounded border border-gold-400/30" id="modalCategory">Category</span>
+            <span class="text-[10px] text-blush-300 font-sans tracking-widest" id="modalTime">240 Hours of Handloom</span>
+          </div>
+
+          <h3 id="modalTitle" class="font-cinzel text-2xl font-bold text-white mb-1">Title</h3>
+          <p id="modalPrice" class="font-cinzel text-xl text-gold-300 font-bold mb-4">₹0</p>
+
+          <p id="modalDesc" class="font-cormorant text-base text-blush-200/90 leading-relaxed mb-4">Description...</p>
+
+          <!-- Specifications Table -->
+          <div class="space-y-2 text-xs font-sans text-blush-200/80 border-t border-b border-gold-500/20 py-3 mb-6">
+            <div class="flex justify-between"><span class="text-gold-300/80">Zari Specification:</span><span class="text-white font-medium" id="modalZari">Pure Gold Electroplated Silver</span></div>
+            <div class="flex justify-between"><span class="text-gold-300/80">Warp & Weft:</span><span class="text-white font-medium">3-Ply Murshidabad Silk</span></div>
+            <div class="flex justify-between"><span class="text-gold-300/80">Length & Blouse:</span><span class="text-white font-medium">6.3m (Includes Unstitched Brocade Blouse)</span></div>
+          </div>
+        </div>
+
+        <button id="modalAddToCartBtn" class="w-full py-3.5 rounded-full bg-gradient-to-r from-gold-500 to-gold-600 text-ruby-950 font-cinzel text-xs font-bold tracking-widest uppercase shadow-md hover:brightness-110 transition-all flex items-center justify-center space-x-2">
+          <i class="fa-solid fa-bag-shopping"></i>
+          <span>Acquire Masterpiece</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Toast -->
+  <div id="toastNotification" class="fixed bottom-6 right-6 z-[1050] glass-panel border border-gold-400 px-5 py-3 rounded-2xl shadow-2xl flex items-center space-x-3 transform translate-y-24 opacity-0 transition-all duration-300 pointer-events-none">
+    <div class="w-7 h-7 rounded-full bg-gold-400 text-ruby-950 flex items-center justify-center text-xs">
+      <i class="fa-solid fa-check"></i>
+    </div>
+    <div>
+      <h5 class="font-cinzel text-xs font-bold text-white" id="toastTitle">Added to Bag</h5>
+      <p class="text-[11px] text-blush-200" id="toastMessage">Item successfully reserved in your royal bag.</p>
+    </div>
+  </div>
+
+  <script>
+    /* ========================================================
+       1. DATA DEFINITION: MASTERPIECE SAREES
+       ======================================================== */
+    const PRODUCTS = [
+      {
+        id: 'saree-1',
+        title: 'Shringara Kanjivaram Brocade',
+        category: 'kanjivaram',
+        priceINR: 145000,
+        hours: '210 Hours',
+        zari: 'Tested 24K Real Zari',
+        image: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=800&q=80',
+        description: 'Featuring the majestic peacock and rudraksha motifs interlaced with pure gold dip zari along deep crimson mulberry silk.'
+      },
+      {
+        id: 'saree-2',
+        title: 'Varanasi Shikargah Jangla Tanchoi',
+        category: 'banarasi',
+        priceINR: 195000,
+        hours: '280 Hours',
+        zari: 'Antique Ganga-Jamuna Silver Zari',
+        image: 'https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&w=800&q=80',
+        description: 'An archival reproduction of 19th-century royal hunting scenes woven without breaks using authentic double-weft Tanchoi silk.'
+      },
+      {
+        id: 'saree-3',
+        title: 'Patan Double-Ikat Royal Patola',
+        category: 'patola',
+        priceINR: 280000,
+        hours: '380 Hours',
+        zari: 'Natural Madder & Haldi Resist Dye',
+        image: 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&w=800&q=80',
+        description: 'Each warp and weft silk thread is tied and dyed with pinpoint botanical pigments before weaving, creating identical front and back lustres.'
+      },
+      {
+        id: 'saree-4',
+        title: 'Chanderi Swarnachari Tissue Drape',
+        category: 'chanderi',
+        priceINR: 115000,
+        hours: '160 Hours',
+        zari: 'Fine Micron Spun Gold Zari',
+        image: 'https://images.unsplash.com/photo-1610030469668-935a840e3aa0?auto=format&fit=crop&w=800&q=80',
+        description: 'Feather-light sheer metallic silk tissue featuring mythic miniature scenes woven into the pallu with gossamer elegance.'
+      },
+      {
+        id: 'saree-5',
+        title: 'Mayil Korvai Temple Kanjivaram',
+        category: 'kanjivaram',
+        priceINR: 168000,
+        hours: '240 Hours',
+        zari: 'Certified 92.5% Silver Core Zari',
+        image: 'https://images.unsplash.com/photo-1609357605129-26f69add5d6e?auto=format&fit=crop&w=800&q=80',
+        description: 'Rich royal purple contrasted with emerald green borders, woven using the interlocking temple tooth korvai weave.'
+      },
+      {
+        id: 'saree-6',
+        title: 'Brocade Butidar Banarasi Rangkat',
+        category: 'banarasi',
+        priceINR: 225000,
+        hours: '320 Hours',
+        zari: 'Multi-Tone Electroplated Gold Zari',
+        image: 'https://images.unsplash.com/photo-1610030470298-0524458d3570?auto=format&fit=crop&w=800&q=80',
+        description: 'A prized kaleidoscope Rangkat technique with alternating color blocks manually introduced across thousands of shuttle throws.'
+      }
+    ];
+
+    // Currency rates relative to INR
+    const CURRENCY_MAP = {
+      INR: { symbol: '₹', rate: 1 },
+      USD: { symbol: '$', rate: 0.012 },
+      GBP: { symbol: '£', rate: 0.0095 },
+      AED: { symbol: 'AED ', rate: 0.044 }
+    };
+
+    let activeCurrency = 'INR';
+    let cart = [];
+    let audioContext = null;
+    let soundEnabled = true;
+
+    /* ========================================================
+       2. WEB AUDIO API SYNTHESIZER (Royal Chimes & Curtain Swish)
+       ======================================================== */
+    function initAudio() {
+      if (!audioContext) {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) {
+          audioContext = new AudioCtx();
+        }
+      }
+      if (audioContext && audioContext.state === 'suspended') {
+        audioContext.resume();
+      }
+    }
+
+    // Gentle royal brass & wind chime sweep
+    function playCurtainAudio() {
+      if (!soundEnabled) return;
+      try {
+        initAudio();
+        if (!audioContext) return;
+
+        const now = audioContext.currentTime;
+        
+        // Pentatonic frequencies reminiscent of traditional sitar resonance
+        const notes = [293.66, 329.63, 369.99, 440.00, 554.37, 659.25, 739.99, 880.00];
+
+        // Soft fabric wind noise simulation using filtered buffer
+        const bufferSize = audioContext.sampleRate * 2.5;
+        const noiseBuffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          output[i] = Math.random() * 2 - 1;
+        }
+
+        const whiteNoise = audioContext.createBufferSource();
+        whiteNoise.buffer = noiseBuffer;
+
+        const filter = audioContext.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(350, now);
+        filter.frequency.exponentialRampToValueAtTime(1400, now + 1.2);
+        filter.frequency.exponentialRampToValueAtTime(200, now + 2.8);
+        filter.Q.value = 2.0;
+
+        const noiseGain = audioContext.createGain();
+        noiseGain.gain.setValueAtTime(0.0001, now);
+        noiseGain.gain.exponentialRampToValueAtTime(0.08, now + 0.6);
+        noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + 2.8);
+
+        whiteNoise.connect(filter);
+        filter.connect(noiseGain);
+        noiseGain.connect(audioContext.destination);
+
+        whiteNoise.start(now);
+        whiteNoise.stop(now + 2.9);
+
+        // Chimes cascade
+        notes.forEach((freq, index) => {
+          const osc = audioContext.createOscillator();
+          const gain = audioContext.createGain();
+
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now + (index * 0.18));
+
+          gain.gain.setValueAtTime(0.0001, now + (index * 0.18));
+          gain.gain.exponentialRampToValueAtTime(0.035, now + (index * 0.18) + 0.04);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + (index * 0.18) + 1.4);
+
+          osc.connect(gain);
+          gain.connect(audioContext.destination);
+
+          osc.start(now + (index * 0.18));
+          osc.stop(now + (index * 0.18) + 1.5);
+        });
+
+      } catch (err) {
+        console.warn('Audio playback handled gracefully:', err);
+      }
+    }
+
+    // Subtle click or chime feedback
+    function playChimeNote(freq = 523.25) {
+      if (!soundEnabled) return;
+      try {
+        initAudio();
+        if (!audioContext) return;
+        const now = audioContext.currentTime;
+        const osc = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, now);
+        gain.gain.setValueAtTime(0.04, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.6);
+        osc.connect(gain);
+        gain.connect(audioContext.destination);
+        osc.start(now);
+        osc.stop(now + 0.65);
+      } catch (e) {
+        // audio optional
+      }
+    }
+
+    /* ========================================================
+       3. REALISTIC CURTAIN ANIMATION ENGINE
+       ======================================================== */
+    const curtainStage = document.getElementById('curtain-stage');
+    const openCurtainsBtn = document.getElementById('openCurtainsBtn');
+    const replayCurtainBtn = document.getElementById('replayCurtainBtn');
+    const soundToggleCurtainBtn = document.getElementById('soundToggleCurtainBtn');
+
+    let curtainTimer = null;
+    let curtainAutoTriggered = false;
+
+    function openTheCurtains() {
+      if (curtainStage.classList.contains('stage-open')) return;
+
+      playCurtainAudio();
+      curtainStage.classList.remove('stage-closed');
+      curtainStage.classList.add('stage-open');
+      curtainStage.classList.add('unlocked');
+
+      // Fade out completely after transit
+      curtainTimer = setTimeout(() => {
+        curtainStage.classList.add('faded-out');
+      }, 3600);
+    }
+
+    function replayTheCurtains() {
+      clearTimeout(curtainTimer);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      // Reset stage
+      curtainStage.classList.remove('faded-out');
+      curtainStage.classList.remove('unlocked');
+      curtainStage.classList.remove('stage-open');
+      curtainStage.classList.add('stage-closed');
+
+      // Auto part again smoothly after dramatic pause
+      setTimeout(() => {
+        openTheCurtains();
+      }, 1600);
+    }
+
+    // Initial Trigger on load
+    window.addEventListener('load', () => {
+      // Auto open after a stately 1.5 seconds pause so user sees royal seal & velvet
+      setTimeout(() => {
+        if (!curtainAutoTriggered) {
+          curtainAutoTriggered = true;
+          openTheCurtains();
+        }
+      }, 1400);
+    });
+
+    // Manual Part Button
+    openCurtainsBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      curtainAutoTriggered = true;
+      openTheCurtains();
+    });
+
+    replayCurtainBtn.addEventListener('click', () => {
+      replayTheCurtains();
+    });
+
+    // Sound toggle in curtain overlay
+    soundToggleCurtainBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      soundEnabled = !soundEnabled;
+      const icon = soundToggleCurtainBtn.querySelector('i');
+      if (soundEnabled) {
+        icon.className = 'fa-solid fa-volume-high text-xs';
+        playChimeNote(659.25);
+      } else {
+        icon.className = 'fa-solid fa-volume-xmark text-xs text-ruby-400';
+      }
+    });
+
+    /* ========================================================
+       4. PRODUCT RENDERING & DYNAMIC CURRENCY
+       ======================================================== */
+    const productGrid = document.getElementById('productGrid');
+    const currencySelector = document.getElementById('currencySelector');
+
+    function formatPrice(inrAmount) {
+      const { symbol, rate } = CURRENCY_MAP[activeCurrency];
+      const converted = Math.round(inrAmount * rate);
+      return `${symbol}${converted.toLocaleString()}`;
+    }
+
+    function renderProducts(filter = 'all') {
+      productGrid.innerHTML = '';
+
+      const filtered = filter === 'all' 
+        ? PRODUCTS 
+        : PRODUCTS.filter(p => p.category === filter);
+
+      filtered.forEach(product => {
+        const card = document.createElement('div');
+        card.className = 'silk-card glass-panel rounded-3xl p-4 border border-gold-500/20 flex flex-col group';
+        card.innerHTML = `
+          <!-- Image Box with Zari Tag -->
+          <div class="relative h-80 rounded-2xl overflow-hidden mb-4 bg-ruby-950">
+            <img 
+              src="${product.image}" 
+              alt="${product.title}" 
+              class="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-700"
+              onerror="this.src='https://placehold.co/600x800/3d040c/dfbc55?text=Heritage+Saree'"
+            />
+            <div class="absolute inset-0 bg-gradient-to-t from-ruby-950/80 via-transparent to-transparent opacity-60 group-hover:opacity-30 transition-opacity"></div>
+            
+            <div class="absolute top-3 left-3 glass-panel-subtle px-3 py-1 rounded-full text-[10px] font-cinzel text-gold-300 border border-gold-400/30">
+              ${product.hours}
+            </div>
+
+            <button class="quick-view-btn absolute bottom-3 right-3 w-10 h-10 rounded-full glass-panel text-gold-300 hover:text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" data-id="${product.id}" title="Quick View">
+              <i class="fa-solid fa-eye text-xs"></i>
+            </button>
+          </div>
+
+          <!-- Product Details -->
+          <div class="flex-1 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between text-[11px] font-cinzel text-gold-400 uppercase tracking-widest mb-1">
+                <span>${product.category}</span>
+                <span class="text-blush-300/80">${product.zari}</span>
+              </div>
+              <h3 class="font-cinzel text-lg font-bold text-white group-hover:text-gold-300 transition-colors line-clamp-1 mb-1">
+                ${product.title}
+              </h3>
+              <p class="font-cormorant italic text-sm text-blush-200/90 line-clamp-2 mb-4 leading-snug">
+                ${product.description}
+              </p>
+            </div>
+
+            <div class="pt-3 border-t border-gold-500/15 flex items-center justify-between">
+              <div>
+                <span class="text-[10px] uppercase font-cinzel text-blush-300/60 block">Offering</span>
+                <span class="font-cinzel text-base font-bold text-gold-300">${formatPrice(product.priceINR)}</span>
+              </div>
+              <button class="add-cart-btn px-5 py-2.5 rounded-full bg-ruby-900 border border-gold-400/40 text-gold-200 hover:bg-gold-500 hover:text-ruby-950 font-cinzel text-xs font-semibold uppercase tracking-wider transition-all" data-id="${product.id}">
+                Bag Piece
+              </button>
+            </div>
+          </div>
+        `;
+        productGrid.appendChild(card);
+      });
+
+      attachProductEventListeners();
+    }
+
+    // Filter Buttons logic
+    const filterBtns = document.querySelectorAll('.filter-btn');
+    filterBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        playChimeNote(440);
+        filterBtns.forEach(b => {
+          b.className = 'filter-btn px-6 py-2.5 rounded-full text-xs font-cinzel tracking-widest uppercase transition-all glass-panel text-gold-200 hover:border-gold-300';
+        });
+        btn.className = 'filter-btn px-6 py-2.5 rounded-full text-xs font-cinzel tracking-widest uppercase transition-all bg-gold-500 text-ruby-950 font-bold shadow-lg shadow-gold-500/20';
+        renderProducts(btn.dataset.filter);
+      });
+    });
+
+    // Currency Switcher
+    currencySelector.addEventListener('change', (e) => {
+      activeCurrency = e.target.value;
+      renderProducts();
+      updateCartDrawerUI();
+      // Update Hero Price Tag
+      const heroPriceTag = document.getElementById('heroPriceTag');
+      if (heroPriceTag) {
+        heroPriceTag.textContent = formatPrice(185000);
+      }
+    });
+
+    /* ========================================================
+       5. SHOPPING CART & QUICK VIEW MODALS
+       ======================================================== */
+    const cartDrawer = document.getElementById('cartDrawer');
+    const cartDrawerBtn = document.getElementById('cartDrawerBtn');
+    const closeCartBtn = document.getElementById('closeCartBtn');
+    const cartItemsList = document.getElementById('cartItemsList');
+    const cartCounter = document.getElementById('cartCounter');
+    const cartSubtotal = document.getElementById('cartSubtotal');
+    const toast = document.getElementById('toastNotification');
+
+    function showToast(title, message) {
+      document.getElementById('toastTitle').textContent = title;
+      document.getElementById('toastMessage').textContent = message;
+      toast.classList.remove('translate-y-24', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+      setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-24', 'opacity-0');
+      }, 3400);
+    }
+
+    function addToCart(productId) {
+      const item = PRODUCTS.find(p => p.id === productId);
+      if (!item) return;
+
+      cart.push(item);
+      playChimeNote(587.33);
+      updateCartDrawerUI();
+      showToast('Masterpiece Reserved', `${item.title} has been placed in your royal bag.`);
+    }
+
+    function removeFromCart(index) {
+      playChimeNote(330);
+      cart.splice(index, 1);
+      updateCartDrawerUI();
+    }
+
+    function updateCartDrawerUI() {
+      cartCounter.textContent = cart.length;
+
+      if (cart.length === 0) {
+        cartItemsList.innerHTML = `
+          <div class="text-center py-16 text-blush-300">
+            <i class="fa-solid fa-gem text-3xl text-gold-400/40 mb-3"></i>
+            <p class="font-cormorant italic text-lg">Your bag awaits timeless elegance.</p>
+          </div>
+        `;
+        cartSubtotal.textContent = formatPrice(0);
+        return;
+      }
+
+      let total = 0;
+      cartItemsList.innerHTML = '';
+      cart.forEach((item, idx) => {
+        total += item.priceINR;
+        const div = document.createElement('div');
+        div.className = 'flex items-center space-x-3 p-3 rounded-2xl glass-panel border border-gold-500/20';
+        div.innerHTML = `
+          <img src="${item.image}" alt="${item.title}" class="w-14 h-14 rounded-xl object-cover" />
+          <div class="flex-1 min-w-0">
+            <h4 class="font-cinzel text-xs font-bold text-white truncate">${item.title}</h4>
+            <p class="text-[11px] text-gold-300 font-cinzel">${formatPrice(item.priceINR)}</p>
+          </div>
+          <button class="remove-cart-item text-blush-300 hover:text-ruby-400 p-2 text-xs" data-index="${idx}">
+            <i class="fa-solid fa-trash-can"></i>
+          </button>
+        `;
+        cartItemsList.appendChild(div);
+      });
+
+      cartSubtotal.textContent = formatPrice(total);
+
+      // Attach remove handlers
+      document.querySelectorAll('.remove-cart-item').forEach(btn => {
+        btn.addEventListener('click', () => {
+          removeFromCart(parseInt(btn.dataset.index));
+        });
+      });
+    }
+
+    cartDrawerBtn.addEventListener('click', () => {
+      cartDrawer.classList.remove('hidden');
+    });
+
+    closeCartBtn.addEventListener('click', () => {
+      cartDrawer.classList.add('hidden');
+    });
+
+    document.getElementById('checkoutBtn').addEventListener('click', () => {
+      if (cart.length === 0) {
+        showToast('Bag is Empty', 'Please select a creation to acquire.');
+        return;
+      }
+      showToast('Concierge Initiated', 'A royal advisor is connecting to finalize your insured dispatch.');
+      cart = [];
+      updateCartDrawerUI();
+      cartDrawer.classList.add('hidden');
+    });
+
+    // Quick View Modal
+    const quickViewModal = document.getElementById('quickViewModal');
+    const closeQuickViewBtn = document.getElementById('closeQuickViewBtn');
+    let currentModalItem = null;
+
+    function openQuickView(productId) {
+      const product = PRODUCTS.find(p => p.id === productId);
+      if (!product) return;
+      currentModalItem = product;
+
+      document.getElementById('modalImg').src = product.image;
+      document.getElementById('modalTitle').textContent = product.title;
+      document.getElementById('modalCategory').textContent = product.category;
+      document.getElementById('modalTime').textContent = product.hours;
+      document.getElementById('modalPrice').textContent = formatPrice(product.priceINR);
+      document.getElementById('modalDesc').textContent = product.description;
+      document.getElementById('modalZari').textContent = product.zari;
+
+      quickViewModal.classList.remove('hidden');
+      quickViewModal.classList.add('flex');
+      playChimeNote(523.25);
+    }
+
+    closeQuickViewBtn.addEventListener('click', () => {
+      quickViewModal.classList.add('hidden');
+      quickViewModal.classList.remove('flex');
+    });
+
+    document.getElementById('modalAddToCartBtn').addEventListener('click', () => {
+      if (currentModalItem) {
+        addToCart(currentModalItem.id);
+        quickViewModal.classList.add('hidden');
+        quickViewModal.classList.remove('flex');
+      }
+    });
+
+    function attachProductEventListeners() {
+      document.querySelectorAll('.add-cart-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          addToCart(btn.dataset.id);
+        });
+      });
+
+      document.querySelectorAll('.quick-view-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          openQuickView(btn.dataset.id);
+        });
+      });
+    }
+
+    // Concierge & Loom Craft Buttons
+    document.getElementById('bookCuratorBtn')?.addEventListener('click', () => {
+      showToast('Concierge Requested', 'Our royal drape consultant will reach out via WhatsApp / Call.');
+    });
+
+    document.getElementById('watchLoomCraftBtn')?.addEventListener('click', () => {
+      showToast('Loom Archive Access', 'Playing 4K master weaver documentation stream...');
+      playCurtainAudio();
+    });
+
+    // Initial render
+    renderProducts();
+  </script>
+</body>
+</html>

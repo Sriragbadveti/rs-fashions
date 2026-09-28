@@ -2,6 +2,7 @@ import { supabase } from "../config/supabase.js";
 import { successResponse, errorResponse } from "../utils/response.js";
 import {
   getProductsFromStore,
+  syncProductsToStore,
   getColorsFromStore,
   saveColorsToStore,
 } from "../database/localStore.js";
@@ -70,23 +71,23 @@ export async function getBootstrapData(req, res) {
       nextSequence: Number(c.next_sequence) || 1,
     }));
 
-    let rawProds = [...(prodsRes.data || [])];
     const localStoreProds = getProductsFromStore();
     const localMap = new Map(localStoreProds.map((lp) => [lp.id, lp]));
-    rawProds = rawProds.map((rp) => {
-      const lp = localMap.get(rp.id);
-      if (!lp) return rp;
-      return {
-        ...lp,
-        ...rp,
-        borderColor: rp.border_color || rp.borderColor || lp.borderColor || lp.border_color || undefined,
-        variants: (Array.isArray(rp.variants) && rp.variants.length > 0) ? rp.variants : lp.variants,
-      };
-    });
-    for (const lp of localStoreProds) {
-      if (!rawProds.some((rp) => rp.id === lp.id)) {
-        rawProds.push(lp);
-      }
+    let rawProds = [];
+    if (!prodsRes.error && Array.isArray(prodsRes.data)) {
+      rawProds = prodsRes.data.map((rp) => {
+        const lp = localMap.get(rp.id);
+        if (!lp) return rp;
+        return {
+          ...lp,
+          ...rp,
+          borderColor: rp.border_color || rp.borderColor || lp.borderColor || lp.border_color || undefined,
+          variants: (Array.isArray(rp.variants) && rp.variants.length > 0) ? rp.variants : lp.variants,
+        };
+      });
+      syncProductsToStore(rawProds);
+    } else {
+      rawProds = localStoreProds;
     }
 
     const products = rawProds.map((p) => {

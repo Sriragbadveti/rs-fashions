@@ -59,7 +59,7 @@ export default function TrendingProducts() {
             ? data.products
             : [];
           const trendingItems = filterRealTrending(list);
-          if (isMounted && trendingItems.length > 0) {
+          if (isMounted) {
             setProducts(trendingItems);
             setLoading(false);
             return;

@@ -157,6 +157,12 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
 
   const [inventory, setInventory] = useState<Product[]>(() => {
     try {
+      if (!localStorage.getItem("rs_catalog_reset_v3")) {
+        localStorage.removeItem("rs_admin_inventory");
+        localStorage.removeItem("rs_fashions_products");
+        localStorage.setItem("rs_catalog_reset_v3", "true");
+        return [];
+      }
       const saved = localStorage.getItem("rs_admin_inventory");
       if (saved) {
         const parsed = JSON.parse(saved);
@@ -486,38 +492,9 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
             (p: any) => p && p.id && !DUMMY_PRODUCT_IDS.has(String(p.id))
           );
 
-          // Merge any local non-dummy products created while backend was offline
-          let localProducts: Product[] = [];
-          try {
-            const rawLocal = localStorage.getItem("rs_admin_inventory");
-            if (rawLocal) {
-              const parsedLocal = JSON.parse(rawLocal);
-              if (Array.isArray(parsedLocal)) {
-                localProducts = parsedLocal.filter(
-                  (p: any) => p && p.id && !DUMMY_PRODUCT_IDS.has(String(p.id))
-                );
-              }
-            }
-          } catch {}
-
-          const mergedMap = new Map<string, Product>();
-          remoteProducts.forEach((p: Product) => mergedMap.set(p.id, p));
-          localProducts.forEach((lp: Product) => {
-            if (!mergedMap.has(lp.id)) {
-              mergedMap.set(lp.id, lp);
-              // Push offline-created product to backend store
-              adminFetch(`${API_BASE}/catalog`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(lp),
-              }).catch(() => {});
-            }
-          });
-
-          const finalProducts = Array.from(mergedMap.values());
-          setInventory(finalProducts);
-          safeStorageSet("rs_admin_inventory", finalProducts);
-          syncInventoryToStorefront(finalProducts);
+          setInventory(remoteProducts);
+          safeStorageSet("rs_admin_inventory", remoteProducts);
+          syncInventoryToStorefront(remoteProducts);
         }
         if (Array.isArray(d.stockMovements)) {
           setStockHistory(d.stockMovements);

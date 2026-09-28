@@ -351,6 +351,12 @@ export function deleteProductFromStore(id) {
   return true;
 }
 
+export function syncProductsToStore(products = []) {
+  const cleanList = Array.isArray(products) ? products : [];
+  writeJson("products.json", cleanList);
+  return cleanList;
+}
+
 // ==========================================
 // COLOR PALETTE PERSISTENCE
 // ==========================================

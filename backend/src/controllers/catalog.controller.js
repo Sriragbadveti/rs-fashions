@@ -6,6 +6,7 @@ import {
   getProductsFromStore,
   saveProductToStore,
   deleteProductFromStore,
+  syncProductsToStore,
   getColorsFromStore,
   saveColorToStore,
   saveColorsToStore,
@@ -90,6 +91,9 @@ export async function getProducts(req, res) {
     if (!inFlightProductsPromise) {
       inFlightProductsPromise = (async () => {
         let rawData = [];
+        let supabaseSucceeded = false;
+        const localItems = getProductsFromStore();
+        const localMap = new Map(localItems.map((lp) => [lp.id, lp]));
 
         if (supabase) {
           try {
@@ -98,20 +102,27 @@ export async function getProducts(req, res) {
               .select("*")
               .order("created_at", { ascending: false });
 
-            if (!error && Array.isArray(data) && data.length > 0) {
-              rawData = data;
+            if (!error && Array.isArray(data)) {
+              supabaseSucceeded = true;
+              rawData = data.map((rp) => {
+                const lp = localMap.get(rp.id);
+                if (!lp) return rp;
+                return {
+                  ...lp,
+                  ...rp,
+                  borderColor: rp.border_color || rp.borderColor || lp.borderColor || lp.border_color || undefined,
+                  variants: (Array.isArray(rp.variants) && rp.variants.length > 0) ? rp.variants : lp.variants,
+                };
+              });
+              syncProductsToStore(rawData);
             }
           } catch (dbErr) {
             console.warn("Supabase products fetch note:", dbErr.message);
           }
         }
 
-        // Merge products from local JSON store so local limited edition items are always present
-        const localItems = getProductsFromStore();
-        for (const lp of localItems) {
-          if (!rawData.some((rp) => rp.id === lp.id)) {
-            rawData.push(lp);
-          }
+        if (!supabaseSucceeded) {
+          rawData = localItems;
         }
 
         const products = (rawData || []).map((p) => {
