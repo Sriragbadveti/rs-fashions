@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AARYA HERITAGE | Haute Couture Silk & Handloom Sarees</title>
+  <title>RS Fashions | Haute Couture & Royal Heritage Sarees</title>
   
-  <!-- Fonts -->
+  <!-- Premium Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,400&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;800;900&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,400;1,600&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   
   <!-- FontAwesome Icons & Tailwind CSS -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -19,31 +19,30 @@
       theme: {
         extend: {
           colors: {
-            ruby: {
-              950: '#230207',
-              900: '#3d040c',
-              850: '#540713',
-              800: '#6e0a17',
-              700: '#8e0f21',
-              600: '#b1162b',
+            ivory: {
+              DEFAULT: '#FAF8F5',
+              soft: '#F4EFEB',
+              deep: '#ECE4DC',
+            },
+            claret: {
+              DEFAULT: '#8A1122',
+              deep: '#570612',
+              dark: '#38020A',
+              light: '#AC1830',
             },
             gold: {
-              100: '#fbf5df',
-              200: '#f5e8b6',
-              300: '#ecd386',
-              400: '#dfbc55',
-              500: '#cfa230',
-              600: '#b88921',
-              700: '#8f6815',
+              DEFAULT: '#D4AF37',
+              antique: '#C5A059',
+              light: '#F5E4B2',
+              foil: '#E8CA65',
+              bronze: '#99732B',
             },
-            blush: {
-              50: '#fdf9f9',
-              100: '#f7ebec',
-              200: '#edd8da',
-              300: '#dfbcc0',
+            sage: {
+              DEFAULT: '#E2ECE9',
+              mist: '#EDF4F2',
+              dark: '#B0C9C2',
             },
-            thistle: '#c5b8cc',
-            emeraldacc: '#0a3a2a'
+            burgundyText: '#301824',
           },
           fontFamily: {
             cinzel: ['Cinzel', 'serif'],
@@ -57,34 +56,48 @@
 
   <style>
     :root {
-      --gold-foil: linear-gradient(135deg, #bf953f 0%, #fcf6ba 25%, #b38728 50%, #fbf5b7 75%, #aa771c 100%);
-      --velvet-base: #49040d;
-      --velvet-depth: #1e0004;
-      --velvet-sheen: #961324;
-      --velvet-highlight: #d82b42;
+      --ivory: #FAF8F5;
+      --alabaster: #F4EFEB;
+      --burgundy: #301824;
+      --claret: #8A1122;
+      --claret-dark: #4A030D;
+      --gold: #D4AF37;
+      --gold-dark: #99732B;
+      --gold-light: #FBF0CC;
+      --curtain-speed: 3.4s;
     }
 
-    /* Custom Scrollbar */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--ivory);
+      color: var(--burgundy);
+      font-family: 'Montserrat', sans-serif;
+      overflow-x: hidden;
+    }
+
+    /* Custom Regal Scrollbar */
     ::-webkit-scrollbar {
       width: 8px;
     }
     ::-webkit-scrollbar-track {
-      background: #190104;
+      background: var(--alabaster);
     }
     ::-webkit-scrollbar-thumb {
-      background: #cfa230;
-      border-radius: 4px;
+      background: #C5A059;
+      border-radius: 9999px;
+      border: 2px solid var(--alabaster);
     }
-
-    body {
-      background: #110204;
-      color: #f7ebec;
-      overflow-x: hidden;
-      font-family: 'Montserrat', sans-serif;
+    ::-webkit-scrollbar-thumb:hover {
+      background: #8A1122;
     }
 
     /* ========================================================
-       REALISTIC MULTI-PLEATED 3D VELVET DRAPERY SYSTEM
+       HYPER-REALISTIC 3D ROYAL VELVET CURTAIN SYSTEM
        ======================================================== */
     #curtain-stage {
       position: fixed;
@@ -92,7 +105,7 @@
       z-index: 9999;
       perspective: 1600px;
       overflow: hidden;
-      pointer-events: all;
+      pointer-events: auto;
       transition: opacity 1.2s cubic-bezier(0.4, 0, 0.2, 1), visibility 1.2s;
     }
 
@@ -100,418 +113,442 @@
       pointer-events: none;
     }
 
-    #curtain-stage.faded-out {
+    #curtain-stage.hidden-stage {
       opacity: 0;
       visibility: hidden;
     }
 
-    /* Velvet panel with multi-pleated wave lighting */
-    .velvet-curtain {
+    /* Rod at the top with brushed gold gleam */
+    .gilded-rod {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 22px;
+      background: linear-gradient(180deg, #FFFFFF 0%, #F5E4B2 25%, #D4AF37 60%, #7D5D15 100%);
+      box-shadow: 0 8px 24px rgba(48, 24, 36, 0.45);
+      z-index: 50;
+    }
+
+    .finial {
+      position: absolute;
+      top: -14px;
+      width: 48px;
+      height: 48px;
+      border-radius: 50% 50% 40% 40%;
+      background: radial-gradient(circle at 35% 30%, #FFFFFF 0%, #F5E4B2 25%, #D4AF37 65%, #664A0B 100%);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(255,255,255,0.7);
+    }
+    .finial-left { left: 16px; }
+    .finial-right { right: 16px; }
+
+    /* Imperial Valance & Bullion Fringe */
+    .imperial-valance {
+      position: absolute;
+      top: 20px;
+      left: 0;
+      right: 0;
+      height: 96px;
+      z-index: 45;
+      pointer-events: none;
+      transition: transform 3.0s cubic-bezier(0.77, 0, 0.175, 1), opacity 2.5s ease-out;
+    }
+
+    .swag-container {
+      width: 100%;
+      height: 64px;
+      display: flex;
+    }
+
+    .swag-pleat {
+      flex: 1;
+      height: 100%;
+      position: relative;
+      background: radial-gradient(ellipse at 50% -20%, #A81B30 10%, #680A17 55%, #350109 100%);
+      border-radius: 0 0 60% 60% / 0 0 100% 100%;
+      box-shadow: 0 12px 18px rgba(30, 2, 8, 0.6), inset 0 -4px 8px rgba(212, 175, 55, 0.5);
+      border-bottom: 3.5px solid #D4AF37;
+    }
+
+    .gold-bullion-fringe {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      height: 28px;
+      background: repeating-linear-gradient(90deg, #F9E7B3 0px, #D4AF37 3px, #7A5B15 6px, transparent 6px, transparent 10px);
+      filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
+    }
+
+    /* 3D Velvet Curtain Panels */
+    .velvet-panel {
       position: absolute;
       top: 0;
       height: 100%;
-      width: 53%; /* Slight overlap at the center seam */
+      width: 53%; /* 3% center overlap */
       display: flex;
       transform-style: preserve-3d;
-      transition: transform 3.6s cubic-bezier(0.77, 0, 0.175, 1);
-      box-shadow: 0 25px 60px rgba(0,0,0,0.85);
+      transition: transform var(--curtain-speed) cubic-bezier(0.76, 0.02, 0.14, 1);
       will-change: transform;
+      filter: drop-shadow(0 30px 45px rgba(25, 2, 7, 0.7));
     }
 
-    .velvet-curtain.left {
+    .velvet-panel.left-curtain {
       left: 0;
       transform-origin: left top;
     }
 
-    .velvet-curtain.right {
+    .velvet-panel.right-curtain {
       right: 0;
       transform-origin: right top;
       flex-direction: row-reverse;
     }
 
-    /* Individual physical fabric pleats */
-    .pleat {
+    /* Multi-layered Velvet Pleats with realistic depth, sheen, & shadowing */
+    .pleat-segment {
       flex: 1;
       height: 100%;
       position: relative;
-      background: 
-        linear-gradient(to bottom, rgba(0,0,0,0.65) 0%, transparent 12%, transparent 88%, rgba(0,0,0,0.7) 100%),
+      background:
+        /* Top rod shadow and bottom ambient drapery gradient */
+        linear-gradient(to bottom, rgba(20, 1, 5, 0.75) 0%, transparent 12%, transparent 84%, rgba(15, 0, 3, 0.6) 100%),
+        /* Multi-tone velvet cylindrical shading */
         linear-gradient(90deg, 
-          rgba(15,0,3,0.92) 0%, 
-          rgba(95,8,19,0.85) 28%, 
-          rgba(195,28,48,0.95) 50%, 
-          rgba(120,12,25,0.88) 72%, 
-          rgba(20,1,4,0.95) 100%),
-        repeating-linear-gradient(45deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 2px, transparent 2px, transparent 4px),
-        #5e0813;
-      background-blend-mode: multiply, normal, overlay, normal;
-      box-shadow: inset 0 0 14px rgba(0,0,0,0.7);
-      transition: transform 3.6s cubic-bezier(0.77, 0, 0.175, 1), filter 3.6s;
+          #36020A 0%, 
+          #580512 18%, 
+          #9E162A 42%, 
+          #D3324B 50%, 
+          #961327 58%, 
+          #4D040F 82%, 
+          #2B0107 100%),
+        /* Fine velvet nap texture simulation */
+        repeating-linear-gradient(45deg, rgba(255,255,255,0.06) 0px, rgba(255,255,255,0.06) 2px, transparent 2px, transparent 4px);
+      background-blend-mode: multiply, normal, overlay;
+      box-shadow: inset 0 0 16px rgba(25, 1, 6, 0.85);
     }
 
-    /* Heavy gold brocade border on the curtain lead edges */
-    .zari-border-lead {
+    /* Heavy Embroidered Gold Zari Lead Border */
+    .zari-border {
       position: absolute;
       top: 0;
       bottom: 0;
       width: 48px;
       z-index: 10;
       background: 
-        repeating-linear-gradient(0deg, #d4af37 0px, #fbf5b7 6px, #8f6815 12px, #fbf5b7 18px),
-        radial-gradient(circle at 50% 50%, #fff2a3 20%, #9e7514 80%);
-      box-shadow: 0 0 18px rgba(212, 175, 55, 0.5), inset 0 0 5px rgba(0,0,0,0.6);
-      border-left: 2px solid #5a3c05;
-      border-right: 2px solid #fff5a5;
+        repeating-linear-gradient(0deg, #FDF4D4 0px, #D4AF37 5px, #8A6417 11px, #EAD189 16px),
+        radial-gradient(circle at 50% 50%, #FFF4D1 25%, #7C5C17 100%);
+      box-shadow: 0 0 20px rgba(212, 175, 55, 0.65), inset 0 0 8px rgba(0,0,0,0.4);
+      border-left: 2px solid #FDF4D4;
+      border-right: 2px solid #7C5C17;
     }
 
-    .velvet-curtain.left .zari-border-lead { right: 0; }
-    .velvet-curtain.right .zari-border-lead { left: 0; }
+    .velvet-panel.left-curtain .zari-border { right: 0; }
+    .velvet-panel.right-curtain .zari-border { left: 0; }
 
-    /* Open animation states - bunching physical pleats to the edges */
-    #curtain-stage.stage-open .velvet-curtain.left {
-      transform: translateX(-88%) scaleX(0.22) rotateY(-18deg);
-      filter: brightness(0.65) drop-shadow(10px 0 25px rgba(0,0,0,0.9));
+    /* OPEN STATE: Natural 3D compression and pleat bunching */
+    #curtain-stage.unveiled .velvet-panel.left-curtain {
+      transform: translateX(-88%) scaleX(0.20) rotateY(-18deg);
+      filter: drop-shadow(20px 0 25px rgba(20, 1, 6, 0.6));
     }
 
-    #curtain-stage.stage-open .velvet-curtain.right {
-      transform: translateX(88%) scaleX(0.22) rotateY(18deg);
-      filter: brightness(0.65) drop-shadow(-10px 0 25px rgba(0,0,0,0.9));
+    #curtain-stage.unveiled .velvet-panel.right-curtain {
+      transform: translateX(88%) scaleX(0.20) rotateY(18deg);
+      filter: drop-shadow(-20px 0 25px rgba(20, 1, 6, 0.6));
     }
 
-    /* Arch Valance / Pelmet at the top with scalloped velvet and bullion fringe */
-    .curtain-valance-box {
-      position: absolute;
-      top: 18px;
-      left: 0;
-      right: 0;
-      height: 95px;
-      z-index: 30;
-      pointer-events: none;
-      transition: transform 3.2s cubic-bezier(0.77, 0, 0.175, 1), opacity 2.8s;
+    #curtain-stage.unveiled .imperial-valance {
+      transform: translateY(-120%);
+      opacity: 0;
     }
 
-    .valance-swag-container {
-      width: 100%;
-      height: 70px;
-      display: flex;
-    }
-
-    .swag-scallop {
-      flex: 1;
-      height: 100%;
-      position: relative;
-      background: radial-gradient(ellipse at 50% -20%, #bf1930 25%, #630814 65%, #2a0207 100%);
-      border-radius: 0 0 55% 55% / 0 0 100% 100%;
-      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.8), inset 0 -6px 12px rgba(0,0,0,0.6);
-      border-bottom: 3.5px solid #dfbc55;
-    }
-
-    /* Bullion gold thread fringe hanging beneath valance */
-    .bullion-fringe {
-      position: absolute;
-      top: 100%;
-      left: 0;
-      right: 0;
-      height: 24px;
-      background: repeating-linear-gradient(90deg, #ecd386 0px, #75520e 2px, #fff5b8 4px, transparent 4px, transparent 6px);
-      filter: drop-shadow(0 4px 6px rgba(0,0,0,0.7));
-    }
-
-    /* Brass Rod & Carved Royal Finials */
-    .brass-rod {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 22px;
-      background: linear-gradient(180deg, #fef1b8 0%, #caa03a 40%, #684809 85%, #d8b248 100%);
-      box-shadow: 0 5px 16px rgba(0,0,0,0.85);
-      z-index: 35;
-    }
-
-    .finial {
-      position: absolute;
-      top: -12px;
-      width: 48px;
-      height: 46px;
-      background: radial-gradient(circle at 35% 35%, #fff0b3, #b88a1e 60%, #462c03);
-      border-radius: 50% 50% 30% 30%;
-      box-shadow: 0 0 20px rgba(236,211,134,0.6);
-    }
-    .finial.left { left: 8px; }
-    .finial.right { right: 8px; }
-
-    /* Center Medallion Royal Emblem */
-    .royal-seal {
+    /* Center Embossed "RS" Medallion Crest */
+    .rs-crest {
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%) scale(1);
-      width: 260px;
-      height: 260px;
-      z-index: 25;
+      width: 270px;
+      height: 270px;
+      border-radius: 50%;
+      z-index: 30;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      border-radius: 50%;
-      background: radial-gradient(circle, #210206 0%, #0d0102 75%, #050001 100%);
-      border: 3px solid #dfbc55;
-      box-shadow: 0 0 50px rgba(223, 188, 85, 0.45), 0 20px 60px rgba(0,0,0,0.95);
-      transition: transform 3.2s cubic-bezier(0.77, 0, 0.175, 1), opacity 2.4s ease-out;
+      background: radial-gradient(circle at 40% 35%, #250308 0%, #4D0510 50%, #1A0105 100%);
+      border: 4px solid #D4AF37;
+      box-shadow: 
+        0 18px 50px rgba(10, 0, 3, 0.7),
+        0 0 45px rgba(212, 175, 55, 0.5),
+        inset 0 0 25px rgba(0,0,0,0.8);
+      transition: transform 3.0s cubic-bezier(0.76, 0.02, 0.14, 1), opacity 2.2s ease-out;
     }
 
-    .mandala-spin {
+    .crest-filigree {
       position: absolute;
-      inset: 6px;
+      inset: 10px;
       border-radius: 50%;
-      border: 1px dashed rgba(223, 188, 85, 0.55);
-      animation: rotateRing 32s linear infinite;
+      border: 2px dashed rgba(212, 175, 55, 0.6);
+      animation: rotateSlow 45s linear infinite;
     }
 
-    .mandala-inner {
+    .crest-bead-ring {
       position: absolute;
-      inset: 16px;
+      inset: 20px;
       border-radius: 50%;
-      border: 1px dotted rgba(251, 245, 183, 0.75);
-      animation: rotateRingRev 22s linear infinite;
+      border: 1px dotted rgba(245, 228, 178, 0.7);
+      animation: rotateCounter 35s linear infinite;
     }
 
-    @keyframes rotateRing {
+    @keyframes rotateSlow {
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
-    @keyframes rotateRingRev {
+    @keyframes rotateCounter {
       0% { transform: rotate(360deg); }
       100% { transform: rotate(0deg); }
     }
 
-    #curtain-stage.stage-open .royal-seal {
-      transform: translate(-50%, -50%) scale(0.65) translateY(-60px);
+    #curtain-stage.unveiled .rs-crest {
+      transform: translate(-50%, -50%) scale(0.65) translateY(-50px);
       opacity: 0;
     }
 
-    #curtain-stage.stage-open .curtain-valance-box {
-      transform: translateY(-110%);
-      opacity: 0;
+    /* Glassmorphism & Gold accents for the boutique */
+    .glass-luxury {
+      background: rgba(255, 255, 255, 0.72);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(197, 160, 89, 0.35);
+      box-shadow: 0 16px 40px -10px rgba(48, 24, 36, 0.08);
     }
 
-    /* ========================================================
-       WEBSITE CONTENT & GLASSMORPHISM
-       ======================================================== */
-    .glass-panel {
-      background: rgba(43, 10, 16, 0.48);
-      backdrop-filter: blur(18px);
-      -webkit-backdrop-filter: blur(18px);
-      border: 1px solid rgba(223, 188, 85, 0.22);
-      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7);
+    .glass-luxury-card {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(244, 239, 235, 0.75) 100%);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(197, 160, 89, 0.28);
+      box-shadow: 0 14px 30px rgba(48, 24, 36, 0.06);
     }
 
-    .glass-panel-subtle {
-      background: rgba(24, 4, 7, 0.65);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(247, 235, 236, 0.08);
-    }
-
-    .gold-shimmer-text {
-      background: linear-gradient(135deg, #fef1b8 0%, #caa03a 40%, #f7df86 65%, #946912 100%);
+    .gold-gradient-text {
+      background: linear-gradient(135deg, #7A5B15 0%, #D4AF37 40%, #A27B22 75%, #F4E4B0 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
 
-    /* Silk Luster Sheen Animation on hover */
-    .silk-card {
-      position: relative;
-      overflow: hidden;
-      transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.4s ease;
+    .ruby-shimmer-text {
+      background: linear-gradient(135deg, #301824 0%, #8A1122 45%, #C5A059 85%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
 
-    .silk-card::before {
+    /* Ambient luxury glow orbs */
+    .ambient-orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(90px);
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.55;
+    }
+
+    /* Saree Card Hover Sheen */
+    .saree-card-interactive {
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease;
+    }
+
+    .saree-card-interactive::after {
       content: '';
       position: absolute;
-      top: -50%;
+      top: -60%;
       left: -150%;
-      width: 200%;
-      height: 200%;
+      width: 220%;
+      height: 220%;
       background: linear-gradient(
         60deg,
         transparent 35%,
-        rgba(255, 245, 184, 0.22) 50%,
+        rgba(255, 255, 255, 0.6) 50%,
         transparent 65%
       );
-      transform: rotate(25deg);
-      transition: all 0.75s ease;
+      transform: rotate(30deg);
+      transition: all 0.9s ease;
       pointer-events: none;
-      z-index: 5;
+      z-index: 8;
     }
 
-    .silk-card:hover::before {
-      left: 120%;
+    .saree-card-interactive:hover::after {
+      left: 130%;
     }
 
-    .silk-card:hover {
+    .saree-card-interactive:hover {
       transform: translateY(-8px);
-      box-shadow: 0 25px 45px rgba(0,0,0,0.8), 0 0 25px rgba(223, 188, 85, 0.35);
-    }
-
-    /* Ambient background gold dust particles */
-    .bg-ornament {
-      background-image: radial-gradient(rgba(223, 188, 85, 0.12) 1px, transparent 1px);
-      background-size: 32px 32px;
-    }
-
-    /* Badge glow */
-    .gold-badge {
-      border: 1px solid rgba(223, 188, 85, 0.4);
-      background: linear-gradient(145deg, rgba(223, 188, 85, 0.18), rgba(65, 8, 17, 0.35));
+      box-shadow: 0 24px 45px rgba(87, 6, 18, 0.16), 0 0 24px rgba(212, 175, 55, 0.35);
     }
   </style>
 </head>
 
-<body class="selection:bg-gold-500 selection:text-ruby-950">
+<body class="selection:bg-claret selection:text-white">
 
-  <!-- ==================== CURTAIN INTRO LAYER ==================== -->
-  <aside id="curtain-stage" aria-label="Royal Curtain Reveal" class="stage-closed">
-    <!-- Top Brass Rod with Handcrafted Finials -->
-    <div class="brass-rod">
-      <div class="finial left"></div>
-      <div class="finial right"></div>
+  <!-- ==================== REALISTIC 3D RED VELVET CURTAINS INTRO ==================== -->
+  <aside id="curtain-stage" aria-label="RS Fashions Grand Velvet Unveiling">
+    <!-- Gilded Curtain Rod & Finials -->
+    <div class="gilded-rod">
+      <div class="finial finial-left"></div>
+      <div class="finial finial-right"></div>
     </div>
 
-    <!-- Valance Swags & Golden Bullion Fringe -->
-    <div class="curtain-valance-box">
-      <div class="valance-swag-container">
-        <div class="swag-scallop"></div>
-        <div class="swag-scallop"></div>
-        <div class="swag-scallop"></div>
-        <div class="swag-scallop"></div>
-        <div class="swag-scallop"></div>
-        <div class="swag-scallop"></div>
-        <div class="swag-scallop"></div>
+    <!-- Imperial Scalloped Valance & Bullion Tassels -->
+    <div class="imperial-valance">
+      <div class="swag-container">
+        <div class="swag-pleat"></div>
+        <div class="swag-pleat"></div>
+        <div class="swag-pleat"></div>
+        <div class="swag-pleat"></div>
+        <div class="swag-pleat"></div>
+        <div class="swag-pleat"></div>
+        <div class="swag-pleat"></div>
       </div>
-      <div class="bullion-fringe"></div>
+      <div class="gold-bullion-fringe"></div>
     </div>
 
-    <!-- Left Velvet Curtain with 10 Deep Folds -->
-    <div class="velvet-curtain left" id="left-curtain">
-      <div class="pleat"></div>
-      <div class="pleat"></div>
-      <div class="pleat"></div>
-      <div class="pleat"></div>
-      <div class="pleat"></div>
-      <div class="pleat"></div>
-      <div class="pleat"></div>
-      <div class="pleat"></div>
-      <div class="pleat"></div>
-      <div class="pleat"></div>
-      <!-- Zari Lead Edge -->
-      <div class="zari-border-lead"></div>
+    <!-- Left Velvet Curtain (10 realistic pleated depth segments) -->
+    <div class="velvet-panel left-curtain" id="left-curtain">
+      <div class="pleat-segment"></div>
+      <div class="pleat-segment"></div>
+      <div class="pleat-segment"></div>
+      <div class="pleat-segment"></div>
+      <div class="pleat-segment"></div>
+      <div class="pleat-segment"></div>
+      <div class="pleat-segment"></div>
+      <div class="pleat-segment"></div>
+      <div class="pleat-segment"></div>
+      <div class="pleat-segment"></div>
+      <div class="zari-border"></div>
     </div>
 
-    <!-- Right Velvet Curtain with 10 Deep Folds -->
-    <div class="velvet-curtain right" id="right-curtain">
-      <div class="pleat"></div>
-      <div class="pleat"></div>
-      <div class="pleat"></div>
-      <div class="pleat"></div>
-      <div class="pleat"></div>
-      <div class="pleat"></div>
-      <div class="pleat"></div>
-      <div class="pleat"></div>
-      <div class="pleat"></div>
-      <div class="pleat"></div>
-      <!-- Zari Lead Edge -->
-      <div class="zari-border-lead"></div>
+    <!-- Right Velvet Curtain (10 realistic pleated depth segments) -->
+    <div class="velvet-panel right-curtain" id="right-curtain">
+      <div class="pleat-segment"></div>
+      <div class="pleat-segment"></div>
+      <div class="pleat-segment"></div>
+      <div class="pleat-segment"></div>
+      <div class="pleat-segment"></div>
+      <div class="pleat-segment"></div>
+      <div class="pleat-segment"></div>
+      <div class="pleat-segment"></div>
+      <div class="pleat-segment"></div>
+      <div class="pleat-segment"></div>
+      <div class="zari-border"></div>
     </div>
 
-    <!-- Royal Zari Medallion / Center Crest -->
-    <div class="royal-seal" id="royal-seal">
-      <div class="mandala-spin"></div>
-      <div class="mandala-inner"></div>
+    <!-- Center Royal Crest ("RS") -->
+    <div class="rs-crest" id="rs-crest">
+      <div class="crest-filigree"></div>
+      <div class="crest-bead-ring"></div>
       
-      <!-- Crown Icon -->
-      <div class="text-gold-400 text-2xl mb-1 filter drop-shadow">
+      <!-- Crown Icon in Gold -->
+      <div class="text-gold text-2xl mb-1 filter drop-shadow-[0_2px_8px_rgba(212,175,55,0.7)]">
         <i class="fa-solid fa-crown"></i>
       </div>
       
-      <span class="font-cinzel text-xs tracking-[0.35em] text-gold-300 font-bold uppercase mb-1">Rajgharana</span>
-      <h2 class="font-cinzel text-2xl tracking-[0.2em] font-bold text-white text-center gold-shimmer-text">
-        AARYA
-      </h2>
-      <p class="font-cormorant italic text-xs tracking-widest text-gold-200 mt-0.5">Haute Weaves • Est. 1892</p>
+      <span class="font-cinzel text-[11px] tracking-[0.4em] text-gold-light font-semibold uppercase mb-1">
+        Haute Handlooms
+      </span>
 
-      <div class="mt-4 flex items-center space-x-2">
-        <span class="h-[1px] w-6 bg-gold-400/50"></span>
-        <span class="text-[9px] font-sans tracking-widest uppercase text-gold-300/80">Kashi • Kanchipuram</span>
-        <span class="h-[1px] w-6 bg-gold-400/50"></span>
+      <!-- Monogram RS -->
+      <h2 class="font-cinzel text-4xl sm:text-5xl font-black tracking-[0.2em] gold-gradient-text text-center drop-shadow-md">
+        RS
+      </h2>
+
+      <p class="font-cinzel text-xs tracking-[0.25em] text-white/90 uppercase font-bold mt-1">
+        FASHIONS
+      </p>
+
+      <p class="font-cormorant italic text-[13px] tracking-wider text-gold-light/80 mt-1 font-medium">
+        Royal Saree Couturiers • Est. 1988
+      </p>
+
+      <div class="mt-3 flex items-center space-x-2">
+        <span class="h-px w-6 bg-gold/60"></span>
+        <span class="text-[9px] font-sans tracking-widest uppercase text-gold-light/75 font-semibold">Varanasi • Kanchipuram</span>
+        <span class="h-px w-6 bg-gold/60"></span>
       </div>
     </div>
 
-    <!-- Curtain Overlay Action Controls -->
+    <!-- Part Curtains Action Pill -->
     <div class="absolute bottom-10 left-1/2 -translate-x-1/2 z-40 flex items-center gap-4">
-      <button id="openCurtainsBtn" class="px-7 py-3 rounded-full bg-gradient-to-r from-gold-600 via-gold-400 to-gold-600 text-ruby-950 font-cinzel text-xs font-bold tracking-[0.25em] uppercase shadow-[0_0_30px_rgba(223,188,85,0.6)] hover:brightness-110 active:scale-95 transition-all">
-        Part The Velvets <i class="fa-solid fa-gem ml-1 text-[10px]"></i>
+      <button id="openCurtainsBtn" class="px-8 py-3.5 rounded-full bg-linear-to-r from-gold-antique via-gold-light to-gold text-claret-deep font-cinzel text-xs font-bold tracking-[0.25em] uppercase shadow-[0_8px_30px_rgba(212,175,55,0.6)] hover:shadow-[0_10px_35px_rgba(212,175,55,0.8)] hover:scale-105 active:scale-95 transition-all">
+        Part The Velvets <i class="fa-solid fa-sparkles ml-2 text-claret"></i>
       </button>
 
-      <button id="soundToggleCurtainBtn" title="Toggle Ambience" class="w-11 h-11 rounded-full bg-black/60 border border-gold-400/40 text-gold-300 hover:text-white flex items-center justify-center backdrop-blur-md transition-all">
+      <button id="soundToggleCurtainBtn" title="Sound Effects" class="w-11 h-11 rounded-full bg-black/60 border border-gold/70 text-gold hover:text-white flex items-center justify-center backdrop-blur-md shadow-lg transition-all">
         <i class="fa-solid fa-volume-high text-xs"></i>
       </button>
     </div>
   </aside>
 
-  <!-- ==================== MAIN APPLICATION CONTENT ==================== -->
-  <div id="app-root" class="relative min-h-screen bg-ornament">
+  <!-- ==================== MAIN RS FASHIONS APPLICATION ==================== -->
+  <div id="boutique-app" class="relative min-h-screen bg-ivory">
     
-    <!-- Top Announcement Bar -->
-    <div class="bg-gradient-to-r from-ruby-950 via-ruby-900 to-ruby-950 border-b border-gold-500/20 py-2 px-4 text-center text-xs tracking-widest uppercase font-cinzel text-gold-300 flex justify-center items-center gap-4">
-      <span>✦ Complimentary Worldwide Insured Courier on Bespoke Bridal Sarees ✦</span>
-      <span class="hidden md:inline text-gold-500/60">•</span>
-      <span class="hidden md:inline">Silk Mark Authenticity Certified</span>
+    <!-- Ambient Floating Aura Lights -->
+    <div class="ambient-orb w-125 h-125 bg-claret/15 -top-20 -left-20"></div>
+    <div class="ambient-orb w-137.5 h-137.5 bg-gold/20 top-80 -right-20"></div>
+    <div class="ambient-orb w-120 h-120 bg-sage/60 bottom-40 left-1/4"></div>
+
+    <!-- Announcement Ribbon (Gold & Ruby Accent) -->
+    <div class="bg-linear-to-r from-claret-deep via-claret to-claret-deep text-gold-light py-2 px-4 text-center text-xs tracking-widest uppercase font-cinzel font-semibold flex justify-center items-center gap-4 relative z-20 shadow-sm">
+      <span>✦ Complimentary Insured White-Glove Trunk Delivery Worldwide ✦</span>
+      <span class="hidden md:inline text-gold">•</span>
+      <span class="hidden md:inline text-ivory/80">Govt. Silk Mark & 98.5% Pure Tested Zari Certified</span>
     </div>
 
-    <!-- Royal Glassmorphic Header -->
-    <header class="sticky top-0 z-50 glass-panel border-x-0 border-t-0 px-6 lg:px-16 py-4 flex items-center justify-between transition-all duration-300">
-      <!-- Left: Mobile Menu & Heritage Brand -->
-      <div class="flex items-center gap-6">
-        <button id="mobileMenuBtn" class="lg:hidden text-gold-300 hover:text-white text-xl">
+    <!-- Luxury Glassmorphic Header -->
+    <header class="sticky top-0 z-50 glass-luxury px-6 lg:px-16 py-4 flex items-center justify-between transition-all duration-300">
+      <!-- Logo & Monogram -->
+      <div class="flex items-center gap-4">
+        <button id="mobileMenuBtn" class="lg:hidden text-burgundyText hover:text-claret text-xl">
           <i class="fa-solid fa-bars-staggered"></i>
         </button>
 
         <a href="#" class="group flex items-center gap-3">
-          <div class="w-10 h-10 rounded-full border border-gold-400/60 flex items-center justify-center bg-ruby-900/60 group-hover:border-gold-300 shadow-[0_0_12px_rgba(223,188,85,0.2)]">
-            <i class="fa-solid fa-crown text-gold-400 text-sm"></i>
+          <div class="w-11 h-11 rounded-full bg-gradient-to-br from-claret-deep to-claret border border-gold flex items-center justify-center shadow-md group-hover:scale-105 transition-all">
+            <span class="font-cinzel text-base font-bold text-gold-light">RS</span>
           </div>
           <div>
-            <span class="font-cinzel text-lg lg:text-xl font-bold tracking-[0.25em] text-white block leading-tight gold-shimmer-text">
-              AARYA
+            <span class="font-cinzel text-lg lg:text-xl font-bold tracking-[0.22em] text-burgundyText block leading-tight">
+              RS FASHIONS
             </span>
-            <span class="font-cormorant text-xs tracking-widest text-gold-300 block -mt-1 italic">
-              Heritage Weaves
+            <span class="font-cormorant text-xs tracking-widest text-claret block -mt-1 font-semibold italic">
+              Haute Couture & Heritage Sarees
             </span>
           </div>
         </a>
       </div>
 
-      <!-- Center: Navigation Links -->
-      <nav class="hidden lg:flex items-center space-x-9 text-xs tracking-[0.22em] uppercase font-cinzel text-blush-100">
-        <a href="#masterpieces" class="hover:text-gold-300 transition-colors">Masterpieces</a>
-        <a href="#kanjivaram" class="hover:text-gold-300 transition-colors">Kanjivaram</a>
-        <a href="#banarasi" class="hover:text-gold-300 transition-colors">Banarasi Tanchoi</a>
-        <a href="#bridal" class="hover:text-gold-300 transition-colors">Bridal Troussier</a>
-        <a href="#heritage-story" class="hover:text-gold-300 transition-colors">The Royal Guild</a>
+      <!-- Navigation Links -->
+      <nav class="hidden lg:flex items-center space-x-8 text-xs tracking-[0.22em] uppercase font-cinzel text-burgundyText font-semibold">
+        <a href="#masterpieces" class="hover:text-claret transition-colors">Curated Weaves</a>
+        <a href="#bridal-couture" class="hover:text-claret transition-colors">Bridal Trousseau</a>
+        <a href="#heritage" class="hover:text-claret transition-colors">Artisan Looms</a>
+        <a href="#lookbook" class="hover:text-claret transition-colors">Royal Lookbook</a>
+        <a href="#atelier" class="hover:text-claret transition-colors">Atelier Care</a>
       </nav>
 
-      <!-- Right: Utility Controls & Bag -->
-      <div class="flex items-center space-x-5">
-        <!-- Replay Curtain Intro Button -->
-        <button id="replayCurtainBtn" title="Replay Opening Curtain" class="text-gold-300/80 hover:text-gold-300 transition-colors p-2 text-sm flex items-center gap-1.5 font-cinzel text-[11px] tracking-wider">
-          <i class="fa-solid fa-masks-theater text-sm"></i>
-          <span class="hidden sm:inline">Replay Intro</span>
+      <!-- Action Controls -->
+      <div class="flex items-center space-x-4">
+        <!-- Replay Unveil Button -->
+        <button id="replayCurtainBtn" title="Replay Red Velvet Curtains" class="text-burgundyText hover:text-claret transition-colors px-3.5 py-1.5 rounded-full border border-gold/50 bg-white/70 text-[11px] font-cinzel tracking-wider flex items-center gap-2 shadow-sm hover:border-gold">
+          <i class="fa-solid fa-masks-theater text-xs text-claret"></i>
+          <span class="hidden sm:inline font-bold">Replay Unveil</span>
         </button>
 
-        <!-- Currency Picker -->
+        <!-- Currency Selector -->
         <div class="relative hidden sm:block">
-          <select id="currencySelector" class="bg-ruby-950/70 text-gold-300 border border-gold-500/30 text-xs rounded-full px-3 py-1 font-cinzel tracking-wider focus:outline-none cursor-pointer">
+          <select id="currencySelector" class="bg-white/80 text-burgundyText border border-gold/40 text-xs rounded-full px-3 py-1.5 font-cinzel tracking-wider focus:outline-none cursor-pointer shadow-sm hover:border-gold">
             <option value="INR">INR (₹)</option>
             <option value="USD">USD ($)</option>
             <option value="GBP">GBP (£)</option>
@@ -519,118 +556,115 @@
           </select>
         </div>
 
-        <!-- Wishlist -->
-        <button class="relative text-gold-300 hover:text-white transition-colors p-2" title="Wishlist">
+        <!-- Wishlist Heart -->
+        <button id="wishlistHeaderBtn" class="relative text-burgundyText hover:text-claret transition-colors p-2" title="Wishlist">
           <i class="fa-regular fa-heart text-lg"></i>
-          <span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-gold-400"></span>
+          <span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-claret"></span>
         </button>
 
-        <!-- Cart Drawer Toggle -->
-        <button id="cartDrawerBtn" class="relative px-4 py-2 rounded-full bg-ruby-900/70 border border-gold-400/40 text-gold-200 hover:border-gold-300 transition-all flex items-center space-x-2">
-          <i class="fa-solid fa-bag-shopping text-sm text-gold-400"></i>
-          <span class="font-cinzel text-xs font-semibold" id="cartCounter">0</span>
+        <!-- Shopping Cart Drawer Trigger -->
+        <button id="cartDrawerBtn" class="relative px-4 py-2 rounded-full bg-white/90 border border-gold/60 text-burgundyText hover:border-claret transition-all flex items-center space-x-2 shadow-sm">
+          <i class="fa-solid fa-bag-shopping text-sm text-claret"></i>
+          <span class="font-cinzel text-xs font-bold text-burgundyText" id="cartCounter">0</span>
         </button>
       </div>
     </header>
 
     <!-- ==================== HERO SECTION ==================== -->
-    <section class="relative min-h-[92vh] flex items-center justify-center px-6 lg:px-16 py-12 overflow-hidden">
-      <!-- Glow & Ambiance Blobs -->
-      <div class="absolute -top-32 left-1/4 w-96 h-96 bg-ruby-700/20 rounded-full blur-[140px] pointer-events-none"></div>
-      <div class="absolute bottom-10 right-10 w-[480px] h-[480px] bg-gold-600/10 rounded-full blur-[160px] pointer-events-none"></div>
-
+    <section class="relative min-h-[90vh] flex items-center justify-center px-6 lg:px-16 py-14 overflow-hidden">
       <div class="max-w-7xl w-full grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center relative z-10">
         
-        <!-- Hero Editorial Column Left -->
+        <!-- Hero Left Column: Editorial Heritage Messaging -->
         <div class="lg:col-span-7 space-y-6 text-center lg:text-left">
-          <div class="inline-flex items-center space-x-3 px-4 py-1.5 rounded-full gold-badge">
-            <span class="w-2 h-2 rounded-full bg-gold-400 animate-pulse"></span>
-            <span class="font-cinzel text-xs uppercase tracking-[0.25em] text-gold-300 font-semibold">The 2026 Rajvansh Imperial Edition</span>
+          <div class="inline-flex items-center space-x-3 px-4 py-1.5 rounded-full border border-gold/40 bg-white/80 shadow-sm">
+            <span class="w-2.5 h-2.5 rounded-full bg-claret animate-ping"></span>
+            <span class="font-cinzel text-xs uppercase tracking-[0.25em] text-burgundyText font-bold">The Royal 2026 Trousseau Edit</span>
           </div>
 
-          <h1 class="font-cinzel text-4xl sm:text-5xl lg:text-6xl font-black text-white tracking-wide leading-[1.12]">
-            Draped in Royalty.<br />
-            <span class="gold-shimmer-text italic font-cormorant font-normal">Woven with 24-Karat</span><br />
-            Timeless Immortality.
+          <h1 class="font-cinzel text-4xl sm:text-5xl lg:text-6xl font-extrabold text-burgundyText tracking-wide leading-[1.12]">
+            The Grand Drape<br />
+            <span class="ruby-shimmer-text italic font-cormorant font-normal">of Imperial Royalty,</span><br />
+            Woven in Pure Zari.
           </h1>
 
-          <p class="font-cormorant text-lg sm:text-xl text-blush-200/90 max-w-xl mx-auto lg:mx-0 leading-relaxed font-light">
-            Indulge in authentic handwoven treasures born from the legendary looms of Varanasi and Kanchipuram. Real silver & dipped gold zari woven painstakingly over three seasons.
+          <p class="font-cormorant text-xl text-burgundyText/80 max-w-xl mx-auto lg:mx-0 leading-relaxed font-normal">
+            RS Fashions curates hand-spun mulberry silks, antique silver brocades, and gossamer tissue weaves crafted across three moon seasons by generational master artisans in Kanchipuram & Varanasi.
           </p>
 
-          <div class="pt-4 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-5">
-            <a href="#masterpieces" class="w-full sm:w-auto px-9 py-4 rounded-full bg-gradient-to-r from-gold-500 via-gold-400 to-gold-600 text-ruby-950 font-cinzel text-xs font-bold tracking-[0.25em] uppercase hover:shadow-[0_0_35px_rgba(223,188,85,0.7)] transition-all transform hover:-translate-y-0.5 text-center">
-              Explore The Troussier
+          <div class="pt-4 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
+            <a href="#masterpieces" class="w-full sm:w-auto px-9 py-4 rounded-full bg-gradient-to-r from-claret-deep via-claret to-claret-deep text-gold-light border border-gold font-cinzel text-xs font-bold tracking-[0.25em] uppercase hover:shadow-[0_10px_35px_rgba(138,17,34,0.45)] transition-all transform hover:-translate-y-0.5 text-center">
+              Explore Royal Weaves
             </a>
 
-            <button id="watchLoomCraftBtn" class="w-full sm:w-auto px-8 py-4 rounded-full glass-panel text-white hover:text-gold-300 font-cinzel text-xs tracking-[0.2em] uppercase flex items-center justify-center space-x-3 hover:border-gold-400/60 transition-all">
-              <span class="w-6 h-6 rounded-full bg-gold-500/20 flex items-center justify-center text-[10px] text-gold-300">
-                <i class="fa-solid fa-play"></i>
+            <button id="openConciergeModalBtn" class="w-full sm:w-auto px-8 py-4 rounded-full glass-luxury text-burgundyText hover:text-claret font-cinzel text-xs tracking-[0.2em] uppercase flex items-center justify-center space-x-3 border border-gold/40 hover:border-gold transition-all shadow-sm">
+              <span class="w-6 h-6 rounded-full bg-gold/20 flex items-center justify-center text-[10px] text-claret">
+                <i class="fa-solid fa-crown"></i>
               </span>
-              <span>The Zari Craft</span>
+              <span>Book Bridal Concierge</span>
             </button>
           </div>
 
-          <!-- Trust Badges -->
-          <div class="pt-8 border-t border-gold-500/20 grid grid-cols-3 gap-4 max-w-lg mx-auto lg:mx-0 text-center lg:text-left">
+          <!-- Proof Metrics -->
+          <div class="pt-8 border-t border-gold/30 grid grid-cols-3 gap-4 max-w-lg mx-auto lg:mx-0 text-center lg:text-left">
             <div>
-              <p class="font-cinzel text-xl lg:text-2xl font-bold text-gold-300">220+</p>
-              <p class="font-cormorant text-xs tracking-wider text-blush-300 uppercase">Hours Per Drape</p>
+              <p class="font-cinzel text-xl lg:text-2xl font-bold text-claret">300+</p>
+              <p class="font-cormorant text-xs tracking-wider text-burgundyText/70 uppercase font-semibold">Weaving Hours / Saree</p>
             </div>
             <div>
-              <p class="font-cinzel text-xl lg:text-2xl font-bold text-gold-300">100%</p>
-              <p class="font-cormorant text-xs tracking-wider text-blush-300 uppercase">Certified Mulberry Silk</p>
+              <p class="font-cinzel text-xl lg:text-2xl font-bold text-claret">98.5%</p>
+              <p class="font-cormorant text-xs tracking-wider text-burgundyText/70 uppercase font-semibold">Assayed Pure Zari</p>
             </div>
             <div>
-              <p class="font-cinzel text-xl lg:text-2xl font-bold text-gold-300">Pure</p>
-              <p class="font-cormorant text-xs tracking-wider text-blush-300 uppercase">Tested Zari Hallmark</p>
+              <p class="font-cinzel text-xl lg:text-2xl font-bold text-claret">Grade-A</p>
+              <p class="font-cormorant text-xs tracking-wider text-burgundyText/70 uppercase font-semibold">Mulberry Silk Mark</p>
             </div>
           </div>
         </div>
 
-        <!-- Hero Saree Showcase Card Right -->
+        <!-- Hero Right Column: Master Saree Showcase with Floating Tags -->
         <div class="lg:col-span-5 relative flex justify-center">
           <div class="relative w-full max-w-md">
             
-            <!-- Background Ornate Halo Frame -->
-            <div class="absolute -inset-4 rounded-[40px] border border-gold-500/30 opacity-70 transform rotate-2 pointer-events-none"></div>
-            <div class="absolute -inset-2 rounded-[36px] border border-gold-400/20 opacity-90 transform -rotate-2 pointer-events-none"></div>
+            <!-- Ornate Floating Rings Backdrop -->
+            <div class="absolute -inset-4 rounded-[42px] border border-gold/40 transform rotate-3 pointer-events-none"></div>
+            <div class="absolute -inset-2 rounded-[38px] border border-claret/30 transform -rotate-2 pointer-events-none"></div>
 
-            <!-- Master Showcase Image Card -->
-            <div class="relative rounded-[32px] overflow-hidden glass-panel border border-gold-400/40 p-3 shadow-[0_30px_70px_rgba(0,0,0,0.8)]">
-              <div class="relative h-[480px] rounded-[24px] overflow-hidden">
+            <!-- Master Showcase Card -->
+            <div class="relative rounded-[32px] overflow-hidden glass-luxury border border-gold/50 p-3 shadow-2xl">
+              <div class="relative h-[490px] rounded-[24px] overflow-hidden bg-ivory-deep">
                 <img 
                   id="heroSareeImg"
                   src="https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=1000&q=80" 
-                  alt="Royal Crimson Kanjivaram Silk Saree"
-                  class="w-full h-full object-cover object-top filter brightness-95 contrast-105 hover:scale-105 transition-transform duration-700"
-                  onerror="this.src='https://placehold.co/600x900/3a040b/ecd386?text=Royal+Kanjivaram+Silk'"
+                  alt="Royal Crimson Gold Handloom Silk Saree"
+                  class="w-full h-full object-cover object-top filter brightness-[1.02] contrast-[1.03] hover:scale-105 transition-transform duration-700"
+                  onerror="this.src='https://placehold.co/600x900/faf8f5/8a1122?text=RS+Fashions+Royal+Saree'"
                 />
                 
-                <div class="absolute inset-0 bg-gradient-to-t from-ruby-950 via-transparent to-transparent"></div>
+                <div class="absolute inset-0 bg-gradient-to-t from-claret-dark/90 via-transparent to-transparent"></div>
 
-                <!-- Floating Editorial Badges -->
-                <div class="absolute top-4 left-4 glass-panel-subtle px-3 py-1.5 rounded-full border border-gold-400/40 flex items-center space-x-2">
-                  <i class="fa-solid fa-certificate text-gold-400 text-xs"></i>
-                  <span class="text-[11px] font-cinzel text-gold-200 tracking-wider">GI Certified Origin</span>
+                <!-- GI Badge -->
+                <div class="absolute top-4 left-4 glass-luxury px-3 py-1.5 rounded-full border border-gold/40 flex items-center space-x-2">
+                  <i class="fa-solid fa-award text-gold text-xs"></i>
+                  <span class="text-[11px] font-cinzel text-burgundyText font-bold tracking-wider">Kanchipuram Guild Certified</span>
                 </div>
 
-                <div class="absolute bottom-5 left-5 right-5 glass-panel p-4 rounded-2xl border border-gold-400/30">
+                <!-- Floating Showcase Detail Box -->
+                <div class="absolute bottom-5 left-5 right-5 glass-luxury p-4 rounded-2xl border border-gold/40 shadow-xl bg-white/90">
                   <div class="flex items-center justify-between mb-1">
-                    <span class="text-[10px] font-cinzel text-gold-400 uppercase tracking-widest">Imperial Bridal Edit</span>
-                    <span class="text-xs font-cinzel font-bold text-white tracking-widest" id="heroPriceTag">₹1,85,000</span>
+                    <span class="text-[10px] font-cinzel text-claret uppercase tracking-widest font-bold">Empress Signature Edition</span>
+                    <span class="text-xs font-cinzel font-bold text-burgundyText tracking-widest" id="heroPriceTag">₹1,85,000</span>
                   </div>
-                  <h4 class="font-cormorant text-xl text-white font-medium italic">Kalyani Swarnamala Kanjivaram</h4>
-                  <p class="text-xs text-blush-200/80 font-sans mt-0.5">Woven with 3-ply mulberry silk and dipped real silver tested zari.</p>
+                  <h4 class="font-cormorant text-xl text-burgundyText font-semibold italic">Maharani Swarnachari Brocade</h4>
+                  <p class="text-xs text-burgundyText/75 font-sans mt-0.5">Spun with 3-ply mulberry silk, 24k dipped pure zari pallu, and floral shikargah motifs.</p>
                 </div>
               </div>
             </div>
 
-            <!-- Floating Decorative Seal -->
-            <div class="absolute -bottom-6 -right-6 w-24 h-24 rounded-full bg-gradient-to-tr from-gold-600 via-gold-400 to-gold-200 p-0.5 shadow-2xl flex items-center justify-center animate-bounce duration-1000">
-              <div class="w-full h-full rounded-full bg-ruby-950 flex flex-col items-center justify-center text-center p-2">
-                <i class="fa-solid fa-award text-gold-400 text-base mb-0.5"></i>
-                <span class="text-[8px] font-cinzel uppercase tracking-tighter text-gold-300 font-bold">100% Pure Zari</span>
+            <!-- Floating Assayed Seal -->
+            <div class="absolute -bottom-6 -right-6 w-24 h-24 rounded-full bg-gradient-to-tr from-gold-antique via-gold-light to-white p-0.5 shadow-xl flex items-center justify-center animate-bounce duration-1000">
+              <div class="w-full h-full rounded-full bg-claret-deep flex flex-col items-center justify-center text-center p-2 border border-gold">
+                <i class="fa-solid fa-crown text-gold text-sm mb-0.5"></i>
+                <span class="text-[8px] font-cinzel uppercase tracking-tighter text-gold-light font-bold">100% Tested Zari</span>
               </div>
             </div>
 
@@ -641,168 +675,168 @@
     </section>
 
     <!-- ==================== COLLECTION SECTION ==================== -->
-    <section id="masterpieces" class="py-20 px-6 lg:px-16 border-t border-gold-500/15">
+    <section id="masterpieces" class="py-20 px-6 lg:px-16 border-t border-gold/30 bg-ivory-soft/60 relative">
       <div class="max-w-7xl mx-auto">
         
-        <!-- Section Header -->
+        <!-- Section Title Header -->
         <div class="text-center max-w-2xl mx-auto mb-14">
-          <div class="inline-flex items-center space-x-2 text-gold-400 text-xs font-cinzel tracking-[0.3em] uppercase mb-2">
+          <div class="inline-flex items-center space-x-2 text-claret text-xs font-cinzel tracking-[0.3em] uppercase mb-2 font-bold">
             <span>✦</span>
-            <span>The Curated Treasures</span>
+            <span>The RS Fashions Treasury</span>
             <span>✦</span>
           </div>
-          <h2 class="font-cinzel text-3xl sm:text-4xl lg:text-5xl font-bold text-white tracking-wide">
-            Masterpieces of the Loom
+          <h2 class="font-cinzel text-3xl sm:text-4xl lg:text-5xl font-bold text-burgundyText tracking-wide">
+            Masterpieces of the Imperial Loom
           </h2>
-          <div class="w-24 h-0.5 bg-gradient-to-r from-transparent via-gold-400 to-transparent mx-auto mt-4 mb-4"></div>
-          <p class="font-cormorant text-lg text-blush-200 italic">
-            Each drape requires between 140 to 360 continuous hours on traditional Jacquard and pit looms.
+          <div class="w-24 h-0.5 bg-gradient-to-r from-transparent via-gold to-transparent mx-auto mt-4 mb-4"></div>
+          <p class="font-cormorant text-lg text-burgundyText/75 italic">
+            Each creation is an heirloom woven with hallmarked precious bullion, ancestral korvai techniques, and rich royal pigments.
           </p>
         </div>
 
-        <!-- Filter Tabs -->
+        <!-- Filter Pill Tabs -->
         <div class="flex flex-wrap items-center justify-center gap-3 mb-12">
-          <button class="filter-btn px-6 py-2.5 rounded-full text-xs font-cinzel tracking-widest uppercase transition-all bg-gold-500 text-ruby-950 font-bold shadow-lg shadow-gold-500/20" data-filter="all">
+          <button class="filter-pill-btn px-6 py-2.5 rounded-full text-xs font-cinzel tracking-widest uppercase transition-all bg-claret text-gold-light border border-gold font-bold shadow-md" data-filter="all">
             All Creations
           </button>
-          <button class="filter-btn px-6 py-2.5 rounded-full text-xs font-cinzel tracking-widest uppercase transition-all glass-panel text-gold-200 hover:border-gold-300" data-filter="kanjivaram">
-            Kanjivaram Silk
+          <button class="filter-pill-btn px-6 py-2.5 rounded-full text-xs font-cinzel tracking-widest uppercase transition-all glass-luxury text-burgundyText hover:border-gold" data-filter="kanjivaram">
+            Bridal Kanjivaram
           </button>
-          <button class="filter-btn px-6 py-2.5 rounded-full text-xs font-cinzel tracking-widest uppercase transition-all glass-panel text-gold-200 hover:border-gold-300" data-filter="banarasi">
-            Banarasi Tanchoi
+          <button class="filter-pill-btn px-6 py-2.5 rounded-full text-xs font-cinzel tracking-widest uppercase transition-all glass-luxury text-burgundyText hover:border-gold" data-filter="banarasi">
+            Banarasi Zari
           </button>
-          <button class="filter-btn px-6 py-2.5 rounded-full text-xs font-cinzel tracking-widest uppercase transition-all glass-panel text-gold-200 hover:border-gold-300" data-filter="patola">
-            Patan Patola & Ikat
+          <button class="filter-pill-btn px-6 py-2.5 rounded-full text-xs font-cinzel tracking-widest uppercase transition-all glass-luxury text-burgundyText hover:border-gold" data-filter="organza">
+            Modern Organza & Tissue
           </button>
-          <button class="filter-btn px-6 py-2.5 rounded-full text-xs font-cinzel tracking-widest uppercase transition-all glass-panel text-gold-200 hover:border-gold-300" data-filter="chanderi">
-            Tissue & Chanderi
+          <button class="filter-pill-btn px-6 py-2.5 rounded-full text-xs font-cinzel tracking-widest uppercase transition-all glass-luxury text-burgundyText hover:border-gold" data-filter="velvet">
+            Royal Velvet Brocades
           </button>
         </div>
 
-        <!-- Product Cards Grid -->
+        <!-- Dynamic Product Cards Grid -->
         <div id="productGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          <!-- Populated by JavaScript with high visual fidelity cards -->
+          <!-- Rendered dynamically by JavaScript -->
         </div>
 
       </div>
     </section>
 
-    <!-- ==================== HERITAGE CRAFTSMANSHIP ==================== -->
-    <section id="heritage-story" class="py-24 px-6 lg:px-16 bg-gradient-to-b from-transparent via-ruby-950/80 to-transparent border-t border-gold-500/20 relative">
+    <!-- ==================== ARTISAN LOOMS & HERITAGE ==================== -->
+    <section id="heritage" class="py-24 px-6 lg:px-16 border-t border-gold/30 bg-gradient-to-b from-transparent via-sage-mist/70 to-transparent relative">
       <div class="max-w-6xl mx-auto">
         <div class="text-center mb-16">
-          <span class="text-xs font-cinzel text-gold-400 tracking-[0.3em] uppercase block mb-2">Ancestral Provenance</span>
-          <h2 class="font-cinzel text-3xl sm:text-4xl lg:text-5xl font-bold text-white tracking-wide">
-            From Loom to Heirloom
+          <span class="text-xs font-cinzel text-claret tracking-[0.3em] uppercase block mb-2 font-bold">Generational Provenance</span>
+          <h2 class="font-cinzel text-3xl sm:text-4xl lg:text-5xl font-bold text-burgundyText tracking-wide">
+            The Craft Behind The Legend
           </h2>
-          <p class="font-cormorant text-lg text-blush-200 mt-2 max-w-xl mx-auto italic">
-            Witness the multi-generational devotion involved in crafting single drapes fit for royal courts.
+          <p class="font-cormorant text-lg text-burgundyText/75 mt-2 max-w-xl mx-auto italic">
+            Rooted in ancestral traditions of Rajputana and Dravidian royal drapes, crafted on traditional pit looms.
           </p>
         </div>
 
-        <!-- Interactive Craft Steps -->
+        <!-- 4 Step Craftsmanship Grid -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
           <!-- Step 1 -->
-          <div class="glass-panel p-6 rounded-2xl border border-gold-500/25 relative group hover:border-gold-400 transition-all">
-            <div class="text-gold-400 text-3xl mb-4 font-cinzel opacity-40 group-hover:opacity-100 transition-opacity">01</div>
-            <h3 class="font-cinzel text-lg font-semibold text-white mb-2">Mulberry Sericulture</h3>
-            <p class="text-xs font-sans text-blush-300 leading-relaxed">
-              Harvesting Grade-A raw silk filament reels known for unparalleled tensile resilience and crystalline natural luster.
+          <div class="glass-luxury-card p-6 rounded-2xl relative group hover:border-gold transition-all">
+            <div class="text-gold text-3xl mb-4 font-cinzel opacity-40 group-hover:opacity-100 transition-opacity">01</div>
+            <h3 class="font-cinzel text-lg font-semibold text-burgundyText mb-2">Mulberry Cocoon Spun</h3>
+            <p class="text-xs font-sans text-burgundyText/70 leading-relaxed">
+              Grade-A 3-ply long-staple mulberry silks conditioned in natural spring water for an unmistakable imperial drape.
             </p>
           </div>
 
           <!-- Step 2 -->
-          <div class="glass-panel p-6 rounded-2xl border border-gold-500/25 relative group hover:border-gold-400 transition-all">
-            <div class="text-gold-400 text-3xl mb-4 font-cinzel opacity-40 group-hover:opacity-100 transition-opacity">02</div>
-            <h3 class="font-cinzel text-lg font-semibold text-white mb-2">24K Pure Zari Gilding</h3>
-            <p class="text-xs font-sans text-blush-300 leading-relaxed">
-              Real silver wires flattened through diamond dies and electroplated in 24k melted gold bullion for eternal sheen.
+          <div class="glass-luxury-card p-6 rounded-2xl relative group hover:border-gold transition-all">
+            <div class="text-gold text-3xl mb-4 font-cinzel opacity-40 group-hover:opacity-100 transition-opacity">02</div>
+            <h3 class="font-cinzel text-lg font-semibold text-burgundyText mb-2">Pure Silver Zari Bath</h3>
+            <p class="text-xs font-sans text-burgundyText/70 leading-relaxed">
+              Silver wires drawn to 25-micron threads electro-gilded with 24-karat pure molten gold bullion for lifetime luster.
             </p>
           </div>
 
           <!-- Step 3 -->
-          <div class="glass-panel p-6 rounded-2xl border border-gold-500/25 relative group hover:border-gold-400 transition-all">
-            <div class="text-gold-400 text-3xl mb-4 font-cinzel opacity-40 group-hover:opacity-100 transition-opacity">03</div>
-            <h3 class="font-cinzel text-lg font-semibold text-white mb-2">Korvai Interlocking</h3>
-            <p class="text-xs font-sans text-blush-300 leading-relaxed">
-              Ancient technique requiring two weavers simultaneously linking heavy contrasting pallu borders to the body.
+          <div class="glass-luxury-card p-6 rounded-2xl relative group hover:border-gold transition-all">
+            <div class="text-gold text-3xl mb-4 font-cinzel opacity-40 group-hover:opacity-100 transition-opacity">03</div>
+            <h3 class="font-cinzel text-lg font-semibold text-burgundyText mb-2">Three-Shuttle Korvai</h3>
+            <p class="text-xs font-sans text-burgundyText/70 leading-relaxed">
+              Two generational weavers work in unison to interlock heavy pallu borders with delicate body panels without bulk.
             </p>
           </div>
 
           <!-- Step 4 -->
-          <div class="glass-panel p-6 rounded-2xl border border-gold-500/25 relative group hover:border-gold-400 transition-all">
-            <div class="text-gold-400 text-3xl mb-4 font-cinzel opacity-40 group-hover:opacity-100 transition-opacity">04</div>
-            <h3 class="font-cinzel text-lg font-semibold text-white mb-2">Guild Assaying</h3>
-            <p class="text-xs font-sans text-blush-300 leading-relaxed">
-              Every saree is tested for silver percentage, micro-hallmarked, and accompanied by physical silk mark certification.
+          <div class="glass-luxury-card p-6 rounded-2xl relative group hover:border-gold transition-all">
+            <div class="text-gold text-3xl mb-4 font-cinzel opacity-40 group-hover:opacity-100 transition-opacity">04</div>
+            <h3 class="font-cinzel text-lg font-semibold text-burgundyText mb-2">Assayed Certificate</h3>
+            <p class="text-xs font-sans text-burgundyText/70 leading-relaxed">
+              Each saree arrives sealed with a Silk Mark barcode certificate and government-recognized bullion hallmark assay.
             </p>
           </div>
         </div>
 
-        <!-- Royal Seal Certificate Banner -->
-        <div class="mt-14 glass-panel rounded-3xl p-8 border border-gold-400/40 flex flex-col md:flex-row items-center justify-between gap-6 shadow-[0_20px_50px_rgba(0,0,0,0.6)]">
+        <!-- Private Salon Concierge CTA Box -->
+        <div class="mt-14 glass-luxury rounded-3xl p-8 border border-gold/50 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl">
           <div class="flex items-center space-x-5">
-            <div class="w-16 h-16 rounded-full bg-gradient-to-tr from-gold-500 to-gold-200 flex items-center justify-center text-ruby-950 text-2xl flex-shrink-0 shadow-lg">
-              <i class="fa-solid fa-shield-halved"></i>
+            <div class="w-16 h-16 rounded-full bg-gradient-to-br from-claret-deep to-claret flex items-center justify-center text-gold-light text-2xl flex-shrink-0 shadow-md border border-gold">
+              <i class="fa-solid fa-gem text-gold"></i>
             </div>
             <div>
-              <h4 class="font-cinzel text-xl font-bold text-white">The Sovereign Guild Guarantee</h4>
-              <p class="text-xs text-blush-200 mt-1">Inspected and sealed by the Handloom Board. Lifetime zari repolishing privilege.</p>
+              <h4 class="font-cinzel text-xl font-bold text-burgundyText">Bespoke Bridal Salon Appointment</h4>
+              <p class="text-xs text-burgundyText/75 mt-1">Schedule a 1-on-1 private video drape session or an in-person viewing in New Delhi, Hyderabad & London.</p>
             </div>
           </div>
-          <button id="bookCuratorBtn" class="px-7 py-3 rounded-full bg-ruby-900 border border-gold-400 text-gold-300 hover:text-white hover:bg-gold-500 hover:text-ruby-950 font-cinzel text-xs uppercase tracking-widest transition-all whitespace-nowrap">
-            Schedule Private Concierge
+          <button id="bookConciergeBtn" class="px-8 py-3.5 rounded-full bg-gradient-to-r from-claret-deep to-claret text-gold-light border border-gold hover:brightness-110 font-cinzel text-xs uppercase tracking-widest transition-all whitespace-nowrap shadow-md">
+            Reserve Private Salon
           </button>
         </div>
 
       </div>
     </section>
 
-    <!-- ==================== ROYAL PATRONS ==================== -->
+    <!-- ==================== PATRON VOICES ==================== -->
     <section class="py-20 px-6 lg:px-16">
       <div class="max-w-6xl mx-auto text-center">
-        <span class="text-xs font-cinzel text-gold-400 tracking-[0.3em] uppercase block mb-2">Patron Accolades</span>
-        <h2 class="font-cinzel text-3xl sm:text-4xl font-bold text-white tracking-wide mb-12">
-          Cherished Across Generations
+        <span class="text-xs font-cinzel text-claret tracking-[0.3em] uppercase block mb-2 font-bold">Cherished Patronage</span>
+        <h2 class="font-cinzel text-3xl sm:text-4xl font-bold text-burgundyText tracking-wide mb-12">
+          Testimonials of Regal Elegance
         </h2>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-left">
-          <div class="glass-panel p-8 rounded-2xl border border-gold-500/20 relative">
-            <div class="text-gold-400 text-xs mb-3">
+          <div class="glass-luxury-card p-8 rounded-2xl relative">
+            <div class="text-gold text-xs mb-3">
               <i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i>
             </div>
-            <p class="font-cormorant italic text-blush-100 text-lg leading-relaxed mb-6">
-              "The weight of the pure gold zari in my bridal Kanjivaram was breathtaking. When unfolded under the chandeliers, the weave glistened like molten champagne."
+            <p class="font-cormorant italic text-burgundyText text-lg leading-relaxed mb-6 font-medium">
+              "RS Fashions crafted my custom wedding Kanjivaram in claret and antique zari. The weight, drape, and precision are comparable only to royal royal museum heirlooms."
             </p>
             <div>
-              <p class="font-cinzel text-xs font-bold text-gold-300 tracking-wider">Maharani Gayatri D.</p>
-              <p class="text-[11px] text-blush-300">Jaipur Heritage Collection</p>
+              <p class="font-cinzel text-xs font-bold text-burgundyText tracking-wider">Maharani Radhika Devi</p>
+              <p class="text-[11px] text-burgundyText/60">Gwalior Heritage Palace</p>
             </div>
           </div>
 
-          <div class="glass-panel p-8 rounded-2xl border border-gold-500/20 relative">
-            <div class="text-gold-400 text-xs mb-3">
+          <div class="glass-luxury-card p-8 rounded-2xl relative">
+            <div class="text-gold text-xs mb-3">
               <i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i>
             </div>
-            <p class="font-cormorant italic text-blush-100 text-lg leading-relaxed mb-6">
-              "Aarya's vintage Banarasi Tanchoi saree has become an heirloom my daughter will wear on her wedding day. The pure silver test certificate gave total peace of mind."
+            <p class="font-cormorant italic text-burgundyText text-lg leading-relaxed mb-6 font-medium">
+              "The red velvet curtain opening on their boutique sets the stage for an extraordinary collection. The organza and Banarasi brocades we ordered for London gala were breathtaking."
             </p>
             <div>
-              <p class="font-cinzel text-xs font-bold text-gold-300 tracking-wider">Dr. Radhika Sen</p>
-              <p class="text-[11px] text-blush-300">London & Kolkata</p>
+              <p class="font-cinzel text-xs font-bold text-burgundyText tracking-wider">Lady Serena Hamilton</p>
+              <p class="text-[11px] text-burgundyText/60">Kensington, London</p>
             </div>
           </div>
 
-          <div class="glass-panel p-8 rounded-2xl border border-gold-500/20 relative">
-            <div class="text-gold-400 text-xs mb-3">
+          <div class="glass-luxury-card p-8 rounded-2xl relative">
+            <div class="text-gold text-xs mb-3">
               <i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i>
             </div>
-            <p class="font-cormorant italic text-blush-100 text-lg leading-relaxed mb-6">
-              "The custom bridal trousseau consultation over video was flawless. The bespoke box arrived in New York with embroidered velvet casing and fragrant sandalwood sachets."
+            <p class="font-cormorant italic text-burgundyText text-lg leading-relaxed mb-6 font-medium">
+              "Unboxing the handcrafted brass trunk with scented vetiver and assayed pure silver certificates made receiving my saree in San Francisco an unforgettable moment."
             </p>
             <div>
-              <p class="font-cinzel text-xs font-bold text-gold-300 tracking-wider">Ananya Swaminathan</p>
-              <p class="text-[11px] text-blush-300">Manhattan, NY</p>
+              <p class="font-cinzel text-xs font-bold text-burgundyText tracking-wider">Pooja Narayan</p>
+              <p class="text-[11px] text-burgundyText/60">San Francisco, CA</p>
             </div>
           </div>
         </div>
@@ -810,123 +844,123 @@
     </section>
 
     <!-- ==================== FOOTER ==================== -->
-    <footer class="border-t border-gold-500/25 bg-ruby-950/90 py-16 px-6 lg:px-16 text-blush-200">
+    <footer class="border-t border-gold/40 bg-ivory-deep/80 py-16 px-6 lg:px-16 text-burgundyText">
       <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
         
-        <!-- Brand Info -->
+        <!-- Brand Column -->
         <div class="lg:col-span-2 space-y-4">
           <div class="flex items-center space-x-3">
-            <div class="w-9 h-9 rounded-full border border-gold-400 flex items-center justify-center text-gold-400">
-              <i class="fa-solid fa-crown text-xs"></i>
+            <div class="w-10 h-10 rounded-full bg-claret border border-gold flex items-center justify-center text-gold-light">
+              <span class="font-cinzel font-bold text-sm">RS</span>
             </div>
-            <span class="font-cinzel text-xl font-bold tracking-[0.25em] text-white gold-shimmer-text">AARYA</span>
+            <span class="font-cinzel text-xl font-bold tracking-[0.25em] text-burgundyText">RS FASHIONS</span>
           </div>
-          <p class="font-cormorant italic text-sm text-blush-200/80 max-w-sm">
-            Curators of imperial Indian handlooms, conserving weaving traditions that have adorned aristocracy since the Mughal and Chola dynasties.
+          <p class="font-cormorant italic text-sm text-burgundyText/75 max-w-sm font-medium">
+            Makers of imperial handwoven sarees, preserving ancient weaving traditions for royals, brides, and connoisseurs of timeless Indian couture.
           </p>
           <div class="flex space-x-4 pt-2">
-            <a href="#" class="w-9 h-9 rounded-full glass-panel flex items-center justify-center text-gold-300 hover:text-white hover:border-gold-300 transition-colors"><i class="fa-brands fa-instagram"></i></a>
-            <a href="#" class="w-9 h-9 rounded-full glass-panel flex items-center justify-center text-gold-300 hover:text-white hover:border-gold-300 transition-colors"><i class="fa-brands fa-pinterest"></i></a>
-            <a href="#" class="w-9 h-9 rounded-full glass-panel flex items-center justify-center text-gold-300 hover:text-white hover:border-gold-300 transition-colors"><i class="fa-brands fa-youtube"></i></a>
+            <a href="#" class="w-9 h-9 rounded-full glass-luxury flex items-center justify-center text-burgundyText hover:text-claret transition-colors"><i class="fa-brands fa-instagram"></i></a>
+            <a href="#" class="w-9 h-9 rounded-full glass-luxury flex items-center justify-center text-burgundyText hover:text-claret transition-colors"><i class="fa-brands fa-pinterest"></i></a>
+            <a href="#" class="w-9 h-9 rounded-full glass-luxury flex items-center justify-center text-burgundyText hover:text-claret transition-colors"><i class="fa-brands fa-youtube"></i></a>
           </div>
         </div>
 
         <!-- Links 1 -->
         <div>
-          <h4 class="font-cinzel text-xs font-bold uppercase tracking-[0.2em] text-gold-300 mb-4">Royal Looms</h4>
-          <ul class="space-y-2 text-xs font-sans text-blush-300">
-            <li><a href="#" class="hover:text-gold-200 transition-colors">Kanchipuram Silk</a></li>
-            <li><a href="#" class="hover:text-gold-200 transition-colors">Varanasi Tanchoi</a></li>
-            <li><a href="#" class="hover:text-gold-200 transition-colors">Patan Double Ikat</a></li>
-            <li><a href="#" class="hover:text-gold-200 transition-colors">Chanderi Tissue</a></li>
-            <li><a href="#" class="hover:text-gold-200 transition-colors">Bridal Brocades</a></li>
+          <h4 class="font-cinzel text-xs font-bold uppercase tracking-[0.2em] text-claret mb-4">Imperial Weaves</h4>
+          <ul class="space-y-2 text-xs font-sans text-burgundyText/75 font-medium">
+            <li><a href="#" class="hover:text-claret transition-colors">Pure Bridal Kanjivaram</a></li>
+            <li><a href="#" class="hover:text-claret transition-colors">Banarasi Tanchoi Brocade</a></li>
+            <li><a href="#" class="hover:text-claret transition-colors">Royal Velvet Drapes</a></li>
+            <li><a href="#" class="hover:text-claret transition-colors">Fine Chanderi Tissue</a></li>
+            <li><a href="#" class="hover:text-claret transition-colors">Raw Silk Paithani</a></li>
           </ul>
         </div>
 
         <!-- Links 2 -->
         <div>
-          <h4 class="font-cinzel text-xs font-bold uppercase tracking-[0.2em] text-gold-300 mb-4">Maison Services</h4>
-          <ul class="space-y-2 text-xs font-sans text-blush-300">
-            <li><a href="#" class="hover:text-gold-200 transition-colors">Private Atelier Visit</a></li>
-            <li><a href="#" class="hover:text-gold-200 transition-colors">Bridal Trousseau Styling</a></li>
-            <li><a href="#" class="hover:text-gold-200 transition-colors">Zari Certificate Check</a></li>
-            <li><a href="#" class="hover:text-gold-200 transition-colors">Custom Color Dyeing</a></li>
-            <li><a href="#" class="hover:text-gold-200 transition-colors">Insured Global Transit</a></li>
+          <h4 class="font-cinzel text-xs font-bold uppercase tracking-[0.2em] text-claret mb-4">Atelier Care</h4>
+          <ul class="space-y-2 text-xs font-sans text-burgundyText/75 font-medium">
+            <li><a href="#" class="hover:text-claret transition-colors">Zari Re-Gilding Services</a></li>
+            <li><a href="#" class="hover:text-claret transition-colors">Custom Length & Blouse Design</a></li>
+            <li><a href="#" class="hover:text-claret transition-colors">Silk Mark Authentication</a></li>
+            <li><a href="#" class="hover:text-claret transition-colors">Global Insured Air Transit</a></li>
+            <li><a href="#" class="hover:text-claret transition-colors">Sandalwood Packaging</a></li>
           </ul>
         </div>
 
         <!-- Newsletter Subscription -->
         <div>
-          <h4 class="font-cinzel text-xs font-bold uppercase tracking-[0.2em] text-gold-300 mb-4">The Atelier Gazette</h4>
-          <p class="text-xs text-blush-300 mb-3">Private previews of limited seasonal loom releases.</p>
+          <h4 class="font-cinzel text-xs font-bold uppercase tracking-[0.2em] text-claret mb-4">The Royal Gazette</h4>
+          <p class="text-xs text-burgundyText/70 mb-3">Private previews of limited seasonal handloom drapes.</p>
           <div class="space-y-2">
-            <input type="email" placeholder="Your royal address" class="w-full bg-ruby-900/50 border border-gold-500/30 rounded-lg px-3 py-2 text-xs text-white placeholder-blush-300/40 focus:outline-none focus:border-gold-400" />
-            <button class="w-full py-2 rounded-lg bg-gold-500 text-ruby-950 font-cinzel text-[11px] font-bold tracking-widest uppercase hover:bg-gold-400 transition-colors">
-              Subscribe
+            <input type="email" placeholder="Your royal address" class="w-full bg-white/80 border border-gold/40 rounded-lg px-3 py-2 text-xs text-burgundyText placeholder-burgundyText/50 focus:outline-none focus:border-claret" />
+            <button class="w-full py-2.5 rounded-lg bg-gradient-to-r from-claret-deep to-claret text-gold-light border border-gold font-cinzel text-[11px] font-bold tracking-widest uppercase hover:brightness-110 transition-all shadow-sm">
+              Subscribe To Gazette
             </button>
           </div>
         </div>
 
       </div>
 
-      <div class="max-w-7xl mx-auto mt-12 pt-6 border-t border-gold-500/15 flex flex-col md:flex-row items-center justify-between text-xs text-blush-300/70">
-        <p>© 2026 Aarya Heritage Handloom Guild. All Rights Reserved.</p>
-        <p class="mt-2 md:mt-0 font-cinzel tracking-wider text-[11px]">Couture Handcraft • Pure Zari Standard ISO 9001</p>
+      <div class="max-w-7xl mx-auto mt-12 pt-6 border-t border-gold/30 flex flex-col md:flex-row items-center justify-between text-xs text-burgundyText/70 font-medium">
+        <p>© 2026 RS Fashions Haute Handloom Atelier. All Rights Reserved.</p>
+        <p class="mt-2 md:mt-0 font-cinzel tracking-wider text-[11px]">Certified Pure Natural Silk & Hallmark Tested Zari</p>
       </div>
     </footer>
 
   </div>
 
   <!-- ==================== SHOPPING BAG DRAWER ==================== -->
-  <div id="cartDrawer" class="fixed inset-0 z-[1000] bg-black/70 backdrop-blur-md hidden transition-opacity duration-300">
-    <div class="absolute right-0 top-0 bottom-0 w-full max-w-md bg-ruby-950 border-l border-gold-400/30 p-6 flex flex-col shadow-2xl">
+  <div id="cartDrawer" class="fixed inset-0 z-[1000] bg-burgundyText/50 backdrop-blur-sm hidden transition-opacity duration-300">
+    <div class="absolute right-0 top-0 bottom-0 w-full max-w-md bg-ivory-soft border-l border-gold/50 p-6 flex flex-col shadow-2xl">
       <!-- Drawer Header -->
-      <div class="flex items-center justify-between pb-4 border-b border-gold-500/20">
+      <div class="flex items-center justify-between pb-4 border-b border-gold/30">
         <div class="flex items-center space-x-2">
-          <i class="fa-solid fa-crown text-gold-400 text-sm"></i>
-          <h3 class="font-cinzel text-base font-bold text-white tracking-widest uppercase">The Royal Bag</h3>
+          <div class="w-6 h-6 rounded-full bg-claret flex items-center justify-center text-gold-light text-xs font-cinzel">RS</div>
+          <h3 class="font-cinzel text-base font-bold text-burgundyText tracking-widest uppercase">The Royal Bag</h3>
         </div>
-        <button id="closeCartBtn" class="text-gold-300 hover:text-white p-1 text-lg">
+        <button id="closeCartBtn" class="text-burgundyText hover:text-claret p-1 text-lg">
           <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
 
       <!-- Items List -->
       <div id="cartItemsList" class="flex-1 overflow-y-auto py-4 space-y-4">
-        <!-- Empty state or dynamically rendered items -->
-        <div class="text-center py-12 text-blush-300">
-          <i class="fa-solid fa-gem text-3xl text-gold-400/40 mb-3"></i>
-          <p class="font-cormorant italic text-lg">Your bag awaits timeless elegance.</p>
+        <!-- Injected via JavaScript -->
+        <div class="text-center py-16 text-burgundyText/60">
+          <i class="fa-solid fa-crown text-3xl text-gold/60 mb-3"></i>
+          <p class="font-cormorant italic text-lg">Your royal bag awaits timeless treasures.</p>
         </div>
       </div>
 
       <!-- Drawer Footer -->
-      <div class="pt-4 border-t border-gold-500/20 space-y-3">
+      <div class="pt-4 border-t border-gold/30 space-y-3">
         <div class="flex justify-between items-center text-sm font-cinzel">
-          <span class="text-gold-200">Subtotal:</span>
-          <span id="cartSubtotal" class="font-bold text-white">₹0</span>
+          <span class="text-burgundyText/70">Subtotal:</span>
+          <span id="cartSubtotal" class="font-bold text-claret text-base">₹0</span>
         </div>
-        <p class="text-[11px] text-blush-300 italic">Includes certified packaging, velvet protective sleeve & transit insurance.</p>
-        <button id="checkoutBtn" class="w-full py-3.5 rounded-full bg-gradient-to-r from-gold-500 to-gold-600 text-ruby-950 font-cinzel font-bold text-xs uppercase tracking-widest shadow-lg hover:brightness-110 transition-all">
+        <p class="text-[11px] text-burgundyText/60 italic">Includes certified sandalwood velvet packaging & transit insurance.</p>
+        <button id="checkoutBtn" class="w-full py-3.5 rounded-full bg-gradient-to-r from-claret-deep via-claret to-claret-deep border border-gold text-gold-light font-cinzel font-bold text-xs uppercase tracking-widest shadow-md hover:brightness-110 transition-all">
           Proceed to Royal Checkout
         </button>
       </div>
     </div>
   </div>
 
-  <!-- ==================== PRODUCT QUICK VIEW MODAL ==================== -->
-  <div id="quickViewModal" class="fixed inset-0 z-[1001] bg-black/80 backdrop-blur-md hidden items-center justify-center p-4 transition-opacity">
-    <div class="glass-panel max-w-4xl w-full rounded-3xl border border-gold-400/40 overflow-hidden relative shadow-[0_0_80px_rgba(0,0,0,0.9)] max-h-[90vh] flex flex-col md:flex-row">
+  <!-- ==================== QUICK VIEW MODAL ==================== -->
+  <div id="quickViewModal" class="fixed inset-0 z-[1001] bg-burgundyText/60 backdrop-blur-md hidden items-center justify-center p-4 transition-opacity">
+    <div class="glass-luxury max-w-4xl w-full rounded-3xl border border-gold/60 overflow-hidden relative shadow-2xl max-h-[90vh] flex flex-col md:flex-row bg-ivory">
       <!-- Close Button -->
-      <button id="closeQuickViewBtn" class="absolute top-4 right-4 z-20 w-9 h-9 rounded-full bg-ruby-950/80 border border-gold-400 text-gold-300 flex items-center justify-center hover:text-white">
+      <button id="closeQuickViewBtn" class="absolute top-4 right-4 z-20 w-9 h-9 rounded-full bg-white/80 border border-gold/40 text-burgundyText flex items-center justify-center hover:text-claret shadow-sm">
         <i class="fa-solid fa-xmark"></i>
       </button>
 
-      <!-- Modal Image with Silk Zoom Simulation -->
-      <div class="md:w-1/2 relative min-h-[320px] bg-black">
+      <!-- Modal Image -->
+      <div class="md:w-1/2 relative min-h-[340px] bg-ivory-deep">
         <img id="modalImg" src="" alt="Saree Detail" class="w-full h-full object-cover object-top" />
-        <div class="absolute bottom-4 left-4 glass-panel px-3 py-1 rounded-full text-[10px] font-cinzel text-gold-300">
-          <i class="fa-solid fa-magnifying-glass-plus mr-1"></i> Pure Mulberry Silk Weave
+        <div class="absolute bottom-4 left-4 glass-luxury px-3 py-1 rounded-full text-[10px] font-cinzel text-burgundyText font-bold border border-gold/40">
+          <i class="fa-solid fa-crown mr-1 text-gold"></i> Pure Hallmarked Zari
         </div>
       </div>
 
@@ -934,110 +968,121 @@
       <div class="md:w-1/2 p-6 md:p-8 flex flex-col justify-between overflow-y-auto">
         <div>
           <div class="flex items-center space-x-2 mb-2">
-            <span class="text-[10px] uppercase font-cinzel text-gold-400 tracking-widest px-2 py-0.5 rounded border border-gold-400/30" id="modalCategory">Category</span>
-            <span class="text-[10px] text-blush-300 font-sans tracking-widest" id="modalTime">240 Hours of Handloom</span>
+            <span class="text-[10px] uppercase font-cinzel text-claret font-bold tracking-widest px-2.5 py-0.5 rounded border border-claret/30 bg-claret/5" id="modalCategory">Category</span>
+            <span class="text-[10px] text-burgundyText/70 font-sans tracking-widest font-semibold" id="modalTime">280 Hours Handloom</span>
           </div>
 
-          <h3 id="modalTitle" class="font-cinzel text-2xl font-bold text-white mb-1">Title</h3>
-          <p id="modalPrice" class="font-cinzel text-xl text-gold-300 font-bold mb-4">₹0</p>
+          <h3 id="modalTitle" class="font-cinzel text-2xl font-bold text-burgundyText mb-1">Title</h3>
+          <p id="modalPrice" class="font-cinzel text-xl text-claret font-bold mb-4">₹0</p>
 
-          <p id="modalDesc" class="font-cormorant text-base text-blush-200/90 leading-relaxed mb-4">Description...</p>
+          <p id="modalDesc" class="font-cormorant text-base text-burgundyText/80 leading-relaxed mb-4">Description...</p>
+
+          <!-- Swatches preview -->
+          <div class="mb-4">
+            <label class="block text-[11px] font-cinzel text-burgundyText font-semibold uppercase tracking-wider mb-1.5">Imperial Palette Accent:</label>
+            <div class="flex items-center space-x-2.5">
+              <span class="w-6 h-6 rounded-full border-2 border-gold shadow-sm" style="background-color: #8A1122;" title="Royal Claret"></span>
+              <span class="w-6 h-6 rounded-full border border-gold/50 shadow-sm" style="background-color: #D4AF37;" title="Gilded Gold"></span>
+              <span class="w-6 h-6 rounded-full border border-gold/50 shadow-sm" style="background-color: #E2ECE9;" title="Sage Mist"></span>
+              <span class="w-6 h-6 rounded-full border border-gold/50 shadow-sm" style="background-color: #FAF8F5;" title="Chantilly Ivory"></span>
+            </div>
+          </div>
 
           <!-- Specifications Table -->
-          <div class="space-y-2 text-xs font-sans text-blush-200/80 border-t border-b border-gold-500/20 py-3 mb-6">
-            <div class="flex justify-between"><span class="text-gold-300/80">Zari Specification:</span><span class="text-white font-medium" id="modalZari">Pure Gold Electroplated Silver</span></div>
-            <div class="flex justify-between"><span class="text-gold-300/80">Warp & Weft:</span><span class="text-white font-medium">3-Ply Murshidabad Silk</span></div>
-            <div class="flex justify-between"><span class="text-gold-300/80">Length & Blouse:</span><span class="text-white font-medium">6.3m (Includes Unstitched Brocade Blouse)</span></div>
+          <div class="space-y-2 text-xs font-sans text-burgundyText/75 border-t border-b border-gold/30 py-3 mb-6">
+            <div class="flex justify-between"><span class="text-burgundyText font-semibold">Zari Specification:</span><span class="text-burgundyText font-medium" id="modalZari">24k Gold Electroplated Pure Silver</span></div>
+            <div class="flex justify-between"><span class="text-burgundyText font-semibold">Fabric Foundation:</span><span class="text-burgundyText font-medium">3-Ply Kanchipuram Mulberry Silk</span></div>
+            <div class="flex justify-between"><span class="text-burgundyText font-semibold">Length & Blouse:</span><span class="text-burgundyText font-medium">6.3m (Includes Unstitched Heavy Blouse Piece)</span></div>
           </div>
         </div>
 
-        <button id="modalAddToCartBtn" class="w-full py-3.5 rounded-full bg-gradient-to-r from-gold-500 to-gold-600 text-ruby-950 font-cinzel text-xs font-bold tracking-widest uppercase shadow-md hover:brightness-110 transition-all flex items-center justify-center space-x-2">
+        <button id="modalAddToCartBtn" class="w-full py-3.5 rounded-full bg-linear-to-r from-claret-deep via-claret to-claret-deep border border-gold text-gold-light font-cinzel text-xs font-bold tracking-widest uppercase shadow-md hover:brightness-110 transition-all flex items-center justify-center space-x-2">
           <i class="fa-solid fa-bag-shopping"></i>
-          <span>Acquire Masterpiece</span>
+          <span>Acquire Creation</span>
         </button>
       </div>
     </div>
   </div>
 
-  <!-- Notification Toast -->
-  <div id="toastNotification" class="fixed bottom-6 right-6 z-[1050] glass-panel border border-gold-400 px-5 py-3 rounded-2xl shadow-2xl flex items-center space-x-3 transform translate-y-24 opacity-0 transition-all duration-300 pointer-events-none">
-    <div class="w-7 h-7 rounded-full bg-gold-400 text-ruby-950 flex items-center justify-center text-xs">
+  <!-- Toast Notification -->
+  <div id="toastNotification" class="fixed bottom-6 right-6 z-[1050] glass-luxury border border-gold px-5 py-3 rounded-2xl shadow-2xl flex items-center space-x-3 transform translate-y-24 opacity-0 transition-all duration-300 pointer-events-none">
+    <div class="w-8 h-8 rounded-full bg-claret text-gold-light flex items-center justify-center text-xs border border-gold">
       <i class="fa-solid fa-check"></i>
     </div>
     <div>
-      <h5 class="font-cinzel text-xs font-bold text-white" id="toastTitle">Added to Bag</h5>
-      <p class="text-[11px] text-blush-200" id="toastMessage">Item successfully reserved in your royal bag.</p>
+      <h5 class="font-cinzel text-xs font-bold text-burgundyText" id="toastTitle">Added to Bag</h5>
+      <p class="text-[11px] text-burgundyText/70 font-medium" id="toastMessage">Reserved in your royal bag.</p>
     </div>
   </div>
 
   <script>
     /* ========================================================
-       1. DATA DEFINITION: MASTERPIECE SAREES
+       1. RS FASHIONS CURATED PRODUCT DATA
        ======================================================== */
     const PRODUCTS = [
       {
-        id: 'saree-1',
-        title: 'Shringara Kanjivaram Brocade',
+        id: 'rs-1',
+        title: 'Maharani Swarnachari Brocade',
         category: 'kanjivaram',
-        priceINR: 145000,
-        hours: '210 Hours',
-        zari: 'Tested 24K Real Zari',
+        priceINR: 185000,
+        hours: '320 Hours',
+        zari: '24K Gold Dipped 98.5% Silver',
         image: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=800&q=80',
-        description: 'Featuring the majestic peacock and rudraksha motifs interlaced with pure gold dip zari along deep crimson mulberry silk.'
+        description: 'Imperial royal red foundation interlocked with intricate gold shikargah motifs, peacock roundels, and heirloom pallu.'
       },
       {
-        id: 'saree-2',
-        title: 'Varanasi Shikargah Jangla Tanchoi',
+        id: 'rs-2',
+        title: 'Rajputana Crimson Tanchoi',
         category: 'banarasi',
-        priceINR: 195000,
-        hours: '280 Hours',
-        zari: 'Antique Ganga-Jamuna Silver Zari',
+        priceINR: 215000,
+        hours: '360 Hours',
+        zari: 'Antique Hallmarked Silver Weft',
         image: 'https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&w=800&q=80',
-        description: 'An archival reproduction of 19th-century royal hunting scenes woven without breaks using authentic double-weft Tanchoi silk.'
+        description: 'Double-weft Tanchoi weave from Varanasi with undulating feather jaal in pure antique silver and royal ruby tints.'
       },
       {
-        id: 'saree-3',
-        title: 'Patan Double-Ikat Royal Patola',
-        category: 'patola',
-        priceINR: 280000,
-        hours: '380 Hours',
-        zari: 'Natural Madder & Haldi Resist Dye',
-        image: 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&w=800&q=80',
-        description: 'Each warp and weft silk thread is tied and dyed with pinpoint botanical pigments before weaving, creating identical front and back lustres.'
-      },
-      {
-        id: 'saree-4',
-        title: 'Chanderi Swarnachari Tissue Drape',
-        category: 'chanderi',
-        priceINR: 115000,
-        hours: '160 Hours',
-        zari: 'Fine Micron Spun Gold Zari',
+        id: 'rs-3',
+        title: 'Chantilly Ivory & Gold Organza',
+        category: 'organza',
+        priceINR: 145000,
+        hours: '190 Hours',
+        zari: 'Gossamer Fine Spun Bullion',
         image: 'https://images.unsplash.com/photo-1610030469668-935a840e3aa0?auto=format&fit=crop&w=800&q=80',
-        description: 'Feather-light sheer metallic silk tissue featuring mythic miniature scenes woven into the pallu with gossamer elegance.'
+        description: 'Translucent Chantilly ivory ground adorned with scalloped bullion zari borders, hand-blocked foil accents, and pearl tassels.'
       },
       {
-        id: 'saree-5',
-        title: 'Mayil Korvai Temple Kanjivaram',
-        category: 'kanjivaram',
-        priceINR: 168000,
-        hours: '240 Hours',
-        zari: 'Certified 92.5% Silver Core Zari',
+        id: 'rs-4',
+        title: 'Nawab Claret Velvet Brocade',
+        category: 'velvet',
+        priceINR: 265000,
+        hours: '420 Hours',
+        zari: '24K Heavy Zardozi Embroidery',
         image: 'https://images.unsplash.com/photo-1609357605129-26f69add5d6e?auto=format&fit=crop&w=800&q=80',
-        description: 'Rich royal purple contrasted with emerald green borders, woven using the interlocking temple tooth korvai weave.'
+        description: 'Opulent deep crimson velvet bridal drape embroidered with real micro-pearls, dabka, and heavy bullion bullion fringes.'
       },
       {
-        id: 'saree-6',
-        title: 'Brocade Butidar Banarasi Rangkat',
+        id: 'rs-5',
+        title: 'Sage Mist Metallic Tissue Drape',
+        category: 'organza',
+        priceINR: 155000,
+        hours: '210 Hours',
+        zari: 'Platinum & Rose Gold Zari',
+        image: 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&w=800&q=80',
+        description: 'Ethereal soft sage and jade silk tissue weave that reflects light like liquid gold, tailored for imperial twilight soirees.'
+      },
+      {
+        id: 'rs-6',
+        title: 'Varanasi Kadwa Butidar Royal Drape',
         category: 'banarasi',
         priceINR: 225000,
-        hours: '320 Hours',
-        zari: 'Multi-Tone Electroplated Gold Zari',
+        hours: '340 Hours',
+        zari: 'Tested 98.5% Assayed Silver',
         image: 'https://images.unsplash.com/photo-1610030470298-0524458d3570?auto=format&fit=crop&w=800&q=80',
-        description: 'A prized kaleidoscope Rangkat technique with alternating color blocks manually introduced across thousands of shuttle throws.'
+        description: 'Individually hand-hooked kadwa floral butis across deep crimson silk with an antique gold muga pallu.'
       }
     ];
 
-    // Currency rates relative to INR
+    // Currency Rates relative to INR
     const CURRENCY_MAP = {
       INR: { symbol: '₹', rate: 1 },
       USD: { symbol: '$', rate: 0.012 },
@@ -1051,7 +1096,7 @@
     let soundEnabled = true;
 
     /* ========================================================
-       2. WEB AUDIO API SYNTHESIZER (Royal Chimes & Curtain Swish)
+       2. WEB AUDIO HARP & ROYAL SWELL SYNTHESIZER
        ======================================================== */
     function initAudio() {
       if (!audioContext) {
@@ -1065,20 +1110,18 @@
       }
     }
 
-    // Gentle royal brass & wind chime sweep
-    function playCurtainAudio() {
+    function playHarpSwell() {
       if (!soundEnabled) return;
       try {
         initAudio();
         if (!audioContext) return;
 
         const now = audioContext.currentTime;
-        
-        // Pentatonic frequencies reminiscent of traditional sitar resonance
-        const notes = [293.66, 329.63, 369.99, 440.00, 554.37, 659.25, 739.99, 880.00];
+        // Pentatonic royal sitar & harp chords
+        const notes = [220.00, 277.18, 329.63, 440.00, 554.37, 659.25, 880.00];
 
-        // Soft fabric wind noise simulation using filtered buffer
-        const bufferSize = audioContext.sampleRate * 2.5;
+        // Fabric whoosh velvet friction noise
+        const bufferSize = audioContext.sampleRate * 2.8;
         const noiseBuffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
         const output = noiseBuffer.getChannelData(0);
         for (let i = 0; i < bufferSize; i++) {
@@ -1091,13 +1134,13 @@
         const filter = audioContext.createBiquadFilter();
         filter.type = 'bandpass';
         filter.frequency.setValueAtTime(350, now);
-        filter.frequency.exponentialRampToValueAtTime(1400, now + 1.2);
-        filter.frequency.exponentialRampToValueAtTime(200, now + 2.8);
-        filter.Q.value = 2.0;
+        filter.frequency.exponentialRampToValueAtTime(900, now + 1.2);
+        filter.frequency.exponentialRampToValueAtTime(180, now + 2.7);
+        filter.Q.value = 2.5;
 
         const noiseGain = audioContext.createGain();
         noiseGain.gain.setValueAtTime(0.0001, now);
-        noiseGain.gain.exponentialRampToValueAtTime(0.08, now + 0.6);
+        noiseGain.gain.exponentialRampToValueAtTime(0.05, now + 0.4);
         noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + 2.8);
 
         whiteNoise.connect(filter);
@@ -1107,32 +1150,31 @@
         whiteNoise.start(now);
         whiteNoise.stop(now + 2.9);
 
-        // Chimes cascade
-        notes.forEach((freq, index) => {
+        // Regal harp chime arpeggio
+        notes.forEach((freq, idx) => {
           const osc = audioContext.createOscillator();
           const gain = audioContext.createGain();
 
           osc.type = 'sine';
-          osc.frequency.setValueAtTime(freq, now + (index * 0.18));
+          osc.frequency.setValueAtTime(freq, now + (idx * 0.14));
 
-          gain.gain.setValueAtTime(0.0001, now + (index * 0.18));
-          gain.gain.exponentialRampToValueAtTime(0.035, now + (index * 0.18) + 0.04);
-          gain.gain.exponentialRampToValueAtTime(0.0001, now + (index * 0.18) + 1.4);
+          gain.gain.setValueAtTime(0.0001, now + (idx * 0.14));
+          gain.gain.exponentialRampToValueAtTime(0.035, now + (idx * 0.14) + 0.04);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + (idx * 0.14) + 1.6);
 
           osc.connect(gain);
           gain.connect(audioContext.destination);
 
-          osc.start(now + (index * 0.18));
-          osc.stop(now + (index * 0.18) + 1.5);
+          osc.start(now + (idx * 0.14));
+          osc.stop(now + (idx * 0.14) + 1.7);
         });
 
       } catch (err) {
-        console.warn('Audio playback handled gracefully:', err);
+        console.warn('Audio note:', err);
       }
     }
 
-    // Subtle click or chime feedback
-    function playChimeNote(freq = 523.25) {
+    function playSoftChime(freq = 587.33) {
       if (!soundEnabled) return;
       try {
         initAudio();
@@ -1142,19 +1184,17 @@
         const gain = audioContext.createGain();
         osc.type = 'triangle';
         osc.frequency.setValueAtTime(freq, now);
-        gain.gain.setValueAtTime(0.04, now);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.6);
+        gain.gain.setValueAtTime(0.03, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.7);
         osc.connect(gain);
         gain.connect(audioContext.destination);
         osc.start(now);
-        osc.stop(now + 0.65);
-      } catch (e) {
-        // audio optional
-      }
+        osc.stop(now + 0.75);
+      } catch (e) {}
     }
 
     /* ========================================================
-       3. REALISTIC CURTAIN ANIMATION ENGINE
+       3. REALISTIC RED VELVET CURTAIN ANIMATION ENGINE
        ======================================================== */
     const curtainStage = document.getElementById('curtain-stage');
     const openCurtainsBtn = document.getElementById('openCurtainsBtn');
@@ -1165,47 +1205,40 @@
     let curtainAutoTriggered = false;
 
     function openTheCurtains() {
-      if (curtainStage.classList.contains('stage-open')) return;
+      if (curtainStage.classList.contains('unveiled')) return;
 
-      playCurtainAudio();
-      curtainStage.classList.remove('stage-closed');
-      curtainStage.classList.add('stage-open');
+      playHarpSwell();
+      curtainStage.classList.add('unveiled');
       curtainStage.classList.add('unlocked');
 
-      // Fade out completely after transit
       curtainTimer = setTimeout(() => {
-        curtainStage.classList.add('faded-out');
-      }, 3600);
+        curtainStage.classList.add('hidden-stage');
+      }, 3400);
     }
 
     function replayTheCurtains() {
       clearTimeout(curtainTimer);
       window.scrollTo({ top: 0, behavior: 'smooth' });
 
-      // Reset stage
-      curtainStage.classList.remove('faded-out');
+      curtainStage.classList.remove('hidden-stage');
       curtainStage.classList.remove('unlocked');
-      curtainStage.classList.remove('stage-open');
-      curtainStage.classList.add('stage-closed');
+      curtainStage.classList.remove('unveiled');
 
-      // Auto part again smoothly after dramatic pause
       setTimeout(() => {
         openTheCurtains();
-      }, 1600);
+      }, 1400);
     }
 
-    // Initial Trigger on load
+    // Auto-open after a stately 1.5s delay so patron admires the RS medallion and velvet pleats
     window.addEventListener('load', () => {
-      // Auto open after a stately 1.5 seconds pause so user sees royal seal & velvet
       setTimeout(() => {
         if (!curtainAutoTriggered) {
           curtainAutoTriggered = true;
           openTheCurtains();
         }
-      }, 1400);
+      }, 1600);
     });
 
-    // Manual Part Button
     openCurtainsBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       curtainAutoTriggered = true;
@@ -1216,21 +1249,21 @@
       replayTheCurtains();
     });
 
-    // Sound toggle in curtain overlay
+    // Sound toggle
     soundToggleCurtainBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       soundEnabled = !soundEnabled;
       const icon = soundToggleCurtainBtn.querySelector('i');
       if (soundEnabled) {
-        icon.className = 'fa-solid fa-volume-high text-xs';
-        playChimeNote(659.25);
+        icon.className = 'fa-solid fa-volume-high text-xs text-gold';
+        playSoftChime(659.25);
       } else {
-        icon.className = 'fa-solid fa-volume-xmark text-xs text-ruby-400';
+        icon.className = 'fa-solid fa-volume-xmark text-xs text-claret';
       }
     });
 
     /* ========================================================
-       4. PRODUCT RENDERING & DYNAMIC CURRENCY
+       4. PRODUCTS RENDERING & DYNAMIC CURRENCY
        ======================================================== */
     const productGrid = document.getElementById('productGrid');
     const currencySelector = document.getElementById('currencySelector');
@@ -1250,23 +1283,23 @@
 
       filtered.forEach(product => {
         const card = document.createElement('div');
-        card.className = 'silk-card glass-panel rounded-3xl p-4 border border-gold-500/20 flex flex-col group';
+        card.className = 'saree-card-interactive glass-luxury-card rounded-3xl p-4 border border-gold/40 flex flex-col group';
         card.innerHTML = `
           <!-- Image Box with Zari Tag -->
-          <div class="relative h-80 rounded-2xl overflow-hidden mb-4 bg-ruby-950">
+          <div class="relative h-80 rounded-2xl overflow-hidden mb-4 bg-ivory-deep">
             <img 
               src="${product.image}" 
               alt="${product.title}" 
               class="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-700"
-              onerror="this.src='https://placehold.co/600x800/3d040c/dfbc55?text=Heritage+Saree'"
+              onerror="this.src='https://placehold.co/600x800/faf8f5/8a1122?text=RS+Fashions'"
             />
-            <div class="absolute inset-0 bg-gradient-to-t from-ruby-950/80 via-transparent to-transparent opacity-60 group-hover:opacity-30 transition-opacity"></div>
+            <div class="absolute inset-0 bg-gradient-to-t from-burgundyText/70 via-transparent to-transparent opacity-40 group-hover:opacity-10 transition-opacity"></div>
             
-            <div class="absolute top-3 left-3 glass-panel-subtle px-3 py-1 rounded-full text-[10px] font-cinzel text-gold-300 border border-gold-400/30">
+            <div class="absolute top-3 left-3 glass-luxury px-3 py-1 rounded-full text-[10px] font-cinzel text-burgundyText font-bold border border-gold/40">
               ${product.hours}
             </div>
 
-            <button class="quick-view-btn absolute bottom-3 right-3 w-10 h-10 rounded-full glass-panel text-gold-300 hover:text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" data-id="${product.id}" title="Quick View">
+            <button class="quick-view-btn absolute bottom-3 right-3 w-10 h-10 rounded-full glass-luxury text-burgundyText hover:text-claret flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md" data-id="${product.id}" title="Quick Inspection">
               <i class="fa-solid fa-eye text-xs"></i>
             </button>
           </div>
@@ -1274,24 +1307,24 @@
           <!-- Product Details -->
           <div class="flex-1 flex flex-col justify-between">
             <div>
-              <div class="flex items-center justify-between text-[11px] font-cinzel text-gold-400 uppercase tracking-widest mb-1">
+              <div class="flex items-center justify-between text-[11px] font-cinzel text-claret uppercase tracking-widest mb-1 font-bold">
                 <span>${product.category}</span>
-                <span class="text-blush-300/80">${product.zari}</span>
+                <span class="text-burgundyText/70 font-semibold">${product.zari}</span>
               </div>
-              <h3 class="font-cinzel text-lg font-bold text-white group-hover:text-gold-300 transition-colors line-clamp-1 mb-1">
+              <h3 class="font-cinzel text-lg font-bold text-burgundyText group-hover:text-claret transition-colors line-clamp-1 mb-1">
                 ${product.title}
               </h3>
-              <p class="font-cormorant italic text-sm text-blush-200/90 line-clamp-2 mb-4 leading-snug">
+              <p class="font-cormorant italic text-sm text-burgundyText/75 line-clamp-2 mb-4 leading-snug font-medium">
                 ${product.description}
               </p>
             </div>
 
-            <div class="pt-3 border-t border-gold-500/15 flex items-center justify-between">
+            <div class="pt-3 border-t border-gold/30 flex items-center justify-between">
               <div>
-                <span class="text-[10px] uppercase font-cinzel text-blush-300/60 block">Offering</span>
-                <span class="font-cinzel text-base font-bold text-gold-300">${formatPrice(product.priceINR)}</span>
+                <span class="text-[10px] uppercase font-cinzel text-burgundyText/60 font-semibold block">Offering</span>
+                <span class="font-cinzel text-base font-bold text-claret">${formatPrice(product.priceINR)}</span>
               </div>
-              <button class="add-cart-btn px-5 py-2.5 rounded-full bg-ruby-900 border border-gold-400/40 text-gold-200 hover:bg-gold-500 hover:text-ruby-950 font-cinzel text-xs font-semibold uppercase tracking-wider transition-all" data-id="${product.id}">
+              <button class="add-cart-btn px-5 py-2.5 rounded-full bg-white/90 border border-gold/60 text-burgundyText hover:bg-claret hover:text-gold-light hover:border-gold font-cinzel text-xs font-semibold uppercase tracking-wider transition-all shadow-sm" data-id="${product.id}">
                 Bag Piece
               </button>
             </div>
@@ -1304,14 +1337,14 @@
     }
 
     // Filter Buttons logic
-    const filterBtns = document.querySelectorAll('.filter-btn');
-    filterBtns.forEach(btn => {
+    const filterPillBtns = document.querySelectorAll('.filter-pill-btn');
+    filterPillBtns.forEach(btn => {
       btn.addEventListener('click', () => {
-        playChimeNote(440);
-        filterBtns.forEach(b => {
-          b.className = 'filter-btn px-6 py-2.5 rounded-full text-xs font-cinzel tracking-widest uppercase transition-all glass-panel text-gold-200 hover:border-gold-300';
+        playSoftChime(440);
+        filterPillBtns.forEach(b => {
+          b.className = 'filter-pill-btn px-6 py-2.5 rounded-full text-xs font-cinzel tracking-widest uppercase transition-all glass-luxury text-burgundyText hover:border-gold';
         });
-        btn.className = 'filter-btn px-6 py-2.5 rounded-full text-xs font-cinzel tracking-widest uppercase transition-all bg-gold-500 text-ruby-950 font-bold shadow-lg shadow-gold-500/20';
+        btn.className = 'filter-pill-btn px-6 py-2.5 rounded-full text-xs font-cinzel tracking-widest uppercase transition-all bg-claret text-gold-light border border-gold font-bold shadow-md';
         renderProducts(btn.dataset.filter);
       });
     });
@@ -1321,7 +1354,6 @@
       activeCurrency = e.target.value;
       renderProducts();
       updateCartDrawerUI();
-      // Update Hero Price Tag
       const heroPriceTag = document.getElementById('heroPriceTag');
       if (heroPriceTag) {
         heroPriceTag.textContent = formatPrice(185000);
@@ -1329,7 +1361,7 @@
     });
 
     /* ========================================================
-       5. SHOPPING CART & QUICK VIEW MODALS
+       5. SHOPPING DRAWER & MODAL INTERACTIONS
        ======================================================== */
     const cartDrawer = document.getElementById('cartDrawer');
     const cartDrawerBtn = document.getElementById('cartDrawerBtn');
@@ -1355,13 +1387,13 @@
       if (!item) return;
 
       cart.push(item);
-      playChimeNote(587.33);
+      playSoftChime(659.25);
       updateCartDrawerUI();
-      showToast('Masterpiece Reserved', `${item.title} has been placed in your royal bag.`);
+      showToast('Masterpiece Reserved', `${item.title} placed in your royal bag.`);
     }
 
     function removeFromCart(index) {
-      playChimeNote(330);
+      playSoftChime(349.23);
       cart.splice(index, 1);
       updateCartDrawerUI();
     }
@@ -1371,9 +1403,9 @@
 
       if (cart.length === 0) {
         cartItemsList.innerHTML = `
-          <div class="text-center py-16 text-blush-300">
-            <i class="fa-solid fa-gem text-3xl text-gold-400/40 mb-3"></i>
-            <p class="font-cormorant italic text-lg">Your bag awaits timeless elegance.</p>
+          <div class="text-center py-16 text-burgundyText/60">
+            <i class="fa-solid fa-crown text-3xl text-gold/60 mb-3"></i>
+            <p class="font-cormorant italic text-lg">Your royal bag awaits timeless treasures.</p>
           </div>
         `;
         cartSubtotal.textContent = formatPrice(0);
@@ -1385,14 +1417,14 @@
       cart.forEach((item, idx) => {
         total += item.priceINR;
         const div = document.createElement('div');
-        div.className = 'flex items-center space-x-3 p-3 rounded-2xl glass-panel border border-gold-500/20';
+        div.className = 'flex items-center space-x-3 p-3 rounded-2xl glass-luxury border border-gold/40';
         div.innerHTML = `
           <img src="${item.image}" alt="${item.title}" class="w-14 h-14 rounded-xl object-cover" />
           <div class="flex-1 min-w-0">
-            <h4 class="font-cinzel text-xs font-bold text-white truncate">${item.title}</h4>
-            <p class="text-[11px] text-gold-300 font-cinzel">${formatPrice(item.priceINR)}</p>
+            <h4 class="font-cinzel text-xs font-bold text-burgundyText truncate">${item.title}</h4>
+            <p class="text-[11px] text-claret font-cinzel font-bold">${formatPrice(item.priceINR)}</p>
           </div>
-          <button class="remove-cart-item text-blush-300 hover:text-ruby-400 p-2 text-xs" data-index="${idx}">
+          <button class="remove-cart-item text-burgundyText/60 hover:text-claret p-2 text-xs" data-index="${idx}">
             <i class="fa-solid fa-trash-can"></i>
           </button>
         `;
@@ -1401,7 +1433,6 @@
 
       cartSubtotal.textContent = formatPrice(total);
 
-      // Attach remove handlers
       document.querySelectorAll('.remove-cart-item').forEach(btn => {
         btn.addEventListener('click', () => {
           removeFromCart(parseInt(btn.dataset.index));
@@ -1422,7 +1453,7 @@
         showToast('Bag is Empty', 'Please select a creation to acquire.');
         return;
       }
-      showToast('Concierge Initiated', 'A royal advisor is connecting to finalize your insured dispatch.');
+      showToast('RS Atelier Notified', 'A royal drape advisor is connecting to verify your order.');
       cart = [];
       updateCartDrawerUI();
       cartDrawer.classList.add('hidden');
@@ -1448,7 +1479,7 @@
 
       quickViewModal.classList.remove('hidden');
       quickViewModal.classList.add('flex');
-      playChimeNote(523.25);
+      playSoftChime(523.25);
     }
 
     closeQuickViewBtn.addEventListener('click', () => {
@@ -1478,14 +1509,17 @@
       });
     }
 
-    // Concierge & Loom Craft Buttons
-    document.getElementById('bookCuratorBtn')?.addEventListener('click', () => {
-      showToast('Concierge Requested', 'Our royal drape consultant will reach out via WhatsApp / Call.');
+    // Bridal Salon & Concierge Triggers
+    document.getElementById('bookConciergeBtn')?.addEventListener('click', () => {
+      showToast('Salon Reservation Sent', 'The RS Fashions private styling director will contact you via WhatsApp.');
     });
 
-    document.getElementById('watchLoomCraftBtn')?.addEventListener('click', () => {
-      showToast('Loom Archive Access', 'Playing 4K master weaver documentation stream...');
-      playCurtainAudio();
+    document.getElementById('openConciergeModalBtn')?.addEventListener('click', () => {
+      showToast('Bridal Concierge', 'Opening custom trousseau appointments schedule...');
+    });
+
+    document.getElementById('wishlistHeaderBtn')?.addEventListener('click', () => {
+      showToast('Imperial Wishlist', 'Your saved royal drapes are synced.');
     });
 
     // Initial render

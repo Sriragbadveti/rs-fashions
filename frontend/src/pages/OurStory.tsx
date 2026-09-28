@@ -3,6 +3,9 @@ import { motion, useScroll, useTransform, useSpring } from "framer-motion";
 import { Link } from "react-router-dom";
 import { FiVolume2, FiVolumeX, FiChevronDown, FiHeart, FiArrowRight, FiHelpCircle } from "react-icons/fi";
 import { Sparkles } from "lucide-react";
+import homeBannerImg from "../assets/images/home_banner.jpeg";
+import founderImg from "../assets/images/founder.jpeg";
+import founder1Img from "../assets/images/founder1.jpeg";
 
 /* ============================================================================
    STORY CHAPTER ARCHIVES & DATA
@@ -193,9 +196,9 @@ export default function OurStory() {
           className="absolute inset-0 z-0 will-change-transform"
         >
           <img
-            src="https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=2400&q=92"
+            src={homeBannerImg}
             alt="Traditional SiCo Gadwal pit-loom artisan craft"
-            className="h-full w-full object-cover object-center filter contrast-105 brightness-[0.42]"
+            className="h-full w-full object-cover object-[center_20%] filter contrast-105 brightness-[0.45]"
           />
           <div className="absolute inset-0 bg-radial from-transparent via-[#100D0B]/70 to-[#100D0B]" />
           <div className="absolute inset-0 bg-linear-to-b from-[#100D0B]/80 via-transparent to-[#100D0B]" />
@@ -301,7 +304,7 @@ export default function OurStory() {
               <Reveal delay={0.2}>
                 <div className="relative aspect-[4/5] w-full overflow-hidden rounded-3xl border border-[#D4AF37]/30 shadow-2xl group">
                   <img
-                    src="https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&w=1200&q=90"
+                    src={founderImg}
                     alt="Handloom weaving threads and tradition"
                     className="h-full w-full object-cover filter contrast-105 brightness-90 transition-transform duration-700 group-hover:scale-105"
                   />
@@ -349,7 +352,7 @@ export default function OurStory() {
               <Reveal delay={0.1}>
                 <div className="relative aspect-[4/5] w-full overflow-hidden rounded-3xl border border-white/15 shadow-2xl group">
                   <img
-                    src="https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&w=1200&q=90"
+                    src={founder1Img}
                     alt="Authentic SiCo Gadwal drape weaving"
                     className="h-full w-full object-cover filter contrast-105 brightness-90 transition-transform duration-700 group-hover:scale-105"
                   />
