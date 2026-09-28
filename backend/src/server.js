@@ -19,12 +19,20 @@ const allowedOrigins = [
   "http://localhost:3000",
   "http://127.0.0.1:5173",
   "https://rs-fashions.vercel.app",
+  "https://rsfashions25.com",
+  "https://www.rsfashions25.com",
 ].filter(Boolean);
 
 app.use(cors({
   origin: (origin, callback) => {
     // Allow non-browser requests (mobile apps, curl, server-to-server) or matching origins
-    if (!origin || allowedOrigins.includes(origin) || allowedOrigins.some((ao) => origin.startsWith(ao)) || origin.endsWith(".vercel.app")) {
+    if (
+      !origin ||
+      allowedOrigins.includes(origin) ||
+      allowedOrigins.some((ao) => origin.startsWith(ao)) ||
+      origin.endsWith(".vercel.app") ||
+      origin.includes("rsfashions25.com")
+    ) {
       callback(null, true);
     } else {
       callback(null, true); // Permissive fallback for seamless local/preview testing while logging

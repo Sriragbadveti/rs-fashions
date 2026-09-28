@@ -453,7 +453,7 @@ function getPublicClientUrl(req) {
   if (envUrl.startsWith("https://")) {
     return envUrl;
   }
-  return "https://rs-fashions.vercel.app";
+  return "https://rsfashions25.com";
 }
 
 // In-memory registry for pending POS counter sales linked to Cashfree orders
