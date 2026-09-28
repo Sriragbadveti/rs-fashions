@@ -155,8 +155,29 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
     return [];
   });
 
+  // Automatic cache buster: purge any legacy deleted stock from localStorage on initial load
+  useEffect(() => {
+    try {
+      const CACHE_KEY = "rs_inventory_cache_ver";
+      const CURRENT_VER = "v2_2026_09_28_purge";
+      if (localStorage.getItem(CACHE_KEY) !== CURRENT_VER) {
+        localStorage.removeItem("rs_admin_inventory");
+        localStorage.removeItem("rs_fashions_products");
+        localStorage.setItem(CACHE_KEY, CURRENT_VER);
+      }
+    } catch {}
+  }, []);
+
   const [inventory, setInventory] = useState<Product[]>(() => {
     try {
+      const CACHE_KEY = "rs_inventory_cache_ver";
+      const CURRENT_VER = "v2_2026_09_28_purge";
+      if (localStorage.getItem(CACHE_KEY) !== CURRENT_VER) {
+        localStorage.removeItem("rs_admin_inventory");
+        localStorage.removeItem("rs_fashions_products");
+        localStorage.setItem(CACHE_KEY, CURRENT_VER);
+        return [];
+      }
       const saved = localStorage.getItem("rs_admin_inventory");
       if (saved) {
         const parsed = JSON.parse(saved);
@@ -674,7 +695,10 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
     });
     adminFetch(`${API_BASE}/catalog`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-Allow-Bulk-Create": "true",
+      },
       body: JSON.stringify(newProduct),
     }).catch((err) => console.warn("Catalog sync error:", err));
   }

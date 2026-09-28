@@ -211,6 +211,17 @@ export const StoreService = {
       }
     }
     
+    // Purge legacy cache if version mismatch
+    try {
+      const CACHE_KEY = "rs_inventory_cache_ver";
+      const CURRENT_VER = "v2_2026_09_28_purge";
+      if (localStorage.getItem(CACHE_KEY) !== CURRENT_VER) {
+        localStorage.removeItem("rs_admin_inventory");
+        localStorage.removeItem(LOCAL_STORAGE_PRODUCTS);
+        localStorage.setItem(CACHE_KEY, CURRENT_VER);
+      }
+    } catch {}
+
     // 1. Check if admin inventory has products in localStorage
     let adminMapped: Product[] = [];
     const adminSaved = localStorage.getItem("rs_admin_inventory");

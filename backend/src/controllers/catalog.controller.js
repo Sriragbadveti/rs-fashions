@@ -243,8 +243,23 @@ export async function getCategories(req, res) {
 }
 
 // 3. CREATE PRODUCT
+let recentCreateTimes = [];
 export async function createProduct(req, res) {
   try {
+    const now = Date.now();
+    recentCreateTimes = recentCreateTimes.filter((t) => now - t < 10000);
+    // Block automated single-product creation spam (stale clients trying to auto-re-upload catalog)
+    if (recentCreateTimes.length >= 3 && req.headers["x-allow-bulk-create"] !== "true") {
+      console.warn(
+        `[Catalog] Blocked automated rapid POST /api/catalog (${recentCreateTimes.length} creates in 10s). Rejecting stale client auto-push.`
+      );
+      return errorResponse(
+        res,
+        "Automated bulk creation on single product endpoint blocked. Please use Bulk Intake for bulk restocks.",
+        429
+      );
+    }
+    recentCreateTimes.push(now);
     const {
       id,
       name,

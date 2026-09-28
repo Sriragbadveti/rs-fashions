@@ -10,30 +10,31 @@ import {
   getColors,
   registerColor,
 } from "../controllers/catalog.controller.js";
+import { requireAdminAuth } from "../middleware/adminAuth.js";
 
 const router = Router();
 
 // Color Palette Endpoints
 router.get("/colors", getColors);
-router.post("/colors", registerColor);
+router.post("/colors", requireAdminAuth, registerColor);
 
 // Categories Endpoints
 router.get("/categories", getCategories);
-router.post("/categories", createCategory);
+router.post("/categories", requireAdminAuth, createCategory);
 
 // Products Endpoints (supports both /api/catalog and /api/catalog/products)
 router.get("/", getProducts);
 router.get("/products", getProducts);
-router.post("/", createProduct);
-router.post("/products", createProduct);
-router.post("/batch-delete", batchDeleteProducts);
-router.post("/products/batch-delete", batchDeleteProducts);
-router.delete("/batch", batchDeleteProducts);
-router.delete("/products/batch", batchDeleteProducts);
-router.put("/:id", updateProduct);
-router.put("/products/:id", updateProduct);
-router.delete("/:id", deleteProduct);
-router.delete("/products/:id", deleteProduct);
+router.post("/", requireAdminAuth, createProduct);
+router.post("/products", requireAdminAuth, createProduct);
+router.post("/batch-delete", requireAdminAuth, batchDeleteProducts);
+router.post("/products/batch-delete", requireAdminAuth, batchDeleteProducts);
+router.delete("/batch", requireAdminAuth, batchDeleteProducts);
+router.delete("/products/batch", requireAdminAuth, batchDeleteProducts);
+router.put("/:id", requireAdminAuth, updateProduct);
+router.put("/products/:id", requireAdminAuth, updateProduct);
+router.delete("/:id", requireAdminAuth, deleteProduct);
+router.delete("/products/:id", requireAdminAuth, deleteProduct);
 
 export default router;
 
