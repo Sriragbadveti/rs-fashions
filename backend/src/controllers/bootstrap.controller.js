@@ -83,10 +83,9 @@ export async function getBootstrapData(req, res) {
         variants: (Array.isArray(rp.variants) && rp.variants.length > 0) ? rp.variants : lp.variants,
       };
     });
-    for (const lp of localStoreProds) {
-      if (!rawProds.some((rp) => rp.id === lp.id)) {
-        rawProds.push(lp);
-      }
+    // Only fallback to localStoreProds if Supabase query failed completely
+    if (!prodsRes.data) {
+      rawProds = localStoreProds;
     }
 
     const products = rawProds.map((p) => {

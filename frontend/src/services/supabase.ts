@@ -146,7 +146,7 @@ export const StoreService = {
       const productList = (json.products || json.data?.products || []).filter(
         (d: any) => d && d.id && !DUMMY_PRODUCT_IDS.has(String(d.id))
       );
-      if (json.success && Array.isArray(productList) && productList.length > 0) {
+      if (json.success && Array.isArray(productList)) {
         const mapped = await cleanAndHealProducts(
           productList.map((d: any) => ({
             id: d.id,
@@ -184,28 +184,30 @@ export const StoreService = {
       const { data, error } = await supabase.from("products").select("*").order("created_at", { ascending: false });
       if (!error && data) {
         const realData = data.filter((d: any) => d && d.id && !DUMMY_PRODUCT_IDS.has(String(d.id)));
-        if (realData.length > 0) {
-          return cleanAndHealProducts(
-            realData.map((d: any) => ({
-              id: d.id,
-              name: d.name,
-              category: d.category || "SiCo Gadwal Sarees",
-              material: d.material || "SiCo",
-              price: Number(d.price) || 0,
-              originalPrice: d.original_price ? Number(d.original_price) : undefined,
-              stock: d.stock !== undefined ? Number(d.stock) : 0,
-              rating: Number(d.rating) || 4.8,
-              reviewCount: Number(d.review_count) || 0,
-              images: Array.isArray(d.images) && d.images.length > 0 ? d.images : ["https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1200&auto=format&fit=crop"],
-              colors: Array.isArray(d.colors) && d.colors.length > 0 ? d.colors : ["Standard"],
-              sizes: Array.isArray(d.sizes) && d.sizes.length > 0 ? d.sizes : ["Free Size"],
-              description: d.description || "",
-              longDescription: d.long_description || d.description || "",
-              featured: Boolean(d.featured),
-              borderColor: d.border_color || d.borderColor || undefined,
-            }))
-          );
-        }
+        const mapped = await cleanAndHealProducts(
+          realData.map((d: any) => ({
+            id: d.id,
+            name: d.name,
+            category: d.category || "SiCo Gadwal Sarees",
+            material: d.material || "SiCo",
+            price: Number(d.price) || 0,
+            originalPrice: d.original_price ? Number(d.original_price) : undefined,
+            stock: d.stock !== undefined ? Number(d.stock) : 0,
+            rating: Number(d.rating) || 4.8,
+            reviewCount: Number(d.review_count) || 0,
+            images: Array.isArray(d.images) && d.images.length > 0 ? d.images : ["https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1200&auto=format&fit=crop"],
+            colors: Array.isArray(d.colors) && d.colors.length > 0 ? d.colors : ["Standard"],
+            sizes: Array.isArray(d.sizes) && d.sizes.length > 0 ? d.sizes : ["Free Size"],
+            description: d.description || "",
+            longDescription: d.long_description || d.description || "",
+            featured: Boolean(d.featured),
+            borderColor: d.border_color || d.borderColor || undefined,
+          }))
+        );
+        try {
+          localStorage.setItem(LOCAL_STORAGE_PRODUCTS, JSON.stringify(mapped));
+        } catch {}
+        return mapped;
       }
     }
     

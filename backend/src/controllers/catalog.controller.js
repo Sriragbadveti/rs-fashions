@@ -91,6 +91,7 @@ export async function getProducts(req, res) {
       inFlightProductsPromise = (async () => {
         let rawData = [];
 
+        let supabaseLoaded = false;
         if (supabase) {
           try {
             const { data, error } = await supabase
@@ -98,19 +99,22 @@ export async function getProducts(req, res) {
               .select("*")
               .order("created_at", { ascending: false });
 
-            if (!error && Array.isArray(data) && data.length > 0) {
+            if (!error && Array.isArray(data)) {
               rawData = data;
+              supabaseLoaded = true;
             }
           } catch (dbErr) {
             console.warn("Supabase products fetch note:", dbErr.message);
           }
         }
 
-        // Merge products from local JSON store so local limited edition items are always present
-        const localItems = getProductsFromStore();
-        for (const lp of localItems) {
-          if (!rawData.some((rp) => rp.id === lp.id)) {
-            rawData.push(lp);
+        // Only fallback to local JSON store if Supabase is completely unreachable or errored
+        if (!supabaseLoaded) {
+          const localItems = getProductsFromStore();
+          for (const lp of localItems) {
+            if (!rawData.some((rp) => rp.id === lp.id)) {
+              rawData.push(lp);
+            }
           }
         }
 
@@ -584,7 +588,12 @@ export async function updateProduct(req, res) {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === "PGRST116" || error.details?.includes("0 rows")) {
+          return errorResponse(res, `Product ${id} not found`, 404);
+        }
+        throw error;
+      }
 
       if (updates.stock !== undefined && updates.stock > previousStock) {
         const diff = updates.stock - previousStock;
@@ -642,6 +651,28 @@ export async function deleteProduct(req, res) {
     return successResponse(res, { id }, "Product deleted successfully");
   } catch (err) {
     console.error("Delete product error:", err);
+    return errorResponse(res, err.message, 500);
+  }
+}
+
+// 4b. BATCH DELETE PRODUCTS
+export async function batchDeleteProducts(req, res) {
+  try {
+    const { ids } = req.body || {};
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return errorResponse(res, "Product IDs array is required", 400);
+    }
+    if (supabase) {
+      const { error } = await supabase.from("products").delete().in("id", ids);
+      if (error) throw error;
+    }
+    for (const id of ids) {
+      deleteProductFromStore(id);
+    }
+    invalidateCatalogCache();
+    return successResponse(res, { count: ids.length, ids }, "Products batch-deleted successfully");
+  } catch (err) {
+    console.error("Batch delete products error:", err);
     return errorResponse(res, err.message, 500);
   }
 }

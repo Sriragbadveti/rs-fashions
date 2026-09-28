@@ -424,7 +424,6 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
               nextImages?.[0] ||
               nextVariants?.find((v) => v.imageUrl)?.imageUrl ||
               undefined;
-            if (nextImageUrl !== p.imageUrl) prodChanged = true;
           }
 
           if (prodChanged) {
@@ -486,38 +485,11 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
             (p: any) => p && p.id && !DUMMY_PRODUCT_IDS.has(String(p.id))
           );
 
-          // Merge any local non-dummy products created while backend was offline
-          let localProducts: Product[] = [];
-          try {
-            const rawLocal = localStorage.getItem("rs_admin_inventory");
-            if (rawLocal) {
-              const parsedLocal = JSON.parse(rawLocal);
-              if (Array.isArray(parsedLocal)) {
-                localProducts = parsedLocal.filter(
-                  (p: any) => p && p.id && !DUMMY_PRODUCT_IDS.has(String(p.id))
-                );
-              }
-            }
-          } catch {}
-
-          const mergedMap = new Map<string, Product>();
-          remoteProducts.forEach((p: Product) => mergedMap.set(p.id, p));
-          localProducts.forEach((lp: Product) => {
-            if (!mergedMap.has(lp.id)) {
-              mergedMap.set(lp.id, lp);
-              // Push offline-created product to backend store
-              adminFetch(`${API_BASE}/catalog`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(lp),
-              }).catch(() => {});
-            }
-          });
-
-          const finalProducts = Array.from(mergedMap.values());
-          setInventory(finalProducts);
-          safeStorageSet("rs_admin_inventory", finalProducts);
-          syncInventoryToStorefront(finalProducts);
+          // The database is the authoritative source of truth.
+          // Never re-upload deleted products from browser localStorage.
+          setInventory(remoteProducts);
+          safeStorageSet("rs_admin_inventory", remoteProducts);
+          syncInventoryToStorefront(remoteProducts);
         }
         if (Array.isArray(d.stockMovements)) {
           setStockHistory(d.stockMovements);
@@ -843,10 +815,18 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       return updated;
     });
 
-    productIds.forEach((id) => {
-      adminFetch(`${API_BASE}/catalog/${id}`, {
-        method: "DELETE",
-      }).catch((err) => console.warn("Batch delete error:", err));
+    adminFetch(`${API_BASE}/catalog/batch-delete`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: productIds }),
+    }).catch((err) => {
+      console.warn("Batch delete API notice:", err);
+      // Fallback: delete sequentially if batch endpoint unavailable
+      productIds.forEach((id) => {
+        adminFetch(`${API_BASE}/catalog/${id}`, {
+          method: "DELETE",
+        }).catch((e) => console.warn("Individual delete fallback error:", e));
+      });
     });
   }
 
