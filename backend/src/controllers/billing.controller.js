@@ -3,6 +3,7 @@ import { successResponse, errorResponse } from "../utils/response.js";
 import { invalidateCatalogCache } from "./catalog.controller.js";
 import { invalidateBootstrapCache } from "./bootstrap.controller.js";
 import { saveOrderToStore, getNextSequentialInvoiceNumberFromStore } from "../database/localStore.js";
+import { deductStockForOrderItems } from "../services/inventory.service.js";
 
 /**
  * Controller: POS Billing, Counter Invoicing & Coupons
@@ -124,45 +125,13 @@ export async function handleCheckout(req, res) {
 
       if (orderErr) throw orderErr;
 
-      // 2. Decrement stock & record Stock Movement
-      for (const item of items) {
-        const prodId = item.productId || item.id || item.sku;
-        const qtyToDeduct = Math.max(1, Number(item.qty || item.quantity) || 1);
-
-        try {
-          const { data: currentProd } = await supabase.from("products").select("stock, name, colors").eq("id", prodId).single();
-          if (currentProd) {
-            const previousStock = Number(currentProd.stock) || 0;
-            const newStock = Math.max(0, previousStock - qtyToDeduct);
-            await supabase.from("products").update({ stock: newStock }).eq("id", prodId);
-
-            // Record SALE movement
-            await supabase.from("stock_movements").insert([{
-              id: `mov-${Date.now()}-${item.colorSlug || 'std'}`,
-              date: new Date().toLocaleDateString("en-IN", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              }),
-              sku: item.sku || prodId,
-              product_name: item.name || currentProd.name,
-              color: item.color || (currentProd.colors && currentProd.colors[0]) || "Standard",
-              color_slug: item.colorSlug || "STD",
-              type: "SALE",
-              quantity: -qtyToDeduct,
-              previous_stock: previousStock,
-              new_stock: newStock,
-              reference_number: finalInvoiceNumber,
-              performed_by: "Counter Cashier",
-              note: `POS Sale Invoice #${finalInvoiceNumber} (${billingType.toUpperCase()})`,
-            }]);
-          }
-        } catch (itemErr) {
-          console.warn("Stock decrement notice:", itemErr.message);
-        }
-      }
+      // 2. Decrement stock & record Stock Movement (Variant-aware & multi-source synchronized)
+      await deductStockForOrderItems(items, {
+        referenceNumber: finalInvoiceNumber,
+        paymentMethod,
+        performedBy: paymentMethod === "cod" ? "Online Storefront (COD)" : (paymentMethod === "cashfree" ? "Online Storefront (Cashfree)" : "Showroom Billing Counter"),
+        notePrefix: paymentMethod === "cod" ? "COD Order" : "Sale Invoice",
+      });
 
       // 3. Upsert Customer Profile in CRM
       try {
@@ -238,6 +207,13 @@ export async function handleCheckout(req, res) {
       orderStatus,
       billingType,
       createdAt: new Date().toISOString(),
+    });
+
+    await deductStockForOrderItems(items, {
+      referenceNumber: finalInvoiceNumber,
+      paymentMethod,
+      performedBy: paymentMethod === "cod" ? "Online Storefront (COD)" : (paymentMethod === "cashfree" ? "Online Storefront (Cashfree)" : "Showroom Billing Counter"),
+      notePrefix: paymentMethod === "cod" ? "COD Order" : "Sale Invoice",
     });
 
     invalidateCatalogCache();

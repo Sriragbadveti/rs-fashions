@@ -10,6 +10,7 @@ import {
   saveColorToStore,
   saveColorsToStore,
 } from "../database/localStore.js";
+import { getPersistentVariantsMap, savePersistentVariantsMap } from "../services/inventory.service.js";
 
 /**
  * Controller: Saree Catalog & Categories
@@ -118,6 +119,10 @@ export async function getProducts(req, res) {
           }
         }
 
+        const persistentVariantsMap = await getPersistentVariantsMap();
+        const localItems = getProductsFromStore();
+        const localMap = new Map(localItems.map((lp) => [lp.id, lp]));
+
         const products = (rawData || []).map((p) => {
           const colorList = Array.isArray(p.colors) && p.colors.length > 0 ? p.colors : ["Standard"];
           const stockTotal = Number(p.stock) || 0;
@@ -125,15 +130,25 @@ export async function getProducts(req, res) {
             ? p.images 
             : (p.image_url || p.imageUrl ? [p.image_url || p.imageUrl] : []);
 
-          const variants = Array.isArray(p.variants) && p.variants.length > 0
-            ? p.variants
-            : colorList.map((col, idx) => ({
-                color: col,
-                colorSlug: col.slice(0, 3).toUpperCase(),
-                stock: idx === 0 ? stockTotal : 0,
-                sku: `${p.id}-${col.slice(0, 3).toUpperCase()}`,
-                imageUrl: images[idx] || images[0],
-              }));
+          const lp = localMap.get(p.id);
+          const pVariants = (persistentVariantsMap[p.id] && Array.isArray(persistentVariantsMap[p.id]) && persistentVariantsMap[p.id].length > 0)
+            ? persistentVariantsMap[p.id]
+            : (Array.isArray(p.variants) && p.variants.length > 0
+                ? p.variants
+                : (lp && Array.isArray(lp.variants) && lp.variants.length > 0
+                    ? lp.variants
+                    : colorList.map((col, idx) => ({
+                        color: col,
+                        colorSlug: col.slice(0, 3).toUpperCase(),
+                        stock: idx === 0 ? stockTotal : 0,
+                        sku: `${p.id}-${col.slice(0, 3).toUpperCase()}`,
+                        imageUrl: images[idx] || images[0],
+                      }))
+                  ));
+
+          const finalStock = pVariants.length > 0
+            ? pVariants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0)
+            : stockTotal;
 
           const tags = Array.isArray(p.tags) ? p.tags : ["handloom", "sico"];
 
@@ -157,8 +172,8 @@ export async function getProducts(req, res) {
             salePrice: Number(p.price || p.sale_price || p.salePrice) || 0,
             purchasePrice: Number(p.purchase_price || p.purchasePrice) || 0,
             originalPrice: Number(p.original_price || p.originalPrice) || Math.round((Number(p.price || p.salePrice) || 0) * 1.25),
-            stock: stockTotal,
-            variants,
+            stock: finalStock,
+            variants: pVariants,
             images,
             imageUrl: images[0] || p.imageUrl || p.image_url,
             colors: colorList,
@@ -439,6 +454,14 @@ export async function createProduct(req, res) {
       description: description || `Handcrafted ${name} saree drape.`,
     };
 
+    if (variants && variants.length > 0) {
+      try {
+        const vMap = await getPersistentVariantsMap();
+        vMap[prodId] = variants;
+        await savePersistentVariantsMap(vMap);
+      } catch {}
+    }
+
     saveProductToStore(localPayload);
     invalidateCatalogCache();
     return successResponse(res, { product: localPayload }, "Saree created locally", 201);
@@ -639,9 +662,17 @@ export async function updateProduct(req, res) {
         }
       }
 
-      saveProductToStore(data);
+      if (variants && variants.length > 0) {
+        try {
+          const vMap = await getPersistentVariantsMap();
+          vMap[id] = variants;
+          await savePersistentVariantsMap(vMap);
+        } catch {}
+      }
+
+      saveProductToStore({ ...data, variants: variants && variants.length > 0 ? variants : undefined });
       invalidateCatalogCache();
-      return successResponse(res, { product: data }, "Product updated successfully");
+      return successResponse(res, { product: { ...data, variants: variants && variants.length > 0 ? variants : undefined } }, "Product updated successfully");
     }
 
     const localUpdated = saveProductToStore({ id, ...req.body });
@@ -662,6 +693,13 @@ export async function deleteProduct(req, res) {
       if (error) throw error;
     }
     deleteProductFromStore(id);
+    try {
+      const vMap = await getPersistentVariantsMap();
+      if (vMap[id]) {
+        delete vMap[id];
+        await savePersistentVariantsMap(vMap);
+      }
+    } catch {}
     invalidateCatalogCache();
     return successResponse(res, { id }, "Product deleted successfully");
   } catch (err) {

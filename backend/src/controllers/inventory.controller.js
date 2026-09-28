@@ -7,6 +7,7 @@ import {
   saveColorToStore,
   getColorsFromStore,
 } from "../database/localStore.js";
+import { getPersistentVariantsMap, savePersistentVariantsMap } from "../services/inventory.service.js";
 
 /**
  * Controller: Stock Movements Audit Trail, Bulk Loom Intake & Low Stock Alerts
@@ -232,6 +233,19 @@ export async function handleBulkIntake(req, res) {
         }]).select().single();
 
         if (movData) insertedMovements.push(movData);
+      }
+
+      if (products.some((p) => Array.isArray(p.variants) && p.variants.length > 0)) {
+        try {
+          const vMap = await getPersistentVariantsMap();
+          for (const p of products) {
+            const prodId = p.id || `RSF-${(p.designSlug || 'BULK').toUpperCase()}-${Date.now().toString().slice(-4)}`;
+            if (Array.isArray(p.variants) && p.variants.length > 0) {
+              vMap[prodId] = p.variants;
+            }
+          }
+          await savePersistentVariantsMap(vMap);
+        } catch {}
       }
 
       invalidateCatalogCache();

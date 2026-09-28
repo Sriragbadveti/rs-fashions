@@ -8,6 +8,7 @@ import { supabase } from "../config/supabase.js";
 import { ENV } from "../config/env.js";
 import { successResponse, errorResponse } from "../utils/response.js";
 import { invalidateBootstrapCache } from "./bootstrap.controller.js";
+import { deductStockForOrderItems } from "../services/inventory.service.js";
 import {
   getPaymentHistory,
   savePaymentAttempt,
@@ -501,20 +502,14 @@ async function autoRecordPosSale(orderId, paymentId, paymentData = {}) {
         notes: `Paid via Cashfree Payment Link (${paymentId})`,
       }]);
 
-      // Decrement stock for each item
-      for (const item of pending.items) {
-        const prodId = item.productId || item.id || item.sku;
-        const qtyToDeduct = Math.max(1, Number(item.qty || item.quantity) || 1);
-        try {
-          const { data: currentProd } = await supabase.from("products").select("stock").eq("id", prodId).single();
-          if (currentProd) {
-            const newStock = Math.max(0, (Number(currentProd.stock) || 0) - qtyToDeduct);
-            await supabase.from("products").update({ stock: newStock }).eq("id", prodId);
-          }
-        } catch {}
-      }
+      // Decrement stock for each item (variant-aware & multi-source synchronized)
+      await deductStockForOrderItems(pending.items, {
+        referenceNumber: finalInvoiceNumber,
+        paymentMethod: "cashfree",
+        performedBy: "Cashfree Payment Link (POS)",
+        notePrefix: `POS Sale Invoice`,
+      });
 
-      invalidateBootstrapCache();
       console.log(`[Cashfree POS] Auto-recorded sale for invoice ${finalInvoiceNumber} (Ref: ${paymentId})`);
       return true;
     }

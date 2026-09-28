@@ -70,17 +70,26 @@ export async function getBootstrapData(req, res) {
       nextSequence: Number(c.next_sequence) || 1,
     }));
 
+    const persistentVariantsMap = (settingsRes.data || []).find((s) => s.key === "product_variants")?.value || {};
+
     let rawProds = [...(prodsRes.data || [])];
     const localStoreProds = getProductsFromStore();
     const localMap = new Map(localStoreProds.map((lp) => [lp.id, lp]));
     rawProds = rawProds.map((rp) => {
       const lp = localMap.get(rp.id);
-      if (!lp) return rp;
+      const persistentVars = persistentVariantsMap[rp.id];
+      const bestVariants = (Array.isArray(persistentVars) && persistentVars.length > 0)
+        ? persistentVars
+        : ((Array.isArray(rp.variants) && rp.variants.length > 0)
+            ? rp.variants
+            : (lp && Array.isArray(lp.variants) && lp.variants.length > 0 ? lp.variants : undefined));
+
+      if (!lp) return { ...rp, variants: bestVariants };
       return {
         ...lp,
         ...rp,
         borderColor: rp.border_color || rp.borderColor || lp.borderColor || lp.border_color || undefined,
-        variants: (Array.isArray(rp.variants) && rp.variants.length > 0) ? rp.variants : lp.variants,
+        variants: bestVariants,
       };
     });
     // Only fallback to localStoreProds if Supabase query failed completely
@@ -95,15 +104,21 @@ export async function getBootstrapData(req, res) {
         ? p.images 
         : (p.image_url || p.imageUrl ? [p.image_url || p.imageUrl] : []);
 
-      const variants = Array.isArray(p.variants) && p.variants.length > 0
-        ? p.variants
-        : colorList.map((col, idx) => ({
-            color: col,
-            colorSlug: col.slice(0, 3).toUpperCase(),
-            stock: idx === 0 ? stockTotal : 0,
-            sku: `${p.id}-${col.slice(0, 3).toUpperCase()}`,
-            imageUrl: images[idx] || images[0],
-          }));
+      const pVariants = (persistentVariantsMap[p.id] && Array.isArray(persistentVariantsMap[p.id]) && persistentVariantsMap[p.id].length > 0)
+        ? persistentVariantsMap[p.id]
+        : (Array.isArray(p.variants) && p.variants.length > 0
+            ? p.variants
+            : colorList.map((col, idx) => ({
+                color: col,
+                colorSlug: col.slice(0, 3).toUpperCase(),
+                stock: idx === 0 ? stockTotal : 0,
+                sku: `${p.id}-${col.slice(0, 3).toUpperCase()}`,
+                imageUrl: images[idx] || images[0],
+              })));
+
+      const finalStock = pVariants.length > 0
+        ? pVariants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0)
+        : stockTotal;
 
       const tags = Array.isArray(p.tags) ? p.tags : [];
       const isSpecialOffer =
@@ -130,8 +145,8 @@ export async function getBootstrapData(req, res) {
         salePrice: Number(p.price || p.salePrice || p.sale_price) || 0,
         price: Number(p.price || p.salePrice || p.sale_price) || 0,
         originalPrice: p.original_price || p.originalPrice ? Number(p.original_price || p.originalPrice) : (Number(p.price || p.salePrice) * 1.25),
-        stock: stockTotal,
-        variants,
+        stock: finalStock,
+        variants: pVariants,
         images,
         imageUrl: images[0] || p.imageUrl || p.image_url,
         colors: colorList,

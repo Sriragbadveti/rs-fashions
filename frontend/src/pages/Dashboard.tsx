@@ -608,7 +608,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
     }
   }, [onLogout, syncInventoryToStorefront]);
 
-  // Synchronize on mount and whenever tab/screen becomes visible
+  // Synchronize on mount, when tab/screen becomes visible, or on real-time inventory change
   useEffect(() => {
     loadLiveBootstrap();
 
@@ -617,8 +617,21 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
         loadLiveBootstrap();
       }
     };
+    const handleLiveSync = () => {
+      loadLiveBootstrap(true);
+    };
+
     document.addEventListener("visibilitychange", handleVisibility);
-    return () => document.removeEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("focus", handleVisibility);
+    window.addEventListener("rs_inventory_updated", handleLiveSync);
+    window.addEventListener("catalogUpdated", handleLiveSync);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("focus", handleVisibility);
+      window.removeEventListener("rs_inventory_updated", handleLiveSync);
+      window.removeEventListener("catalogUpdated", handleLiveSync);
+    };
   }, [loadLiveBootstrap]);
 
   // Periodic automatic cross-device telemetry sync every 25 seconds

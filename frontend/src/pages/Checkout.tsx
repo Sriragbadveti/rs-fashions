@@ -79,9 +79,12 @@ interface OrderSnapshot {
   date: string;
   items: Array<{
     id: string;
+    productId?: string;
+    sku?: string;
     name: string;
     material: string;
     color: string;
+    colorSlug?: string;
     size: string;
     quantity: number;
     price: number;
@@ -750,16 +753,24 @@ function Checkout() {
         month: "short",
         year: "numeric",
       }),
-      items: items.map((item) => ({
-        id: item.product.id,
-        name: item.product.name,
-        material: item.product.material,
-        color: item.selectedColor || "Standard",
-        size: item.selectedSize || "Standard Drape (5.5m + 0.8m Blouse)",
-        quantity: item.quantity,
-        price: item.product.price,
-        image: item.product.images[0] || "",
-      })),
+      items: items.map((item) => {
+        const matchingVariant = ((item.product as any).variants || []).find(
+          (v: any) => v.color?.toLowerCase() === item.selectedColor?.toLowerCase()
+        );
+        return {
+          id: item.product.id,
+          productId: item.product.id,
+          sku: matchingVariant?.sku || (item.product as any).sku || item.product.id,
+          name: item.product.name,
+          material: item.product.material,
+          color: item.selectedColor || "Standard",
+          colorSlug: matchingVariant?.colorSlug || (item.selectedColor || "STD").slice(0, 3).toUpperCase(),
+          size: item.selectedSize || "Standard Drape (5.5m + 0.8m Blouse)",
+          quantity: item.quantity,
+          price: item.product.price,
+          image: matchingVariant?.imageUrl || item.product.images[0] || "",
+        };
+      }),
       subtotal,
       shipping,
       total,

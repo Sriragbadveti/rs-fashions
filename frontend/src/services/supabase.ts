@@ -1153,7 +1153,7 @@ export const StoreService = {
 
     // 1. Post to backend API to deduct stock and release temporary session holds
     try {
-      await fetch(`${API_BASE}/orders`, {
+      const res = await fetch(`${API_BASE}/orders`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1185,6 +1185,10 @@ export const StoreService = {
           session_id: sessionId,
         }),
       });
+
+      if (!res.ok) {
+        throw new Error(`Backend order sync returned status ${res.status}`);
+      }
     } catch (apiErr) {
       console.warn("Backend order sync error, using direct Supabase fallback:", apiErr);
       if (supabase) {
@@ -1208,11 +1212,28 @@ export const StoreService = {
             payment_details: newOrder.paymentDetails,
             order_status: newOrder.orderStatus,
           }]);
+
+          for (const item of newOrder.items) {
+            const prodId = (item as any).productId || item.id || (item as any).sku;
+            const qty = Math.max(1, Number((item as any).qty || item.quantity) || 1);
+            if (prodId) {
+              const { data: p } = await supabase.from("products").select("stock").eq("id", prodId).maybeSingle();
+              if (p) {
+                const newStock = Math.max(0, (Number(p.stock) || 0) - qty);
+                await supabase.from("products").update({ stock: newStock }).eq("id", prodId);
+              }
+            }
+          }
         } catch (err) {
           console.warn("Supabase order insert error:", err);
         }
       }
     }
+
+    try {
+      window.dispatchEvent(new Event("rs_inventory_updated"));
+      window.dispatchEvent(new Event("catalogUpdated"));
+    } catch {}
 
     const orders = await this.getOrders();
     const updated = [newOrder, ...orders];

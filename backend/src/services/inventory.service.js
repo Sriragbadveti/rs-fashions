@@ -1,0 +1,299 @@
+import { supabase } from "../config/supabase.js";
+import { saveProductToStore, getProductsFromStore } from "../database/localStore.js";
+import { invalidateCatalogCache } from "../controllers/catalog.controller.js";
+import { invalidateBootstrapCache } from "../controllers/bootstrap.controller.js";
+
+/**
+ * Service: Unified Inventory Management & Variant-Aware Stock Deductions
+ */
+
+/**
+ * Fetch persistent variant map from Supabase settings table.
+ */
+export async function getPersistentVariantsMap() {
+  if (!supabase) return {};
+  try {
+    const { data } = await supabase
+      .from("settings")
+      .select("value")
+      .eq("key", "product_variants")
+      .maybeSingle();
+
+    if (data && data.value && typeof data.value === "object" && !Array.isArray(data.value)) {
+      return data.value;
+    }
+  } catch (err) {
+    console.warn("[InventoryService] Failed to load persistent variants map:", err.message);
+  }
+  return {};
+}
+
+/**
+ * Persist variant map to Supabase settings table.
+ */
+export async function savePersistentVariantsMap(variantsMap) {
+  if (!supabase || !variantsMap) return;
+  try {
+    await supabase.from("settings").upsert({
+      key: "product_variants",
+      value: variantsMap,
+      updated_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.warn("[InventoryService] Failed to save persistent variants map:", err.message);
+  }
+}
+
+/**
+ * Deducts stock for a purchased item both at the variant level and product level.
+ * Updates:
+ * 1. Supabase products table (stock column)
+ * 2. Supabase settings table (product_variants key)
+ * 3. Supabase stock_movements table (immutable audit trail)
+ * 4. Local fallback store (products.json)
+ * 5. In-memory caches (catalog & bootstrap)
+ */
+export async function deductStockForItem({
+  item,
+  referenceNumber = `ORD-${Date.now().toString().slice(-6)}`,
+  paymentMethod = "cod",
+  performedBy = "Online Storefront",
+  notePrefix = "Order",
+}) {
+  const prodId = item.productId || item.id || item.sku;
+  const itemSku = item.sku || (typeof item.id === "string" && item.id.startsWith("RSF-") ? item.id : null);
+  const itemColor = (item.color || item.selectedColor || "").trim();
+  const qtyToDeduct = Math.max(1, Number(item.qty || item.quantity) || 1);
+
+  if (!prodId && !itemSku && !item.name) {
+    console.warn("[InventoryService] Cannot deduct stock: missing item identifier", item);
+    return null;
+  }
+
+  let currentProd = null;
+
+  // 1. Locate product in Supabase or fallback store
+  if (supabase) {
+    try {
+      if (prodId) {
+        const { data } = await supabase.from("products").select("*").eq("id", prodId).maybeSingle();
+        if (data) currentProd = data;
+      }
+
+      if (!currentProd && itemSku) {
+        const { data } = await supabase.from("products").select("*").eq("id", itemSku).maybeSingle();
+        if (data) currentProd = data;
+      }
+
+      if (!currentProd) {
+        const { data: allProds } = await supabase.from("products").select("*");
+        if (Array.isArray(allProds)) {
+          currentProd = allProds.find((p) => {
+            if (p.id === prodId || p.id === itemSku) return true;
+            if (item.name && p.name && p.name.trim().toLowerCase() === item.name.trim().toLowerCase()) return true;
+            return false;
+          });
+        }
+      }
+    } catch (dbErr) {
+      console.warn("[InventoryService] DB query notice:", dbErr.message);
+    }
+  }
+
+  // Fallback to localStore if DB did not locate product
+  if (!currentProd) {
+    const localProds = getProductsFromStore();
+    currentProd = localProds.find((p) => {
+      if (p.id === prodId || p.id === itemSku) return true;
+      if (Array.isArray(p.variants) && p.variants.some((v) => v.sku === itemSku || v.sku === prodId)) return true;
+      if (item.name && p.name && p.name.trim().toLowerCase() === item.name.trim().toLowerCase()) return true;
+      return false;
+    });
+  }
+
+  if (!currentProd) {
+    console.warn(`[InventoryService] Product not found for deduction: prodId=${prodId}, sku=${itemSku}, name=${item.name}`);
+    return null;
+  }
+
+  const effectiveProdId = currentProd.id;
+  const previousStock = Number(currentProd.stock) || 0;
+
+  // 2. Load variants for this product
+  const variantsMap = await getPersistentVariantsMap();
+  let productVariants = variantsMap[effectiveProdId];
+
+  // If not found in settings map, check localStore or construct from colors
+  if (!Array.isArray(productVariants) || productVariants.length === 0) {
+    const localProd = getProductsFromStore().find((p) => p.id === effectiveProdId);
+    if (Array.isArray(localProd?.variants) && localProd.variants.length > 0) {
+      productVariants = JSON.parse(JSON.stringify(localProd.variants));
+    } else {
+      const colorList = Array.isArray(currentProd.colors) && currentProd.colors.length > 0 ? currentProd.colors : ["Standard"];
+      const images = Array.isArray(currentProd.images) ? currentProd.images : [];
+      productVariants = colorList.map((col, idx) => ({
+        color: col,
+        colorSlug: col.slice(0, 3).toUpperCase(),
+        stock: idx === 0 ? previousStock : 0,
+        sku: `${effectiveProdId}-${col.slice(0, 3).toUpperCase()}`,
+        imageUrl: images[idx] || images[0] || "",
+      }));
+    }
+  } else {
+    // Clone
+    productVariants = JSON.parse(JSON.stringify(productVariants));
+  }
+
+  // 3. Deduct stock from the matching variant
+  let targetVariant = null;
+  let targetIdx = -1;
+
+  if (productVariants.length > 0) {
+    // Priority 1: Match by variant SKU
+    if (itemSku) {
+      targetIdx = productVariants.findIndex((v) => v.sku && v.sku.toLowerCase() === itemSku.toLowerCase());
+    }
+    // Priority 2: Match by prodId as SKU
+    if (targetIdx === -1 && prodId) {
+      targetIdx = productVariants.findIndex((v) => v.sku && v.sku.toLowerCase() === prodId.toLowerCase());
+    }
+    // Priority 3: Match by color
+    if (targetIdx === -1 && itemColor) {
+      const normColor = itemColor.toLowerCase();
+      targetIdx = productVariants.findIndex((v) => v.color && v.color.trim().toLowerCase() === normColor);
+    }
+    // Priority 4: First variant that has stock >= qtyToDeduct
+    if (targetIdx === -1) {
+      targetIdx = productVariants.findIndex((v) => (Number(v.stock) || 0) >= qtyToDeduct);
+    }
+    // Priority 5: Fallback to the first variant
+    if (targetIdx === -1) {
+      targetIdx = 0;
+    }
+
+    if (targetIdx >= 0 && targetIdx < productVariants.length) {
+      const v = productVariants[targetIdx];
+      const prevVarStock = Number(v.stock) || 0;
+      const newVarStock = Math.max(0, prevVarStock - qtyToDeduct);
+      productVariants[targetIdx] = {
+        ...v,
+        stock: newVarStock,
+      };
+      targetVariant = productVariants[targetIdx];
+    }
+  }
+
+  // 4. Calculate new total stock
+  const newTotalStock = productVariants.length > 0
+    ? productVariants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0)
+    : Math.max(0, previousStock - qtyToDeduct);
+
+  // 5. Persist updated variant map to Supabase settings
+  variantsMap[effectiveProdId] = productVariants;
+  await savePersistentVariantsMap(variantsMap);
+
+  // 6. Update products table in Supabase
+  if (supabase) {
+    try {
+      const { error: updErr } = await supabase
+        .from("products")
+        .update({
+          stock: newTotalStock,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", effectiveProdId);
+
+      if (updErr) {
+        console.warn(`[InventoryService] Error updating products.stock for ${effectiveProdId}:`, updErr.message);
+      }
+    } catch (e) {
+      console.warn("[InventoryService] Supabase stock update note:", e.message);
+    }
+  }
+
+  // 7. Update localStore fallback
+  try {
+    saveProductToStore({
+      ...currentProd,
+      stock: newTotalStock,
+      variants: productVariants,
+    });
+  } catch {}
+
+  // 8. Log SALE in stock_movements table
+  const deductedColor = targetVariant?.color || itemColor || (currentProd.colors && currentProd.colors[0]) || "Standard";
+  const deductedSku = targetVariant?.sku || itemSku || effectiveProdId;
+  const colorSlug = item.colorSlug || targetVariant?.colorSlug || deductedColor.slice(0, 3).toUpperCase();
+
+  if (supabase) {
+    try {
+      await supabase.from("stock_movements").insert([{
+        id: `mov-${Date.now()}-${colorSlug}-${Math.random().toString(36).slice(2, 6)}`,
+        date: new Date().toLocaleDateString("en-IN", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        sku: deductedSku,
+        product_name: item.name || currentProd.name,
+        color: deductedColor,
+        color_slug: colorSlug,
+        type: "SALE",
+        quantity: -qtyToDeduct,
+        previous_stock: previousStock,
+        new_stock: newTotalStock,
+        reference_number: referenceNumber,
+        performed_by: performedBy,
+        note: `${notePrefix} #${referenceNumber} (${(paymentMethod || "COD").toUpperCase()})`,
+      }]);
+    } catch (movErr) {
+      console.warn("[InventoryService] Failed to insert stock movement:", movErr.message);
+    }
+  }
+
+  return {
+    productId: effectiveProdId,
+    previousStock,
+    newTotalStock,
+    targetVariant,
+    variants: productVariants,
+  };
+}
+
+/**
+ * Deducts stock for a batch of order items and invalidates all caches.
+ */
+export async function deductStockForOrderItems(items, {
+  referenceNumber,
+  paymentMethod = "cod",
+  performedBy = "Online Storefront",
+  notePrefix = "Order",
+}) {
+  if (!Array.isArray(items) || items.length === 0) return [];
+
+  const results = [];
+  for (const item of items) {
+    try {
+      const res = await deductStockForItem({
+        item,
+        referenceNumber,
+        paymentMethod,
+        performedBy,
+        notePrefix,
+      });
+      if (res) results.push(res);
+    } catch (err) {
+      console.warn("[InventoryService] Item deduction error:", err.message);
+    }
+  }
+
+  // Bust in-memory caches so admin and storefront immediately reflect decremented stock
+  try {
+    invalidateCatalogCache();
+    invalidateBootstrapCache();
+  } catch {}
+
+  return results;
+}
