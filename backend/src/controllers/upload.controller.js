@@ -379,3 +379,56 @@ export async function convertHeicImage(req, res) {
     return errorResponse(res, err.message || "Failed to convert HEIC image", 500);
   }
 }
+
+/**
+ * GET /api/upload/sign-url?filename=foo.jpg&contentType=image/jpeg&expiresIn=300
+ *
+ * Creates a time-limited signed upload URL so the browser can PUT files
+ * DIRECTLY to Supabase Storage — zero file bytes ever touch the Render server.
+ * This eliminates the OOM crash risk from multer + Sharp + heic-convert in RAM.
+ *
+ * Flow:
+ *   Browser → GET /api/upload/sign-url (tiny, no RAM) → Render returns signed URL
+ *   Browser → PUT directly to Supabase Storage using signed URL (real bytes bypass Render)
+ *   Browser → uses returned publicUrl for the product record
+ */
+export async function createSignedUploadUrl(req, res) {
+  try {
+    if (!supabase) {
+      return res.status(503).json({ success: false, message: "Storage service unavailable" });
+    }
+
+    const rawName = String(req.query.filename || `saree-${Date.now()}`).replace(/[^a-zA-Z0-9._-]/g, "_");
+    const ext = rawName.split(".").pop()?.toLowerCase() || "jpg";
+    const safeExt = ["jpg", "jpeg", "png", "webp", "gif", "avif", "heic", "heif", "bmp"].includes(ext) ? ext : "jpg";
+    const filename = rawName.endsWith(`.${safeExt}`) ? rawName : `${rawName.replace(/\.[^.]*$/, "")}.${safeExt}`;
+    const expiresIn = Math.min(600, Math.max(60, Number(req.query.expiresIn) || 300));
+
+    const filePath = `uploads/${Date.now()}-${filename}`;
+
+    const { data, error } = await supabase.storage
+      .from("sarees")
+      .createSignedUploadUrl(filePath, expiresIn);
+
+    if (error || !data?.signedUrl) {
+      console.error("[UploadController] Failed to create signed URL:", error?.message);
+      return res.status(500).json({ success: false, message: error?.message || "Could not generate upload URL" });
+    }
+
+    const { data: publicUrlData } = supabase.storage.from("sarees").getPublicUrl(filePath);
+    const publicUrl = publicUrlData?.publicUrl || "";
+
+    return res.status(200).json({
+      success: true,
+      signedUrl: data.signedUrl,
+      token: data.token,
+      path: filePath,
+      publicUrl,
+      expiresIn,
+    });
+  } catch (err) {
+    console.error("[UploadController] createSignedUploadUrl error:", err);
+    return res.status(500).json({ success: false, message: err.message || "Failed to create signed upload URL" });
+  }
+}
+

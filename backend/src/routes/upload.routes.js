@@ -1,6 +1,6 @@
 import { Router } from "express";
 import multer from "multer";
-import { uploadImage, uploadMultipleImages, convertHeicImage } from "../controllers/upload.controller.js";
+import { uploadImage, uploadMultipleImages, convertHeicImage, createSignedUploadUrl } from "../controllers/upload.controller.js";
 
 const router = Router();
 
@@ -30,6 +30,13 @@ const uploadMiddleware = multer({
 
 // Use uploadMiddleware.any() to seamlessly support both binary FormData and JSON payloads
 const handleUpload = [uploadMiddleware.any(), uploadImage];
+
+// -------------------------------------------------------
+// DIRECT-UPLOAD (browser → Supabase Storage, bypasses Render RAM)
+// GET /api/upload/sign-url?filename=foo.jpg&contentType=image/jpeg&expiresIn=300
+// Returns: { signedUrl, token, path, publicUrl }
+// -------------------------------------------------------
+router.get("/sign-url", createSignedUploadUrl);
 
 // Supabase Storage & Web Image Processing endpoints
 router.post("/", ...handleUpload);

@@ -1002,10 +1002,69 @@ export const StoreService = {
     return sale;
   },
 
-  uploadImageBinary(file: File | Blob, filename?: string, onProgress?: (percent: number) => void): Promise<{ success: boolean; url: string; message?: string }> {
+  /**
+   * Upload a single image file using the signed URL flow:
+   *   1. GET /api/upload/sign-url → Render returns a Supabase signed PUT URL (no RAM on Render)
+   *   2. PUT file directly to Supabase Storage via the signed URL (browser→Supabase CDN, bypasses Render)
+   *
+   * Falls back to the legacy POST /api/upload if the signed URL endpoint fails.
+   */
+  async uploadImageBinary(file: File | Blob, filename?: string, onProgress?: (percent: number) => void): Promise<{ success: boolean; url: string; message?: string }> {
+    const fname = filename || (file instanceof File ? file.name : `saree-${Date.now()}.jpg`);
+
+    // Step 1: Get a signed upload URL from the backend (lightweight — no file bytes sent)
+    try {
+      const adminHeaders = getAdminAuthHeaders();
+      const signedUrlRes = await fetch(
+        `${API_BASE}/upload/sign-url?filename=${encodeURIComponent(fname)}&expiresIn=300`,
+        { headers: adminHeaders }
+      );
+
+      if (signedUrlRes.ok) {
+        const signData = await signedUrlRes.json();
+        if (signData.success && signData.signedUrl && signData.publicUrl) {
+          // Step 2: PUT file directly to Supabase Storage via signed URL (XHR for progress tracking)
+          const success = await new Promise<boolean>((resolve) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open("PUT", signData.signedUrl);
+            // Supabase signed PUT requires Content-Type header
+            xhr.setRequestHeader("Content-Type", file.type || "image/jpeg");
+
+            if (xhr.upload && onProgress) {
+              xhr.upload.onprogress = (evt) => {
+                if (evt.lengthComputable) {
+                  const percent = Math.round((evt.loaded / evt.total) * 100);
+                  onProgress(Math.max(10, percent));
+                }
+              };
+            }
+
+            xhr.onload = () => {
+              if (xhr.status >= 200 && xhr.status < 300) {
+                if (onProgress) onProgress(100);
+                resolve(true);
+              } else {
+                resolve(false);
+              }
+            };
+
+            xhr.onerror = () => resolve(false);
+            xhr.send(file);
+          });
+
+          if (success) {
+            return { success: true, url: signData.publicUrl, message: "Uploaded via direct CDN" };
+          }
+          // If the PUT failed, fall through to the legacy approach
+        }
+      }
+    } catch {
+      // Signed URL flow failed — fall through to legacy
+    }
+
+    // Fallback: POST file to /api/upload (legacy path — works but uses Render RAM)
     return new Promise((resolve) => {
       const formData = new FormData();
-      const fname = filename || (file instanceof File ? file.name : `saree-${Date.now()}.jpg`);
       formData.append("file", file, fname);
 
       const xhr = new XMLHttpRequest();
