@@ -8,7 +8,7 @@ import {
 
 let bootstrapCache = null;
 let bootstrapCacheTimestamp = 0;
-const BOOTSTRAP_CACHE_TTL_MS = 3 * 1000; // 3 seconds short cache for near real-time reactivity
+const BOOTSTRAP_CACHE_TTL_MS = 15 * 1000; // 15 seconds short cache for near real-time reactivity
 
 export function invalidateBootstrapCache() {
   bootstrapCache = null;

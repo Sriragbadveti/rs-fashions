@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   LayoutDashboard,
   ShoppingBag,
@@ -297,6 +297,10 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
     }
   };
 
+  const lastDispatchedInventoryRef = useRef<string>("");
+  const isBootstrapFetchingRef = useRef(false);
+  const lastBootstrapFetchTimeRef = useRef(0);
+
   const syncInventoryToStorefront = useCallback((inventoryList: Product[]) => {
     try {
       const cleanList = (inventoryList || []).filter(
@@ -353,9 +357,13 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
         };
       });
 
-      safeStorageSet("rs_fashions_products", storeProducts);
-      window.dispatchEvent(new Event("rs_inventory_updated"));
-      window.dispatchEvent(new Event("catalogUpdated"));
+      const serialized = JSON.stringify(storeProducts);
+      if (serialized !== lastDispatchedInventoryRef.current) {
+        lastDispatchedInventoryRef.current = serialized;
+        safeStorageSet("rs_fashions_products", storeProducts);
+        window.dispatchEvent(new Event("rs_inventory_updated"));
+        window.dispatchEvent(new Event("catalogUpdated"));
+      }
     } catch (e) {
       console.warn("Storefront sync notice:", e);
     }
@@ -365,120 +373,16 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
     syncInventoryToStorefront(inventory);
   }, [inventory, syncInventoryToStorefront]);
 
-  // Automatically convert any already-uploaded HEIC images in inventory to visible JPEGs
-  useEffect(() => {
-    if (!inventory || inventory.length === 0) return;
-    let cancelled = false;
-
-    (async () => {
-      let anyChanged = false;
-      const healedInventory = await Promise.all(
-        inventory.map(async (p) => {
-          let prodChanged = false;
-          let nextImageUrl = p.imageUrl;
-
-          if (nextImageUrl) {
-            if (isUnrenderedHeicDataUrl(nextImageUrl)) {
-              const converted = await convertHeicDataUrlToJpeg(nextImageUrl);
-              if (converted !== nextImageUrl) {
-                nextImageUrl = converted;
-                prodChanged = true;
-              }
-            } else if (nextImageUrl.startsWith("http")) {
-              const recovered = await recoverHeicUrlIfNeeded(nextImageUrl);
-              if (recovered) {
-                nextImageUrl = recovered;
-                prodChanged = true;
-              }
-            }
-          }
-
-          let nextImages = p.images;
-          if (Array.isArray(p.images) && p.images.length > 0) {
-            const updatedImgs = await Promise.all(
-              p.images.map(async (img) => {
-                if (!img) return img;
-                if (isUnrenderedHeicDataUrl(img)) {
-                  const c = await convertHeicDataUrlToJpeg(img);
-                  if (c !== img) prodChanged = true;
-                  return c;
-                }
-                if (img.startsWith("http")) {
-                  const r = await recoverHeicUrlIfNeeded(img);
-                  if (r) {
-                    prodChanged = true;
-                    return r;
-                  }
-                }
-                return img;
-              })
-            );
-            nextImages = updatedImgs;
-          }
-
-          let nextVariants = p.variants;
-          if (Array.isArray(p.variants) && p.variants.length > 0) {
-            const updatedVars = await Promise.all(
-              p.variants.map(async (v) => {
-                if (!v.imageUrl) return v;
-                if (isUnrenderedHeicDataUrl(v.imageUrl)) {
-                  const c = await convertHeicDataUrlToJpeg(v.imageUrl);
-                  if (c !== v.imageUrl) {
-                    prodChanged = true;
-                    return { ...v, imageUrl: c };
-                  }
-                } else if (v.imageUrl.startsWith("http")) {
-                  const r = await recoverHeicUrlIfNeeded(v.imageUrl);
-                  if (r) {
-                    prodChanged = true;
-                    return { ...v, imageUrl: r };
-                  }
-                }
-                return v;
-              })
-            );
-            nextVariants = updatedVars;
-          }
-
-          if (!nextImageUrl) {
-            nextImageUrl =
-              nextImages?.[0] ||
-              nextVariants?.find((v) => v.imageUrl)?.imageUrl ||
-              undefined;
-          }
-
-          if (prodChanged) {
-            anyChanged = true;
-            const updatedProduct: Product = {
-              ...p,
-              imageUrl: nextImageUrl,
-              images: nextImages,
-              variants: nextVariants,
-            };
-            adminFetch(`${API_BASE}/catalog/${encodeURIComponent(p.id)}`, {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(updatedProduct),
-            }).catch(() => {});
-            return updatedProduct;
-          }
-          return p;
-        })
-      );
-
-      if (!cancelled && anyChanged) {
-        setInventory(healedInventory);
-        safeStorageSet("rs_admin_inventory", healedInventory);
-        syncInventoryToStorefront(healedInventory);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [inventory.length, syncInventoryToStorefront]);
-
   const loadLiveBootstrap = useCallback(async (forceRefresh = false) => {
+    const now = Date.now();
+    // Guard against concurrent execution
+    if (isBootstrapFetchingRef.current) return;
+    // Debounce rapid calls (unless forceRefresh is explicitly requested)
+    if (!forceRefresh && now - lastBootstrapFetchTimeRef.current < 2500) return;
+
+    isBootstrapFetchingRef.current = true;
+    lastBootstrapFetchTimeRef.current = now;
+
     try {
       setSyncError(null);
       const res = await adminFetch(`${API_BASE}/admin/bootstrap${forceRefresh ? "?refresh=true" : ""}`);
@@ -507,7 +411,6 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
           );
 
           // The database is the authoritative source of truth.
-          // Never re-upload deleted products from browser localStorage.
           setInventory(remoteProducts);
           safeStorageSet("rs_admin_inventory", remoteProducts);
           syncInventoryToStorefront(remoteProducts);
@@ -598,17 +501,19 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
             }
             setDevices(formatted);
           }
-        } catch (sessErr) {
-          console.warn("Sessions fetch notice:", sessErr);
+        } catch {
+          // Gracefully suppress network errors on background sessions check
         }
       }
     } catch (err: any) {
       console.warn("Bootstrap sync notice:", err);
       setSyncError(err.message || "Unable to sync with live database");
+    } finally {
+      isBootstrapFetchingRef.current = false;
     }
   }, [onLogout, syncInventoryToStorefront]);
 
-  // Synchronize on mount, when tab/screen becomes visible, or on real-time inventory change
+  // Synchronize on mount and when tab/screen becomes visible
   useEffect(() => {
     loadLiveBootstrap();
 
@@ -617,20 +522,13 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
         loadLiveBootstrap();
       }
     };
-    const handleLiveSync = () => {
-      loadLiveBootstrap(true);
-    };
 
     document.addEventListener("visibilitychange", handleVisibility);
     window.addEventListener("focus", handleVisibility);
-    window.addEventListener("rs_inventory_updated", handleLiveSync);
-    window.addEventListener("catalogUpdated", handleLiveSync);
 
     return () => {
       document.removeEventListener("visibilitychange", handleVisibility);
       window.removeEventListener("focus", handleVisibility);
-      window.removeEventListener("rs_inventory_updated", handleLiveSync);
-      window.removeEventListener("catalogUpdated", handleLiveSync);
     };
   }, [loadLiveBootstrap]);
 
