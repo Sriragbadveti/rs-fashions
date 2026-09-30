@@ -5,6 +5,7 @@ import {
   getColorsFromStore,
   saveColorsToStore,
 } from "../database/localStore.js";
+import { resolveBorderColor } from "../services/productFields.js";
 
 let bootstrapCache = null;
 let bootstrapCacheTimestamp = 0;
@@ -106,18 +107,16 @@ export async function getBootstrapData(req, res) {
         Boolean(p.is_limited_edition) ||
         Boolean(p.isLimitedEdition);
 
-      const derivedBorderFromColor =
-        colorList.find((c) => typeof c === "string" && c.includes("/"))
-          ? colorList.find((c) => typeof c === "string" && c.includes("/")).split("/")[1]?.trim()
-          : undefined;
-
       return {
         id: p.id,
         name: p.name,
         category: p.category || "SiCo Gadwal Sarees",
         categoryId: p.categoryId || p.category_id || "c1",
         material: p.material || "SiCo",
-        purchasePrice: Number(p.purchasePrice || p.purchase_price) || Math.round(Number(p.price || p.salePrice) * 0.7) || 0,
+        // Stored loom cost wins; the 70% estimate is only for rows saved before purchase_price existed.
+        purchasePrice: p.purchase_price !== null && p.purchase_price !== undefined
+          ? Number(p.purchase_price) || 0
+          : Number(p.purchasePrice) || Math.round(Number(p.price || p.salePrice) * 0.7) || 0,
         salePrice: Number(p.price || p.salePrice || p.sale_price) || 0,
         price: Number(p.price || p.salePrice || p.sale_price) || 0,
         originalPrice: p.original_price || p.originalPrice ? Number(p.original_price || p.originalPrice) : (Number(p.price || p.salePrice) * 1.25),
@@ -132,7 +131,7 @@ export async function getBootstrapData(req, res) {
         rating: Number(p.rating) || 4.8,
         reviewCount: Number(p.review_count) || 0,
         featured: Boolean(p.featured),
-        borderColor: p.borderColor || p.border_color || derivedBorderFromColor || undefined,
+        borderColor: resolveBorderColor(p, colorList),
         description: p.description || "",
       };
     });

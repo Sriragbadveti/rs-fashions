@@ -53,10 +53,21 @@ function parseDataUrlOrBase64(base64OrDataUrl) {
   };
 }
 
+// Longest edge kept for product photos. 2560px keeps zari/border/weave detail sharp on
+// retina product pages and zoom, while avoiding 12MP (4032px) originals on the storefront.
+// Keep in sync with MAX_PRODUCT_IMAGE_EDGE in frontend/src/utils/imageConverter.ts.
+export const MAX_PRODUCT_IMAGE_EDGE = 2560;
+const PRODUCT_JPEG_QUALITY = 90;
+// JPEGs at or below this size and edge length are stored byte-for-byte (no re-encode).
+const PASSTHROUGH_JPEG_MAX_BYTES = 6 * 1024 * 1024;
+
 /**
- * Processes an image Buffer into a web-optimized JPEG buffer.
- * Preserves high resolution (up to 2000px) and disables harsh chroma subsampling
- * (uses 4:4:4) to preserve intricate saree borders, zari work, embroidery, and texture details.
+ * Processes an image Buffer into a web-ready JPEG buffer.
+ * - JPEGs that are already upright and within MAX_PRODUCT_IMAGE_EDGE are passed through
+ *   untouched, so an already-compressed photo is never compressed a second time.
+ * - Everything else is decoded once, EXIF-rotated, downscaled only if larger than
+ *   MAX_PRODUCT_IMAGE_EDGE (never upscaled) and encoded at q90 with 4:4:4 chroma so
+ *   saree borders, zari work and embroidery keep crisp colour edges.
  */
 export async function processBufferToWebFormat(buffer, originalMime = "image/jpeg", filename = "") {
   let workingBuffer = buffer;
@@ -86,18 +97,33 @@ export async function processBufferToWebFormat(buffer, originalMime = "image/jpe
   // 2. High-Fidelity Saree Optimization with Sharp
   if (!uploadMimeType.includes("svg")) {
     try {
-      // 2000px maximum dimension preserves saree pallu, border zari, and weave details
-      // 88 quality with mozjpeg and 4:4:4 chroma subsampling ensures zero color bleeding on gold/red border edges
-      uploadBuffer = await sharp(workingBuffer)
-        .rotate() // auto-orient based on EXIF
-        .resize({ width: 2000, height: 2000, fit: "inside", withoutEnlargement: true })
-        .jpeg({
-          quality: 88,
-          progressive: true,
-          mozjpeg: true,
-          chromaSubsampling: "4:4:4", // Critical for metallic zari clarity
-        })
-        .toBuffer();
+      const meta = await sharp(workingBuffer).metadata();
+      const longEdge = Math.max(meta.width || 0, meta.height || 0);
+      const isPassthroughJpeg =
+        meta.format === "jpeg" &&
+        (!meta.orientation || meta.orientation === 1) &&
+        longEdge > 0 &&
+        longEdge <= MAX_PRODUCT_IMAGE_EDGE &&
+        workingBuffer.length <= PASSTHROUGH_JPEG_MAX_BYTES;
+
+      if (!isPassthroughJpeg) {
+        uploadBuffer = await sharp(workingBuffer)
+          .rotate() // auto-orient based on EXIF
+          .resize({
+            width: MAX_PRODUCT_IMAGE_EDGE,
+            height: MAX_PRODUCT_IMAGE_EDGE,
+            fit: "inside",
+            withoutEnlargement: true,
+            kernel: "lanczos3",
+          })
+          .jpeg({
+            quality: PRODUCT_JPEG_QUALITY,
+            progressive: true,
+            mozjpeg: true,
+            chromaSubsampling: "4:4:4", // Critical for metallic zari clarity
+          })
+          .toBuffer();
+      }
       uploadMimeType = "image/jpeg";
       extension = "jpg";
     } catch (sharpErr) {
@@ -139,9 +165,10 @@ export async function uploadBufferToSupabaseStorage(buffer, originalMime = "imag
   const cleanCustomName = customFilename
     ? customFilename.replace(/\.(heic|heif)$/i, ".jpg").replace(/[^a-zA-Z0-9._-]/g, "_")
     : null;
-  const fileName =
-    cleanCustomName ||
-    `saree-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${extension}`;
+  const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const fileName = cleanCustomName
+    ? `${uniqueSuffix}-${cleanCustomName.replace(/\.[^.]*$/, "")}.${extension}`
+    : `saree-${uniqueSuffix}.${extension}`;
   const filePath = `uploads/${fileName}`;
 
   if (supabase) {
@@ -150,7 +177,7 @@ export async function uploadBufferToSupabaseStorage(buffer, originalMime = "imag
         .from("sarees")
         .upload(filePath, uploadBuffer, {
           contentType: uploadMimeType,
-          upsert: true,
+          upsert: false,
         });
 
       if (!error) {
@@ -400,11 +427,24 @@ export async function createSignedUploadUrl(req, res) {
 
     const rawName = String(req.query.filename || `saree-${Date.now()}`).replace(/[^a-zA-Z0-9._-]/g, "_");
     const ext = rawName.split(".").pop()?.toLowerCase() || "jpg";
-    const safeExt = ["jpg", "jpeg", "png", "webp", "gif", "avif", "heic", "heif", "bmp"].includes(ext) ? ext : "jpg";
+
+    // Browsers other than Safari cannot render HEIC, so raw HEIC must never be stored directly.
+    // The admin client converts HEIC before requesting a signed URL; if it could not, it falls
+    // back to POST /api/upload where the server converts it.
+    if (ext === "heic" || ext === "heif") {
+      return res.status(415).json({
+        success: false,
+        message: "HEIC/HEIF must be converted before direct upload. Use POST /api/upload instead.",
+      });
+    }
+
+    const safeExt = ["jpg", "jpeg", "png", "webp", "gif", "avif", "bmp"].includes(ext) ? ext : "jpg";
     const filename = rawName.endsWith(`.${safeExt}`) ? rawName : `${rawName.replace(/\.[^.]*$/, "")}.${safeExt}`;
     const expiresIn = Math.min(600, Math.max(60, Number(req.query.expiresIn) || 300));
 
-    const filePath = `uploads/${Date.now()}-${filename}`;
+    // Random suffix: two photos with the same name (IMG_0001.jpg from two phones, or the same
+    // millisecond) must never resolve to the same storage object.
+    const filePath = `uploads/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${filename}`;
 
     const { data, error } = await supabase.storage
       .from("sarees")

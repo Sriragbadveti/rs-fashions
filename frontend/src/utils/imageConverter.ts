@@ -364,6 +364,145 @@ export async function handleSareeImageError(
   }
 }
 
+// ============================================================
+// PRODUCT PHOTO UPLOAD PREPARATION
+// ============================================================
+
+// Longest edge stored for product photos. Keeps saree borders, zari and weave detail sharp on
+// retina product pages and zoom without shipping 24MP camera originals to shoppers.
+// Keep in sync with MAX_PRODUCT_IMAGE_EDGE in backend/src/controllers/upload.controller.js.
+export const MAX_PRODUCT_IMAGE_EDGE = 2560;
+const PRODUCT_JPEG_QUALITY = 0.92;
+// Web-ready files at or below this size and MAX_PRODUCT_IMAGE_EDGE are uploaded byte-for-byte.
+const PASSTHROUGH_MAX_BYTES = 6 * 1024 * 1024;
+const PASSTHROUGH_MIME = new Set(["image/jpeg", "image/jpg", "image/webp", "image/png"]);
+
+export interface PreparedUpload {
+  blob: Blob;
+  filename: string;
+  contentType: string;
+  width: number;
+  height: number;
+  /** true when the bytes were re-encoded; false when the original file is uploaded untouched */
+  reencoded: boolean;
+}
+
+function withExtension(name: string, ext: string): string {
+  const base = (name || "saree").replace(/\.[^.]*$/, "") || "saree";
+  return `${base}.${ext}`;
+}
+
+/**
+ * Downscales (never upscales) a decoded image onto a canvas and encodes it once as a high
+ * quality JPEG. Large reductions are done in halving steps so fine weave patterns are
+ * averaged instead of aliased.
+ */
+async function encodeBitmapAsJpeg(source: ImageBitmap): Promise<{ blob: Blob; width: number; height: number }> {
+  const srcW = source.width;
+  const srcH = source.height;
+  const scale = Math.min(1, MAX_PRODUCT_IMAGE_EDGE / Math.max(srcW, srcH));
+  const targetW = Math.max(1, Math.round(srcW * scale));
+  const targetH = Math.max(1, Math.round(srcH * scale));
+
+  let current: CanvasImageSource = source;
+  let curW = srcW;
+  let curH = srcH;
+
+  while (curW / 2 >= targetW && curH / 2 >= targetH) {
+    const stepW = Math.round(curW / 2);
+    const stepH = Math.round(curH / 2);
+    const step = document.createElement("canvas");
+    step.width = stepW;
+    step.height = stepH;
+    const sctx = step.getContext("2d");
+    if (!sctx) break;
+    sctx.imageSmoothingEnabled = true;
+    sctx.imageSmoothingQuality = "high";
+    sctx.drawImage(current, 0, 0, stepW, stepH);
+    current = step;
+    curW = stepW;
+    curH = stepH;
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.width = targetW;
+  canvas.height = targetH;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas is not available in this browser");
+  ctx.fillStyle = "#FFFFFF"; // flatten any transparency before JPEG export
+  ctx.fillRect(0, 0, targetW, targetH);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(current, 0, 0, targetW, targetH);
+
+  const blob = await new Promise<Blob | null>((resolve) =>
+    canvas.toBlob(resolve, "image/jpeg", PRODUCT_JPEG_QUALITY)
+  );
+  if (!blob || blob.size === 0) throw new Error("Browser could not encode the image");
+  return { blob, width: targetW, height: targetH };
+}
+
+/**
+ * Prepares a product photo for direct upload to storage:
+ * - HEIC/HEIF is decoded at full resolution (libheif WASM) and encoded once as JPEG, because
+ *   Chrome, Edge and Firefox cannot display HEIC.
+ * - JPEG/WebP/PNG already within MAX_PRODUCT_IMAGE_EDGE and PASSTHROUGH_MAX_BYTES are uploaded
+ *   untouched, so an already-compressed photo is never compressed again.
+ * - Larger images are downscaled once to MAX_PRODUCT_IMAGE_EDGE (q0.92). Small images are
+ *   never upscaled.
+ * Throws if the image cannot be decoded in this browser; callers fall back to server conversion.
+ */
+export async function prepareImageForUpload(file: File): Promise<PreparedUpload> {
+  const isHeic = isHeicFile(file) || (await hasHeicMagicBytes(file));
+
+  if (isHeic) {
+    // Decode straight to pixels (single JPEG encode below). The package's overload typings
+    // resolve to Blob here, but "bitmap" returns an ImageBitmap at runtime.
+    const bitmap = (await heicTo({ blob: file, type: "bitmap" } as never)) as unknown as ImageBitmap;
+    try {
+      const { blob, width, height } = await encodeBitmapAsJpeg(bitmap);
+      return {
+        blob,
+        filename: withExtension(file.name, "jpg"),
+        contentType: "image/jpeg",
+        width,
+        height,
+        reencoded: true,
+      };
+    } finally {
+      bitmap.close();
+    }
+  }
+
+  const mime = (file.type || "").toLowerCase();
+  const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+  try {
+    const longEdge = Math.max(bitmap.width, bitmap.height);
+    if (PASSTHROUGH_MIME.has(mime) && longEdge <= MAX_PRODUCT_IMAGE_EDGE && file.size <= PASSTHROUGH_MAX_BYTES) {
+      return {
+        blob: file,
+        filename: file.name || withExtension("saree", mime.split("/")[1] || "jpg"),
+        contentType: mime === "image/jpg" ? "image/jpeg" : mime,
+        width: bitmap.width,
+        height: bitmap.height,
+        reencoded: false,
+      };
+    }
+
+    const { blob, width, height } = await encodeBitmapAsJpeg(bitmap);
+    return {
+      blob,
+      filename: withExtension(file.name, "jpg"),
+      contentType: "image/jpeg",
+      width,
+      height,
+      reencoded: true,
+    };
+  } finally {
+    bitmap.close();
+  }
+}
+
 /**
  * Converts any image File (including .heic / .heif) into a browser-visible, compressed JPEG Data URL.
  * Automatically transcodes HEIC/HEIF files to `image/jpeg` so they render in all browsers (Chrome, Edge, Firefox, Safari).

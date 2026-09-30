@@ -6,7 +6,12 @@ import type { DashboardProduct, Category, StockMovement, CustomerProfile, Tracke
 import { COLOR_CODES, type ColorDefinition } from "../types/inventory";
 import { syncColorsToRuntime, registerColorInCatalog } from "../types/catalog";
 import { getCourierTrackingUrl, LOCAL_STORAGE_FULFILLMENTS } from "../context/OrderFulfillmentContext";
-import { isUnrenderedHeicDataUrl, convertHeicDataUrlToJpeg } from "../utils/imageConverter";
+import {
+  isUnrenderedHeicDataUrl,
+  convertHeicDataUrlToJpeg,
+  prepareImageForUpload,
+  type PreparedUpload,
+} from "../utils/imageConverter";
 
 function adminFetch(url: string, init: RequestInit = {}): Promise<Response> {
   const adminHeaders = getAdminAuthHeaders();
@@ -1003,72 +1008,91 @@ export const StoreService = {
   },
 
   /**
-   * Upload a single image file using the signed URL flow:
-   *   1. GET /api/upload/sign-url → Render returns a Supabase signed PUT URL (no RAM on Render)
-   *   2. PUT file directly to Supabase Storage via the signed URL (browser→Supabase CDN, bypasses Render)
-   *
-   * Falls back to the legacy POST /api/upload if the signed URL endpoint fails.
+   * Upload a single product photo.
+   *   1. The photo is prepared in the browser (HEIC -> JPEG at full resolution, oversized
+   *      photos downscaled once to MAX_PRODUCT_IMAGE_EDGE, web-ready files left untouched).
+   *   2. GET /api/upload/sign-url -> Supabase signed PUT URL (no file bytes touch Render).
+   *   3. PUT directly to Supabase Storage, then HEAD the public URL to confirm it is stored.
+   * If the browser cannot decode the photo, or the direct path fails, the original file is
+   * sent to POST /api/upload, where the server converts and stores it.
+   * `success` is only true once storage has confirmed the object.
    */
   async uploadImageBinary(file: File | Blob, filename?: string, onProgress?: (percent: number) => void): Promise<{ success: boolean; url: string; message?: string }> {
-    const fname = filename || (file instanceof File ? file.name : `saree-${Date.now()}.jpg`);
+    const originalName = filename || (file instanceof File ? file.name : `saree-${Date.now()}.jpg`);
+    const sourceFile = file instanceof File ? file : new File([file], originalName, { type: file.type || "image/jpeg" });
 
-    // Step 1: Get a signed upload URL from the backend (lightweight — no file bytes sent)
+    let prepared: PreparedUpload | null = null;
     try {
-      const adminHeaders = getAdminAuthHeaders();
-      const signedUrlRes = await fetch(
-        `${API_BASE}/upload/sign-url?filename=${encodeURIComponent(fname)}&expiresIn=300`,
-        { headers: adminHeaders }
-      );
+      prepared = await prepareImageForUpload(sourceFile);
+      if (onProgress) onProgress(10);
+    } catch (prepErr) {
+      console.warn(`[Upload] Browser could not prepare "${originalName}", using server conversion:`, prepErr);
+    }
 
-      if (signedUrlRes.ok) {
-        const signData = await signedUrlRes.json();
-        if (signData.success && signData.signedUrl && signData.publicUrl) {
-          // Step 2: PUT file directly to Supabase Storage via signed URL (XHR for progress tracking)
-          const success = await new Promise<boolean>((resolve) => {
+    let directFailure = "";
+    if (prepared) {
+      try {
+        const adminHeaders = getAdminAuthHeaders();
+        const signedUrlRes = await fetch(
+          `${API_BASE}/upload/sign-url?filename=${encodeURIComponent(prepared.filename)}&expiresIn=300`,
+          { headers: adminHeaders }
+        );
+        const signData = await signedUrlRes.json().catch(() => ({}));
+
+        if (signedUrlRes.ok && signData.success && signData.signedUrl && signData.publicUrl) {
+          const put = await new Promise<{ ok: boolean; message: string }>((resolve) => {
             const xhr = new XMLHttpRequest();
             xhr.open("PUT", signData.signedUrl);
-            // Supabase signed PUT requires Content-Type header
-            xhr.setRequestHeader("Content-Type", file.type || "image/jpeg");
+            xhr.timeout = 180000;
+            xhr.setRequestHeader("Content-Type", prepared!.contentType);
 
             if (xhr.upload && onProgress) {
               xhr.upload.onprogress = (evt) => {
                 if (evt.lengthComputable) {
-                  const percent = Math.round((evt.loaded / evt.total) * 100);
-                  onProgress(Math.max(10, percent));
+                  onProgress(Math.min(95, Math.max(10, Math.round((evt.loaded / evt.total) * 95))));
                 }
               };
             }
 
             xhr.onload = () => {
-              if (xhr.status >= 200 && xhr.status < 300) {
-                if (onProgress) onProgress(100);
-                resolve(true);
-              } else {
-                resolve(false);
-              }
+              if (xhr.status >= 200 && xhr.status < 300) resolve({ ok: true, message: "" });
+              else resolve({ ok: false, message: `Storage rejected upload (HTTP ${xhr.status})` });
             };
-
-            xhr.onerror = () => resolve(false);
-            xhr.send(file);
+            xhr.onerror = () => resolve({ ok: false, message: "Network error while uploading to storage" });
+            xhr.ontimeout = () => resolve({ ok: false, message: "Upload timed out" });
+            xhr.send(prepared!.blob);
           });
 
-          if (success) {
-            return { success: true, url: signData.publicUrl, message: "Uploaded via direct CDN" };
+          if (put.ok) {
+            // Confirm the object is publicly readable before reporting success.
+            const head = await fetch(signData.publicUrl, { method: "HEAD", cache: "no-store" }).catch(() => null);
+            if (head && head.ok) {
+              if (onProgress) onProgress(100);
+              return { success: true, url: signData.publicUrl, message: "Uploaded via direct CDN" };
+            }
+            directFailure = `Stored file could not be verified (HTTP ${head?.status ?? "network error"})`;
+          } else {
+            directFailure = put.message;
           }
-          // If the PUT failed, fall through to the legacy approach
+        } else {
+          directFailure = signData?.message || `Could not get upload URL (HTTP ${signedUrlRes.status})`;
         }
+      } catch (err: any) {
+        directFailure = err?.message || "Direct upload failed";
       }
-    } catch {
-      // Signed URL flow failed — fall through to legacy
+      console.warn(`[Upload] Direct upload of "${originalName}" failed (${directFailure}); retrying via server.`);
     }
 
-    // Fallback: POST file to /api/upload (legacy path — works but uses Render RAM)
+    // Fallback: POST to /api/upload — the server converts (HEIC, oversized) and stores it.
+    const fallbackBlob = prepared ? prepared.blob : sourceFile;
+    const fallbackName = prepared ? prepared.filename : originalName;
     return new Promise((resolve) => {
       const formData = new FormData();
-      formData.append("file", file, fname);
+      formData.append("file", fallbackBlob, fallbackName);
 
       const xhr = new XMLHttpRequest();
       xhr.open("POST", `${API_BASE}/upload`);
+      xhr.timeout = 180000;
       const adminHeaders = getAdminAuthHeaders();
       for (const [key, value] of Object.entries(adminHeaders)) {
         xhr.setRequestHeader(key, value);
@@ -1077,8 +1101,7 @@ export const StoreService = {
       if (xhr.upload && onProgress) {
         xhr.upload.onprogress = (evt) => {
           if (evt.lengthComputable) {
-            const percent = Math.round((evt.loaded / evt.total) * 100);
-            onProgress(percent);
+            onProgress(Math.min(95, Math.round((evt.loaded / evt.total) * 95)));
           }
         };
       }
@@ -1087,19 +1110,23 @@ export const StoreService = {
         try {
           const data = JSON.parse(xhr.responseText);
           const uploadedUrl = data.url || data.data?.url || data.publicUrl || data.data?.publicUrl;
-          if (xhr.status >= 200 && xhr.status < 300 && data.success && uploadedUrl) {
+          // A data: URL means the server could not reach storage — that is not a stored image.
+          if (xhr.status >= 200 && xhr.status < 300 && data.success && uploadedUrl && /^https?:\/\//.test(uploadedUrl)) {
             if (onProgress) onProgress(100);
             resolve({ success: true, url: uploadedUrl, message: data.message });
             return;
           }
-          resolve({ success: false, url: "", message: data.message || `Upload failed (${xhr.status})` });
+          resolve({ success: false, url: "", message: data.message || directFailure || `Upload failed (${xhr.status})` });
         } catch (e: any) {
-          resolve({ success: false, url: "", message: e.message || "Parse error" });
+          resolve({ success: false, url: "", message: directFailure || e.message || "Parse error" });
         }
       };
 
       xhr.onerror = () => {
-        resolve({ success: false, url: "", message: "Network error during image upload" });
+        resolve({ success: false, url: "", message: directFailure || "Network error during image upload" });
+      };
+      xhr.ontimeout = () => {
+        resolve({ success: false, url: "", message: "Upload timed out" });
       };
 
       xhr.send(formData);
