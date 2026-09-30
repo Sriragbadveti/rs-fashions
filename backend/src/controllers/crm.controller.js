@@ -1,6 +1,11 @@
 import { supabase } from "../config/supabase.js";
 import { successResponse, errorResponse } from "../utils/response.js";
 import { invalidateBootstrapCache } from "./bootstrap.controller.js";
+import { writeWithOptionalColumns } from "../services/optionalColumns.js";
+
+// customers.address is used by the admin CRM but was never added to schema.sql; tolerate its
+// absence until the migration runs instead of failing (and silently losing) every save.
+const OPTIONAL_CUSTOMER_COLUMNS = ["address"];
 
 /**
  * Controller: CRM Customer Profiles & Loyalty
@@ -94,21 +99,33 @@ export async function checkCustomerExists(req, res) {
   }
 }
 
-function validateAndFormatDOB(val) {
-  if (!val) return null;
+/**
+ * Normalizes a birthday / anniversary to YYYY-MM-DD. Greetings only use the month and day,
+ * and admins often pick the day in the current year when the year is unknown, so dates up to
+ * the end of the current year are accepted; anything unparsable or before 1900 is rejected.
+ */
+function validateCelebrationDate(val, label = "Date of Birth") {
+  if (val === undefined || val === null) return null;
   const str = String(val).trim();
   if (!str) return null;
-  const d = new Date(str);
+  const isoMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  const d = isoMatch
+    ? new Date(Date.UTC(Number(isoMatch[1]), Number(isoMatch[2]) - 1, Number(isoMatch[3])))
+    : new Date(str);
   if (isNaN(d.getTime())) {
-    throw new Error("Invalid Date of Birth format. Please provide a valid date.");
+    throw new Error(`Invalid ${label} format. Please provide a valid date.`);
   }
-  if (d.getTime() > Date.now()) {
-    throw new Error("Date of Birth cannot be in the future.");
+  if (d.getUTCFullYear() < 1900) {
+    throw new Error(`${label} must be after year 1900.`);
   }
-  if (d.getFullYear() < 1900) {
-    throw new Error("Date of Birth must be after year 1900.");
+  if (d.getUTCFullYear() > new Date().getUTCFullYear()) {
+    throw new Error(`${label} cannot be in a future year.`);
   }
   return d.toISOString().split("T")[0];
+}
+
+function validateAndFormatDOB(val) {
+  return validateCelebrationDate(val, "Date of Birth");
 }
 
 // 2. CREATE / SYNC CUSTOMER (Email or Google Signup)
@@ -136,8 +153,10 @@ export async function createCustomer(req, res) {
     } = req.body;
 
     let cleanBirthday = null;
+    let cleanAnniversary = null;
     try {
       cleanBirthday = validateAndFormatDOB(birthday || dob || date_of_birth);
+      cleanAnniversary = validateCelebrationDate(anniversary, "Anniversary date");
     } catch (dateErr) {
       return errorResponse(res, dateErr.message, 400);
     }
@@ -201,7 +220,7 @@ export async function createCustomer(req, res) {
       const finalSpent = existingCust ? Number(existingCust.total_spent) : Number(totalSpent);
       const finalOrders = existingCust ? Number(existingCust.orders_count) : Number(ordersCount);
 
-      const { data, error } = await supabase.from("customers").upsert({
+      const { data, error, warnings } = await writeWithOptionalColumns("customers", {
         id: finalId,
         name: customerName,
         phone: customerPhone,
@@ -211,40 +230,28 @@ export async function createCustomer(req, res) {
         total_spent: finalSpent || 0,
         orders_count: finalOrders || 0,
         birthday: cleanBirthday,
-        anniversary: anniversary || null,
+        anniversary: cleanAnniversary,
         preferred_weave: preferredWeave || null,
         notes: customerNotes,
         gstin: gstin ? gstin.trim() : null,
         updated_at: new Date().toISOString(),
-      }).select().single();
+      }, (row) => supabase.from("customers").upsert(row).select().single(), OPTIONAL_CUSTOMER_COLUMNS);
 
       invalidateBootstrapCache();
 
       if (error) {
-        console.warn("Supabase upsert customer warning:", error.message);
-        // Fall back gracefully so registration succeeds
-        return successResponse(res, {
-          customer: {
-            id: finalId,
-            name: customerName,
-            phone: customerPhone,
-            email: customerEmail,
-            city,
-            address: address || (city ? `${city}, Telangana` : "Hyderabad, Telangana"),
-            birthday: cleanBirthday,
-            notes: customerNotes,
-            authProvider,
-            joinedAt: new Date().toISOString(),
-          }
-        }, "Customer registered", 201);
+        // Never report a customer as saved when the database rejected it.
+        console.error("Supabase upsert customer error:", error.message);
+        return errorResponse(res, "Customer could not be saved. Please try again.", 500);
       }
 
-      return successResponse(res, { 
+      return successResponse(res, {
         customer: {
           ...data,
           authProvider,
           joinedAt: data?.created_at || new Date().toISOString(),
-        } 
+        },
+        warnings,
       }, "Customer profile created successfully", 201);
     }
 
@@ -258,6 +265,7 @@ export async function createCustomer(req, res) {
         city,
         address: address || (city ? `${city}, Telangana` : "Hyderabad, Telangana"),
         birthday: cleanBirthday,
+        anniversary: cleanAnniversary,
         notes: customerNotes,
         authProvider,
         joinedAt: new Date().toISOString(),
@@ -291,12 +299,16 @@ export async function updateCustomer(req, res) {
     } = req.body;
 
     let cleanBirthday = undefined;
-    if (birthday !== undefined || dob !== undefined || date_of_birth !== undefined) {
-      try {
+    let cleanAnniversary = undefined;
+    try {
+      if (birthday !== undefined || dob !== undefined || date_of_birth !== undefined) {
         cleanBirthday = validateAndFormatDOB(birthday || dob || date_of_birth);
-      } catch (dateErr) {
-        return errorResponse(res, dateErr.message, 400);
       }
+      if (anniversary !== undefined) {
+        cleanAnniversary = validateCelebrationDate(anniversary, "Anniversary date");
+      }
+    } catch (dateErr) {
+      return errorResponse(res, dateErr.message, 400);
     }
 
     if (supabase) {
@@ -309,21 +321,24 @@ export async function updateCustomer(req, res) {
       if (totalSpent !== undefined) updates.total_spent = Number(totalSpent);
       if (ordersCount !== undefined) updates.orders_count = Number(ordersCount);
       if (cleanBirthday !== undefined) updates.birthday = cleanBirthday;
-      if (anniversary !== undefined) updates.anniversary = anniversary || null;
+      if (cleanAnniversary !== undefined) updates.anniversary = cleanAnniversary;
       if (preferredWeave !== undefined) updates.preferred_weave = preferredWeave || null;
       if (notes !== undefined) updates.notes = notes || null;
       if (gstin !== undefined) updates.gstin = gstin ? gstin.trim() : null;
 
-      const { data, error } = await supabase
-        .from("customers")
-        .update(updates)
-        .eq("id", id)
-        .select()
-        .single();
+      const { data, error, warnings } = await writeWithOptionalColumns(
+        "customers",
+        updates,
+        (row) => supabase.from("customers").update(row).eq("id", id).select().single(),
+        OPTIONAL_CUSTOMER_COLUMNS
+      );
 
       invalidateBootstrapCache();
-      if (error) throw error;
-      return successResponse(res, { customer: data }, "Customer updated successfully");
+      if (error) {
+        if (error.code === "PGRST116") return errorResponse(res, `Customer ${id} not found`, 404);
+        throw error;
+      }
+      return successResponse(res, { customer: data, warnings }, "Customer updated successfully");
     }
 
     invalidateBootstrapCache();

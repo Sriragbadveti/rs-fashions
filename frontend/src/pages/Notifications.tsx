@@ -1,4 +1,5 @@
 import { useMemo, useEffect, useState } from "react";
+import { daysUntilNextOccurrence } from "../utils/celebrations";
 import {
   Bell,
   Cake,
@@ -105,9 +106,9 @@ export default function Notifications({ salesHistory, onNavigateTab, onClose }: 
 
     contacts.forEach((c: any) => {
       if (c.birthday) {
-        const bDay = new Date(c.birthday);
-        const diffDays = Math.ceil((bDay.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-        if (diffDays >= 0 && diffDays <= 7) {
+        // Compare against this year's (or next year's) occurrence, not the birth date itself.
+        const diffDays = daysUntilNextOccurrence(c.birthday, today);
+        if (diffDays !== null && diffDays <= 7) {
           list.push({
             id: `bday-${c.phone}`,
             type: "birthday",
@@ -121,9 +122,8 @@ export default function Notifications({ salesHistory, onNavigateTab, onClose }: 
       }
 
       if (c.anniversary) {
-        const anniv = new Date(c.anniversary);
-        const diffDays = Math.ceil((anniv.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-        if (diffDays >= 0 && diffDays <= 7) {
+        const diffDays = daysUntilNextOccurrence(c.anniversary, today);
+        if (diffDays !== null && diffDays <= 7) {
           list.push({
             id: `anniv-${c.phone}`,
             type: "anniversary",

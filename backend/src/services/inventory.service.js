@@ -79,7 +79,8 @@ export async function deductStockForItem({
   notePrefix = "Order",
 }) {
   const prodId = item.productId || item.id || item.sku;
-  const itemSku = item.sku || (typeof item.id === "string" && item.id.startsWith("RSF-") ? item.id : null);
+  // Legacy SKUs start with "RSF-"; current SKUs are "RS" + four digits (e.g. RS0001).
+  const itemSku = item.sku || (typeof item.id === "string" && (item.id.startsWith("RSF-") || /^RS\d{4}$/.test(item.id)) ? item.id : null);
   const itemColor = (item.color || item.selectedColor || "").trim();
   const qtyToDeduct = Math.max(1, Number(item.qty || item.quantity) || 1);
 

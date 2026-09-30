@@ -32,10 +32,13 @@ import { MOCK_CUSTOMERS } from "../types/inventory";
 import { getSavedCrmCustomers } from "../types/useBilling";
 import { API_BASE } from "../config/api";
 import { useShowroomSettings } from "../types/settings";
+import { adminFetch } from "../utils/adminSession";
+import { toWhatsAppNumber } from "../utils/celebrations";
 
 interface CRMProps {
   customers?: CustomerProfile[];
-  onAddCustomer?: (newCustomer: CustomerProfile) => void;
+  /** Resolves true once the backend has confirmed the customer was saved. */
+  onAddCustomer?: (newCustomer: CustomerProfile) => void | Promise<boolean>;
 }
 
 type MessageTemplateType =
@@ -516,8 +519,12 @@ export default function CRM({
     let isMounted = true;
     async function loadLiveCustomers() {
       try {
-        const res = await fetch(`${API_BASE}/crm/customers`);
-        if (!res.ok) return;
+        // Admin-only endpoint: without the admin token this always returned 401.
+        const res = await adminFetch(`${API_BASE}/crm/customers`);
+        if (!res.ok) {
+          console.warn(`Could not load live CRM customers (HTTP ${res.status})`);
+          return;
+        }
         const json = await res.json();
         const serverCustomers = json?.data?.customers || json?.customers;
         if (isMounted && Array.isArray(serverCustomers)) {
@@ -560,6 +567,8 @@ export default function CRM({
   const [customOfferText, setCustomOfferText] = useState(
     "exclusive 15% VIP privilege gift"
   );
+
+  const [sendStatus, setSendStatus] = useState<{ ok: boolean; text: string } | null>(null);
 
   const [generatedMessage, setGeneratedMessage] =
     useState("");
@@ -779,10 +788,11 @@ export default function CRM({
       setSelectedClientForMessage(client);
       setTemplateType(resolvedType);
 
+      setSendStatus(null);
       setGeneratedMessage(
         buildMessage(
           client,
-          type,
+          resolvedType,
           customDiscountCode,
           customOfferText
         )
@@ -825,30 +835,37 @@ export default function CRM({
   const handleSendWhatsApp = useCallback(() => {
     if (!selectedClientForMessage) return;
 
-    const cleanPhone =
-      selectedClientForMessage.phone.replace(
-        /\D/g,
-        ""
-      );
+    // A 10-digit number starting with "91" (e.g. 9123456789) is a normal Indian mobile, not
+    // a country code, so the number is normalised properly instead of by prefix.
+    const whatsAppNumber = toWhatsAppNumber(selectedClientForMessage.phone);
 
-    if (!cleanPhone) {
-      alert(
-        "This client does not have a valid phone number."
-      );
+    if (!whatsAppNumber) {
+      setSendStatus({
+        ok: false,
+        text: `${selectedClientForMessage.name}'s phone number (${selectedClientForMessage.phone || "none"}) is not a valid Indian mobile number, so WhatsApp can't be opened. Update the customer's phone number first.`,
+      });
       return;
     }
 
-    const formattedPhone = cleanPhone.startsWith("91")
-      ? cleanPhone
-      : `91${cleanPhone}`;
+    if (!generatedMessage.trim()) {
+      setSendStatus({ ok: false, text: "The message is empty." });
+      return;
+    }
 
     window.open(
-      `https://wa.me/${formattedPhone}?text=${encodeURIComponent(
+      `https://wa.me/${whatsAppNumber}?text=${encodeURIComponent(
         generatedMessage
       )}`,
       "_blank",
       "noopener,noreferrer"
     );
+
+    // wa.me only opens a chat with the message pre-filled; delivery happens when the admin
+    // presses Send in WhatsApp, so don't claim it was sent.
+    setSendStatus({
+      ok: true,
+      text: `WhatsApp opened for +${whatsAppNumber.slice(0, 2)} ${whatsAppNumber.slice(2)} with the message ready. Press Send in WhatsApp to deliver it.`,
+    });
   }, [
     generatedMessage,
     selectedClientForMessage,
@@ -858,7 +875,7 @@ export default function CRM({
   /* CREATE CUSTOMER                                                        */
   /* ---------------------------------------------------------------------- */
 
-  const handleCreateCustomer = (
+  const handleCreateCustomer = async (
     event: React.FormEvent
   ) => {
     event.preventDefault();
@@ -896,14 +913,32 @@ export default function CRM({
       return updated;
     });
 
+    let saved = true;
     if (onAddCustomer) {
-      onAddCustomer(newCustomer);
+      saved = (await onAddCustomer(newCustomer)) !== false;
     } else {
-      fetch(`${API_BASE}/crm/customers`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newCustomer),
-      }).catch((err) => console.warn("Sync customer error:", err));
+      try {
+        const res = await adminFetch(`${API_BASE}/crm/customers`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(newCustomer),
+        });
+        if (!res.ok) {
+          const json = await res.json().catch(() => ({}));
+          alert(`Customer was NOT saved: ${json.message || `server error ${res.status}`}`);
+          saved = false;
+        }
+      } catch (err) {
+        console.warn("Sync customer error:", err);
+        alert("Customer was NOT saved: network error. Please try again.");
+        saved = false;
+      }
+    }
+
+    if (!saved) {
+      // Keep the form open with the entered details so the admin can correct and retry.
+      setCustomers((prev) => prev.filter((c) => c.id !== newCustomer.id));
+      return;
     }
 
     closeCustomerModal();
@@ -1862,6 +1897,19 @@ export default function CRM({
                 />
               </div>
             </div>
+
+            {sendStatus && (
+              <p
+                role="status"
+                className={`mx-6 md:mx-7 mb-3 rounded-xl border px-3.5 py-2.5 text-[11px] leading-relaxed ${
+                  sendStatus.ok
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                    : "border-rose-200 bg-rose-50 text-rose-800"
+                }`}
+              >
+                {sendStatus.text}
+              </p>
+            )}
 
             <div className="px-6 md:px-7 py-4 border-t border-stone-200 flex items-center justify-between gap-3 bg-white">
               <button

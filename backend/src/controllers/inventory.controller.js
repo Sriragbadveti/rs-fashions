@@ -8,6 +8,13 @@ import {
   getColorsFromStore,
 } from "../database/localStore.js";
 import { getPersistentVariantsMap, savePersistentVariantsMap } from "../services/inventory.service.js";
+import { normalizeBorderInput, normalizePurchasePriceInput, writeProductRow } from "../services/productFields.js";
+import {
+  planNewProductSkus,
+  assignSkusToProduct,
+  releaseSkuReservations,
+  SkuExhaustedError,
+} from "../services/sku.service.js";
 
 /**
  * Controller: Stock Movements Audit Trail, Bulk Loom Intake & Low Stock Alerts
@@ -135,8 +142,38 @@ export async function handleBulkIntake(req, res) {
       return errorResponse(res, "At least one product is required for bulk intake", 400);
     }
 
-    const insertedProducts = [];
-    const insertedMovements = [];
+    // Batch-level border default; each product may carry its own override.
+    const batchBorder = normalizeBorderInput(req.body);
+
+    // Resolve every product's SKU (= product ID) exactly once, on the server, so the products
+    // row, the stock movement and the persistent variants map always reference the same product.
+    // `clientRef` lets the browser match results back to its rows.
+    const prepared = [];
+    const planFailures = [];
+    for (let idx = 0; idx < products.length; idx++) {
+      const p = products[idx];
+      const clientRef = p.clientRef ?? String(idx);
+      const ownBorder = normalizeBorderInput(p);
+      try {
+        const plan = await planNewProductSkus(p, Array.isArray(p.variants) ? p.variants : []);
+        prepared.push({
+          source: { ...p, variants: plan.variants },
+          prodId: plan.productId,
+          autoAllocated: plan.autoAllocated,
+          clientRef,
+          borderColor: ownBorder !== undefined ? ownBorder : batchBorder,
+        });
+      } catch (skuErr) {
+        planFailures.push({ clientRef, id: p.sku ?? p.id ?? null, error: skuErr.message, statusCode: skuErr.statusCode });
+        // Once the SKU range is exhausted no later product can succeed either.
+        if (skuErr instanceof SkuExhaustedError) {
+          for (let rest = idx + 1; rest < products.length; rest++) {
+            planFailures.push({ clientRef: products[rest].clientRef ?? String(rest), id: null, error: skuErr.message, statusCode: 409 });
+          }
+          break;
+        }
+      }
+    }
 
     // Register any custom colors used in this bulk intake batch
     for (const p of products) {
@@ -152,6 +189,12 @@ export async function handleBulkIntake(req, res) {
       }
     }
 
+    const imagesFor = (p) => {
+      const list = Array.isArray(p.images) && p.images.length > 0 ? p.images : (p.imageUrl ? [p.imageUrl] : []);
+      // blob: URLs are browser-local previews; persisting them produces permanently broken images.
+      return list.filter((img) => typeof img === "string" && img && !img.startsWith("blob:"));
+    };
+
     if (supabase) {
       try {
         await supabase.from("settings").upsert({
@@ -163,13 +206,21 @@ export async function handleBulkIntake(req, res) {
         // ignore
       }
 
-      for (const p of products) {
-        const prodId = p.id || `RSF-${(p.designSlug || 'BULK').toUpperCase()}-${Date.now().toString().slice(-4)}`;
+      const insertedProducts = [];
+      const insertedMovements = [];
+      const insertedRefs = [];
+      const failed = [...planFailures];
+      const warnings = [];
+      const vMapUpdates = {};
+
+      for (const entry of prepared) {
+        let { source: p, prodId } = entry;
+        const { borderColor, clientRef, autoAllocated } = entry;
         const priceVal = Math.max(0, Number(p.salePrice || p.price) || 0);
         const origPriceVal = p.originalPrice ? Number(p.originalPrice) : Math.round(priceVal * 1.25);
         const stockTotal = Number(p.stock) || (p.variants ? p.variants.reduce((s, v) => s + (Number(v.stock) || 0), 0) : 1);
         const colorList = p.colors || (p.variants ? p.variants.map((v) => v.color) : ["Standard"]);
-        let images = p.images || (p.imageUrl ? [p.imageUrl] : ["https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1200&auto=format&fit=crop"]);
+        let images = imagesFor(p);
 
         // Auto-convert any base64 images into Supabase Storage public CDN URLs
         images = await Promise.all(
@@ -187,7 +238,7 @@ export async function handleBulkIntake(req, res) {
           })
         );
 
-        const { data: prodData } = await supabase.from("products").upsert({
+        const row = {
           id: prodId,
           name: p.name,
           category: p.category || "SiCo Gadwal Sarees",
@@ -200,17 +251,51 @@ export async function handleBulkIntake(req, res) {
           tags: p.tags || ["bulk-intake", "loom-arrival"],
           description: p.description || `Bulk loom intake for ${p.name}.`,
           updated_at: new Date().toISOString(),
-        }).select().single();
+        };
+        if (borderColor !== undefined) row.border_color = borderColor;
+        const purchasePriceVal = normalizePurchasePriceInput(p);
+        if (purchasePriceVal !== undefined) row.purchase_price = purchasePriceVal;
 
-        if (prodData) {
-          insertedProducts.push(prodData);
-          saveProductToStore({ ...p, ...prodData, id: prodId });
-        } else {
-          saveProductToStore({ ...p, id: prodId, price: priceVal, salePrice: priceVal, stock: stockTotal, colors: colorList, images });
+        // Insert (not upsert) so a colliding SKU can never overwrite an existing product.
+        let { data: prodData, error: prodErr, warnings: rowWarnings } = await writeProductRow(row, (r) =>
+          supabase.from("products").insert(r).select().single()
+        );
+        // Another server instance took the same auto-allocated SKU first: allocate again.
+        for (let attempt = 0; prodErr?.code === "23505" && autoAllocated && attempt < 3; attempt++) {
+          try {
+            const plan = await planNewProductSkus({}, p.variants || []);
+            prodId = plan.productId;
+            p = { ...p, variants: plan.variants };
+          } catch (skuErr) {
+            prodErr = skuErr;
+            break;
+          }
+          ({ data: prodData, error: prodErr, warnings: rowWarnings } = await writeProductRow({ ...row, id: prodId }, (r) =>
+            supabase.from("products").insert(r).select().single()
+          ));
+        }
+        rowWarnings.forEach((w) => { if (!warnings.includes(w)) warnings.push(w); });
+
+        if (prodErr || !prodData) {
+          const reason = prodErr?.code === "23505"
+            ? `SKU ${prodId} already exists`
+            : (prodErr?.message || "Database did not confirm the insert");
+          console.error(`[BulkIntake] Failed to insert ${prodId}:`, reason);
+          releaseSkuReservations([prodId, ...(p.variants || []).map((v) => v.sku)]);
+          failed.push({ clientRef, id: prodId, error: reason });
+          continue;
+        }
+
+        await assignSkusToProduct([prodId, ...(p.variants || []).map((v) => v.sku)], prodId);
+        insertedRefs.push({ clientRef, id: prodId });
+        insertedProducts.push({ ...prodData, borderColor: borderColor || undefined });
+        saveProductToStore({ ...p, ...prodData, id: prodId, borderColor: borderColor || undefined });
+        if (Array.isArray(p.variants) && p.variants.length > 0) {
+          vMapUpdates[prodId] = p.variants;
         }
 
         // Movement record
-        const { data: movData } = await supabase.from("stock_movements").insert([{
+        const { data: movData, error: movErr } = await supabase.from("stock_movements").insert([{
           id: `mov-bulk-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
           date: new Date().toLocaleDateString("en-IN", {
             day: "2-digit",
@@ -232,37 +317,53 @@ export async function handleBulkIntake(req, res) {
           note: `Bulk intake from ${loomPartner}`,
         }]).select().single();
 
+        if (movErr) console.warn(`[BulkIntake] Stock movement log notice for ${prodId}:`, movErr.message);
         if (movData) insertedMovements.push(movData);
       }
 
-      if (products.some((p) => Array.isArray(p.variants) && p.variants.length > 0)) {
+      if (Object.keys(vMapUpdates).length > 0) {
         try {
           const vMap = await getPersistentVariantsMap();
-          for (const p of products) {
-            const prodId = p.id || `RSF-${(p.designSlug || 'BULK').toUpperCase()}-${Date.now().toString().slice(-4)}`;
-            if (Array.isArray(p.variants) && p.variants.length > 0) {
-              vMap[prodId] = p.variants;
-            }
-          }
+          Object.assign(vMap, vMapUpdates);
           await savePersistentVariantsMap(vMap);
-        } catch {}
+        } catch (vErr) {
+          console.warn("[BulkIntake] Failed to persist variant mappings:", vErr.message);
+        }
       }
 
       invalidateCatalogCache();
       invalidateInventoryCache();
-      return successResponse(res, {
+
+      const payload = {
         count: insertedProducts.length,
         products: insertedProducts,
+        insertedIds: insertedProducts.map((p) => p.id),
+        inserted: insertedRefs,
+        failed,
         movements: insertedMovements,
         colors: getColorsFromStore(),
-      }, `Successfully ingested ${insertedProducts.length} sarees into admin vault!`, 201);
+        warnings,
+      };
+
+      if (failed.length > 0) {
+        // 207-style partial result: the client keeps failed rows for a retry.
+        const onlyClientErrors = failed.every((f) => f.statusCode && f.statusCode < 500);
+        return res.status(insertedProducts.length > 0 ? 207 : onlyClientErrors ? 400 : 500).json({
+          success: false,
+          message: `${insertedProducts.length} of ${products.length} sarees saved; ${failed.length} failed.`,
+          data: payload,
+          ...payload,
+        });
+      }
+
+      return successResponse(res, payload, `Successfully ingested ${insertedProducts.length} sarees into admin vault!`, 201);
     }
 
-    for (const p of products) {
-      const prodId = p.id || `RSF-${(p.designSlug || 'BULK').toUpperCase()}-${Date.now().toString().slice(-4)}`;
+    for (const { source: p, prodId, borderColor } of prepared) {
       const priceVal = Math.max(0, Number(p.salePrice || p.price) || 0);
       const stockTotal = Number(p.stock) || (p.variants ? p.variants.reduce((s, v) => s + (Number(v.stock) || 0), 0) : 1);
       const colorList = p.colors || (p.variants ? p.variants.map((v) => v.color) : ["Standard"]);
+      const images = imagesFor(p);
       saveProductToStore({
         ...p,
         id: prodId,
@@ -270,12 +371,28 @@ export async function handleBulkIntake(req, res) {
         salePrice: priceVal,
         stock: stockTotal,
         colors: colorList,
+        images,
+        imageUrl: images[0],
+        borderColor: borderColor || undefined,
       });
     }
 
     invalidateCatalogCache();
     invalidateInventoryCache();
-    return successResponse(res, { count: products.length, colors: getColorsFromStore() }, "Bulk intake recorded locally", 201);
+    const insertedIds = prepared.map((p) => p.prodId);
+    const inserted = prepared.map((p) => ({ clientRef: p.clientRef, id: p.prodId }));
+    if (planFailures.length > 0) {
+      return res.status(inserted.length > 0 ? 207 : 400).json({
+        success: false,
+        message: `${inserted.length} of ${products.length} sarees saved; ${planFailures.length} failed.`,
+        count: inserted.length,
+        insertedIds,
+        inserted,
+        failed: planFailures,
+        data: { insertedIds, inserted, failed: planFailures },
+      });
+    }
+    return successResponse(res, { count: products.length, insertedIds, inserted, failed: [], colors: getColorsFromStore() }, "Bulk intake recorded locally", 201);
   } catch (err) {
     console.error("Bulk intake error:", err);
     return errorResponse(res, err.message, 500);

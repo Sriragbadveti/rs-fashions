@@ -11,6 +11,18 @@ import {
   saveColorsToStore,
 } from "../database/localStore.js";
 import { getPersistentVariantsMap, savePersistentVariantsMap } from "../services/inventory.service.js";
+import {
+  planNewProductSkus,
+  ensureVariantSkus,
+  assignSkusToProduct,
+  releaseSkuReservations,
+} from "../services/sku.service.js";
+import {
+  normalizeBorderInput,
+  normalizePurchasePriceInput,
+  resolveBorderColor,
+  writeProductRow,
+} from "../services/productFields.js";
 
 /**
  * Controller: Saree Catalog & Categories
@@ -195,7 +207,7 @@ export async function getProducts(req, res) {
             isLimitedEdition,
             description: p.description || `${p.name} - Handcrafted Gadwal saree.`,
             featured: Boolean(p.featured),
-            borderColor: p.border_color || p.borderColor || undefined,
+            borderColor: resolveBorderColor(p, colorList),
           };
         });
 
@@ -345,7 +357,15 @@ export async function createProduct(req, res) {
       ? [...images]
       : (imageUrl ? [imageUrl] : ["https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1200&auto=format&fit=crop"]);
 
-    const prodId = id || `saree-${Date.now().toString(36)}`;
+    // SKUs are allocated here, on the server, never by the browser (RS0001 format).
+    let skuPlan;
+    try {
+      skuPlan = await planNewProductSkus(req.body, variants);
+    } catch (skuErr) {
+      return errorResponse(res, skuErr.message, skuErr.statusCode || 500);
+    }
+    let prodId = skuPlan.productId;
+    let finalVariants = skuPlan.variants;
 
     // Auto-convert any base64 images into Supabase Storage public CDN URLs
     finalImages = await Promise.all(
@@ -376,8 +396,10 @@ export async function createProduct(req, res) {
     if (!resolvedCategory) resolvedCategory = material || "SiCo Gadwal Sarees";
     const resolvedMaterial = material || resolvedCategory || "SiCo";
 
+    const borderColor = normalizeBorderInput(req.body);
+
     if (supabase) {
-      const { data, error } = await supabase.from("products").upsert({
+      const row = {
         id: prodId,
         name: name.trim(),
         category: resolvedCategory,
@@ -394,9 +416,38 @@ export async function createProduct(req, res) {
         featured: Boolean(featured),
         description: description || `Handcrafted ${name} saree drape.`,
         updated_at: new Date().toISOString(),
-      }).select().single();
+      };
+      if (borderColor !== undefined) row.border_color = borderColor;
+      const purchasePriceVal = normalizePurchasePriceInput(req.body);
+      if (purchasePriceVal !== undefined) row.purchase_price = purchasePriceVal;
 
-      if (error) throw error;
+      // Insert (not upsert): a new product must never silently overwrite an existing SKU.
+      let { data, error, warnings } = await writeProductRow(row, (r) =>
+        supabase.from("products").insert(r).select().single()
+      );
+
+      // Another server instance took the same auto-allocated SKU first: allocate again.
+      for (let attempt = 0; error?.code === "23505" && skuPlan.autoAllocated && attempt < 3; attempt++) {
+        try {
+          skuPlan = await planNewProductSkus({}, variants);
+        } catch (skuErr) {
+          return errorResponse(res, skuErr.message, skuErr.statusCode || 500);
+        }
+        prodId = skuPlan.productId;
+        finalVariants = skuPlan.variants;
+        ({ data, error, warnings } = await writeProductRow({ ...row, id: prodId }, (r) =>
+          supabase.from("products").insert(r).select().single()
+        ));
+      }
+
+      if (error) {
+        releaseSkuReservations([prodId, ...finalVariants.map((v) => v.sku)]);
+        if (error.code === "23505") {
+          return errorResponse(res, `A product with SKU ${prodId} already exists. Edit it instead of creating it again.`, 409);
+        }
+        throw error;
+      }
+      await assignSkusToProduct([prodId, ...finalVariants.map((v) => v.sku)], prodId);
 
       // Auto-create initial RESTOCK movement log
       if (totalStock > 0) {
@@ -419,7 +470,7 @@ export async function createProduct(req, res) {
             previous_stock: 0,
             new_stock: totalStock,
             reference_number: `INIT-${prodId.slice(-6)}`,
-            performedBy: "Store Manager",
+            performed_by: "Store Manager",
             note: "Initial saree catalog registration into vault",
           }]);
         } catch (movErr) {
@@ -440,10 +491,10 @@ export async function createProduct(req, res) {
       }
 
       // Persist shade variants into persistentVariantsMap in settings table
-      if (Array.isArray(variants) && variants.length > 0) {
+      if (finalVariants.length > 0) {
         try {
           const vMap = await getPersistentVariantsMap();
-          vMap[prodId] = variants;
+          vMap[prodId] = finalVariants;
           await savePersistentVariantsMap(vMap);
         } catch (vErr) {
           console.warn("Failed to persist variant mappings on createProduct:", vErr.message);
@@ -453,7 +504,14 @@ export async function createProduct(req, res) {
       invalidateCatalogCache();
       return successResponse(
         res,
-        { product: { ...data, variants: variants && variants.length > 0 ? variants : undefined } },
+        {
+          product: {
+            ...data,
+            borderColor: resolveBorderColor(data, colorNames),
+            variants: finalVariants.length > 0 ? finalVariants : undefined,
+          },
+          warnings,
+        },
         "Saree catalogued successfully",
         201
       );
@@ -476,18 +534,18 @@ export async function createProduct(req, res) {
       tags: finalTags,
       isSpecialOffer: Boolean(req.body.isSpecialOffer || finalTags.includes("special_offer")),
       isLimitedEdition: Boolean(req.body.isLimitedEdition || finalTags.includes("limited_edition")),
-      variants,
+      variants: finalVariants,
       rating: 4.8,
       reviewCount: 0,
       featured: Boolean(featured),
-      borderColor: req.body.borderColor || undefined,
+      borderColor: borderColor || undefined,
       description: description || `Handcrafted ${name} saree drape.`,
     };
 
-    if (variants && variants.length > 0) {
+    if (finalVariants.length > 0) {
       try {
         const vMap = await getPersistentVariantsMap();
-        vMap[prodId] = variants;
+        vMap[prodId] = finalVariants;
         await savePersistentVariantsMap(vMap);
       } catch {}
     }
@@ -523,6 +581,26 @@ export async function updateProduct(req, res) {
       featured,
     } = req.body;
 
+    // Existing SKUs (including legacy pre-RS ones) are preserved; shade variants without a SKU of
+    // this product get newly allocated RS SKUs from the server.
+    let finalVariants = Array.isArray(variants) ? variants : [];
+    if (finalVariants.length > 0) {
+      try {
+        const vMap = await getPersistentVariantsMap();
+        let stored = Array.isArray(vMap[id]) ? vMap[id] : [];
+        if (stored.length === 0 && !supabase) {
+          stored = getProductsFromStore().find((p) => p.id === id)?.variants || [];
+        }
+        finalVariants = await ensureVariantSkus(finalVariants, {
+          ownedSkus: [id, ...stored.map((v) => v?.sku)],
+          productId: id,
+        });
+        await assignSkusToProduct(finalVariants.map((v) => v.sku), id);
+      } catch (skuErr) {
+        return errorResponse(res, skuErr.message, skuErr.statusCode || 500);
+      }
+    }
+
     if (colors && !validateVibgyorColors(colors)) {
       return errorResponse(
         res,
@@ -531,8 +609,8 @@ export async function updateProduct(req, res) {
       );
     }
 
-    if (variants && variants.length > 0) {
-      const vColors = variants.map((v) => v.color).filter(Boolean);
+    if (finalVariants && finalVariants.length > 0) {
+      const vColors = finalVariants.map((v) => v.color).filter(Boolean);
       if (!validateVibgyorColors(vColors)) {
         return errorResponse(
           res,
@@ -599,9 +677,9 @@ export async function updateProduct(req, res) {
         updates.tags = currentTags;
       }
 
-      if (variants && variants.length > 0) {
-        const totalStock = variants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0);
-        const colorNames = variants.map((v) => v.color).filter(Boolean);
+      if (finalVariants && finalVariants.length > 0) {
+        const totalStock = finalVariants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0);
+        const colorNames = finalVariants.map((v) => v.color).filter(Boolean);
         updates.stock = totalStock;
         updates.colors = colorNames;
       } else if (stock !== undefined) {
@@ -636,6 +714,14 @@ export async function updateProduct(req, res) {
         }
       }
       if (colors && Array.isArray(colors)) updates.colors = colors;
+
+      // Only touch border_color when the client actually sent the field, so partial
+      // updates (stock-only, image healing, etc.) never erase saved border details.
+      const borderColor = normalizeBorderInput(req.body);
+      if (borderColor !== undefined) updates.border_color = borderColor;
+      const purchasePriceVal = normalizePurchasePriceInput(req.body);
+      if (purchasePriceVal !== undefined) updates.purchase_price = purchasePriceVal;
+
       // Check previous stock to log RESTOCK movement if stock increases
       let previousStock = 0;
       let existingProductName = name;
@@ -649,12 +735,9 @@ export async function updateProduct(req, res) {
         // ignore
       }
 
-      const { data, error } = await supabase
-        .from("products")
-        .update(updates)
-        .eq("id", id)
-        .select()
-        .single();
+      const { data, error, warnings } = await writeProductRow(updates, (r) =>
+        supabase.from("products").update(r).eq("id", id).select().single()
+      );
 
       if (error) {
         if (error.code === "PGRST116" || error.details?.includes("0 rows")) {
@@ -692,19 +775,38 @@ export async function updateProduct(req, res) {
         }
       }
 
-      if (variants && variants.length > 0) {
+      if (finalVariants && finalVariants.length > 0) {
         try {
           const vMap = await getPersistentVariantsMap();
-          vMap[id] = variants;
+          vMap[id] = finalVariants;
           await savePersistentVariantsMap(vMap);
         } catch {}
       }
 
       invalidateCatalogCache();
-      return successResponse(res, { product: { ...data, variants: variants && variants.length > 0 ? variants : undefined } }, "Product updated successfully");
+      return successResponse(
+        res,
+        {
+          product: {
+            ...data,
+            borderColor: resolveBorderColor(data, data?.colors),
+            variants: finalVariants && finalVariants.length > 0 ? finalVariants : undefined,
+          },
+          warnings,
+        },
+        "Product updated successfully"
+      );
     }
 
-    const localUpdated = saveProductToStore({ id, ...req.body });
+    const localPatch = { ...req.body, id };
+    if (finalVariants.length > 0) localPatch.variants = finalVariants;
+    // Same precedence as the database path: the edited sale price wins over a stale `price`.
+    if (salePrice !== undefined) localPatch.price = Math.max(0, Number(salePrice) || 0);
+    const localBorder = normalizeBorderInput(req.body);
+    delete localPatch.border_color;
+    if (localBorder !== undefined) localPatch.borderColor = localBorder || undefined;
+    else delete localPatch.borderColor;
+    const localUpdated = saveProductToStore(localPatch);
     invalidateCatalogCache();
     return successResponse(res, { product: localUpdated }, "Product updated locally");
   } catch (err) {

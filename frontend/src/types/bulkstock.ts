@@ -16,3 +16,11 @@ export interface BulkOrderPayload {
 }
 
 export type { Product, Category };
+/** Result of a bulk intake, as confirmed by the backend. */
+export interface BulkRestockResult {
+  /** Rows the database confirmed as stored, with the SKU the backend assigned. */
+  inserted: { clientRef: string; id: string }[];
+  /** Rows that were not stored, with the reason. */
+  failed: { clientRef?: string; id?: string | null; error: string }[];
+  message?: string;
+}

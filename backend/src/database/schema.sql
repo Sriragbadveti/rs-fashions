@@ -40,6 +40,11 @@ CREATE TABLE IF NOT EXISTS public.products (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+-- Border colour / contrast zari details (safe to re-run; no-op when the column exists)
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS border_color TEXT;
+-- Weaver / loom purchase cost shown and edited in the admin catalog
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS purchase_price NUMERIC(10, 2);
+
 CREATE INDEX IF NOT EXISTS idx_products_category ON public.products(category);
 CREATE INDEX IF NOT EXISTS idx_products_price ON public.products(price);
 CREATE INDEX IF NOT EXISTS idx_products_featured ON public.products(featured);
@@ -132,6 +137,8 @@ ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS google_id VARCHAR(255);
 ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS avatar_url TEXT;
 ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS auth_provider VARCHAR(50) DEFAULT 'email';
 ALTER TABLE public.customers ALTER COLUMN phone DROP NOT NULL;
+-- Street address captured by the admin CRM (safe to re-run)
+ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS address TEXT;
 
 -- ------------------------------------------------------------------------------
 -- 6. TRACKED ORDERS & PRODUCTION PIPELINE
@@ -305,3 +312,86 @@ VALUES
     ('c-festive', 'FESTIVE10', '10% discount on all SiCo Gadwal sarees', 'percentage', 10, 2000, 500, 0, true),
     ('c-welcome', 'WELCOME500', 'Flat ₹500 off on first order above ₹3000', 'fixed', 500, 3000, 1000, 0, true)
 ON CONFLICT (id) DO NOTHING;
+
+-- ------------------------------------------------------------------------------
+-- 10. SKU REGISTRY (RS0001–RS9999) — safe to re-run
+-- Every product and shade-variant SKU is recorded here; the primary key makes duplicate SKUs
+-- impossible across all server instances. allocate_skus() hands out numbers atomically and
+-- never reuses one (rows are never deleted), so historical orders/stock logs stay unambiguous.
+-- Rollback: DROP FUNCTION public.allocate_skus(TEXT, INTEGER); DROP TABLE public.sku_registry;
+-- (the backend then falls back to in-process allocation automatically).
+-- ------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.sku_registry (
+    sku TEXT PRIMARY KEY CHECK (sku ~ '^RS[0-9]{4}$' AND sku <> 'RS0000'),
+    product_id TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_sku_registry_product ON public.sku_registry(product_id);
+-- Only the backend (service role) may read or write the registry.
+ALTER TABLE public.sku_registry ENABLE ROW LEVEL SECURITY;
+
+-- Backfill RS SKUs already in use so they can never be issued again.
+INSERT INTO public.sku_registry (sku, product_id)
+SELECT id, id FROM public.products
+WHERE id ~ '^RS[0-9]{4}$' AND id <> 'RS0000'
+ON CONFLICT (sku) DO NOTHING;
+
+INSERT INTO public.sku_registry (sku, product_id)
+SELECT DISTINCT ON (v->>'sku') v->>'sku', e.key
+FROM public.settings s,
+     jsonb_each(CASE WHEN jsonb_typeof(s.value) = 'object' THEN s.value ELSE '{}'::jsonb END) e,
+     jsonb_array_elements(CASE WHEN jsonb_typeof(e.value) = 'array' THEN e.value ELSE '[]'::jsonb END) v
+WHERE s.key = 'product_variants'
+  AND (v->>'sku') ~ '^RS[0-9]{4}$' AND (v->>'sku') <> 'RS0000'
+ON CONFLICT (sku) DO NOTHING;
+
+INSERT INTO public.sku_registry (sku, product_id)
+SELECT DISTINCT sku, sku FROM public.stock_movements
+WHERE sku ~ '^RS[0-9]{4}$' AND sku <> 'RS0000'
+ON CONFLICT (sku) DO NOTHING;
+
+CREATE OR REPLACE FUNCTION public.allocate_skus(p_product_id TEXT, p_count INTEGER)
+RETURNS TEXT[]
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_start INTEGER;
+    v_result TEXT[] := '{}';
+    i INTEGER;
+BEGIN
+    IF p_count IS NULL OR p_count < 1 OR p_count > 500 THEN
+        RAISE EXCEPTION 'INVALID_SKU_COUNT: %', p_count;
+    END IF;
+
+    -- Serialise allocation across concurrent requests / server instances.
+    PERFORM pg_advisory_xact_lock(hashtext('rs_sku_allocation'));
+
+    SELECT COALESCE(MAX(substring(sku FROM 3)::INTEGER), 0) + 1 INTO v_start FROM public.sku_registry;
+
+    IF v_start + p_count - 1 > 9999 THEN
+        RAISE EXCEPTION 'SKU_RANGE_EXHAUSTED: cannot allocate % SKU(s); last issued is RS%',
+            p_count, lpad((v_start - 1)::TEXT, 4, '0');
+    END IF;
+
+    FOR i IN 0..(p_count - 1) LOOP
+        v_result := v_result || ('RS' || lpad((v_start + i)::TEXT, 4, '0'));
+    END LOOP;
+
+    INSERT INTO public.sku_registry (sku, product_id)
+    SELECT unnest(v_result), COALESCE(NULLIF(p_product_id, ''), 'pending');
+
+    RETURN v_result;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.allocate_skus(TEXT, INTEGER) FROM PUBLIC;
+DO $$ BEGIN
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+        REVOKE ALL ON FUNCTION public.allocate_skus(TEXT, INTEGER) FROM anon, authenticated;
+    END IF;
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+        GRANT EXECUTE ON FUNCTION public.allocate_skus(TEXT, INTEGER) TO service_role;
+    END IF;
+END $$;

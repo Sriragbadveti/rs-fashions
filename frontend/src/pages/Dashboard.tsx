@@ -49,6 +49,7 @@ import type {
   StockMovement,
   CustomerProfile,
 } from "../types/inventory";
+import type { BulkRestockResult } from "../types/bulkstock";
 import {
   MOCK_CATEGORIES,
   MOCK_INVENTORY,
@@ -301,6 +302,10 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
   const isBootstrapFetchingRef = useRef(false);
   const lastBootstrapFetchTimeRef = useRef(0);
   const pendingCreatedProductsRef = useRef<Map<string, Product>>(new Map());
+  // Incremented on every local catalog write. A bootstrap response that was requested before
+  // the latest write is stale for products and must not overwrite the saved state.
+  const catalogMutationSeqRef = useRef(0);
+  const refreshQueuedRef = useRef(false);
 
   const syncInventoryToStorefront = useCallback((inventoryList: Product[]) => {
     try {
@@ -374,15 +379,19 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
     syncInventoryToStorefront(inventory);
   }, [inventory, syncInventoryToStorefront]);
 
-  const loadLiveBootstrap = useCallback(async (forceRefresh = false) => {
+  const loadLiveBootstrap = useCallback(async (forceRefresh = false): Promise<void> => {
     const now = Date.now();
-    // Guard against concurrent execution
-    if (isBootstrapFetchingRef.current) return;
+    // Guard against concurrent execution. A forced refresh requested meanwhile runs right after.
+    if (isBootstrapFetchingRef.current) {
+      if (forceRefresh) refreshQueuedRef.current = true;
+      return;
+    }
     // Debounce rapid calls (unless forceRefresh is explicitly requested)
     if (!forceRefresh && now - lastBootstrapFetchTimeRef.current < 2500) return;
 
     isBootstrapFetchingRef.current = true;
     lastBootstrapFetchTimeRef.current = now;
+    const mutationSeqAtStart = catalogMutationSeqRef.current;
 
     try {
       setSyncError(null);
@@ -406,7 +415,11 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
         if (Array.isArray(d.colors)) {
           syncColorsToRuntime(d.colors);
         }
-        if (Array.isArray(d.products)) {
+        if (Array.isArray(d.products) && mutationSeqAtStart !== catalogMutationSeqRef.current) {
+          // A save happened while this request was in flight; fetch again instead of
+          // rolling the catalog back to the pre-save snapshot.
+          refreshQueuedRef.current = true;
+        } else if (Array.isArray(d.products)) {
           const remoteProducts = d.products.filter(
             (p: any) => p && p.id && !DUMMY_PRODUCT_IDS.has(String(p.id))
           );
@@ -522,8 +535,17 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       setSyncError(err.message || "Unable to sync with live database");
     } finally {
       isBootstrapFetchingRef.current = false;
+      if (refreshQueuedRef.current) {
+        refreshQueuedRef.current = false;
+        await loadLiveBootstrapRef.current(true);
+      }
     }
   }, [onLogout, syncInventoryToStorefront]);
+
+  const loadLiveBootstrapRef = useRef(loadLiveBootstrap);
+  useEffect(() => {
+    loadLiveBootstrapRef.current = loadLiveBootstrap;
+  }, [loadLiveBootstrap]);
 
   // Synchronize on mount and when tab/screen becomes visible
   useEffect(() => {
@@ -576,53 +598,21 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [triggerRefresh]);
 
-  async function handleAddProduct(newProduct: Product, categoryId: string) {
+  function reportSaveWarnings(json: any) {
+    const warnings: string[] = json?.warnings || json?.data?.warnings || [];
+    if (Array.isArray(warnings) && warnings.length > 0) {
+      // Saved, but some fields could not be stored; keep it visible without blocking the admin.
+      console.warn("[Catalog] Saved with warnings:", warnings);
+      setSyncError(`Saved, but ${warnings.join(" ")}`);
+    }
+  }
+
+  async function handleAddProduct(newProduct: Product, categoryId: string): Promise<boolean> {
     sound.playClick();
-    // Register product in pending set so background window focus syncs never wipe it out
-    pendingCreatedProductsRef.current.set(String(newProduct.id), newProduct);
-
-    setInventory((prev) => {
-      const exists = prev.some((p) => p.id === newProduct.id);
-      if (exists) return prev;
-      const updated = [newProduct, ...prev];
-      safeStorageSet("rs_admin_inventory", updated);
-      syncInventoryToStorefront(updated);
-      return updated;
-    });
-
-    setCategories((prev) =>
-      prev.map((c) =>
-        c.id === categoryId ? { ...c, nextSequence: c.nextSequence + 1 } : c
-      )
-    );
-
-    newProduct.variants.forEach((v) => {
-      setStockHistory((prev) => [
-        {
-          id: `mov-${Date.now()}-${v.colorSlug}`,
-          date: new Date().toLocaleDateString("en-IN", {
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-          sku: v.sku,
-          productName: newProduct.name,
-          color: v.color,
-          colorSlug: v.colorSlug,
-          type: "RESTOCK",
-          quantity: v.stock,
-          previousStock: 0,
-          newStock: v.stock,
-          referenceNumber: `INIT-${newProduct.id}`,
-          performedBy: user.name,
-          note: "Initial catalogue intake",
-        },
-        ...prev,
-      ]);
-    });
-
+    // The backend allocates the SKU (RS0001 format), so the product is shown once the database
+    // has confirmed it and returned its SKU, instead of optimistically under a browser-made ID.
+    const { id: _clientId, ...body } = newProduct;
+    catalogMutationSeqRef.current++;
     try {
       const res = await adminFetch(`${API_BASE}/catalog`, {
         method: "POST",
@@ -630,73 +620,88 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
           "Content-Type": "application/json",
           "X-Allow-Bulk-Create": "true",
         },
-        body: JSON.stringify(newProduct),
+        body: JSON.stringify({ ...body, categoryId }),
       });
+      const json = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        const errJson = await res.json().catch(() => ({}));
-        throw new Error(errJson.message || `Server returned ${res.status}`);
+        throw new Error(json.message || `Server returned ${res.status}`);
       }
 
+      const saved = json?.product || json?.data?.product;
+      if (saved?.id) {
+        const savedProduct: Product = {
+          ...newProduct,
+          id: saved.id,
+          variants: Array.isArray(saved.variants) && saved.variants.length > 0 ? saved.variants : newProduct.variants,
+        };
+        setInventory((prev) => {
+          const updated = [savedProduct, ...prev.filter((p) => p.id !== savedProduct.id)];
+          safeStorageSet("rs_admin_inventory", updated);
+          syncInventoryToStorefront(updated);
+          return updated;
+        });
+      }
+
+      reportSaveWarnings(json);
       // Re-hydrate directly from database to confirm persistence
       await loadLiveBootstrap(true);
+      return true;
     } catch (err: any) {
       console.warn("Catalog sync error:", err);
+      alert(`"${newProduct.name}" was NOT saved: ${String(err?.message || "server error").replace(/\.+$/, "")}.\nYour changes are still in the form — please try again.`);
+      return false;
     }
   }
 
-  function handleBulkRestock(newProducts: Product[]) {
+  async function handleBulkRestock(newProducts: Product[]): Promise<BulkRestockResult> {
     sound.playClick();
-    newProducts.forEach((p) => pendingCreatedProductsRef.current.set(String(p.id), p));
+    catalogMutationSeqRef.current++;
+    // Each product carries a clientRef (its bulk row) and no ID: the backend allocates the SKUs
+    // and reports, per clientRef, which SKU was stored or why it failed.
+    const clientRefs = newProducts.map((p, idx) => String((p as Product & { clientRef?: string }).clientRef ?? idx));
+    let inserted: { clientRef: string; id: string }[] = [];
+    let failed: { clientRef?: string; id?: string | null; error: string }[] = [];
+    let message = "";
 
-    const receivedAt = new Date().toLocaleString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
+    try {
+      const res = await adminFetch(`${API_BASE}/inventory/bulk-intake`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ products: newProducts, performer: user.name }),
+      });
+      const json = await res.json().catch(() => ({}));
+      const d = json?.data || json || {};
+      inserted = Array.isArray(d.inserted) ? d.inserted.map((x: any) => ({ clientRef: String(x.clientRef), id: String(x.id) })) : [];
+      failed = Array.isArray(d.failed) ? d.failed : [];
+      message = json?.message || "";
+
+      if (!res.ok && res.status !== 207 && failed.length === 0) {
+        const reason = message || `Server returned ${res.status}`;
+        inserted = [];
+        failed = clientRefs.map((clientRef) => ({ clientRef, error: reason }));
+      }
+      reportSaveWarnings(json);
+    } catch (err: any) {
+      console.warn("Bulk intake sync error:", err);
+      inserted = [];
+      failed = clientRefs.map((clientRef) => ({ clientRef, error: err?.message || "Network error" }));
+    }
+
+    // Anything the database did not confirm is reported as failed, so the admin never sees a
+    // product that only exists in this browser.
+    const confirmedRefs = new Set(inserted.map((x) => x.clientRef));
+    clientRefs.forEach((clientRef) => {
+      if (!confirmedRefs.has(clientRef) && !failed.some((f) => String(f.clientRef) === clientRef)) {
+        failed.push({ clientRef, error: "Not confirmed by the database" });
+      }
     });
 
-    const bulkMovements: StockMovement[] = newProducts.flatMap((newProduct) =>
-      newProduct.variants.map((variant) => ({
-        id: `mov-bulk-${Date.now()}-${variant.sku}`,
-        date: receivedAt,
-        sku: variant.sku,
-        productName: newProduct.name,
-        color: variant.color,
-        colorSlug: variant.colorSlug,
-        type: "RESTOCK" as const,
-        quantity: variant.stock,
-        previousStock: 0,
-        newStock: variant.stock,
-        referenceNumber: `BULK-${newProduct.id}`,
-        performedBy: user.name,
-        note: "Bulk Stock Consignment Intake",
-      }))
-    );
-
-    setInventory((prev) => {
-      const updated = [...newProducts, ...prev];
-      safeStorageSet("rs_admin_inventory", updated);
-      syncInventoryToStorefront(updated);
-      return updated;
-    });
-    setStockHistory((prev) => [...bulkMovements, ...prev]);
-
-    adminFetch(`${API_BASE}/inventory/bulk-intake`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ products: newProducts, performer: user.name }),
-    })
-      .then(async (res) => {
-        if (res.ok) {
-          await loadLiveBootstrap(true);
-        }
-      })
-      .catch((err) => console.warn("Bulk intake sync error:", err));
+    await loadLiveBootstrap(true);
+    return { inserted, failed, message };
   }
 
-  function handleUpdateProduct(updatedProduct: Product) {
+  async function handleUpdateProduct(updatedProduct: Product): Promise<boolean> {
     sound.playClick();
     const oldProduct = inventory.find((p) => p.id === updatedProduct.id);
     const newMovements: StockMovement[] = [];
@@ -756,12 +761,46 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       syncInventoryToStorefront(updated);
       return updated;
     });
+    // If this product is still awaiting creation, keep the pending copy in step with the edit;
+    // otherwise the next sync would merge the stale pending copy back over it.
+    if (pendingCreatedProductsRef.current.has(String(updatedProduct.id))) {
+      pendingCreatedProductsRef.current.set(String(updatedProduct.id), updatedProduct);
+    }
 
-    adminFetch(`${API_BASE}/catalog/${updatedProduct.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updatedProduct),
-    }).catch((err) => console.warn("Catalog update error:", err));
+    catalogMutationSeqRef.current++;
+    try {
+      let res = await adminFetch(`${API_BASE}/catalog/${encodeURIComponent(updatedProduct.id)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedProduct),
+      });
+      let json = await res.json().catch(() => ({}));
+
+      if (res.status === 404) {
+        // Shown in the admin but missing from the database (e.g. an earlier create/bulk intake
+        // that failed silently). Saving the edit must persist it rather than drop it.
+        res = await adminFetch(`${API_BASE}/catalog`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Allow-Bulk-Create": "true" },
+          body: JSON.stringify(updatedProduct),
+        });
+        json = await res.json().catch(() => ({}));
+      }
+
+      if (!res.ok) {
+        throw new Error(json.message || `Server returned ${res.status}`);
+      }
+
+      reportSaveWarnings(json);
+      await loadLiveBootstrap(true);
+      return true;
+    } catch (err: any) {
+      console.warn("Catalog update error:", err);
+      alert(`Changes to "${updatedProduct.name}" were NOT saved: ${String(err?.message || "server error").replace(/\.+$/, "")}.\nPlease try again.`);
+      // Re-sync so the screen shows what is actually stored.
+      await loadLiveBootstrap(true);
+      return false;
+    }
   }
 
   function handleDeleteProduct(productId: string) {
@@ -937,7 +976,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       .catch((err) => console.warn("Movement sync error:", err));
   }
 
-  function handleAddCustomer(newCustomer: CustomerProfile) {
+  async function handleAddCustomer(newCustomer: CustomerProfile): Promise<boolean> {
     sound.playClick();
     setCustomers((prev) => {
       const updated = [
@@ -947,11 +986,30 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       safeStorageSet("rs_admin_customers", updated);
       return updated;
     });
-    adminFetch(`${API_BASE}/crm/customers`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newCustomer),
-    }).catch((err) => console.warn("Customer sync error:", err));
+
+    try {
+      const res = await adminFetch(`${API_BASE}/crm/customers`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newCustomer),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.message || `Server returned ${res.status}`);
+      reportSaveWarnings(json);
+      // Pull the stored record (normalised birthday / anniversary) back from the database.
+      await loadLiveBootstrap(true);
+      return true;
+    } catch (err: any) {
+      console.warn("Customer sync error:", err);
+      // Never show a customer that the database did not store: it would vanish on the next sync.
+      setCustomers((prev) => {
+        const updated = prev.filter((c) => c.id !== newCustomer.id);
+        safeStorageSet("rs_admin_customers", updated);
+        return updated;
+      });
+      alert(`Customer "${newCustomer.name}" was NOT saved: ${String(err?.message || "server error").replace(/\.+$/, "")}.`);
+      return false;
+    }
   }
 
   const navSections: NavSectionConfig[] = useMemo(

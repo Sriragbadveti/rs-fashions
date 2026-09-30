@@ -44,14 +44,16 @@ import {
   formatColorName,
   createDesignSlug,
   generateColorSlug,
-  buildSku,
-  getProductSerial,
-  getNextDesignSerial,
+  PENDING_SKU_LABEL,
   calculateInventoryMetrics,
   filterInventory,
   getAvailableDesignOptions,
   isVibgyorColor,
 } from "../types/catalog";
+import {
+  BorderColorInput,
+  saveBorderColorToRegistry,
+} from "../components/admin/BorderColorInput";
 import {
   IMAGE_ACCEPT_ATTR,
   isSupportedImageFile,
@@ -59,14 +61,17 @@ import {
   isUnrenderedHeicDataUrl,
   convertHeicDataUrlToJpeg,
   handleSareeImageError,
+  hasHeicMagicBytes,
 } from "../utils/imageConverter";
 
 
 interface CatalogProps {
   inventory: Product[];
   categories: Category[];
-  onAddProduct: (newProduct: Product, categoryId: string) => void;
-  onUpdateProduct: (updatedProduct: Product) => void;
+  /** Resolves true once the backend has confirmed the save. */
+  onAddProduct: (newProduct: Product, categoryId: string) => void | Promise<boolean>;
+  /** Resolves true once the backend has confirmed the save. */
+  onUpdateProduct: (updatedProduct: Product) => void | Promise<boolean>;
   onDeleteProduct: (productId: string) => void;
   onBatchDelete?: (productIds: string[]) => void;
   onOpenHistory?: () => void;
@@ -418,418 +423,281 @@ function ColorInput({
 }
 
 // ============================================================
-// BORDER COLOR REGISTRY & SUB-COMPONENT
-// ============================================================
-export const DEFAULT_BORDER_COLORS = [
-  "Contrast Maroon Zari",
-  "Royal Gold Zari",
-  "Temple Emerald Green",
-  "Peacock Blue Contrast",
-  "Ruby Crimson Red",
-  "Rich Magenta Pink",
-  "Mustard Yellow Contrast",
-  "Silver Antique Zari",
-  "Self Border / Running",
-  "Bottlegreen Contrast",
-  "Deep Purple Border",
-];
-
-const BORDER_REGISTRY_KEY = "rs_border_colors_registry";
-
-export function getRegisteredBorderColors(): string[] {
-  try {
-    const raw = localStorage.getItem(BORDER_REGISTRY_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return Array.from(new Set([...parsed, ...DEFAULT_BORDER_COLORS]));
-      }
-    }
-  } catch {}
-  return DEFAULT_BORDER_COLORS;
-}
-
-export function saveBorderColorToRegistry(color: string) {
-  const trimmed = color.trim();
-  if (!trimmed) return;
-  try {
-    const current = getRegisteredBorderColors();
-    const exists = current.some((c) => c.toLowerCase() === trimmed.toLowerCase());
-    if (!exists) {
-      const updated = [trimmed, ...current];
-      localStorage.setItem(BORDER_REGISTRY_KEY, JSON.stringify(updated));
-    }
-  } catch {}
-}
-
-function BorderColorInput({
-  value,
-  onChange,
-  placeholder = "Select border shade or type new custom color...",
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [openAbove, setOpenAbove] = useState(false);
-  const [registry, setRegistry] = useState<string[]>(() => getRegisteredBorderColors());
-  const containerRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const refreshRegistry = () => {
-    setRegistry(getRegisteredBorderColors());
-  };
-
-  const filteredOptions = useMemo(() => {
-    const query = value.trim().toLowerCase();
-    if (!query) return registry;
-    return registry.filter((c) => c.toLowerCase().includes(query));
-  }, [registry, value]);
-
-  const isExactMatch = useMemo(() => {
-    const query = value.trim().toLowerCase();
-    return registry.some((c) => c.toLowerCase() === query);
-  }, [registry, value]);
-
-  useEffect(() => {
-    function handleOutside(event: MouseEvent) {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
-        setIsOpen(false);
-        if (value.trim() && !isExactMatch) {
-          saveBorderColorToRegistry(value.trim());
-          refreshRegistry();
-        }
-      }
-    }
-    document.addEventListener("mousedown", handleOutside);
-    return () => document.removeEventListener("mousedown", handleOutside);
-  }, [value, isExactMatch]);
-
-  useEffect(() => {
-    if (isOpen && containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      const spaceBelow = window.innerHeight - rect.bottom;
-      setOpenAbove(spaceBelow < 250 && rect.top > spaceBelow);
-    }
-  }, [isOpen]);
-
-  const handleSelectColor = (col: string) => {
-    onChange(col);
-    saveBorderColorToRegistry(col);
-    refreshRegistry();
-    setIsOpen(false);
-  };
-
-  const handleAddNewCustom = () => {
-    if (!value.trim()) return;
-    saveBorderColorToRegistry(value.trim());
-    refreshRegistry();
-    setIsOpen(false);
-  };
-
-  const quickPillColors = useMemo(() => registry.slice(0, 5), [registry]);
-
-  return (
-    <div ref={containerRef} className="relative w-full space-y-2">
-      <div
-        className={`relative flex h-11 w-full items-center rounded-2xl border bg-white/90 shadow-2xs backdrop-blur-md transition-all duration-200 ${
-          isOpen
-            ? "border-[#D4A373] ring-4 ring-[#D4A373]/15 shadow-sm"
-            : "border-stone-200/80 hover:border-stone-300"
-        }`}
-      >
-        <Sparkles size={15} className="pointer-events-none absolute left-3.5 text-[#D4A373]" />
-
-        <input
-          ref={inputRef}
-          type="text"
-          value={value}
-          onFocus={() => {
-            refreshRegistry();
-            setIsOpen(true);
-          }}
-          onChange={(event) => {
-            onChange(event.target.value);
-            setIsOpen(true);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              if (value.trim()) {
-                handleAddNewCustom();
-              }
-            }
-          }}
-          placeholder={placeholder}
-          className="h-full w-full rounded-2xl bg-transparent py-3 pl-9 pr-9 text-xs font-semibold text-stone-900 outline-none placeholder:text-stone-400 placeholder:font-normal"
-        />
-
-        <button
-          type="button"
-          aria-label="Toggle border color list"
-          onClick={() => {
-            refreshRegistry();
-            setIsOpen((prev) => !prev);
-          }}
-          className="absolute right-2 flex h-8 w-8 items-center justify-center rounded-xl text-stone-400 transition-all hover:bg-stone-100 hover:text-stone-700 active:scale-90"
-        >
-          <ChevronDown
-            size={14}
-            className={`transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
-          />
-        </button>
-      </div>
-
-      {/* Quick 1-click pills under the input */}
-      <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-        <span className="text-[9.5px] font-bold text-stone-400 uppercase tracking-wider mr-1">
-          Quick Pick:
-        </span>
-        {quickPillColors.map((color) => {
-          const isSelected = normalizeText(value) === normalizeText(color);
-          return (
-            <button
-              key={color}
-              type="button"
-              onClick={() => handleSelectColor(color)}
-              className={`rounded-lg px-2 py-0.5 text-[10px] font-semibold transition-all active:scale-95 ${
-                isSelected
-                  ? "bg-[#2A0E20] text-[#D4A373] ring-1 ring-[#D4A373]/50 shadow-2xs"
-                  : "bg-stone-100 text-stone-600 hover:bg-stone-200 hover:text-stone-900"
-              }`}
-            >
-              {color}
-            </button>
-          );
-        })}
-      </div>
-
-      {isOpen && (
-        <div
-          className={`absolute left-0 right-0 z-[120] overflow-hidden rounded-2xl border border-stone-200/90 bg-white/95 shadow-[0_20px_50px_rgba(42,14,32,0.14)] backdrop-blur-xl ring-1 ring-black/[0.04] animate-in fade-in duration-150 ${
-            openAbove ? "bottom-full mb-2" : "top-full mt-2"
-          }`}
-        >
-          <div className="flex items-center justify-between border-b border-stone-100 px-3.5 py-2.5">
-            <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-stone-400">
-              Registered Border Colors ({registry.length})
-            </span>
-            <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[9px] font-bold text-[#8E3D51] border border-amber-200/60">
-              Auto-registers new colors
-            </span>
-          </div>
-
-          <div className="max-h-56 overflow-y-auto p-1.5">
-            {value.trim() && !isExactMatch && (
-              <button
-                type="button"
-                onClick={handleAddNewCustom}
-                className="mb-1 flex w-full items-center justify-between rounded-xl bg-amber-50/80 px-3 py-2 text-left text-xs font-bold text-[#8E3D51] hover:bg-amber-100/80 transition-colors"
-              >
-                <div className="flex items-center gap-2 truncate">
-                  <Plus size={13} className="shrink-0 text-[#8E3D51]" />
-                  <span className="truncate">Add "{value.trim()}" to border registry</span>
-                </div>
-                <span className="shrink-0 rounded bg-[#8E3D51] px-1.5 py-0.5 text-[9px] font-bold text-white uppercase">
-                  Register
-                </span>
-              </button>
-            )}
-
-            {filteredOptions.length === 0 && !value.trim() ? (
-              <div className="py-4 text-center text-xs text-stone-400">No border colors found</div>
-            ) : (
-              filteredOptions.map((color) => {
-                const selected = normalizeText(value) === normalizeText(color);
-                return (
-                  <button
-                    key={color}
-                    type="button"
-                    onClick={() => handleSelectColor(color)}
-                    className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs transition-colors duration-150 ${
-                      selected
-                        ? "bg-amber-50 font-bold text-[#2A0E20]"
-                        : "text-stone-700 hover:bg-stone-50 font-medium"
-                    }`}
-                  >
-                    <span className="truncate">{color}</span>
-                    {selected && <Check size={12} className="ml-3 shrink-0 text-[#8E3D51]" />}
-                  </button>
-                );
-              })
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ============================================================
 // SUB-COMPONENT: MULTI-IMAGE UPLOADER
 // ============================================================
 interface UploadQueueItem {
   id: string;
+  /** name:size:lastModified — used to stop the same photo being queued twice */
+  fileKey: string;
   file: File;
   previewUrl: string;
-  status: "pending" | "uploading" | "done" | "error";
+  status: "pending" | "uploading" | "error";
   progress: number;
-  uploadedUrl?: string;
   error?: string;
+}
+
+type ImageListUpdate = string[] | ((prev: string[]) => string[]);
+
+// Parallel uploads per gallery. Each upload decodes a full-resolution photo in the browser,
+// so this also bounds memory use on phones.
+const MAX_PARALLEL_UPLOADS = 2;
+
+function fileKeyOf(file: File): string {
+  return `${file.name}:${file.size}:${file.lastModified}`;
 }
 
 function MultiImageUploadInput({
   images,
   onChange,
   onUploadingChange,
+  onFailedCountChange,
 }: {
   images: string[];
-  onChange: (images: string[]) => void;
+  /** Accepts a functional update so concurrent upload completions never overwrite each other. */
+  onChange: (update: ImageListUpdate) => void;
   onUploadingChange?: (isUploading: boolean) => void;
+  onFailedCountChange?: (failedCount: number) => void;
 }) {
   const [isDragging, setIsDragging] = useState(false);
   const [uploadQueue, setUploadQueue] = useState<UploadQueueItem[]>([]);
   const [urlInput, setUrlInput] = useState("");
+  const [notice, setNotice] = useState("");
+  const [healingUrls, setHealingUrls] = useState<Set<string>>(() => new Set());
+  const [brokenUrls, setBrokenUrls] = useState<Set<string>>(() => new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const objectUrlsRef = useRef<Set<string>>(new Set());
-
-  // KEY FIX: accumulator ref stores all committed CDN URLs so far.
-  // Workers append to this ref atomically — no stale closure on `images` prop.
-  const committedUrlsRef = useRef<string[]>([]);
-
-  // Keep committedUrlsRef in sync with any external images changes (e.g. removes, primary set)
-  useEffect(() => {
-    committedUrlsRef.current = [...images];
-  }, [images]);
 
   // Stable onChange ref — always points to the latest onChange prop
   const onChangeRef = useRef(onChange);
   useEffect(() => { onChangeRef.current = onChange; }, [onChange]);
 
-  // Revoke object URLs on unmount to prevent memory leaks
+  // Single upload queue shared by every drop/selection, so batches never exceed the limit.
+  const waitingRef = useRef<UploadQueueItem[]>([]);
+  const activeCountRef = useRef(0);
+  const queuedKeysRef = useRef<Set<string>>(new Set());
+  const uploadedKeysRef = useRef<Set<string>>(new Set());
+  const healAttemptedRef = useRef<Set<string>>(new Set());
+  const mountedRef = useRef(true);
+
   useEffect(() => {
+    mountedRef.current = true;
     return () => {
-      objectUrlsRef.current.forEach((url) => {
-        try { URL.revokeObjectURL(url); } catch {}
-      });
-      objectUrlsRef.current.clear();
+      mountedRef.current = false;
     };
   }, []);
 
-  const isUploading = useMemo(() =>
-    uploadQueue.some((item) => item.status === "uploading" || item.status === "pending"),
-    [uploadQueue]
-  );
+  // Revoke preview object URLs still held by the queue on unmount
+  const queueRef = useRef<UploadQueueItem[]>([]);
+  useEffect(() => { queueRef.current = uploadQueue; }, [uploadQueue]);
+  useEffect(() => {
+    return () => {
+      queueRef.current.forEach((item) => {
+        try { URL.revokeObjectURL(item.previewUrl); } catch {}
+      });
+    };
+  }, []);
+
+  const uploadingCount = uploadQueue.filter((i) => i.status === "uploading").length;
+  const pendingCount = uploadQueue.filter((i) => i.status === "pending").length;
+  const failedItems = uploadQueue.filter((i) => i.status === "error");
+  const isUploading = uploadingCount + pendingCount > 0 || healingUrls.size > 0;
 
   useEffect(() => {
     if (onUploadingChange) onUploadingChange(isUploading);
   }, [isUploading, onUploadingChange]);
 
-  // STABLE upload function — zero dependencies on images/onChange props.
-  // Uses committedUrlsRef for atomic append and onChangeRef for stable callback.
+  useEffect(() => {
+    if (onFailedCountChange) onFailedCountChange(failedItems.length);
+  }, [failedItems.length, onFailedCountChange]);
+
+  const patchItem = useCallback((id: string, patch: Partial<UploadQueueItem>) => {
+    if (!mountedRef.current) return;
+    setUploadQueue((prev) => prev.map((it) => (it.id === id ? { ...it, ...patch } : it)));
+  }, []);
+
   const uploadSingleItem = useCallback(async (item: UploadQueueItem) => {
-    // Transition from pending → uploading
-    setUploadQueue((prev) =>
-      prev.map((it) => (it.id === item.id ? { ...it, status: "uploading", progress: 15, error: undefined } : it))
-    );
+    patchItem(item.id, { status: "uploading", progress: 5, error: undefined });
 
+    let res: { success: boolean; url: string; message?: string };
     try {
-      const res = await StoreService.uploadImageBinary(item.file, undefined, (percent) => {
-        setUploadQueue((prev) =>
-          prev.map((it) => (it.id === item.id ? { ...it, progress: Math.max(15, percent) } : it))
-        );
+      res = await StoreService.uploadImageBinary(item.file, undefined, (percent) => {
+        patchItem(item.id, { progress: Math.max(5, percent) });
       });
-
-      if (res && res.success && res.url) {
-        // Atomic append to accumulator — safe across concurrent workers
-        if (!committedUrlsRef.current.includes(res.url)) {
-          committedUrlsRef.current = [...committedUrlsRef.current, res.url];
-        }
-        setUploadQueue((prev) =>
-          prev.map((it) =>
-            it.id === item.id ? { ...it, status: "done", progress: 100, uploadedUrl: res.url } : it
-          )
-        );
-        // Notify parent with the full deduplicated list — no stale closure risk
-        onChangeRef.current([...committedUrlsRef.current]);
-      } else {
-        throw new Error(res?.message || "Upload failed");
-      }
     } catch (err: any) {
-      setUploadQueue((prev) =>
-        prev.map((it) =>
-          it.id === item.id ? { ...it, status: "error", error: err.message || "Upload failed" } : it
-        )
-      );
+      res = { success: false, url: "", message: err?.message || "Upload failed" };
     }
-  }, []); // ← intentionally empty: uses refs only
 
-  async function handleFiles(fileList: FileList | null | undefined) {
+    if (!mountedRef.current) {
+      // The form was closed mid-upload; don't leak this photo into the next product opened.
+      return;
+    }
+
+    if (res.success && res.url) {
+      // Functional update: every completion is appended to the latest list, never a stale copy.
+      onChangeRef.current((prev) => (prev.includes(res.url) ? prev : [...prev, res.url]));
+      uploadedKeysRef.current.add(item.fileKey);
+      queuedKeysRef.current.delete(item.fileKey);
+      try { URL.revokeObjectURL(item.previewUrl); } catch {}
+      if (mountedRef.current) {
+        setUploadQueue((prev) => prev.filter((it) => it.id !== item.id));
+      }
+    } else {
+      patchItem(item.id, { status: "error", progress: 0, error: res.message || "Upload failed" });
+    }
+  }, [patchItem]);
+
+  // Starts queued uploads until MAX_PARALLEL_UPLOADS are in flight; each finished upload
+  // pulls the next one, so a batch of any size drains at a steady rate.
+  function pump() {
+    while (activeCountRef.current < MAX_PARALLEL_UPLOADS && waitingRef.current.length > 0) {
+      const next = waitingRef.current.shift()!;
+      activeCountRef.current++;
+      uploadSingleItem(next).finally(() => {
+        activeCountRef.current--;
+        pump();
+      });
+    }
+  }
+
+  function enqueue(items: UploadQueueItem[]) {
+    items.forEach((item) => {
+      if (!waitingRef.current.some((w) => w.id === item.id)) waitingRef.current.push(item);
+    });
+    pump();
+  }
+
+  function handleFiles(fileList: FileList | null | undefined) {
     if (!fileList || fileList.length === 0) return;
 
-    const files = Array.from(fileList).filter((f) => isSupportedImageFile(f));
-    if (files.length === 0) return;
+    const all = Array.from(fileList);
+    const supported = all.filter((f) => isSupportedImageFile(f));
+    const unsupported = all.length - supported.length;
 
-    // 1. Create instant object URL previews — all start as "pending" (not uploading yet)
-    const newItems: UploadQueueItem[] = files.map((file) => {
-      const previewUrl = URL.createObjectURL(file);
-      objectUrlsRef.current.add(previewUrl);
+    const fresh: File[] = [];
+    let duplicates = 0;
+    const seenInSelection = new Set<string>();
+    for (const file of supported) {
+      const key = fileKeyOf(file);
+      if (queuedKeysRef.current.has(key) || uploadedKeysRef.current.has(key) || seenInSelection.has(key)) {
+        duplicates++;
+        continue;
+      }
+      seenInSelection.add(key);
+      fresh.push(file);
+    }
+
+    const parts: string[] = [];
+    if (duplicates > 0) parts.push(`${duplicates} duplicate photo${duplicates !== 1 ? "s" : ""} skipped`);
+    if (unsupported > 0) parts.push(`${unsupported} unsupported file${unsupported !== 1 ? "s" : ""} ignored`);
+    setNotice(parts.join(" • "));
+
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (fresh.length === 0) return;
+
+    const newItems: UploadQueueItem[] = fresh.map((file) => {
+      const key = fileKeyOf(file);
+      queuedKeysRef.current.add(key);
       return {
-        id: `upl-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        id: `upl-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        fileKey: key,
         file,
-        previewUrl,
-        status: "pending",   // ← FIX: pending, not uploading
+        previewUrl: URL.createObjectURL(file),
+        status: "pending",
         progress: 0,
       };
     });
 
     setUploadQueue((prev) => [...prev, ...newItems]);
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    enqueue(newItems);
+  }
 
-    // 2. Concurrency-limited upload runner (max 2 parallel uploads)
-    // Use a local queue index — avoids any closure/stale ref issues
-    let queueIndex = 0;
-    const runWorker = async () => {
-      while (queueIndex < newItems.length) {
-        const item = newItems[queueIndex++];
-        if (item) await uploadSingleItem(item);
+  function retryItems(items: UploadQueueItem[]) {
+    const retryable = items.filter((it) => it.status === "error");
+    if (retryable.length === 0) return;
+    const ids = new Set(retryable.map((it) => it.id));
+    setUploadQueue((prev) =>
+      prev.map((it) => (ids.has(it.id) ? { ...it, status: "pending", progress: 0, error: undefined } : it))
+    );
+    enqueue(retryable.map((it) => ({ ...it, status: "pending" as const })));
+  }
+
+  function removeQueueItem(item: UploadQueueItem) {
+    if (item.status === "uploading") return;
+    waitingRef.current = waitingRef.current.filter((w) => w.id !== item.id);
+    queuedKeysRef.current.delete(item.fileKey);
+    try { URL.revokeObjectURL(item.previewUrl); } catch {}
+    setUploadQueue((prev) => prev.filter((it) => it.id !== item.id));
+  }
+
+  /**
+   * Gallery photos saved before HEIC conversion existed cannot be displayed by Chrome/Edge/
+   * Firefox. When one fails to render, convert it at full resolution, store the JPEG and swap
+   * the saved URL. Anything else that fails to load is flagged instead of silently hidden.
+   */
+  async function handleGalleryImageError(url: string) {
+    if (healAttemptedRef.current.has(url)) {
+      setBrokenUrls((prev) => new Set(prev).add(url));
+      return;
+    }
+    healAttemptedRef.current.add(url);
+
+    let blob: Blob | null = null;
+    try {
+      if (url.startsWith("data:")) {
+        blob = await (await fetch(url)).blob();
+      } else if (/^https?:\/\//.test(url)) {
+        const res = await fetch(url);
+        if (res.ok) blob = await res.blob();
       }
-    };
+    } catch {
+      blob = null;
+    }
 
-    // Two workers consume the queue
-    Promise.all([runWorker(), runWorker()]);
+    const looksHeic = blob ? (await hasHeicMagicBytes(blob)) || /\.hei[cf]($|\?)/i.test(url) : false;
+    if (!blob || !looksHeic) {
+      setBrokenUrls((prev) => new Set(prev).add(url));
+      return;
+    }
+
+    setHealingUrls((prev) => new Set(prev).add(url));
+    try {
+      const name = (url.split("/").pop() || "legacy-photo.heic").split("?")[0];
+      const file = new File([blob], /\.hei[cf]$/i.test(name) ? name : `${name}.heic`, { type: "image/heic" });
+      const res = await StoreService.uploadImageBinary(file);
+      if (!mountedRef.current) return;
+      if (res.success && res.url) {
+        onChangeRef.current((prev) => prev.map((u) => (u === url ? res.url : u)));
+      } else {
+        setBrokenUrls((prev) => new Set(prev).add(url));
+      }
+    } finally {
+      setHealingUrls((prev) => {
+        const next = new Set(prev);
+        next.delete(url);
+        return next;
+      });
+    }
   }
 
   function handleAddUrl() {
     const trimmed = urlInput.trim();
     if (!trimmed) return;
-    if (!images.includes(trimmed)) {
-      onChange([...images, trimmed]);
-    }
+    onChange((prev) => (prev.includes(trimmed) ? prev : [...prev, trimmed]));
     setUrlInput("");
   }
 
-  function handleRemoveImage(index: number) {
-    const next = images.filter((_, i) => i !== index);
-    onChange(next);
+  function handleRemoveImage(url: string) {
+    onChange((prev) => prev.filter((u) => u !== url));
   }
 
-  function handleSetPrimary(index: number) {
-    if (index === 0 || index >= images.length) return;
-    const selected = images[index];
-    const rest = images.filter((_, i) => i !== index);
-    onChange([selected, ...rest]);
+  function handleSetPrimary(url: string) {
+    onChange((prev) => (prev[0] === url || !prev.includes(url) ? prev : [url, ...prev.filter((u) => u !== url)]));
   }
 
   const cloudSyncedCount = images.filter(
     (url) => url.includes("supabase.co") || (url.startsWith("http") && !url.startsWith("data:"))
   ).length;
 
-  const pendingQueueItems = uploadQueue.filter((item) => item.status !== "done");
+  const pendingQueueItems = uploadQueue;
 
   return (
     <div className="w-full space-y-3">
@@ -885,6 +753,10 @@ function MultiImageUploadInput({
         />
       </div>
 
+      {notice && (
+        <p className="text-[10px] font-semibold text-amber-700 px-1">{notice}</p>
+      )}
+
       {/* Direct URL Input */}
       <div className="flex items-center gap-2">
         <Link2 size={13} className="shrink-0 text-stone-400 ml-1" />
@@ -920,16 +792,26 @@ function MultiImageUploadInput({
               {images.length + pendingQueueItems.length !== 1 ? "s" : ""}) &bull; First item is primary
             </p>
             <div className="flex items-center gap-1.5">
-              {uploadQueue.filter((q) => q.status === "uploading").length > 0 && (
+              {uploadingCount > 0 && (
                 <span className="flex items-center gap-1.5 text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200/60 px-2 py-0.5 rounded-full animate-pulse">
                   <Loader2 size={10} className="animate-spin text-[#D4A373]" />
-                  Uploading {uploadQueue.filter((q) => q.status === "uploading").length}...
+                  Uploading {uploadingCount}...
                 </span>
               )}
-              {uploadQueue.filter((q) => q.status === "pending").length > 0 && (
+              {pendingCount > 0 && (
                 <span className="flex items-center gap-1 text-[10px] font-semibold text-stone-500 bg-stone-50 border border-stone-200/60 px-2 py-0.5 rounded-full">
-                  {uploadQueue.filter((q) => q.status === "pending").length} queued
+                  {pendingCount} queued
                 </span>
+              )}
+              {failedItems.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => retryItems(failedItems)}
+                  className="flex items-center gap-1 text-[10px] font-semibold text-rose-700 bg-rose-50 border border-rose-200/70 px-2 py-0.5 rounded-full hover:bg-rose-100"
+                >
+                  <RefreshCw size={10} />
+                  {failedItems.length} failed &bull; Retry all
+                </button>
               )}
             </div>
           </div>
@@ -951,13 +833,21 @@ function MultiImageUploadInput({
                     alt={`Saree View ${index + 1}`}
                     loading="lazy"
                     decoding="async"
-                    onError={(e) => {
-                      handleSareeImageError(e, imgUrl, (recovered) => {
-                        onChange(images.map((u, i) => (i === index ? recovered : u)));
-                      });
-                    }}
+                    onError={() => handleGalleryImageError(imgUrl)}
                     className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                   />
+                  {healingUrls.has(imgUrl) && (
+                    <div className="absolute inset-0 bg-black/45 flex flex-col items-center justify-center p-2 text-white text-center gap-1">
+                      <Loader2 size={16} className="animate-spin text-[#D4A373]" />
+                      <span className="text-[9px] font-semibold">Converting HEIC…</span>
+                    </div>
+                  )}
+                  {brokenUrls.has(imgUrl) && !healingUrls.has(imgUrl) && (
+                    <div className="absolute inset-0 bg-rose-950/70 flex flex-col items-center justify-center p-2 text-white text-center gap-1">
+                      <AlertCircle size={16} className="text-rose-300" />
+                      <span className="text-[9px] font-semibold text-rose-100 leading-tight">Image can't be displayed — remove and re-upload</span>
+                    </div>
+                  )}
                   {index === 0 && (
                     <span className="absolute top-1.5 left-1.5 rounded-md bg-white text-black px-2 py-0.5 text-[9px] font-extrabold tracking-wider uppercase shadow-md border border-stone-200">
                       Primary
@@ -973,7 +863,7 @@ function MultiImageUploadInput({
                   {index !== 0 ? (
                     <button
                       type="button"
-                      onClick={() => handleSetPrimary(index)}
+                      onClick={() => handleSetPrimary(imgUrl)}
                       className="text-[10px] font-semibold text-stone-600 hover:text-[#8E3D51] transition-colors"
                     >
                       Set Primary
@@ -984,7 +874,7 @@ function MultiImageUploadInput({
 
                   <button
                     type="button"
-                    onClick={() => handleRemoveImage(index)}
+                    onClick={() => handleRemoveImage(imgUrl)}
                     className="text-stone-400 hover:text-rose-600 p-0.5 transition-colors"
                     title="Remove Photo"
                   >
@@ -1008,6 +898,8 @@ function MultiImageUploadInput({
                   <img
                     src={item.previewUrl}
                     alt="Upload Preview"
+                    // HEIC can't be previewed before conversion in most browsers; show the tile without a broken icon
+                    onError={(e) => { e.currentTarget.style.visibility = "hidden"; }}
                     className={`h-full w-full object-cover ${item.status === "pending" ? "opacity-60" : "opacity-85"}`}
                   />
 
@@ -1035,9 +927,14 @@ function MultiImageUploadInput({
                     <div className="absolute inset-0 bg-rose-950/70 backdrop-blur-[1px] flex flex-col items-center justify-center p-2 text-white text-center gap-1">
                       <AlertCircle size={16} className="text-rose-300" />
                       <span className="text-[9px] font-semibold text-rose-200 leading-tight">Failed</span>
+                      {item.error && (
+                        <span className="text-[8.5px] text-rose-100/90 leading-tight line-clamp-2" title={item.error}>
+                          {item.error}
+                        </span>
+                      )}
                       <button
                         type="button"
-                        onClick={() => uploadSingleItem(item)}
+                        onClick={() => retryItems([item])}
                         className="mt-1 flex items-center gap-1 bg-white/20 hover:bg-white/30 text-white rounded-md px-2 py-0.5 text-[9px] font-semibold transition-all active:scale-95"
                       >
                         <RefreshCw size={9} />
@@ -1048,19 +945,19 @@ function MultiImageUploadInput({
                 </div>
 
                 <div className="mt-1 flex items-center justify-between px-1 py-0.5 text-[10px]">
-                  <span className="text-stone-500 font-mono text-[9px] truncate max-w-[80px]">
+                  <span className="text-stone-500 font-mono text-[9px] truncate max-w-[80px]" title={item.file.name}>
                     {item.file.name}
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setUploadQueue((prev) => prev.filter((it) => it.id !== item.id));
-                    }}
-                    className="text-stone-400 hover:text-rose-600 p-0.5"
-                    title="Cancel"
-                  >
-                    <X size={12} />
-                  </button>
+                  {item.status !== "uploading" && (
+                    <button
+                      type="button"
+                      onClick={() => removeQueueItem(item)}
+                      className="text-stone-400 hover:text-rose-600 p-0.5"
+                      title={item.status === "error" ? "Discard this photo" : "Cancel"}
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
@@ -1076,16 +973,12 @@ function MultiImageUploadInput({
 // ============================================================
 function VariantShadeManager({
   variants,
-  designSlug,
-  serialNumber,
   onRemove,
   onAdd,
   onUpdateVariantImage,
   onUpdateVariantStock,
 }: {
   variants: (ColorVariant & { imageUrl?: string })[];
-  designSlug: string;
-  serialNumber: string;
   onRemove: (idx: number) => void;
   onAdd: (variant: ColorVariant & { imageUrl?: string }) => void;
   onUpdateVariantImage: (idx: number, url: string) => void;
@@ -1108,35 +1001,35 @@ function VariantShadeManager({
       setIsUploadingShadeIdx(-1);
     }
 
-    try {
-      const objUrl = URL.createObjectURL(file);
-      if (target === "new") {
-        setNewVariantImage(objUrl);
-      } else {
-        onUpdateVariantImage(target, objUrl);
-      }
+    const previousUrl = target === "new" ? newVariantImage : variants[target]?.imageUrl || "";
+    const objUrl = URL.createObjectURL(file);
+    const applyUrl = (url: string) => {
+      if (target === "new") setNewVariantImage(url);
+      else onUpdateVariantImage(target, url);
+    };
 
-      try {
-        const res = await StoreService.uploadImage(file);
-        const finalUrl = res && res.success && res.url ? res.url : objUrl;
-        if (target === "new") {
-          setNewVariantImage(finalUrl);
-        } else {
-          onUpdateVariantImage(target, finalUrl);
-        }
-      } catch {
-        // Already updated with object URL
+    try {
+      applyUrl(objUrl); // instant preview only; never saved
+      const res = await StoreService.uploadImage(file);
+      if (res && res.success && res.url) {
+        applyUrl(res.url);
+      } else {
+        // A blob: preview is browser-local; saving it would leave a permanently broken image.
+        applyUrl(previousUrl);
+        alert(`Shade photo "${file.name}" was not uploaded: ${res?.message || "upload failed"}. Please try again.`);
       }
-    } catch (err) {
-      console.warn("Failed to process shade image:", err);
+    } catch (err: any) {
+      applyUrl(previousUrl);
+      alert(`Shade photo "${file.name}" was not uploaded: ${err?.message || "upload failed"}. Please try again.`);
     } finally {
+      URL.revokeObjectURL(objUrl);
       setIsUploadingShadeIdx(null);
     }
   };
 
   function handleAdd() {
     const colorName = formatColorName(newColor.trim());
-    if (!colorName || !designSlug || !serialNumber) return;
+    if (!colorName) return;
 
     if (!COLOR_OPTIONS.some((c) => normalizeText(c) === normalizeText(colorName))) {
       StoreService.registerColor(colorName).catch(() => {});
@@ -1159,13 +1052,12 @@ function VariantShadeManager({
       return;
     }
 
-    const sku = buildSku(designSlug, colorSlug, serialNumber);
-
     onAdd({
       color: colorName,
       colorSlug,
       stock: newStock.trim() === "" ? 0 : Math.max(0, Number(newStock)),
-      sku,
+      // The backend allocates the RS SKU when the product is saved.
+      sku: "",
       imageUrl: newVariantImage || undefined,
     });
 
@@ -1214,7 +1106,7 @@ function VariantShadeManager({
           <div className="max-h-72 space-y-2.5 overflow-y-auto pr-1">
             {variants.map((v, idx) => (
               <div
-                key={v.sku}
+                key={v.sku || `new-${v.colorSlug}-${idx}`}
                 className="flex min-w-0 items-center justify-between gap-3 rounded-2xl border border-stone-200/80 bg-white p-3 shadow-2xs transition-all duration-150 hover:border-[#D4A373]/60 hover:shadow-xs"
               >
                 <div className="flex min-w-0 items-center gap-3">
@@ -1273,7 +1165,7 @@ function VariantShadeManager({
                       </span>
                     </div>
                     <p className="truncate font-mono text-[10px] text-stone-400 mt-0.5">
-                      {v.sku}
+                      {v.sku || PENDING_SKU_LABEL}
                     </p>
                   </div>
                 </div>
@@ -1374,7 +1266,7 @@ function VariantShadeManager({
             <button
               type="button"
               onClick={handleAdd}
-              disabled={!newColor.trim() || !designSlug}
+              disabled={!newColor.trim()}
               className="flex h-11 items-center justify-center gap-1.5 rounded-2xl bg-[#2A0E20] px-4 text-xs font-bold text-amber-100 shadow-xs transition-all duration-200 hover:bg-[#3D142E] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Plus size={14} />
@@ -1749,15 +1641,15 @@ export default function Catalog({
   const [formSalePrice, setFormSalePrice] = useState("");
   const [formTags, setFormTags] = useState("");
   const [formVariants, setFormVariants] = useState<(ColorVariant & { imageUrl?: string })[]>([]);
-  const [formSerialNumber, setFormSerialNumber] = useState("001");
   const [primaryColor, setPrimaryColor] = useState("");
   const [primaryStock, setPrimaryStock] = useState("");
-  const [formImageUrl, setFormImageUrl] = useState("");
   const [formImages, setFormImages] = useState<string[]>([]);
   const [formIsSpecialOffer, setFormIsSpecialOffer] = useState(false);
   const [formIsLimitedEdition, setFormIsLimitedEdition] = useState(false);
   const [formBorderColor, setFormBorderColor] = useState("");
   const [isGalleryUploading, setIsGalleryUploading] = useState(false);
+  const [galleryFailedCount, setGalleryFailedCount] = useState(0);
+  const [isSavingProduct, setIsSavingProduct] = useState(false);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -1776,17 +1668,8 @@ export default function Catalog({
     [inventory, searchQuery]
   );
 
-  const activeDesignSlug = formName.trim()
-    ? createDesignSlug(formName.trim())
-    : "";
-
-  const firstColorCode =
-    formVariants[0]?.colorSlug ||
-    (primaryColor.trim() ? generateColorSlug(primaryColor) : "XX");
-
-  const previewSku = activeDesignSlug
-    ? buildSku(activeDesignSlug, firstColorCode, formSerialNumber)
-    : "RSF-DESIGN-XX-001";
+  // SKUs (RS0001 format) are allocated by the backend on save; an existing product shows its own.
+  const previewSku = editingProductId || PENDING_SKU_LABEL;
 
   const handleSelectAllVisible = () => {
     if (selectedProductIds.length === filteredProducts.length && filteredProducts.length > 0) {
@@ -1876,22 +1759,11 @@ export default function Catalog({
 
   function handleDesignChange(name: string) {
     setFormName(name);
-    const serial = editingProductId
-      ? formSerialNumber
-      : getNextDesignSerial(name, inventory);
-    setFormSerialNumber(serial);
-
-    setFormVariants((prev) =>
-      prev.map((v) => ({
-        ...v,
-        sku: buildSku(createDesignSlug(name), v.colorSlug, serial),
-      }))
-    );
   }
 
   function handlePrimaryColorChange(color: string) {
     setPrimaryColor(color);
-    if (!color.trim() || !activeDesignSlug) return;
+    if (!color.trim()) return;
     const slug = generateColorSlug(color.trim());
 
     setFormVariants((prev) => {
@@ -1904,17 +1776,17 @@ export default function Catalog({
               primaryStock.trim() === ""
                 ? 0
                 : Math.max(0, Number(primaryStock)),
-            sku: buildSku(activeDesignSlug, slug, formSerialNumber),
+            sku: "",
           },
         ];
       }
 
+      // An existing shade keeps its SKU when its colour name is corrected.
       return [
         {
           ...prev[0],
           color: color.trim(),
           colorSlug: slug,
-          sku: buildSku(activeDesignSlug, slug, formSerialNumber),
         },
         ...prev.slice(1),
       ];
@@ -1948,9 +1820,7 @@ export default function Catalog({
     setFormVariants([]);
     setPrimaryColor("");
     setPrimaryStock("");
-    setFormImageUrl("");
     setFormImages([]);
-    setFormSerialNumber("001");
     setFormIsSpecialOffer(false);
     setFormIsLimitedEdition(false);
     setFormBorderColor("");
@@ -1961,7 +1831,6 @@ export default function Catalog({
     setEditingProductId(product.id);
     setFormName(product.name || "");
     setFormCategory(product.categoryId || sicoCategoryId);
-    setFormSerialNumber(getProductSerial(product));
     setFormPurchasePrice(String(product.purchasePrice ?? 0));
     setFormSalePrice(String(product.salePrice ?? 0));
     setFormTags((product.tags || []).join(", "));
@@ -1974,16 +1843,23 @@ export default function Catalog({
       ? [product.imageUrl]
       : [];
     setFormImages(initialImgs);
-    setFormImageUrl(initialImgs[0] || product.imageUrl || "");
     setFormIsSpecialOffer(Boolean(product.isSpecialOffer || (product.tags || []).includes("special_offer")));
     setFormIsLimitedEdition(Boolean(product.isLimitedEdition || (product.tags || []).includes("limited_edition")));
     setFormBorderColor(product.borderColor || "");
     setIsModalOpen(true);
   }
 
-  function handleSaveProduct(e: FormEvent) {
+  async function handleSaveProduct(e: FormEvent) {
     e.preventDefault();
+    if (isSavingProduct || isGalleryUploading) return;
     const name = formName.trim();
+
+    if (galleryFailedCount > 0) {
+      const proceed = window.confirm(
+        `${galleryFailedCount} photo${galleryFailedCount !== 1 ? "s" : ""} failed to upload and will NOT be saved.\n\nPress Cancel to go back and retry them, or OK to save without them.`
+      );
+      if (!proceed) return;
+    }
 
     if (
       !name ||
@@ -1995,17 +1871,14 @@ export default function Catalog({
       return;
     }
 
-    const designSlug = createDesignSlug(name);
-    const finalVariants = formVariants.map((v) => ({
-      ...v,
-      sku: v.sku || buildSku(designSlug, v.colorSlug, formSerialNumber),
-    }));
+    // Variants keep their existing SKUs; new shades are sent without one and the backend
+    // allocates an RS SKU for them.
+    const finalVariants = formVariants.map((v) => ({ ...v, sku: v.sku || "" }));
 
     const finalCategory = formCategory || sicoCategoryId;
+    // The gallery is the source of truth; the first photo is the primary image.
     const effectiveImages = formImages.length > 0
       ? formImages
-      : formImageUrl
-      ? [formImageUrl]
       : (finalVariants.map((v) => v.imageUrl).filter(Boolean) as string[]);
 
     const effectiveImageUrl = effectiveImages[0] || undefined;
@@ -2031,11 +1904,16 @@ export default function Catalog({
       saveBorderColorToRegistry(formBorderColor.trim());
     }
 
+    // When editing, start from the stored product so fields this form does not manage
+    // (description, material, featured, rating, ...) are carried through unchanged.
+    const existingProduct = editingProductId
+      ? inventory.find((p) => p.id === editingProductId)
+      : undefined;
+
     const payload: Product = {
-      id:
-        editingProductId ||
-        finalVariants[0]?.sku ||
-        buildSku(designSlug, "XX", formSerialNumber),
+      ...(existingProduct || {}),
+      // Empty for a new product: the backend assigns the SKU and returns it.
+      id: editingProductId || "",
       name,
       categoryId: finalCategory,
       purchasePrice: Number(formPurchasePrice) || 0,
@@ -2044,18 +1922,24 @@ export default function Catalog({
       isLimitedEdition: formIsLimitedEdition,
       tags: finalTags,
       variants: finalVariants,
-      borderColor: formBorderColor.trim() || undefined,
+      // Always sent (empty string = cleared) so the backend stores exactly what the form shows.
+      borderColor: formBorderColor.trim(),
       imageUrl: effectiveImageUrl,
-      images: effectiveImages.length > 0 ? effectiveImages : (effectiveImageUrl ? [effectiveImageUrl] : undefined),
+      // blob: URLs are local previews and must never be persisted.
+      images: effectiveImages.filter((u) => !u.startsWith("blob:")),
     };
 
-    if (editingProductId) {
-      onUpdateProduct(payload);
-    } else {
-      onAddProduct(payload, finalCategory);
+    setIsSavingProduct(true);
+    try {
+      const result = editingProductId
+        ? await onUpdateProduct(payload)
+        : await onAddProduct(payload, finalCategory);
+      // Handlers that resolve false have already shown the error; keep the form open for a retry.
+      if (result === false) return;
+      setIsModalOpen(false);
+    } finally {
+      setIsSavingProduct(false);
     }
-
-    setIsModalOpen(false);
   }
 
   const lockedCategoryName = "SiCo Gadwal Sarees";
@@ -2517,18 +2401,16 @@ export default function Catalog({
               {/* Master Photograph Gallery */}
               <MultiImageUploadInput
                 images={formImages}
-                onChange={(imgs) => {
-                  setFormImages(imgs);
-                  setFormImageUrl(imgs[0] || "");
-                }}
+                onChange={(update) =>
+                  setFormImages((prev) => (typeof update === "function" ? update(prev) : update))
+                }
                 onUploadingChange={setIsGalleryUploading}
+                onFailedCountChange={setGalleryFailedCount}
               />
 
               {/* Per-Color Variant Shade Manager with Photo Upload */}
               <VariantShadeManager
                 variants={formVariants}
-                designSlug={activeDesignSlug}
-                serialNumber={formSerialNumber}
                 onRemove={(idx) =>
                   setFormVariants(formVariants.filter((_, i) => i !== idx))
                 }
@@ -2629,13 +2511,13 @@ export default function Catalog({
 
                 <button
                   type="submit"
-                  disabled={isGalleryUploading}
+                  disabled={isGalleryUploading || isSavingProduct}
                   className="group flex h-10 items-center justify-center gap-1.5 rounded-xl bg-[#2A0E20] px-5 text-xs font-bold text-amber-100 shadow-xs transition-all hover:bg-[#3D142E] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isGalleryUploading ? (
+                  {isGalleryUploading || isSavingProduct ? (
                     <>
                       <Loader2 size={14} className="animate-spin text-[#D4A373]" />
-                      <span>Uploading Photos...</span>
+                      <span>{isSavingProduct ? "Saving..." : "Uploading Photos..."}</span>
                     </>
                   ) : (
                     <>

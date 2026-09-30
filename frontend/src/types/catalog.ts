@@ -204,53 +204,17 @@ if (typeof window !== "undefined") {
   }
 }
 
-export function buildSku(
-  designSlug: string,
-  colorCode: string,
-  serialNumber: string
-): string {
-  return `RSF-${designSlug}-${colorCode}-${serialNumber}`;
-}
+/**
+ * SKUs have the form "RS" + exactly four digits (RS0001–RS9999). They are allocated by the
+ * backend when a product or shade is saved; the browser never generates them.
+ */
+export const SKU_PATTERN = /^RS\d{4}$/;
 
-export function extractSerialFromSku(sku: string): string {
-  const match = sku.match(/-(\d{3})$/);
-  return match?.[1] || "001";
-}
+/** Shown wherever a SKU will only exist after the product is saved. */
+export const PENDING_SKU_LABEL = "Assigned on save";
 
-export function getProductSerial(product: Product): string {
-  return extractSerialFromSku(product.id);
-}
-
-export function getNextDesignSerial(
-  designName: string,
-  inventory: Product[]
-): string {
-  if (!designName.trim()) {
-    return "001";
-  }
-
-  const normalized = normalizeText(designName);
-  let highest = 0;
-
-  inventory.forEach((product) => {
-    if (normalizeText(product.name) !== normalized) {
-      return;
-    }
-
-    const productSerial = Number(getProductSerial(product));
-    if (Number.isFinite(productSerial)) {
-      highest = Math.max(highest, productSerial);
-    }
-
-    (product.variants || []).forEach((variant) => {
-      const serial = Number(extractSerialFromSku(variant.sku));
-      if (Number.isFinite(serial)) {
-        highest = Math.max(highest, serial);
-      }
-    });
-  });
-
-  return String(highest + 1).padStart(3, "0");
+export function isValidSku(value: string | null | undefined): boolean {
+  return typeof value === "string" && SKU_PATTERN.test(value) && value !== "RS0000";
 }
 
 export function calculateInventoryMetrics(inventory: Product[]) {

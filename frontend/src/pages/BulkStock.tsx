@@ -25,20 +25,26 @@ import {
 } from "lucide-react";
 import type { Product, Category, ColorDefinition } from "../types/inventory";
 import { MOCK_DESIGNS, COLOR_CODES } from "../types/inventory";
-import { generateColorSlug, normalizeText, formatColorName } from "../types/catalog";
+import { generateColorSlug, normalizeText, formatColorName, PENDING_SKU_LABEL } from "../types/catalog";
 import { sound } from "../types/soundEngine";
 import { StoreService } from "../services/supabase";
 import {
   IMAGE_ACCEPT_ATTR,
   isSupportedImageFile,
-  fileToVisibleDataUrl,
   handleSareeImageError,
 } from "../utils/imageConverter";
+import type { BulkRestockResult } from "../types/bulkstock";
+import {
+  BorderColorInput,
+  getRegisteredBorderColors,
+  saveBorderColorToRegistry,
+} from "../components/admin/BorderColorInput";
 
 interface BulkStockProps {
   inventory: Product[];
   categories: Category[];
-  onBulkRestock: (newProducts: Product[]) => void;
+  /** Resolves with the products the backend actually stored. */
+  onBulkRestock: (newProducts: Product[]) => Promise<BulkRestockResult>;
 }
 
 type OrderMode = "single" | "dual";
@@ -52,6 +58,10 @@ interface BulkRow {
   uploadStatus?: "idle" | "uploading" | "done" | "error";
   uploadProgress?: number;
   file?: File;
+  /** Per-row border override. Empty = use the batch border details. */
+  borderColor?: string;
+  /** Last save error for this row (kept so the admin can retry). */
+  saveError?: string;
 }
 
 type DropdownOption = {
@@ -459,6 +469,12 @@ export default function BulkStock({
   }, []);
 
   const [applyQty, setApplyQty] = useState<number>(5);
+  // Border details entered once for the whole consignment (single and dual tone alike).
+  const [batchBorderColor, setBatchBorderColor] = useState("");
+  const [isCommitting, setIsCommitting] = useState(false);
+  const [commitError, setCommitError] = useState("");
+  // Read on every render: the registry is a small localStorage list that BorderColorInput updates.
+  const registeredBorderColors = getRegisteredBorderColors();
   const [successBatch, setSuccessBatch] = useState<{
     isOpen: boolean;
     designName: string;
@@ -506,13 +522,21 @@ export default function BulkStock({
     [selectedDesignSlug]
   );
 
+  const colorCodeFor = (name: string) => {
+    const obj = colorPalette.find((c) => normalizeText(c.name) === normalizeText(name));
+    return obj ? obj.code : generateColorSlug(name);
+  };
+
+  const uploadingRowCount = bulkRows.filter((r) => r.uploadStatus === "uploading").length;
+  const failedUploadRowCount = bulkRows.filter((r) => r.uploadStatus === "error").length;
+
   const totalPieces = useMemo(
     () => bulkRows.reduce((sum, row) => sum + Math.max(0, row.qty), 0),
     [bulkRows]
   );
 
   const imageCount = useMemo(
-    () => bulkRows.filter((row) => row.imageUrl).length,
+    () => bulkRows.filter((row) => row.imageUrl && row.uploadStatus !== "error" && !row.imageUrl.startsWith("blob:")).length,
     [bulkRows]
   );
 
@@ -550,7 +574,7 @@ export default function BulkStock({
   const updateRow = (
     id: string,
     field: keyof BulkRow,
-    value: string | number
+    value: string | number | undefined
   ) => {
     setBulkRows((prev) =>
       prev.map((row) => (row.id === id ? { ...row, [field]: value } : row))
@@ -710,8 +734,10 @@ export default function BulkStock({
     setBulkRows((prev) => prev.map((row) => ({ ...row, qty: safeQty })));
   };
 
-  const handleCommitBulkStock = (e: React.FormEvent) => {
+  const handleCommitBulkStock = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isCommitting) return;
+    setCommitError("");
 
     const designObj = MOCK_DESIGNS.find((d) => d.slug === selectedDesignSlug);
     if (!designObj || !selectedCategoryId) return;
@@ -719,30 +745,47 @@ export default function BulkStock({
     const validRows = bulkRows.filter((row) => row.qty > 0);
     if (validRows.length === 0) return;
 
-    const newProducts: Product[] = validRows.map((row, idx) => {
-      const color1Name = (row.color1 || "").trim() || "Standard";
-      const color1Obj = colorPalette.find((c) => normalizeText(c.name) === normalizeText(color1Name));
-      const color1Code = color1Obj ? color1Obj.code : generateColorSlug(color1Name);
+    if (uploadingRowCount > 0) {
+      setCommitError(`Please wait: ${uploadingRowCount} photo${uploadingRowCount !== 1 ? "s are" : " is"} still uploading.`);
+      return;
+    }
+    if (failedUploadRowCount > 0) {
+      const proceed = window.confirm(
+        `${failedUploadRowCount} row${failedUploadRowCount !== 1 ? "s have" : " has"} a photo that failed to upload. Those rows will be saved WITHOUT a photo.\n\nPress Cancel to retry the photos first.`
+      );
+      if (!proceed) return;
+    }
 
+    const batchBorder = batchBorderColor.trim();
+    if (batchBorder) saveBorderColorToRegistry(batchBorder);
+
+    // No IDs/SKUs are generated here: the backend allocates RS SKUs and reports results per
+    // clientRef (the row ID), so each row can be matched to its saved SKU or its error.
+    const newProducts: (Product & { clientRef: string })[] = validRows.map((row) => {
+      const color1Name = (row.color1 || "").trim() || "Standard";
       const color2Name = orderMode === "dual" ? (row.color2 || "").trim() : "";
-      const color2Obj = color2Name
-        ? colorPalette.find((c) => normalizeText(c.name) === normalizeText(color2Name))
-        : null;
-      const color2Code = color2Name ? (color2Obj ? color2Obj.code : generateColorSlug(color2Name)) : null;
 
       const finalColorName = color2Name
         ? `${color1Name} / ${color2Name}`
         : color1Name;
 
-      const finalColorSlug = color2Code
-        ? `${color1Code}-${color2Code}`
-        : color1Code;
+      const finalColorSlug = color2Name
+        ? `${colorCodeFor(color1Name)}-${colorCodeFor(color2Name)}`
+        : colorCodeFor(color1Name);
 
-      const serialNum = String(inventory.length + idx + 1).padStart(3, "0");
-      const sku = `RSF-${designObj.slug}-${finalColorSlug}-${serialNum}`;
+      // Only a confirmed storage URL is saved; blob: previews are local to this browser.
+      const storedImage =
+        row.imageUrl && row.uploadStatus !== "error" && !row.imageUrl.startsWith("blob:")
+          ? row.imageUrl
+          : undefined;
+
+      const rowBorder = (row.borderColor || "").trim();
+      if (rowBorder) saveBorderColorToRegistry(rowBorder);
+      const borderColor = rowBorder || batchBorder;
 
       return {
-        id: sku,
+        id: "",
+        clientRef: row.id,
         name: designObj.name,
         categoryId: selectedCategoryId,
         purchasePrice: purchasePrice ?? 0,
@@ -751,31 +794,70 @@ export default function BulkStock({
           "bulk-restock",
           orderMode === "dual" ? "dual-tone" : "single-tone",
         ],
-        imageUrl: row.imageUrl || undefined,
-        images: row.imageUrl ? [row.imageUrl] : undefined,
+        imageUrl: storedImage,
+        images: storedImage ? [storedImage] : undefined,
+        ...(borderColor ? { borderColor } : {}),
         variants: [
           {
             color: finalColorName,
             colorSlug: finalColorSlug,
             stock: row.qty,
-            sku: sku,
-            imageUrl: row.imageUrl || undefined,
+            sku: "",
+            imageUrl: storedImage,
           },
         ],
       };
     });
 
-    onBulkRestock(newProducts);
-    sound.playNotification();
+    setIsCommitting(true);
+    let result: BulkRestockResult;
+    try {
+      result = await onBulkRestock(newProducts);
+    } catch (err: any) {
+      result = {
+        inserted: [],
+        failed: newProducts.map((p) => ({ clientRef: p.clientRef, error: err?.message || "Save failed" })),
+      };
+    } finally {
+      setIsCommitting(false);
+    }
 
+    const skuByRowId = new Map(result.inserted.map((x) => [x.clientRef, x.id]));
+    const savedRowIds = new Set(skuByRowId.keys());
+    const failedByRowId = new Map(result.failed.map((f) => [String(f.clientRef ?? ""), f.error]));
+
+    // Keep only the rows that were not stored, annotated with the reason, so they can be retried.
+    setBulkRows((prev) => {
+      const remaining = prev
+        .filter((row) => !savedRowIds.has(row.id))
+        .map((row) => (failedByRowId.has(row.id) ? { ...row, saveError: failedByRowId.get(row.id) } : row));
+      return remaining.length > 0
+        ? remaining
+        : [{ id: `bulk-row-${Date.now()}-0`, color1: COLOR_CODES[0]?.name || "", color2: COLOR_CODES[1]?.name || "", qty: 5 }];
+    });
+
+    if (result.failed.length > 0) {
+      setCommitError(
+        `${savedRowIds.size} of ${newProducts.length} sarees saved. ${result.failed.length} failed and are still listed below for retry: ` +
+          Array.from(new Set(result.failed.map((f) => f.error))).join("; ")
+      );
+    }
+
+    if (savedRowIds.size === 0) {
+      sound.playClick();
+      return;
+    }
+
+    sound.playNotification();
     const catObj = categories.find((c) => c.id === selectedCategoryId);
+    const savedRows = validRows.filter((r) => savedRowIds.has(r.id));
     setSuccessBatch({
       isOpen: true,
       designName: designObj.name,
-      totalPieces: validRows.reduce((sum, r) => sum + r.qty, 0),
-      variantsCount: validRows.length,
+      totalPieces: savedRows.reduce((sum, r) => sum + r.qty, 0),
+      variantsCount: savedRows.length,
       categoryName: catObj?.name || "SiCo Gadwal Sarees",
-      skus: newProducts.map((p) => p.id),
+      skus: validRows.filter((r) => savedRowIds.has(r.id)).map((r) => skuByRowId.get(r.id)!),
     });
   };
 
@@ -953,6 +1035,21 @@ export default function BulkStock({
               />
             </div>
           </div>
+
+          {/* BORDER DETAILS — entered once, applied to every row (single & dual tone) */}
+          <div className="md:col-span-2 xl:col-start-3">
+            <label className="mb-1.5 flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.14em] text-stone-500">
+              <span>Border Colour &amp; Zari Details</span>
+              <span className="text-[9px] font-normal normal-case tracking-normal text-stone-400">
+                Applies to all {orderMode === "dual" ? "dual" : "single"} tone rows &bull; override per row below
+              </span>
+            </label>
+            <BorderColorInput
+              value={batchBorderColor}
+              onChange={setBatchBorderColor}
+              placeholder="Border shade for this consignment (e.g. Royal Gold Zari)..."
+            />
+          </div>
         </div>
 
         {/* MULTI-PHOTO DROPZONE */}
@@ -1052,29 +1149,28 @@ export default function BulkStock({
           </div>
         </div>
 
+        <datalist id="bulk-border-colors">
+          {registeredBorderColors.map((c) => (
+            <option key={c} value={c} />
+          ))}
+        </datalist>
+
         {/* VARIATION ITEM ROWS */}
         <div className="space-y-3 px-6 pb-6">
           {bulkRows.map((row, index) => {
-            const primaryName = (row.color1 || "").trim() || "Standard";
-            const primaryObj = colorPalette.find((c) => normalizeText(c.name) === normalizeText(primaryName));
-            const primaryCode = primaryObj ? primaryObj.code : generateColorSlug(primaryName);
-
-            const secondaryName = orderMode === "dual" ? (row.color2 || "").trim() : "";
-            const secondaryObj = secondaryName
-              ? colorPalette.find((c) => normalizeText(c.name) === normalizeText(secondaryName))
-              : null;
-            const secondaryCode = secondaryName ? (secondaryObj ? secondaryObj.code : generateColorSlug(secondaryName)) : null;
-
-            const autoSku = `RSF-${selectedDesignSlug}-${secondaryCode
-                ? `${primaryCode}-${secondaryCode}`
-                : primaryCode
-              }-${String(inventory.length + index + 1).padStart(3, "0")}`;
+            const autoSku = PENDING_SKU_LABEL;
 
             return (
               <div
                 key={row.id}
                 className="group relative flex flex-col gap-3.5 rounded-2xl border border-stone-200/80 bg-white/80 p-3.5 shadow-2xs transition-all duration-200 hover:border-[#D4A373]/60 hover:bg-white hover:shadow-xs md:flex-row md:items-center"
               >
+                {row.saveError && (
+                  <div className="absolute -top-2 left-3 z-10 max-w-[90%] truncate rounded-full border border-rose-200 bg-rose-50 px-2.5 py-0.5 text-[9.5px] font-semibold text-rose-700" title={row.saveError}>
+                    Not saved: {row.saveError}
+                  </div>
+                )}
+
                 {/* Index Pill */}
                 <div className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-stone-100 font-mono text-[10px] font-bold text-stone-400 lg:flex">
                   #{index + 1}
@@ -1151,7 +1247,7 @@ export default function BulkStock({
                 </div>
 
                 {/* Dropdowns & SKU */}
-                <div className="grid flex-1 grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
+                <div className={`grid flex-1 grid-cols-1 gap-2.5 sm:grid-cols-2 ${orderMode === "dual" ? "xl:grid-cols-4" : "xl:grid-cols-3"}`}>
                   <PremiumDropdown
                     label="Primary Body Shade"
                     value={row.color1}
@@ -1164,7 +1260,7 @@ export default function BulkStock({
 
                   {orderMode === "dual" ? (
                     <PremiumDropdown
-                      label="Border / Zari Shade"
+                      label="Second Tone / Contrast Shade"
                       value={row.color2}
                       options={colorOptions}
                       onChange={(value) => updateRow(row.id, "color2", value)}
@@ -1183,8 +1279,25 @@ export default function BulkStock({
                     </div>
                   )}
 
+                  <div className="flex flex-col">
+                    <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.14em] text-stone-500">
+                      Border (this row)
+                    </label>
+                    <input
+                      type="text"
+                      list="bulk-border-colors"
+                      value={row.borderColor || ""}
+                      onChange={(e) => updateRow(row.id, "borderColor", e.target.value)}
+                      placeholder={batchBorderColor.trim() ? `Batch: ${batchBorderColor.trim()}` : "Same as batch (none)"}
+                      title="Leave empty to use the batch border details"
+                      className={`h-11 w-full rounded-2xl border px-3.5 text-xs font-semibold text-stone-900 outline-none transition-all placeholder:font-normal placeholder:text-stone-400 focus:border-[#D4A373] focus:ring-2 focus:ring-[#D4A373]/10 ${
+                        (row.borderColor || "").trim() ? "border-amber-300 bg-amber-50/40" : "border-stone-200/80 bg-white/90"
+                      }`}
+                    />
+                  </div>
+
                   {orderMode === "dual" && (
-                    <div className="flex flex-col sm:col-span-2 xl:col-span-1">
+                    <div className="flex flex-col">
                       <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.14em] text-stone-400">
                         Generated Drape SKU
                       </label>
@@ -1327,6 +1440,8 @@ export default function BulkStock({
             <button
               type="submit"
               disabled={
+                isCommitting ||
+                uploadingRowCount > 0 ||
                 !selectedDesignSlug ||
                 !selectedCategoryId ||
                 bulkRows.length === 0 ||
@@ -1334,10 +1449,27 @@ export default function BulkStock({
               }
               className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#2A0E20] px-7 py-3 text-xs font-bold text-amber-100 shadow-xs transition-all hover:bg-[#3D142E] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
             >
-              <Check size={14} className="text-[#D4A373]" />
-              <span>Commit Consignment to Inventory</span>
+              {isCommitting || uploadingRowCount > 0 ? (
+                <Loader2 size={14} className="animate-spin text-[#D4A373]" />
+              ) : (
+                <Check size={14} className="text-[#D4A373]" />
+              )}
+              <span>
+                {isCommitting
+                  ? "Saving to database..."
+                  : uploadingRowCount > 0
+                    ? `Waiting for ${uploadingRowCount} photo${uploadingRowCount !== 1 ? "s" : ""}...`
+                    : "Commit Consignment to Inventory"}
+              </span>
             </button>
           </div>
+
+          {commitError && (
+            <div className="mt-3 flex items-start gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-800">
+              <AlertCircle size={15} className="mt-0.5 shrink-0 text-rose-600" />
+              <p className="break-words">{commitError}</p>
+            </div>
+          )}
         </div>
       </form>
 
@@ -1391,6 +1523,15 @@ export default function BulkStock({
                 </div>
               </div>
 
+              {successBatch.skus.length > 0 && (
+                <div className="mt-3 rounded-2xl border border-stone-200/80 bg-stone-50/60 p-3 text-left">
+                  <span className="text-[9px] font-bold uppercase text-stone-400">Assigned SKUs</span>
+                  <p className="mt-1 break-words font-mono text-[11px] font-bold text-[#8E3D51]">
+                    {successBatch.skus.join(", ")}
+                  </p>
+                </div>
+              )}
+
               <div className="mt-6 flex flex-col gap-2.5 sm:flex-row">
                 <button
                   type="button"
@@ -1403,6 +1544,8 @@ export default function BulkStock({
                         qty: 5,
                       },
                     ]);
+                    setBatchBorderColor("");
+                    setCommitError("");
                     setSuccessBatch(null);
                   }}
                   className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-stone-200 bg-stone-50 py-2.5 text-xs font-semibold text-stone-700 hover:bg-stone-100 transition-colors"
