@@ -4,6 +4,7 @@ import { invalidateCatalogCache } from "./catalog.controller.js";
 import { uploadImageToSupabaseStorage } from "./upload.controller.js";
 import {
   saveProductToStore,
+  getProductsFromStore,
   saveColorToStore,
   getColorsFromStore,
 } from "../database/localStore.js";
@@ -134,6 +135,30 @@ export async function createMovement(req, res) {
   }
 }
 
+// Rows already saved by a previous bulk request, keyed by the browser's per-row clientRef, so a
+// retry after a lost response or partial failure never creates the same product twice.
+const savedBulkRows = new Map(); // clientRef -> { id, at }
+const SAVED_BULK_ROW_TTL_MS = 24 * 60 * 60 * 1000;
+const MAX_IMAGES_PER_PRODUCT = 20;
+
+function lookupSavedBulkRow(clientRef) {
+  const hit = savedBulkRows.get(clientRef);
+  if (!hit) return null;
+  if (Date.now() - hit.at > SAVED_BULK_ROW_TTL_MS) {
+    savedBulkRows.delete(clientRef);
+    return null;
+  }
+  return hit.id;
+}
+
+async function productStillExists(id) {
+  if (supabase) {
+    const { data } = await supabase.from("products").select("id").eq("id", id).maybeSingle();
+    return Boolean(data);
+  }
+  return getProductsFromStore().some((p) => p.id === id);
+}
+
 // 3. BULK LOOM INTAKE
 export async function handleBulkIntake(req, res) {
   try {
@@ -150,10 +175,26 @@ export async function handleBulkIntake(req, res) {
     // `clientRef` lets the browser match results back to its rows.
     const prepared = [];
     const planFailures = [];
+    const alreadySaved = [];
     for (let idx = 0; idx < products.length; idx++) {
       const p = products[idx];
       const clientRef = p.clientRef ?? String(idx);
       const ownBorder = normalizeBorderInput(p);
+
+      if (p.clientRef) {
+        const savedId = lookupSavedBulkRow(String(p.clientRef));
+        if (savedId && (await productStillExists(savedId))) {
+          alreadySaved.push({ clientRef, id: savedId, alreadySaved: true });
+          continue;
+        }
+      }
+
+      const rawImages = Array.isArray(p.images) ? p.images : [];
+      if (rawImages.length > MAX_IMAGES_PER_PRODUCT) {
+        planFailures.push({ clientRef, id: null, error: `Too many photos (${rawImages.length}); a product can have at most ${MAX_IMAGES_PER_PRODUCT}.`, statusCode: 400 });
+        continue;
+      }
+
       try {
         const plan = await planNewProductSkus(p, Array.isArray(p.variants) ? p.variants : []);
         prepared.push({
@@ -191,8 +232,12 @@ export async function handleBulkIntake(req, res) {
 
     const imagesFor = (p) => {
       const list = Array.isArray(p.images) && p.images.length > 0 ? p.images : (p.imageUrl ? [p.imageUrl] : []);
+      // Keep only real image references for THIS product, primary first, without duplicates.
       // blob: URLs are browser-local previews; persisting them produces permanently broken images.
-      return list.filter((img) => typeof img === "string" && img && !img.startsWith("blob:"));
+      const valid = list.filter(
+        (img) => typeof img === "string" && (/^https?:\/\//.test(img) || img.startsWith("data:image/"))
+      );
+      return Array.from(new Set(valid)).slice(0, MAX_IMAGES_PER_PRODUCT);
     };
 
     if (supabase) {
@@ -288,6 +333,7 @@ export async function handleBulkIntake(req, res) {
 
         await assignSkusToProduct([prodId, ...(p.variants || []).map((v) => v.sku)], prodId);
         insertedRefs.push({ clientRef, id: prodId });
+        if (entry.source.clientRef) savedBulkRows.set(String(entry.source.clientRef), { id: prodId, at: Date.now() });
         insertedProducts.push({ ...prodData, borderColor: borderColor || undefined });
         saveProductToStore({ ...p, ...prodData, id: prodId, borderColor: borderColor || undefined });
         if (Array.isArray(p.variants) && p.variants.length > 0) {
@@ -337,8 +383,8 @@ export async function handleBulkIntake(req, res) {
       const payload = {
         count: insertedProducts.length,
         products: insertedProducts,
-        insertedIds: insertedProducts.map((p) => p.id),
-        inserted: insertedRefs,
+        insertedIds: [...alreadySaved.map((a) => a.id), ...insertedProducts.map((p) => p.id)],
+        inserted: [...alreadySaved, ...insertedRefs],
         failed,
         movements: insertedMovements,
         colors: getColorsFromStore(),
@@ -379,8 +425,11 @@ export async function handleBulkIntake(req, res) {
 
     invalidateCatalogCache();
     invalidateInventoryCache();
-    const insertedIds = prepared.map((p) => p.prodId);
-    const inserted = prepared.map((p) => ({ clientRef: p.clientRef, id: p.prodId }));
+    for (const p of prepared) {
+      if (p.source.clientRef) savedBulkRows.set(String(p.source.clientRef), { id: p.prodId, at: Date.now() });
+    }
+    const insertedIds = [...alreadySaved.map((a) => a.id), ...prepared.map((p) => p.prodId)];
+    const inserted = [...alreadySaved, ...prepared.map((p) => ({ clientRef: p.clientRef, id: p.prodId }))];
     if (planFailures.length > 0) {
       return res.status(inserted.length > 0 ? 207 : 400).json({
         success: false,

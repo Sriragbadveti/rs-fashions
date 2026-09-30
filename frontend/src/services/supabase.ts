@@ -1116,7 +1116,11 @@ export const StoreService = {
             resolve({ success: true, url: uploadedUrl, message: data.message });
             return;
           }
-          resolve({ success: false, url: "", message: data.message || directFailure || `Upload failed (${xhr.status})` });
+          const storedNowhere = xhr.status >= 200 && xhr.status < 300 && data.success;
+          const reason = storedNowhere
+            ? "Image storage is unavailable, so the photo was not saved"
+            : data.message || `Upload failed (${xhr.status})`;
+          resolve({ success: false, url: "", message: directFailure ? `${directFailure}; ${reason}` : reason });
         } catch (e: any) {
           resolve({ success: false, url: "", message: directFailure || e.message || "Parse error" });
         }

@@ -62,6 +62,17 @@ interface BulkRow {
   borderColor?: string;
   /** Last save error for this row (kept so the admin can retry). */
   saveError?: string;
+  /** Additional photos for this row's product only (the primary photo stays in imageUrl). */
+  extraImages?: ExtraImage[];
+}
+
+interface ExtraImage {
+  id: string;
+  /** Local preview while uploading; the storage URL once uploaded. */
+  url: string;
+  status: "uploading" | "done" | "error";
+  file?: File;
+  error?: string;
 }
 
 type DropdownOption = {
@@ -527,8 +538,12 @@ export default function BulkStock({
     return obj ? obj.code : generateColorSlug(name);
   };
 
-  const uploadingRowCount = bulkRows.filter((r) => r.uploadStatus === "uploading").length;
-  const failedUploadRowCount = bulkRows.filter((r) => r.uploadStatus === "error").length;
+  const uploadingRowCount = bulkRows.filter(
+    (r) => r.uploadStatus === "uploading" || (r.extraImages || []).some((img) => img.status === "uploading")
+  ).length;
+  const failedUploadRowCount = bulkRows.filter(
+    (r) => r.uploadStatus === "error" || (r.extraImages || []).some((img) => img.status === "error")
+  ).length;
 
   const totalPieces = useMemo(
     () => bulkRows.reduce((sum, row) => sum + Math.max(0, row.qty), 0),
@@ -561,6 +576,8 @@ export default function BulkStock({
       {
         ...row,
         id: `duplicate-${Date.now()}-${Math.random()}`,
+        // Additional photos belong to one product only; a duplicated row starts without them.
+        extraImages: [],
       },
     ]);
   };
@@ -578,6 +595,99 @@ export default function BulkStock({
   ) => {
     setBulkRows((prev) =>
       prev.map((row) => (row.id === id ? { ...row, [field]: value } : row))
+    );
+  };
+
+  const patchExtra = (rowId: string, imgId: string, patch: Partial<ExtraImage>) => {
+    setBulkRows((prev) =>
+      prev.map((row) =>
+        row.id === rowId
+          ? { ...row, extraImages: (row.extraImages || []).map((img) => (img.id === imgId ? { ...img, ...patch } : img)) }
+          : row
+      )
+    );
+  };
+
+  const uploadExtraImage = async (rowId: string, img: ExtraImage) => {
+    if (!img.file) return;
+    patchExtra(rowId, img.id, { status: "uploading", error: undefined });
+    try {
+      const res = await StoreService.uploadImageBinary(img.file);
+      if (res.success && res.url) {
+        patchExtra(rowId, img.id, { status: "done", url: res.url });
+      } else {
+        patchExtra(rowId, img.id, { status: "error", error: res.message || "Upload failed" });
+      }
+    } catch (err: any) {
+      patchExtra(rowId, img.id, { status: "error", error: err?.message || "Upload failed" });
+    }
+  };
+
+  // "Add More Images": extra photos attach only to the row (product) they were added to.
+  const handleAddExtraImages = (rowId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []).filter((f) => isSupportedImageFile(f));
+    e.target.value = "";
+    if (files.length === 0) return;
+    sound.playClick();
+    const items: ExtraImage[] = files.map((file, i) => {
+      const url = URL.createObjectURL(file);
+      createdObjectUrls.current.add(url);
+      return { id: `extra-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 7)}`, url, status: "uploading", file };
+    });
+    setBulkRows((prev) =>
+      prev.map((row) => (row.id === rowId ? { ...row, extraImages: [...(row.extraImages || []), ...items] } : row))
+    );
+    // Two uploads at a time per batch of added photos.
+    let next = 0;
+    const worker = async () => {
+      while (next < items.length) await uploadExtraImage(rowId, items[next++]);
+    };
+    worker();
+    worker();
+  };
+
+  const removeExtraImage = (rowId: string, imgId: string) => {
+    setBulkRows((prev) =>
+      prev.map((row) =>
+        row.id === rowId ? { ...row, extraImages: (row.extraImages || []).filter((img) => img.id !== imgId) } : row
+      )
+    );
+  };
+
+  // Promote an uploaded extra photo to primary; the old primary becomes an extra photo.
+  const makeExtraPrimary = (rowId: string, imgId: string) => {
+    setBulkRows((prev) =>
+      prev.map((row) => {
+        if (row.id !== rowId) return row;
+        const target = (row.extraImages || []).find((img) => img.id === imgId && img.status === "done");
+        if (!target) return row;
+        const rest = (row.extraImages || []).filter((img) => img.id !== imgId);
+        const oldPrimary: ExtraImage[] =
+          row.imageUrl && row.uploadStatus !== "error" && row.uploadStatus !== "uploading" && !row.imageUrl.startsWith("blob:")
+            ? [{ id: `extra-${Date.now()}-old`, url: row.imageUrl, status: "done" }]
+            : [];
+        return { ...row, imageUrl: target.url, uploadStatus: "done", uploadProgress: 100, extraImages: [...oldPrimary, ...rest] };
+      })
+    );
+  };
+
+  // Removing the primary photo promotes the first uploaded extra photo, if any.
+  const removePrimaryImage = (rowId: string) => {
+    setBulkRows((prev) =>
+      prev.map((row) => {
+        if (row.id !== rowId || row.uploadStatus === "uploading") return row;
+        const promote = (row.extraImages || []).find((img) => img.status === "done");
+        if (promote) {
+          return {
+            ...row,
+            imageUrl: promote.url,
+            uploadStatus: "done",
+            file: undefined,
+            extraImages: (row.extraImages || []).filter((img) => img.id !== promote.id),
+          };
+        }
+        return { ...row, imageUrl: "", uploadStatus: "idle", uploadProgress: 0, file: undefined };
+      })
     );
   };
 
@@ -778,6 +888,11 @@ export default function BulkStock({
         row.imageUrl && row.uploadStatus !== "error" && !row.imageUrl.startsWith("blob:")
           ? row.imageUrl
           : undefined;
+      // Primary first, then this row's own uploaded extra photos (never another row's).
+      const extraUrls = (row.extraImages || [])
+        .filter((img) => img.status === "done" && /^https?:\/\//.test(img.url))
+        .map((img) => img.url);
+      const allImages = Array.from(new Set([storedImage, ...extraUrls].filter(Boolean) as string[]));
 
       const rowBorder = (row.borderColor || "").trim();
       if (rowBorder) saveBorderColorToRegistry(rowBorder);
@@ -794,8 +909,8 @@ export default function BulkStock({
           "bulk-restock",
           orderMode === "dual" ? "dual-tone" : "single-tone",
         ],
-        imageUrl: storedImage,
-        images: storedImage ? [storedImage] : undefined,
+        imageUrl: allImages[0],
+        images: allImages.length > 0 ? allImages : undefined,
         ...(borderColor ? { borderColor } : {}),
         variants: [
           {
@@ -803,7 +918,7 @@ export default function BulkStock({
             colorSlug: finalColorSlug,
             stock: row.qty,
             sku: "",
-            imageUrl: storedImage,
+            imageUrl: allImages[0],
           },
         ],
       };
@@ -1163,7 +1278,7 @@ export default function BulkStock({
             return (
               <div
                 key={row.id}
-                className="group relative flex flex-col gap-3.5 rounded-2xl border border-stone-200/80 bg-white/80 p-3.5 shadow-2xs transition-all duration-200 hover:border-[#D4A373]/60 hover:bg-white hover:shadow-xs md:flex-row md:items-center"
+                className="group relative flex flex-col gap-3.5 rounded-2xl border border-stone-200/80 bg-white/80 p-3.5 shadow-2xs transition-all duration-200 hover:border-[#D4A373]/60 hover:bg-white hover:shadow-xs md:flex-row md:flex-wrap md:items-center"
               >
                 {row.saveError && (
                   <div className="absolute -top-2 left-3 z-10 max-w-[90%] truncate rounded-full border border-rose-200 bg-rose-50 px-2.5 py-0.5 text-[9.5px] font-semibold text-rose-700" title={row.saveError}>
@@ -1366,6 +1481,86 @@ export default function BulkStock({
                     >
                       <Trash2 size={13} />
                     </button>
+                  </div>
+                </div>
+
+                {/* Per-product photo gallery: primary + "Add More Images" (this product only) */}
+                <div className="w-full md:basis-full border-t border-stone-100 pt-3">
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-stone-500">
+                      Photos for row #{index + 1} ({(row.imageUrl ? 1 : 0) + (row.extraImages || []).length})
+                    </span>
+                    <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-amber-50 px-3 py-1.5 text-[11px] font-bold text-amber-900 border border-amber-200/70 hover:bg-amber-100">
+                      <ImagePlus size={12} />
+                      <span>Add More Images</span>
+                      <input
+                        type="file"
+                        multiple
+                        accept={IMAGE_ACCEPT_ATTR}
+                        onChange={(e) => handleAddExtraImages(row.id, e)}
+                        className="hidden"
+                        data-testid={`add-more-images-${index}`}
+                      />
+                    </label>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {row.imageUrl && (
+                      <div className="relative h-16 w-16 overflow-hidden rounded-xl border-2 border-[#D4A373] bg-stone-50" title="Primary photo">
+                        <img src={row.imageUrl} alt="Primary" className="h-full w-full object-cover" />
+                        <span className="absolute bottom-0 left-0 right-0 bg-[#2A0E20]/80 text-center text-[8px] font-bold uppercase text-amber-100">Primary</span>
+                        {row.uploadStatus !== "uploading" && (
+                          <button
+                            type="button"
+                            onClick={() => removePrimaryImage(row.id)}
+                            title="Remove primary photo (the next uploaded photo becomes primary)"
+                            className="absolute right-0.5 top-0.5 rounded-full bg-black/60 p-0.5 text-white hover:bg-rose-600"
+                          >
+                            <X size={10} />
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    {(row.extraImages || []).map((img) => (
+                      <div key={img.id} className={`relative h-16 w-16 overflow-hidden rounded-xl border bg-stone-50 ${img.status === "error" ? "border-rose-300" : "border-stone-200"}`}>
+                        <img src={img.url} alt="Additional" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.visibility = "hidden"; }} />
+                        {img.status === "uploading" && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/45">
+                            <Loader2 size={14} className="animate-spin text-[#D4A373]" />
+                          </div>
+                        )}
+                        {img.status === "error" && (
+                          <button
+                            type="button"
+                            onClick={() => uploadExtraImage(row.id, img)}
+                            title={`Upload failed: ${img.error || "unknown error"}. Click to retry.`}
+                            className="absolute inset-0 flex flex-col items-center justify-center bg-rose-950/70 text-[8px] font-bold uppercase text-rose-100"
+                          >
+                            <AlertCircle size={12} className="text-rose-300" />
+                            <span className="mt-0.5 flex items-center gap-0.5"><RefreshCw size={8} /> Retry</span>
+                          </button>
+                        )}
+                        {img.status === "done" && (
+                          <button
+                            type="button"
+                            onClick={() => makeExtraPrimary(row.id, img.id)}
+                            title="Make this the primary photo"
+                            className="absolute bottom-0 left-0 right-0 bg-black/55 text-center text-[8px] font-bold uppercase text-white hover:bg-[#2A0E20]"
+                          >
+                            Set primary
+                          </button>
+                        )}
+                        {img.status !== "uploading" && (
+                          <button
+                            type="button"
+                            onClick={() => removeExtraImage(row.id, img.id)}
+                            title="Remove this photo"
+                            className="absolute right-0.5 top-0.5 rounded-full bg-black/60 p-0.5 text-white hover:bg-rose-600"
+                          >
+                            <X size={10} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>

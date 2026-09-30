@@ -227,19 +227,6 @@ test("duplicate SKUs inside one bulk import are rejected", async () => {
 });
 
 // ------------------------------------------------------------------------------------------
-// Exhaustion (runs last among SKU tests: it consumes the top of the range)
-// ------------------------------------------------------------------------------------------
-test("the RS9999 limit is reported instead of generating an invalid SKU", async () => {
-  const top = await api("POST", "/catalog", product({ sku: "RS9999" }));
-  assert.equal(top.status, 201, JSON.stringify(top.body));
-  const r = await api("POST", "/catalog", product());
-  assert.equal(r.status, 409, JSON.stringify(r.body));
-  assert.match(r.body.message, /SKU range exhausted/);
-  const all = (await api("GET", "/catalog/products")).body.products;
-  assert.ok(all.every((p) => p.id.startsWith("RSF-") || sku.isValidSku(p.id)), "no invalid SKU was stored");
-});
-
-// ------------------------------------------------------------------------------------------
 // CRM customers (birthday / anniversary)
 // ------------------------------------------------------------------------------------------
 test("customer birthday/anniversary dates are validated and normalised", async () => {
@@ -261,3 +248,76 @@ test("customer list requires admin authentication", async () => {
   assert.equal((await api("GET", "/crm/customers", undefined, { auth: false })).status, 401);
   assert.equal((await api("GET", "/crm/customers")).status, 200);
 });
+
+// ------------------------------------------------------------------------------------------
+// Bulk intake with multiple photos per product
+// ------------------------------------------------------------------------------------------
+test("bulk intake: 10 rows with extra photos create exactly 10 products, each with its own photos", async () => {
+  const before = (await api("GET", "/catalog/products")).body.products.length;
+  const extras = { 0: 4, 1: 2, 2: 5 }; // rows 1–3 get additional photos, rows 4–10 have one
+  const rows = Array.from({ length: 10 }, (_, i) => {
+    const images = [`https://cdn.test/row${i}-primary.jpg`];
+    for (let k = 0; k < (extras[i] || 0); k++) images.push(`https://cdn.test/row${i}-extra${k}.jpg`);
+    images.push(`blob:http://localhost/preview-${i}`); // local previews must never be stored
+    return { clientRef: `multi-row-${i}`, ...product({ imageUrl: images[0], images }) };
+  });
+  const r = await api("POST", "/inventory/bulk-intake", { products: rows });
+  assert.equal(r.status, 201, JSON.stringify(r.body));
+  assert.equal(r.body.inserted.length, 10);
+
+  const all = (await api("GET", "/catalog/products")).body.products;
+  assert.equal(all.length, before + 10, "exactly 10 products created (not 21)");
+  for (const { clientRef, id } of r.body.inserted) {
+    const i = Number(clientRef.split("-").pop());
+    const p = all.find((x) => x.id === id);
+    assert.equal(p.images.length, 1 + (extras[i] || 0), `row ${i} photo count`);
+    assert.equal(p.images[0], `https://cdn.test/row${i}-primary.jpg`, `row ${i} primary preserved`);
+    assert.ok(p.images.every((u) => u.includes(`/row${i}-`)), `row ${i} has only its own photos`);
+  }
+});
+
+test("bulk intake: retrying rows that were already saved does not create duplicates", async () => {
+  const rows = [
+    { clientRef: "retry-row-a", ...product({ images: ["https://cdn.test/a.jpg", "https://cdn.test/a2.jpg"] }) },
+    { clientRef: "retry-row-b", ...product({ images: ["https://cdn.test/b.jpg"] }) },
+  ];
+  const first = await api("POST", "/inventory/bulk-intake", { products: rows });
+  assert.equal(first.status, 201);
+  const count = (await api("GET", "/catalog/products")).body.products.length;
+
+  const retry = await api("POST", "/inventory/bulk-intake", { products: rows });
+  assert.equal(retry.status, 201, JSON.stringify(retry.body));
+  assert.deepEqual(
+    retry.body.inserted.map((x) => x.id).sort(),
+    first.body.inserted.map((x) => x.id).sort(),
+    "retry returns the SKUs already created"
+  );
+  assert.equal((await api("GET", "/catalog/products")).body.products.length, count, "no new products on retry");
+});
+
+test("bulk intake: too many photos for one product is rejected for that row only", async () => {
+  const many = Array.from({ length: 21 }, (_, k) => `https://cdn.test/m${k}.jpg`);
+  const r = await api("POST", "/inventory/bulk-intake", {
+    products: [
+      { clientRef: "too-many", ...product({ images: many }) },
+      { clientRef: "fine", ...product({ images: ["https://cdn.test/ok.jpg"] }) },
+    ],
+  });
+  assert.equal(r.status, 207, JSON.stringify(r.body));
+  assert.deepEqual(r.body.inserted.map((x) => x.clientRef), ["fine"]);
+  assert.match(r.body.failed[0].error, /at most 20/);
+});
+
+// ------------------------------------------------------------------------------------------
+// Exhaustion (must run last: it consumes the top of the range)
+// ------------------------------------------------------------------------------------------
+test("the RS9999 limit is reported instead of generating an invalid SKU", async () => {
+  const top = await api("POST", "/catalog", product({ sku: "RS9999" }));
+  assert.equal(top.status, 201, JSON.stringify(top.body));
+  const r = await api("POST", "/catalog", product());
+  assert.equal(r.status, 409, JSON.stringify(r.body));
+  assert.match(r.body.message, /SKU range exhausted/);
+  const all = (await api("GET", "/catalog/products")).body.products;
+  assert.ok(all.every((p) => p.id.startsWith("RSF-") || sku.isValidSku(p.id)), "no invalid SKU was stored");
+});
+
