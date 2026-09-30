@@ -3,6 +3,7 @@ import {
   useMemo,
   useEffect,
   useRef,
+  useCallback,
   type FormEvent,
 } from "react";
 import {
@@ -14,6 +15,8 @@ import {
   IndianRupee,
   Package,
   AlertTriangle,
+  AlertCircle,
+  RefreshCw,
   Check,
   Palette,
   ChevronDown,
@@ -669,59 +672,120 @@ function BorderColorInput({
 // ============================================================
 // SUB-COMPONENT: MULTI-IMAGE UPLOADER
 // ============================================================
+interface UploadQueueItem {
+  id: string;
+  file: File;
+  previewUrl: string;
+  status: "uploading" | "done" | "error";
+  progress: number;
+  uploadedUrl?: string;
+  error?: string;
+}
+
 function MultiImageUploadInput({
   images,
   onChange,
+  onUploadingChange,
 }: {
   images: string[];
   onChange: (images: string[]) => void;
+  onUploadingChange?: (isUploading: boolean) => void;
 }) {
   const [isDragging, setIsDragging] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadQueue, setUploadQueue] = useState<UploadQueueItem[]>([]);
   const [urlInput, setUrlInput] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const objectUrlsRef = useRef<Set<string>>(new Set());
+
+  // Revoke object URLs on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      objectUrlsRef.current.forEach((url) => {
+        try {
+          URL.revokeObjectURL(url);
+        } catch {}
+      });
+      objectUrlsRef.current.clear();
+    };
+  }, []);
+
+  const isUploading = useMemo(() => {
+    return uploadQueue.some((item) => item.status === "uploading");
+  }, [uploadQueue]);
 
   useEffect(() => {
-    if (!images || images.length === 0) return;
-    if (!images.some((url) => isUnrenderedHeicDataUrl(url))) return;
-    let cancelled = false;
-    Promise.all(
-      images.map((url) => (isUnrenderedHeicDataUrl(url) ? convertHeicDataUrlToJpeg(url) : Promise.resolve(url)))
-    ).then((converted) => {
-      if (!cancelled) onChange(converted);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [images]);
+    if (onUploadingChange) {
+      onUploadingChange(isUploading);
+    }
+  }, [isUploading, onUploadingChange]);
+
+  const uploadSingleItem = useCallback(async (item: UploadQueueItem) => {
+    try {
+      setUploadQueue((prev) =>
+        prev.map((it) => (it.id === item.id ? { ...it, status: "uploading", progress: 15, error: undefined } : it))
+      );
+
+      const res = await StoreService.uploadImageBinary(item.file, undefined, (percent) => {
+        setUploadQueue((prev) =>
+          prev.map((it) => (it.id === item.id ? { ...it, progress: Math.max(15, percent) } : it))
+        );
+      });
+
+      if (res && res.success && res.url) {
+        setUploadQueue((prev) =>
+          prev.map((it) =>
+            it.id === item.id ? { ...it, status: "done", progress: 100, uploadedUrl: res.url } : it
+          )
+        );
+        // Append to images list avoiding duplicates
+        onChange(Array.from(new Set([...images, res.url])));
+      } else {
+        throw new Error(res?.message || "Upload failed");
+      }
+    } catch (err: any) {
+      setUploadQueue((prev) =>
+        prev.map((it) =>
+          it.id === item.id ? { ...it, status: "error", error: err.message || "Upload failed" } : it
+        )
+      );
+    }
+  }, [images, onChange]);
 
   async function handleFiles(fileList: FileList | null | undefined) {
     if (!fileList || fileList.length === 0) return;
 
     const files = Array.from(fileList).filter((f) => isSupportedImageFile(f));
-    if (files.length === 0) {
-      setUploadError("Please provide valid image files (JPG, PNG, WebP, or HEIC).");
-      return;
-    }
+    if (files.length === 0) return;
 
-    setUploadError(null);
-    setIsUploading(true);
-    setUploadProgress(15);
+    // 1. Immediately create instant object URLs for 0ms lag previews
+    const newItems: UploadQueueItem[] = files.map((file) => {
+      const previewUrl = URL.createObjectURL(file);
+      objectUrlsRef.current.add(previewUrl);
+      return {
+        id: `upl-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        file,
+        previewUrl,
+        status: "uploading",
+        progress: 15,
+      };
+    });
 
-    try {
-      // High-speed binary upload directly with real progress and concurrency limit = 2
-      const uploadedUrls = await StoreService.uploadImages(files, (pct) => setUploadProgress(pct));
-      const merged = Array.from(new Set([...images, ...uploadedUrls]));
-      onChange(merged);
-    } catch (err: any) {
-      setUploadError(err.message || "Failed to process images.");
-    } finally {
-      setIsUploading(false);
-      setUploadProgress(0);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
+    setUploadQueue((prev) => [...prev, ...newItems]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+
+    // 2. Concurrency-limited upload runner (limit = 2)
+    const queue = [...newItems];
+    const runWorker = async () => {
+      while (queue.length > 0) {
+        const item = queue.shift();
+        if (item) {
+          await uploadSingleItem(item);
+        }
+      }
+    };
+
+    // Run 2 parallel upload workers
+    Promise.all([runWorker(), runWorker()]);
   }
 
   function handleAddUrl() {
@@ -749,12 +813,14 @@ function MultiImageUploadInput({
     (url) => url.includes("supabase.co") || (url.startsWith("http") && !url.startsWith("data:"))
   ).length;
 
+  const pendingQueueItems = uploadQueue.filter((item) => item.status !== "done");
+
   return (
     <div className="w-full space-y-3">
       <div className="flex items-center justify-between">
         <label className="flex items-center gap-2 text-[10.5px] font-bold uppercase tracking-[0.14em] text-stone-500">
           <ImageIcon size={12} className="text-[#8E3D51]" />
-          <span>Saree Photograph Gallery ({images.length} Image{images.length !== 1 ? "s" : ""})</span>
+          <span>Saree Photograph Gallery ({images.length} Synced)</span>
         </label>
         {cloudSyncedCount > 0 && (
           <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200/60 shadow-2xs">
@@ -776,40 +842,22 @@ function MultiImageUploadInput({
           setIsDragging(false);
           handleFiles(e.dataTransfer.files);
         }}
-        onClick={() => !isUploading && fileInputRef.current?.click()}
+        onClick={() => fileInputRef.current?.click()}
         className={`flex min-h-[110px] cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-4 text-center transition-all duration-200 ${
           isDragging
             ? "border-[#D4A373] bg-amber-50/40 shadow-xs"
             : "border-stone-200/80 bg-white/60 hover:border-stone-300 hover:bg-stone-50/80"
         }`}
       >
-        {isUploading ? (
-          <div className="space-y-2 py-2 w-full max-w-xs">
-            <div className="flex items-center justify-center gap-2 text-stone-800 text-xs font-semibold">
-              <Loader2 size={16} className="animate-spin text-[#D4A373]" />
-              <span>Uploading saree photos to cloud vault...</span>
-            </div>
-            <div className="w-full bg-stone-200 h-1.5 rounded-full overflow-hidden">
-              <div
-                className="bg-linear-to-r from-[#D4A373] to-[#8E3D51] h-full rounded-full transition-all duration-200"
-                style={{ width: `${uploadProgress}%` }}
-              />
-            </div>
-            <span className="text-[10px] text-stone-400 font-mono block">{uploadProgress}%</span>
-          </div>
-        ) : (
-          <>
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white shadow-xs text-[#D4A373] border border-stone-200/60">
-              <UploadCloud size={18} />
-            </div>
-            <p className="text-xs font-semibold text-stone-700">
-              Drop multiple drape photographs here
-            </p>
-            <p className="text-[10px] text-stone-400">
-              or click to browse from device &bull; Select multiple files at once (JPG, PNG, WebP, HEIC)
-            </p>
-          </>
-        )}
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white shadow-xs text-[#D4A373] border border-stone-200/60">
+          <UploadCloud size={18} />
+        </div>
+        <p className="text-xs font-semibold text-stone-700">
+          Drop multiple drape photographs here
+        </p>
+        <p className="text-[10px] text-stone-400">
+          or click to browse from device &bull; Select multiple files at once (JPG, PNG, WebP, HEIC)
+        </p>
 
         <input
           ref={fileInputRef}
@@ -820,8 +868,6 @@ function MultiImageUploadInput({
           onChange={(e) => handleFiles(e.target.files)}
         />
       </div>
-
-      {uploadError && <p className="text-[11px] text-rose-600 font-medium px-1">{uploadError}</p>}
 
       {/* Direct URL Input */}
       <div className="flex items-center gap-2">
@@ -850,17 +896,30 @@ function MultiImageUploadInput({
       </div>
 
       {/* Image Preview Grid */}
-      {images.length > 0 && (
+      {(images.length > 0 || pendingQueueItems.length > 0) && (
         <div className="pt-2">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400 mb-2">
-            Gallery Previews ({images.length} item{images.length !== 1 ? "s" : ""}) &bull; First item is primary
-          </p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400">
+              Gallery Previews ({images.length + pendingQueueItems.length} item
+              {images.length + pendingQueueItems.length !== 1 ? "s" : ""}) &bull; First item is primary
+            </p>
+            {isUploading && (
+              <span className="flex items-center gap-1.5 text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200/60 px-2 py-0.5 rounded-full animate-pulse">
+                <Loader2 size={10} className="animate-spin text-[#D4A373]" />
+                Uploading {uploadQueue.filter((q) => q.status === "uploading").length} photo(s)...
+              </span>
+            )}
+          </div>
+
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {/* 1. Permanent Synced Images */}
             {images.map((imgUrl, index) => (
               <div
                 key={`${imgUrl}-${index}`}
                 className={`relative group rounded-2xl border p-1 bg-white transition-all shadow-xs ${
-                  index === 0 ? "border-[#D4A373] ring-2 ring-[#D4A373]/30" : "border-stone-200/80 hover:border-stone-300"
+                  index === 0
+                    ? "border-[#D4A373] ring-2 ring-[#D4A373]/30"
+                    : "border-stone-200/80 hover:border-stone-300"
                 }`}
               >
                 <div className="relative aspect-square rounded-xl overflow-hidden bg-stone-100">
@@ -881,6 +940,10 @@ function MultiImageUploadInput({
                       Primary
                     </span>
                   )}
+                  <span className="absolute bottom-1.5 right-1.5 rounded-md bg-emerald-600/90 text-white px-1.5 py-0.5 text-[8.5px] font-semibold flex items-center gap-0.5 backdrop-blur-xs">
+                    <CheckCircle2 size={10} />
+                    Cloud
+                  </span>
                 </div>
 
                 <div className="mt-1 flex items-center justify-between px-1 py-0.5">
@@ -903,6 +966,66 @@ function MultiImageUploadInput({
                     title="Remove Photo"
                   >
                     <Trash2 size={12} />
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {/* 2. Uploading Queue Items (Instant Previews with Progress & Retry) */}
+            {pendingQueueItems.map((item) => (
+              <div
+                key={item.id}
+                className="relative rounded-2xl border border-amber-300/80 p-1 bg-amber-50/20 shadow-xs"
+              >
+                <div className="relative aspect-square rounded-xl overflow-hidden bg-stone-100">
+                  <img
+                    src={item.previewUrl}
+                    alt="Upload Preview"
+                    className="h-full w-full object-cover opacity-85"
+                  />
+
+                  {item.status === "uploading" && (
+                    <div className="absolute inset-0 bg-black/45 backdrop-blur-[1px] flex flex-col items-center justify-center p-2 text-white text-center gap-1.5">
+                      <Loader2 size={18} className="animate-spin text-[#D4A373]" />
+                      <div className="w-full bg-white/30 h-1.5 rounded-full overflow-hidden max-w-[80px]">
+                        <div
+                          className="bg-[#D4A373] h-full rounded-full transition-all duration-200"
+                          style={{ width: `${item.progress}%` }}
+                        />
+                      </div>
+                      <span className="text-[9px] font-mono font-medium">{item.progress}%</span>
+                    </div>
+                  )}
+
+                  {item.status === "error" && (
+                    <div className="absolute inset-0 bg-rose-950/70 backdrop-blur-[1px] flex flex-col items-center justify-center p-2 text-white text-center gap-1">
+                      <AlertCircle size={16} className="text-rose-300" />
+                      <span className="text-[9px] font-semibold text-rose-200 leading-tight">Failed</span>
+                      <button
+                        type="button"
+                        onClick={() => uploadSingleItem(item)}
+                        className="mt-1 flex items-center gap-1 bg-white/20 hover:bg-white/30 text-white rounded-md px-2 py-0.5 text-[9px] font-semibold transition-all active:scale-95"
+                      >
+                        <RefreshCw size={9} />
+                        <span>Retry</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-1 flex items-center justify-between px-1 py-0.5 text-[10px]">
+                  <span className="text-stone-500 font-mono text-[9px] truncate max-w-[80px]">
+                    {item.file.name}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUploadQueue((prev) => prev.filter((it) => it.id !== item.id));
+                    }}
+                    className="text-stone-400 hover:text-rose-600 p-0.5"
+                    title="Cancel"
+                  >
+                    <X size={12} />
                   </button>
                 </div>
               </div>
@@ -1600,6 +1723,7 @@ export default function Catalog({
   const [formIsSpecialOffer, setFormIsSpecialOffer] = useState(false);
   const [formIsLimitedEdition, setFormIsLimitedEdition] = useState(false);
   const [formBorderColor, setFormBorderColor] = useState("");
+  const [isGalleryUploading, setIsGalleryUploading] = useState(false);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -2363,6 +2487,7 @@ export default function Catalog({
                   setFormImages(imgs);
                   setFormImageUrl(imgs[0] || "");
                 }}
+                onUploadingChange={setIsGalleryUploading}
               />
 
               {/* Per-Color Variant Shade Manager with Photo Upload */}
@@ -2470,15 +2595,25 @@ export default function Catalog({
 
                 <button
                   type="submit"
-                  className="group flex h-10 items-center justify-center gap-1.5 rounded-xl bg-[#2A0E20] px-5 text-xs font-bold text-amber-100 shadow-xs transition-all hover:bg-[#3D142E] active:scale-95"
+                  disabled={isGalleryUploading}
+                  className="group flex h-10 items-center justify-center gap-1.5 rounded-xl bg-[#2A0E20] px-5 text-xs font-bold text-amber-100 shadow-xs transition-all hover:bg-[#3D142E] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Check
-                    size={14}
-                    className="text-[#D4A373] transition-transform duration-200 group-hover:scale-110"
-                  />
-                  <span>
-                    {editingProductId ? "Update Saree Record" : "Save Drapery"}
-                  </span>
+                  {isGalleryUploading ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin text-[#D4A373]" />
+                      <span>Uploading Photos...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check
+                        size={14}
+                        className="text-[#D4A373] transition-transform duration-200 group-hover:scale-110"
+                      />
+                      <span>
+                        {editingProductId ? "Update Saree Record" : "Save Drapery"}
+                      </span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>

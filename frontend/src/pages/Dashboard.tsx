@@ -300,6 +300,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
   const lastDispatchedInventoryRef = useRef<string>("");
   const isBootstrapFetchingRef = useRef(false);
   const lastBootstrapFetchTimeRef = useRef(0);
+  const pendingCreatedProductsRef = useRef<Map<string, Product>>(new Map());
 
   const syncInventoryToStorefront = useCallback((inventoryList: Product[]) => {
     try {
@@ -410,10 +411,21 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
             (p: any) => p && p.id && !DUMMY_PRODUCT_IDS.has(String(p.id))
           );
 
-          // The database is the authoritative source of truth.
-          setInventory(remoteProducts);
-          safeStorageSet("rs_admin_inventory", remoteProducts);
-          syncInventoryToStorefront(remoteProducts);
+          // Clear any pending products that now exist in the remote database response
+          const remoteIds = new Set(remoteProducts.map((p: any) => String(p.id)));
+          pendingCreatedProductsRef.current.forEach((_, id) => {
+            if (remoteIds.has(id)) {
+              pendingCreatedProductsRef.current.delete(id);
+            }
+          });
+
+          // Merge any still-in-flight locally created products so they never vanish
+          const pendingList = Array.from(pendingCreatedProductsRef.current.values());
+          const merged = [...pendingList, ...remoteProducts];
+
+          setInventory(merged);
+          safeStorageSet("rs_admin_inventory", merged);
+          syncInventoryToStorefront(merged);
         }
         if (Array.isArray(d.stockMovements)) {
           setStockHistory(d.stockMovements);
@@ -564,14 +576,20 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [triggerRefresh]);
 
-  function handleAddProduct(newProduct: Product, categoryId: string) {
+  async function handleAddProduct(newProduct: Product, categoryId: string) {
     sound.playClick();
+    // Register product in pending set so background window focus syncs never wipe it out
+    pendingCreatedProductsRef.current.set(String(newProduct.id), newProduct);
+
     setInventory((prev) => {
+      const exists = prev.some((p) => p.id === newProduct.id);
+      if (exists) return prev;
       const updated = [newProduct, ...prev];
       safeStorageSet("rs_admin_inventory", updated);
       syncInventoryToStorefront(updated);
       return updated;
     });
+
     setCategories((prev) =>
       prev.map((c) =>
         c.id === categoryId ? { ...c, nextSequence: c.nextSequence + 1 } : c
@@ -604,18 +622,33 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
         ...prev,
       ]);
     });
-    adminFetch(`${API_BASE}/catalog`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Allow-Bulk-Create": "true",
-      },
-      body: JSON.stringify(newProduct),
-    }).catch((err) => console.warn("Catalog sync error:", err));
+
+    try {
+      const res = await adminFetch(`${API_BASE}/catalog`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Allow-Bulk-Create": "true",
+        },
+        body: JSON.stringify(newProduct),
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.message || `Server returned ${res.status}`);
+      }
+
+      // Re-hydrate directly from database to confirm persistence
+      await loadLiveBootstrap(true);
+    } catch (err: any) {
+      console.warn("Catalog sync error:", err);
+    }
   }
 
   function handleBulkRestock(newProducts: Product[]) {
     sound.playClick();
+    newProducts.forEach((p) => pendingCreatedProductsRef.current.set(String(p.id), p));
+
     const receivedAt = new Date().toLocaleString("en-IN", {
       day: "2-digit",
       month: "short",
@@ -654,7 +687,13 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ products: newProducts, performer: user.name }),
-    }).catch((err) => console.warn("Bulk intake sync error:", err));
+    })
+      .then(async (res) => {
+        if (res.ok) {
+          await loadLiveBootstrap(true);
+        }
+      })
+      .catch((err) => console.warn("Bulk intake sync error:", err));
   }
 
   function handleUpdateProduct(updatedProduct: Product) {

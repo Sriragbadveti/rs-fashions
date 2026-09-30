@@ -439,8 +439,24 @@ export async function createProduct(req, res) {
         }
       }
 
+      // Persist shade variants into persistentVariantsMap in settings table
+      if (Array.isArray(variants) && variants.length > 0) {
+        try {
+          const vMap = await getPersistentVariantsMap();
+          vMap[prodId] = variants;
+          await savePersistentVariantsMap(vMap);
+        } catch (vErr) {
+          console.warn("Failed to persist variant mappings on createProduct:", vErr.message);
+        }
+      }
+
       invalidateCatalogCache();
-      return successResponse(res, { product: data }, "Saree catalogued successfully", 201);
+      return successResponse(
+        res,
+        { product: { ...data, variants: variants && variants.length > 0 ? variants : undefined } },
+        "Saree catalogued successfully",
+        201
+      );
     }
 
     const localPayload = {
