@@ -676,7 +676,7 @@ interface UploadQueueItem {
   id: string;
   file: File;
   previewUrl: string;
-  status: "uploading" | "done" | "error";
+  status: "pending" | "uploading" | "done" | "error";
   progress: number;
   uploadedUrl?: string;
   error?: string;
@@ -697,34 +697,47 @@ function MultiImageUploadInput({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const objectUrlsRef = useRef<Set<string>>(new Set());
 
+  // KEY FIX: accumulator ref stores all committed CDN URLs so far.
+  // Workers append to this ref atomically — no stale closure on `images` prop.
+  const committedUrlsRef = useRef<string[]>([]);
+
+  // Keep committedUrlsRef in sync with any external images changes (e.g. removes, primary set)
+  useEffect(() => {
+    committedUrlsRef.current = [...images];
+  }, [images]);
+
+  // Stable onChange ref — always points to the latest onChange prop
+  const onChangeRef = useRef(onChange);
+  useEffect(() => { onChangeRef.current = onChange; }, [onChange]);
+
   // Revoke object URLs on unmount to prevent memory leaks
   useEffect(() => {
     return () => {
       objectUrlsRef.current.forEach((url) => {
-        try {
-          URL.revokeObjectURL(url);
-        } catch {}
+        try { URL.revokeObjectURL(url); } catch {}
       });
       objectUrlsRef.current.clear();
     };
   }, []);
 
-  const isUploading = useMemo(() => {
-    return uploadQueue.some((item) => item.status === "uploading");
-  }, [uploadQueue]);
+  const isUploading = useMemo(() =>
+    uploadQueue.some((item) => item.status === "uploading" || item.status === "pending"),
+    [uploadQueue]
+  );
 
   useEffect(() => {
-    if (onUploadingChange) {
-      onUploadingChange(isUploading);
-    }
+    if (onUploadingChange) onUploadingChange(isUploading);
   }, [isUploading, onUploadingChange]);
 
+  // STABLE upload function — zero dependencies on images/onChange props.
+  // Uses committedUrlsRef for atomic append and onChangeRef for stable callback.
   const uploadSingleItem = useCallback(async (item: UploadQueueItem) => {
-    try {
-      setUploadQueue((prev) =>
-        prev.map((it) => (it.id === item.id ? { ...it, status: "uploading", progress: 15, error: undefined } : it))
-      );
+    // Transition from pending → uploading
+    setUploadQueue((prev) =>
+      prev.map((it) => (it.id === item.id ? { ...it, status: "uploading", progress: 15, error: undefined } : it))
+    );
 
+    try {
       const res = await StoreService.uploadImageBinary(item.file, undefined, (percent) => {
         setUploadQueue((prev) =>
           prev.map((it) => (it.id === item.id ? { ...it, progress: Math.max(15, percent) } : it))
@@ -732,13 +745,17 @@ function MultiImageUploadInput({
       });
 
       if (res && res.success && res.url) {
+        // Atomic append to accumulator — safe across concurrent workers
+        if (!committedUrlsRef.current.includes(res.url)) {
+          committedUrlsRef.current = [...committedUrlsRef.current, res.url];
+        }
         setUploadQueue((prev) =>
           prev.map((it) =>
             it.id === item.id ? { ...it, status: "done", progress: 100, uploadedUrl: res.url } : it
           )
         );
-        // Append to images list avoiding duplicates
-        onChange(Array.from(new Set([...images, res.url])));
+        // Notify parent with the full deduplicated list — no stale closure risk
+        onChangeRef.current([...committedUrlsRef.current]);
       } else {
         throw new Error(res?.message || "Upload failed");
       }
@@ -749,7 +766,7 @@ function MultiImageUploadInput({
         )
       );
     }
-  }, [images, onChange]);
+  }, []); // ← intentionally empty: uses refs only
 
   async function handleFiles(fileList: FileList | null | undefined) {
     if (!fileList || fileList.length === 0) return;
@@ -757,7 +774,7 @@ function MultiImageUploadInput({
     const files = Array.from(fileList).filter((f) => isSupportedImageFile(f));
     if (files.length === 0) return;
 
-    // 1. Immediately create instant object URLs for 0ms lag previews
+    // 1. Create instant object URL previews — all start as "pending" (not uploading yet)
     const newItems: UploadQueueItem[] = files.map((file) => {
       const previewUrl = URL.createObjectURL(file);
       objectUrlsRef.current.add(previewUrl);
@@ -765,26 +782,25 @@ function MultiImageUploadInput({
         id: `upl-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         file,
         previewUrl,
-        status: "uploading",
-        progress: 15,
+        status: "pending",   // ← FIX: pending, not uploading
+        progress: 0,
       };
     });
 
     setUploadQueue((prev) => [...prev, ...newItems]);
     if (fileInputRef.current) fileInputRef.current.value = "";
 
-    // 2. Concurrency-limited upload runner (limit = 2)
-    const queue = [...newItems];
+    // 2. Concurrency-limited upload runner (max 2 parallel uploads)
+    // Use a local queue index — avoids any closure/stale ref issues
+    let queueIndex = 0;
     const runWorker = async () => {
-      while (queue.length > 0) {
-        const item = queue.shift();
-        if (item) {
-          await uploadSingleItem(item);
-        }
+      while (queueIndex < newItems.length) {
+        const item = newItems[queueIndex++];
+        if (item) await uploadSingleItem(item);
       }
     };
 
-    // Run 2 parallel upload workers
+    // Two workers consume the queue
     Promise.all([runWorker(), runWorker()]);
   }
 
@@ -903,12 +919,19 @@ function MultiImageUploadInput({
               Gallery Previews ({images.length + pendingQueueItems.length} item
               {images.length + pendingQueueItems.length !== 1 ? "s" : ""}) &bull; First item is primary
             </p>
-            {isUploading && (
-              <span className="flex items-center gap-1.5 text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200/60 px-2 py-0.5 rounded-full animate-pulse">
-                <Loader2 size={10} className="animate-spin text-[#D4A373]" />
-                Uploading {uploadQueue.filter((q) => q.status === "uploading").length} photo(s)...
-              </span>
-            )}
+            <div className="flex items-center gap-1.5">
+              {uploadQueue.filter((q) => q.status === "uploading").length > 0 && (
+                <span className="flex items-center gap-1.5 text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200/60 px-2 py-0.5 rounded-full animate-pulse">
+                  <Loader2 size={10} className="animate-spin text-[#D4A373]" />
+                  Uploading {uploadQueue.filter((q) => q.status === "uploading").length}...
+                </span>
+              )}
+              {uploadQueue.filter((q) => q.status === "pending").length > 0 && (
+                <span className="flex items-center gap-1 text-[10px] font-semibold text-stone-500 bg-stone-50 border border-stone-200/60 px-2 py-0.5 rounded-full">
+                  {uploadQueue.filter((q) => q.status === "pending").length} queued
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -971,18 +994,29 @@ function MultiImageUploadInput({
               </div>
             ))}
 
-            {/* 2. Uploading Queue Items (Instant Previews with Progress & Retry) */}
+            {/* 2. Active & Queued Upload Items (Instant Previews with Progress & Retry) */}
             {pendingQueueItems.map((item) => (
               <div
                 key={item.id}
-                className="relative rounded-2xl border border-amber-300/80 p-1 bg-amber-50/20 shadow-xs"
+                className={`relative rounded-2xl border p-1 shadow-xs ${
+                  item.status === "error"
+                    ? "border-rose-300/80 bg-rose-50/20"
+                    : "border-amber-300/80 bg-amber-50/20"
+                }`}
               >
                 <div className="relative aspect-square rounded-xl overflow-hidden bg-stone-100">
                   <img
                     src={item.previewUrl}
                     alt="Upload Preview"
-                    className="h-full w-full object-cover opacity-85"
+                    className={`h-full w-full object-cover ${item.status === "pending" ? "opacity-60" : "opacity-85"}`}
                   />
+
+                  {item.status === "pending" && (
+                    <div className="absolute inset-0 bg-black/30 backdrop-blur-[1px] flex flex-col items-center justify-center p-2 text-white text-center gap-1">
+                      <Loader2 size={14} className="text-white/60" />
+                      <span className="text-[9px] font-semibold text-white/80">Queued</span>
+                    </div>
+                  )}
 
                   {item.status === "uploading" && (
                     <div className="absolute inset-0 bg-black/45 backdrop-blur-[1px] flex flex-col items-center justify-center p-2 text-white text-center gap-1.5">
