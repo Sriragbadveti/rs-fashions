@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>RS Fashions — Backend Architecture</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f0f1a; color: #e2e8f0; }
+.header { background: linear-gradient(135deg, #064e3b, #022c22); padding: 24px 40px; border-bottom: 1px solid #065f46; }
+.header h1 { font-size: 22px; font-weight: 700; color: #34d399; }
+.header p { color: #94a3b8; margin-top: 4px; font-size: 14px; }
+.container { padding: 32px 40px; display: grid; grid-template-columns: 250px 300px 300px 250px; gap: 20px; }
+.column { display: flex; flex-direction: column; gap: 16px; }
+.column-title { font-size: 14px; font-weight: 700; color: #10b981; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; text-align: center; border-bottom: 2px solid #065f46; padding-bottom: 8px; }
+.card { background: #1a2f24; border: 1px solid #059669; border-radius: 8px; padding: 16px; position: relative; }
+.card h3 { font-size: 13px; font-weight: 600; color: #6ee7b7; margin-bottom: 8px; }
+.card p { font-size: 11px; color: #a7f3d0; line-height: 1.5; }
+.method { display: inline-block; background: #064e3b; border-radius: 4px; padding: 2px 6px; font-size: 10px; font-family: monospace; color: #34d399; margin-bottom: 4px; }
+.arrow { color: #059669; text-align: center; font-size: 24px; margin-top: 50%; transform: translateY(-50%); }
+.highlight { border-color: #34d399; box-shadow: 0 0 10px rgba(52, 211, 153, 0.2); }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>RS Fashions — Backend MVC Request Flow</h1>
+  <p>Express server · Route definition · Controller logic · Data persistence</p>
+</div>
+<div class="container">
+  
+  <div class="column">
+    <div class="column-title">1. Express Setup</div>
+    <div class="card highlight">
+      <h3>server.js</h3>
+      <p>Entry point. Initializes Express app on port 5001.</p>
+    </div>
+    <div class="card">
+      <h3>Middleware Chain</h3>
+      <div class="method">1. CORS</div>
+      <p>Whitelists origins (with permissive fallback bug)</p>
+      <div class="method" style="margin-top: 8px;">2. express.json</div>
+      <p>Body parser with 50MB limit</p>
+      <div class="method" style="margin-top: 8px;">3. requestLogger</div>
+      <p>Logs HTTP method + URL</p>
+    </div>
+  </div>
+  
+  <div class="column">
+    <div class="column-title">2. Routing Layer</div>
+    <div class="card highlight">
+      <h3>routes/index.js</h3>
+      <p>Central router. Defines the split between public and protected routes.</p>
+    </div>
+    <div class="card">
+      <h3>Public Routes</h3>
+      <p>Mounted directly onto apiRouter. No auth required.</p>
+      <div class="method" style="margin-top: 8px;">/api/catalog/*</div>
+      <div class="method">/api/payments/*</div>
+      <div class="method">/api/auth/*</div>
+      <div class="method">/api/billing/pos-checkout</div>
+    </div>
+    <div class="card">
+      <h3>Protected Routes</h3>
+      <p>Wrapped in <span style="color:#fcd34d">requireAdminAuth</span> middleware.</p>
+      <div class="method" style="margin-top: 8px;">/api/admin/catalog/*</div>
+      <div class="method">/api/admin/inventory/*</div>
+      <div class="method">/api/admin/bootstrap/*</div>
+      <p style="margin-top:4px; font-size: 10px; color:#fb923c;">⚠️ Arch. issue: Routes are triple-mounted.</p>
+    </div>
+  </div>
+  
+  <div class="column">
+    <div class="column-title">3. Controllers (Logic)</div>
+    <div class="card">
+      <h3>catalog.controller.js</h3>
+      <div class="method">getProducts()</div>
+      <p>Memory cache → Supabase → localStore</p>
+      <div class="method" style="margin-top: 4px;">createProduct()</div>
+      <p>Validates → auto-uploads images → Supabase INSERT</p>
+    </div>
+    <div class="card">
+      <h3>payments.controller.js</h3>
+      <div class="method">createCashfreePaymentLink()</div>
+      <p>Distributed lock → Cashfree API call</p>
+      <div class="method" style="margin-top: 4px;">handleCashfreeWebhook()</div>
+      <p>HMAC verify → Idempotency → State Machine</p>
+    </div>
+    <div class="card">
+      <h3>auth.controller.js</h3>
+      <div class="method">adminLogin()</div>
+      <p>Loads admins → crypto.scryptSync → Custom JWT</p>
+    </div>
+  </div>
+  
+  <div class="column">
+    <div class="column-title">4. Data Access</div>
+    <div class="card highlight">
+      <h3>config/supabase.js</h3>
+      <p>Two clients: adminClient (service-role) + publicClient (anon).</p>
+      <p style="margin-top: 8px;"><strong>Tables:</strong> products, orders, stock_movements, settings, customers</p>
+    </div>
+    <div class="card">
+      <h3>database/localStore.js</h3>
+      <p>File-based JSON persistence. Used as fallback when Supabase is offline.</p>
+      <div class="method" style="margin-top: 8px;">backend/src/database/data/*.json</div>
+    </div>
+    <div class="card">
+      <h3>services/*.service.js</h3>
+      <div class="method">inventory.service.js</div>
+      <p>Complex stock deduction logic.</p>
+      <div class="method" style="margin-top: 4px;">cashfree.service.js</div>
+      <p>External API wrapper.</p>
+    </div>
+  </div>
+  
+</div>
+</body>
+</html>

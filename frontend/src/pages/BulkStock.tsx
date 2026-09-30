@@ -19,6 +19,9 @@ import {
   CheckCircle2,
   ArrowRight,
   Info,
+  RefreshCw,
+  AlertCircle,
+  Loader2,
 } from "lucide-react";
 import type { Product, Category, ColorDefinition } from "../types/inventory";
 import { MOCK_DESIGNS, COLOR_CODES } from "../types/inventory";
@@ -46,6 +49,9 @@ interface BulkRow {
   color2: string;
   qty: number;
   imageUrl?: string;
+  uploadStatus?: "idle" | "uploading" | "done" | "error";
+  uploadProgress?: number;
+  file?: File;
 }
 
 type DropdownOption = {
@@ -433,8 +439,24 @@ export default function BulkStock({
       color2: COLOR_CODES[1]?.name || "",
       qty: 5,
       imageUrl: "",
+      uploadStatus: "idle",
+      uploadProgress: 0,
     },
   ]);
+
+  // Track active object URLs for cleanup on unmount to prevent browser memory leaks
+  const createdObjectUrls = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    return () => {
+      createdObjectUrls.current.forEach((url) => {
+        try {
+          URL.revokeObjectURL(url);
+        } catch {}
+      });
+      createdObjectUrls.current.clear();
+    };
+  }, []);
 
   const [applyQty, setApplyQty] = useState<number>(5);
   const [successBatch, setSuccessBatch] = useState<{
@@ -544,24 +566,61 @@ export default function BulkStock({
     if (!file || !isSupportedImageFile(file)) return;
 
     sound.playClick();
-    try {
-      const dataUrl = await fileToVisibleDataUrl(file);
-      updateRow(id, "imageUrl", dataUrl);
+    // Immediate local object URL preview - 0ms UI blocking
+    const objUrl = URL.createObjectURL(file);
+    createdObjectUrls.current.add(objUrl);
+    updateRow(id, "imageUrl", objUrl);
+    updateRow(id, "uploadStatus", "uploading");
+    updateRow(id, "uploadProgress", 15);
+    updateRow(id, "file", file as any);
 
-      try {
-        const uploadRes = await StoreService.uploadImage(dataUrl);
-        if (uploadRes.success && uploadRes.url) {
-          updateRow(id, "imageUrl", uploadRes.url);
-        }
-      } catch (err) {
-        console.warn("Bulk image upload notice:", err);
+    try {
+      const uploadRes = await StoreService.uploadImageBinary(file, undefined, (pct) => {
+        updateRow(id, "uploadProgress", pct);
+      });
+      if (uploadRes.success && uploadRes.url) {
+        updateRow(id, "imageUrl", uploadRes.url);
+        updateRow(id, "uploadStatus", "done");
+        updateRow(id, "uploadProgress", 100);
+        // Revoke temporary local URL once remote cloud CDN is active
+        try {
+          URL.revokeObjectURL(objUrl);
+          createdObjectUrls.current.delete(objUrl);
+        } catch {}
+      } else {
+        updateRow(id, "uploadStatus", "error");
       }
     } catch (err) {
-      console.warn("Failed to process image:", err);
+      console.warn("Single image upload notice:", err);
+      updateRow(id, "uploadStatus", "error");
     }
   };
 
-  const handleBulkImagesUpload = async (
+  const handleRetryRowUpload = async (rowId: string) => {
+    const row = bulkRows.find((r) => r.id === rowId);
+    if (!row || !row.file) return;
+
+    sound.playClick();
+    updateRow(rowId, "uploadStatus", "uploading");
+    updateRow(rowId, "uploadProgress", 15);
+
+    try {
+      const uploadRes = await StoreService.uploadImageBinary(row.file, undefined, (pct) => {
+        updateRow(rowId, "uploadProgress", pct);
+      });
+      if (uploadRes.success && uploadRes.url) {
+        updateRow(rowId, "imageUrl", uploadRes.url);
+        updateRow(rowId, "uploadStatus", "done");
+        updateRow(rowId, "uploadProgress", 100);
+      } else {
+        updateRow(rowId, "uploadStatus", "error");
+      }
+    } catch {
+      updateRow(rowId, "uploadStatus", "error");
+    }
+  };
+
+  const handleBulkImagesUpload = (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
     const files = e.target.files;
@@ -573,41 +632,75 @@ export default function BulkStock({
 
     sound.playGunReload();
 
-    for (let index = 0; index < fileList.length; index++) {
-      const file = fileList[index];
-      try {
-        const dataUrl = await fileToVisibleDataUrl(file);
-        const rowId = `bulk-row-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 6)}`;
+    const palette = colorPalette.length > 0 ? colorPalette : COLOR_CODES;
+    const newRows: BulkRow[] = [];
+    const uploadTasks: { rowId: string; file: File }[] = [];
 
-        setBulkRows((prev) => {
-          const palette = colorPalette.length > 0 ? colorPalette : COLOR_CODES;
-          const newRow: BulkRow = {
-            id: rowId,
-            color1: palette[index % palette.length]?.name || "",
-            color2: palette[(index + 1) % palette.length]?.name || "",
-            qty: 5,
-            imageUrl: dataUrl,
-          };
+    // 1. Immediately create instant object URL previews and rows in ONE synchronous update
+    fileList.forEach((file, index) => {
+      const objUrl = URL.createObjectURL(file);
+      createdObjectUrls.current.add(objUrl);
 
-          if (prev.length === 1 && !prev[0].imageUrl && prev[0].qty === 5) {
-            return [newRow];
-          }
+      const rowId = `bulk-row-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 6)}`;
+      const newRow: BulkRow = {
+        id: rowId,
+        color1: palette[index % palette.length]?.name || "",
+        color2: palette[(index + 1) % palette.length]?.name || "",
+        qty: 5,
+        imageUrl: objUrl,
+        uploadStatus: "uploading",
+        uploadProgress: 10,
+        file,
+      };
 
-          return [...prev, newRow];
-        });
+      newRows.push(newRow);
+      uploadTasks.push({ rowId, file });
+    });
 
-        StoreService.uploadImage(dataUrl)
-          .then((uploadRes) => {
-            if (uploadRes.success && uploadRes.url) {
-              updateRow(rowId, "imageUrl", uploadRes.url);
-            }
-          })
-          .catch((err) => {
-            console.warn("Bulk image batch sync notice:", err);
-          });
-      } catch (err) {
-        console.warn("Failed to process bulk image:", err);
+    // Single non-blocking state update: all rows appear instantly
+    setBulkRows((prev) => {
+      if (prev.length === 1 && !prev[0].imageUrl && prev[0].qty === 5) {
+        return newRows;
       }
+      return [...prev, ...newRows];
+    });
+
+    // 2. Controlled concurrency upload queue (concurrency = 2) in background
+    let taskIdx = 0;
+    const concurrency = 2;
+
+    const runWorker = async () => {
+      while (taskIdx < uploadTasks.length) {
+        const current = uploadTasks[taskIdx++];
+        try {
+          updateRow(current.rowId, "uploadProgress", 25);
+          const uploadRes = await StoreService.uploadImageBinary(current.file, undefined, (pct) => {
+            updateRow(current.rowId, "uploadProgress", pct);
+          });
+          if (uploadRes.success && uploadRes.url) {
+            updateRow(current.rowId, "imageUrl", uploadRes.url);
+            updateRow(current.rowId, "uploadStatus", "done");
+            updateRow(current.rowId, "uploadProgress", 100);
+          } else {
+            // Attempt 1 retry
+            const retryRes = await StoreService.uploadImageBinary(current.file);
+            if (retryRes.success && retryRes.url) {
+              updateRow(current.rowId, "imageUrl", retryRes.url);
+              updateRow(current.rowId, "uploadStatus", "done");
+              updateRow(current.rowId, "uploadProgress", 100);
+            } else {
+              updateRow(current.rowId, "uploadStatus", "error");
+            }
+          }
+        } catch {
+          updateRow(current.rowId, "uploadStatus", "error");
+        }
+      }
+    };
+
+    const workerCount = Math.min(concurrency, uploadTasks.length);
+    for (let c = 0; c < workerCount; c++) {
+      runWorker();
     }
   };
 
@@ -1013,6 +1106,41 @@ export default function BulkStock({
                       </span>
                     </div>
                   )}
+
+                  {/* Status Overlay: Uploading Progress Ring / Spinner */}
+                  {row.uploadStatus === "uploading" && (
+                    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/55 backdrop-blur-[1px] text-white">
+                      <Loader2 size={16} className="animate-spin text-[#D4A373]" />
+                      <span className="text-[9px] font-mono mt-0.5">{row.uploadProgress || 10}%</span>
+                    </div>
+                  )}
+
+                  {/* Status Overlay: Done Badge */}
+                  {row.uploadStatus === "done" && (
+                    <div className="absolute top-1 right-1 z-10 rounded-full bg-emerald-600/90 p-0.5 text-white shadow-xs">
+                      <Check size={9} strokeWidth={3} />
+                    </div>
+                  )}
+
+                  {/* Status Overlay: Error Badge & Retry Button */}
+                  {row.uploadStatus === "error" && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        handleRetryRowUpload(row.id);
+                      }}
+                      title="Upload failed. Click to retry upload"
+                      className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-rose-950/70 p-1 text-white transition hover:bg-rose-900/80"
+                    >
+                      <AlertCircle size={14} className="text-rose-300" />
+                      <span className="text-[8px] font-bold uppercase tracking-wide flex items-center gap-0.5 mt-0.5 text-rose-200">
+                        <RefreshCw size={8} /> Retry
+                      </span>
+                    </button>
+                  )}
+
                   <input
                     type="file"
                     accept={IMAGE_ACCEPT_ATTR}

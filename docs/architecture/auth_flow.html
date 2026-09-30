@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>RS Fashions — Authentication Flow</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f0f1a; color: #e2e8f0; }
+.header { background: linear-gradient(135deg, #1e1e3f, #2d1b69); padding: 24px 40px; border-bottom: 1px solid #2d2d6e; }
+.header h1 { font-size: 22px; font-weight: 700; color: #a78bfa; }
+.header p { color: #94a3b8; margin-top: 4px; font-size: 14px; }
+.diagrams { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; padding: 32px; }
+.diagram-card { background: #1a1a2e; border: 1px solid #2d2d6e; border-radius: 12px; padding: 24px; }
+.diagram-card h2 { font-size: 16px; color: #c4b5fd; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+.flow { display: flex; flex-direction: column; gap: 0; }
+.step { display: flex; gap: 12px; position: relative; }
+.step-num { background: #4c1d95; color: #a78bfa; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; z-index: 1; }
+.step-content { padding-bottom: 20px; border-left: 2px solid #2d2d6e; margin-left: -1px; padding-left: 16px; flex: 1; }
+.step:last-child .step-content { border-left-color: transparent; }
+.step-title { font-size: 13px; font-weight: 600; color: #e2e8f0; margin-bottom: 4px; }
+.step-detail { font-size: 11px; color: #94a3b8; line-height: 1.5; }
+.step-code { font-size: 11px; color: #4ade80; background: #0f1a0f; padding: 6px 10px; border-radius: 6px; margin-top: 6px; font-family: monospace; }
+.step-warn { font-size: 11px; color: #fb923c; background: #1a0f00; padding: 6px 10px; border-radius: 6px; margin-top: 6px; }
+.actor { background: #1e1e3f; border: 1px solid #3d3d6e; border-radius: 6px; padding: 4px 10px; font-size: 11px; color: #a78bfa; display: inline-block; margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>RS Fashions — Authentication Flow Diagrams</h1>
+  <p>Admin JWT-like token system · Customer Google OAuth · Based on actual source code</p>
+</div>
+<div class="diagrams">
+
+<div class="diagram-card">
+  <h2>🔐 Admin Login Flow</h2>
+  <div class="flow">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <div class="step-title">Admin fills login form</div>
+        <div class="step-detail"><span class="actor">Login.tsx</span> — Collects email + password</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <div class="step-title">POST /api/auth/admin-login</div>
+        <div class="step-detail"><span class="actor">auth.controller.js → adminLogin()</span></div>
+        <div class="step-code">Body: { email, password }</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <div class="step-title">Load admin accounts</div>
+        <div class="step-detail"><span class="actor">admin.service.js → getAuthorizedAdmins()</span> — Tries Supabase settings(key: admin_accounts) first, falls back to admin_accounts.json (gitignored)</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-content">
+        <div class="step-title">Verify password</div>
+        <div class="step-detail"><span class="actor">admin.service.js → verifyPassword()</span></div>
+        <div class="step-code">crypto.scryptSync(password, salt, 64)
+crypto.timingSafeEqual(stored, derived)</div>
+        <div class="step-detail" style="margin-top:6px">Legacy fallback: plain-text check against ADMIN_PASSWORD env var (then upgrades to scrypt)</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-content">
+        <div class="step-title">Generate token</div>
+        <div class="step-detail"><span class="actor">adminAuth.js → generateAdminToken()</span></div>
+        <div class="step-code">TOKEN = base64url(header) + "." +
+        base64url({role:"admin", exp:+24h, jti}) + "." +
+        HMAC-SHA256(header.claims, AUTH_SECRET)</div>
+        <div class="step-warn">⚠️ AUTH_SECRET falls back to hardcoded string if env vars missing!</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">6</div>
+      <div class="step-content">
+        <div class="step-title">Store token in browser</div>
+        <div class="step-detail"><span class="actor">adminSession.ts → saveAdminSession()</span> — Saves to localStorage key 'rs_admin_session'</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">7</div>
+      <div class="step-content">
+        <div class="step-title">Admin dashboard loads</div>
+        <div class="step-detail"><span class="actor">Admin.tsx → useEffect</span> — Immediately calls GET /api/auth/admin-verify to validate token against server. If invalid → clears session → shows Login.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">8</div>
+      <div class="step-content">
+        <div class="step-title">Protected API requests</div>
+        <div class="step-detail"><span class="actor">requireAdminAuth middleware</span> — Every /api/admin/* request: extracts Bearer token → verifyAdminToken() → checks revokedTokens Set → verifies HMAC → checks exp → checks role:'admin' → attaches req.adminUser</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">9</div>
+      <div class="step-content">
+        <div class="step-title">Logout</div>
+        <div class="step-detail"><span class="actor">auth.controller.js → adminLogout()</span> — Adds token to in-memory revokedTokens Set</div>
+        <div class="step-warn">⚠️ revokedTokens is in-memory only. Server restart clears it — revoked tokens become valid again for up to 24 hours!</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="diagram-card">
+  <h2>🔑 Customer Google OAuth Flow</h2>
+  <div class="flow">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <div class="step-title">Customer clicks "Sign in with Google"</div>
+        <div class="step-detail"><span class="actor">Auth.tsx</span> — Renders Google OAuth button</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <div class="step-title">Google OAuth redirect</div>
+        <div class="step-detail">Browser redirected to accounts.google.com consent screen. User grants permission.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <div class="step-title">Google callback</div>
+        <div class="step-detail"><span class="actor">AuthCallback.tsx</span> — Receives authorization code or ID token from Google redirect to /auth/callback</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-content">
+        <div class="step-title">Verify Google token with backend</div>
+        <div class="step-detail"><span class="actor">POST /api/auth/google/verify</span></div>
+        <div class="step-code">Body: { credential: googleIdToken }</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-content">
+        <div class="step-title">Backend verifies with Google</div>
+        <div class="step-detail"><span class="actor">auth.controller.js → verifyGoogleToken()</span> — Calls oauth2.googleapis.com/tokeninfo?id_token=...</div>
+        <div class="step-warn">⚠️ tokeninfo is Google's debug endpoint — use google-auth-library in production</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">6</div>
+      <div class="step-content">
+        <div class="step-title">Upsert customer record</div>
+        <div class="step-detail"><span class="actor">auth.controller.js</span> — Checks Supabase customers table by email. Creates new record if first login, updates name if returning user.</div>
+        <div class="step-code">supabase.from('customers').upsert({
+  email, name, google_id,
+  auth_provider: 'google'
+})</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">7</div>
+      <div class="step-content">
+        <div class="step-title">Return user payload</div>
+        <div class="step-detail">Backend returns: { id, name, email, role:'user', authProvider:'google', avatarUrl }</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">8</div>
+      <div class="step-content">
+        <div class="step-title">Store customer session</div>
+        <div class="step-detail"><span class="actor">userSession.ts → saveUserSession()</span> — Saved to localStorage 'rs_user_session' with 30-day expiry</div>
+        <div class="step-warn">⚠️ No server-side session validation for customers on subsequent requests — purely client-side</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">9</div>
+      <div class="step-content">
+        <div class="step-title">Customer accesses protected features</div>
+        <div class="step-detail">Checkout, Account page, saved addresses all read from userSession.ts. Session expires after 30 days or when browser storage is cleared.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="diagram-card">
+  <h2>🔑 Admin Account Management</h2>
+  <div class="flow">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <div class="step-title">Admin accounts are stored in Supabase</div>
+        <div class="step-detail">Settings table, key: 'admin_accounts', value: JSON array of admin objects with scrypt-hashed passwords</div>
+        <div class="step-code">[{ id, name, email, passwordHash: "salt:key",
+   isPrimary: true/false, createdAt, lastLoginAt }]</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <div class="step-title">Primary admin auto-seeded from env vars</div>
+        <div class="step-detail">If no admins found → buildDefaultPrimaryAdmin() using ADMIN_EMAIL + ADMIN_PASSWORD env vars. Primary admin can never be deleted.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <div class="step-title">Create new admin (authorized)</div>
+        <div class="step-detail">POST /api/auth/admin-create-authorized — Requires master admin email + password in body. OR POST /api/admin/admins (requires valid Bearer token).</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-content">
+        <div class="step-title">Admin cache TTL</div>
+        <div class="step-detail">Admin accounts cached in memory for 5 minutes. Deleted admin can still authenticate for up to 5 minutes.</div>
+        <div class="step-warn">⚠️ Cache is in-memory per process — not shared across Render instances</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="diagram-card">
+  <h2>🛡️ Token Structure (Custom JWT-like)</h2>
+  <div style="background: #0f0f1a; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+    <div style="font-family: monospace; font-size: 11px; color: #4ade80; line-height: 2;">
+      <div style="color: #94a3b8;">// Header</div>
+      <div>base64url({ "alg": "HS256", "typ": "JWT" })</div>
+      <div style="color: #94a3b8; margin-top: 8px;">// Claims (Payload)</div>
+      <div>base64url({</div>
+      <div>&nbsp;&nbsp;id: "admin-id",</div>
+      <div>&nbsp;&nbsp;name: "Sindhuja",</div>
+      <div>&nbsp;&nbsp;email: "admin@rsfashions.in",</div>
+      <div>&nbsp;&nbsp;role: "admin",         // Required!</div>
+      <div>&nbsp;&nbsp;isPrimary: true,</div>
+      <div>&nbsp;&nbsp;iat: &lt;unix timestamp&gt;, // Issued at</div>
+      <div>&nbsp;&nbsp;exp: iat + 86400,      // 24 hours</div>
+      <div>&nbsp;&nbsp;jti: "adm_1234_abc"   // Unique ID</div>
+      <div>})</div>
+      <div style="color: #94a3b8; margin-top: 8px;">// Signature</div>
+      <div>HMAC-SHA256(header + "." + claims, AUTH_SECRET)</div>
+    </div>
+  </div>
+  <div class="flow">
+    <div class="step">
+      <div class="step-num">✓</div>
+      <div class="step-content">
+        <div class="step-title">Verification checks (in order)</div>
+        <div class="step-detail">1. Is token in revokedTokens Set? → REJECT<br>2. Split by "." → 3 parts? → else REJECT<br>3. Recompute HMAC → timingSafeEqual() → mismatch? REJECT<br>4. Decode claims → check exp &gt; now → expired? REJECT<br>5. Check claims.role === 'admin' → else REJECT<br>6. Attach claims to req.adminUser → ALLOW</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">⚠️</div>
+      <div class="step-content">
+        <div class="step-title">Security considerations</div>
+        <div class="step-warn">AUTH_SECRET fallback to Cashfree secret or hardcoded string. Token revocation lost on server restart. No refresh token mechanism. Single-factor only (no OTP/MFA).</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

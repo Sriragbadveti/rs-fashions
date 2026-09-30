@@ -26,6 +26,27 @@ let inFlightCategoriesPromise = null;
 
 const CACHE_TTL_MS = 60 * 1000; // 60 seconds TTL
 
+/**
+ * Resilient database query wrapper with exponential backoff and jitter
+ */
+async function queryWithRetry(queryFn, maxRetries = 2, baseDelay = 250) {
+  let lastError = null;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const res = await queryFn();
+      if (res && res.error) throw res.error;
+      return res;
+    } catch (err) {
+      lastError = err;
+      if (attempt < maxRetries) {
+        const jitter = Math.floor(Math.random() * 80);
+        await new Promise((r) => setTimeout(r, baseDelay * Math.pow(2, attempt) + jitter));
+      }
+    }
+  }
+  throw lastError;
+}
+
 export function invalidateCatalogCache() {
   cachedProducts = null;
   cachedCategories = null;
@@ -92,36 +113,31 @@ export async function getProducts(req, res) {
       inFlightProductsPromise = (async () => {
         let rawData = [];
 
-        let supabaseLoaded = false;
         if (supabase) {
           try {
-            const { data, error } = await supabase
-              .from("products")
-              .select("*")
-              .order("created_at", { ascending: false });
+            const { data } = await queryWithRetry(() =>
+              supabase
+                .from("products")
+                .select("*")
+                .order("created_at", { ascending: false })
+            );
 
-            if (!error && Array.isArray(data)) {
+            if (Array.isArray(data)) {
               rawData = data;
-              supabaseLoaded = true;
             }
           } catch (dbErr) {
-            console.warn("Supabase products fetch note:", dbErr.message);
-          }
-        }
-
-        // Only fallback to local JSON store if Supabase is completely unreachable or errored
-        if (!supabaseLoaded) {
-          const localItems = getProductsFromStore();
-          for (const lp of localItems) {
-            if (!rawData.some((rp) => rp.id === lp.id)) {
-              rawData.push(lp);
+            console.error("[CatalogController] Supabase products query error after retries:", dbErr.message);
+            if (cachedProducts && cachedProducts.length > 0) {
+              return cachedProducts;
             }
+            throw dbErr;
           }
+        } else {
+          // Local development / testing mode without Supabase credentials
+          rawData = getProductsFromStore();
         }
 
         const persistentVariantsMap = await getPersistentVariantsMap();
-        const localItems = getProductsFromStore();
-        const localMap = new Map(localItems.map((lp) => [lp.id, lp]));
 
         const products = (rawData || []).map((p) => {
           const colorList = Array.isArray(p.colors) && p.colors.length > 0 ? p.colors : ["Standard"];
@@ -130,21 +146,18 @@ export async function getProducts(req, res) {
             ? p.images 
             : (p.image_url || p.imageUrl ? [p.image_url || p.imageUrl] : []);
 
-          const lp = localMap.get(p.id);
           const pVariants = (persistentVariantsMap[p.id] && Array.isArray(persistentVariantsMap[p.id]) && persistentVariantsMap[p.id].length > 0)
             ? persistentVariantsMap[p.id]
             : (Array.isArray(p.variants) && p.variants.length > 0
                 ? p.variants
-                : (lp && Array.isArray(lp.variants) && lp.variants.length > 0
-                    ? lp.variants
-                    : colorList.map((col, idx) => ({
-                        color: col,
-                        colorSlug: col.slice(0, 3).toUpperCase(),
-                        stock: idx === 0 ? stockTotal : 0,
-                        sku: `${p.id}-${col.slice(0, 3).toUpperCase()}`,
-                        imageUrl: images[idx] || images[0],
-                      }))
-                  ));
+                : colorList.map((col, idx) => ({
+                    color: col,
+                    colorSlug: col.slice(0, 3).toUpperCase(),
+                    stock: idx === 0 ? stockTotal : 0,
+                    sku: `${p.id}-${col.slice(0, 3).toUpperCase()}`,
+                    imageUrl: images[idx] || images[0],
+                  }))
+              );
 
           const finalStock = pVariants.length > 0
             ? pVariants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0)
@@ -201,12 +214,14 @@ export async function getProducts(req, res) {
       "Products retrieved successfully"
     );
   } catch (err) {
-    const local = getProductsFromStore();
-    return successResponse(
-      res,
-      { products: local },
-      "Products retrieved successfully (local store)"
-    );
+    if (cachedProducts && cachedProducts.length > 0) {
+      return successResponse(
+        res,
+        { products: filterTrending(cachedProducts) },
+        "Products retrieved successfully (stale cache recovery)"
+      );
+    }
+    return errorResponse(res, "Product catalog service is temporarily unavailable. Please try again shortly.", 503);
   }
 }
 
@@ -424,7 +439,6 @@ export async function createProduct(req, res) {
         }
       }
 
-      saveProductToStore(data);
       invalidateCatalogCache();
       return successResponse(res, { product: data }, "Saree catalogued successfully", 201);
     }
@@ -670,7 +684,6 @@ export async function updateProduct(req, res) {
         } catch {}
       }
 
-      saveProductToStore({ ...data, variants: variants && variants.length > 0 ? variants : undefined });
       invalidateCatalogCache();
       return successResponse(res, { product: { ...data, variants: variants && variants.length > 0 ? variants : undefined } }, "Product updated successfully");
     }
@@ -691,8 +704,9 @@ export async function deleteProduct(req, res) {
     if (supabase) {
       const { error } = await supabase.from("products").delete().eq("id", id);
       if (error) throw error;
+    } else {
+      deleteProductFromStore(id);
     }
-    deleteProductFromStore(id);
     try {
       const vMap = await getPersistentVariantsMap();
       if (vMap[id]) {

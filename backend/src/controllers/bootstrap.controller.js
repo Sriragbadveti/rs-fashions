@@ -71,31 +71,7 @@ export async function getBootstrapData(req, res) {
     }));
 
     const persistentVariantsMap = (settingsRes.data || []).find((s) => s.key === "product_variants")?.value || {};
-
-    let rawProds = [...(prodsRes.data || [])];
-    const localStoreProds = getProductsFromStore();
-    const localMap = new Map(localStoreProds.map((lp) => [lp.id, lp]));
-    rawProds = rawProds.map((rp) => {
-      const lp = localMap.get(rp.id);
-      const persistentVars = persistentVariantsMap[rp.id];
-      const bestVariants = (Array.isArray(persistentVars) && persistentVars.length > 0)
-        ? persistentVars
-        : ((Array.isArray(rp.variants) && rp.variants.length > 0)
-            ? rp.variants
-            : (lp && Array.isArray(lp.variants) && lp.variants.length > 0 ? lp.variants : undefined));
-
-      if (!lp) return { ...rp, variants: bestVariants };
-      return {
-        ...lp,
-        ...rp,
-        borderColor: rp.border_color || rp.borderColor || lp.borderColor || lp.border_color || undefined,
-        variants: bestVariants,
-      };
-    });
-    // Only fallback to localStoreProds if Supabase query failed completely
-    if (!prodsRes.data) {
-      rawProds = localStoreProds;
-    }
+    const rawProds = prodsRes.data || [];
 
     const products = rawProds.map((p) => {
       const colorList = Array.isArray(p.colors) && p.colors.length > 0 ? p.colors : ["Standard"];

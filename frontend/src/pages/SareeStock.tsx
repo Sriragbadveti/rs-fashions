@@ -711,19 +711,10 @@ function MultiImageUploadInput({
     setUploadProgress(15);
 
     try {
-      const dataUrls = await Promise.all(files.map((file) => fileToVisibleDataUrl(file)));
-      setUploadProgress(50);
-
-      // Upload via backend batch API if available
-      try {
-        const uploadedUrls = await StoreService.uploadImages(dataUrls, (pct) => setUploadProgress(pct));
-        const merged = Array.from(new Set([...images, ...uploadedUrls]));
-        onChange(merged);
-      } catch (err) {
-        console.warn("Fallback to local data URLs:", err);
-        const merged = Array.from(new Set([...images, ...dataUrls]));
-        onChange(merged);
-      }
+      // High-speed binary upload directly with real progress and concurrency limit = 2
+      const uploadedUrls = await StoreService.uploadImages(files, (pct) => setUploadProgress(pct));
+      const merged = Array.from(new Set([...images, ...uploadedUrls]));
+      onChange(merged);
     } catch (err: any) {
       setUploadError(err.message || "Failed to process images.");
     } finally {
@@ -961,23 +952,23 @@ function VariantShadeManager({
     }
 
     try {
-      const dataUrl = await fileToVisibleDataUrl(file);
+      const objUrl = URL.createObjectURL(file);
       if (target === "new") {
-        setNewVariantImage(dataUrl);
+        setNewVariantImage(objUrl);
       } else {
-        onUpdateVariantImage(target, dataUrl);
+        onUpdateVariantImage(target, objUrl);
       }
 
       try {
-        const res = await StoreService.uploadImage(dataUrl);
-        const finalUrl = res && res.success && res.url ? res.url : dataUrl;
+        const res = await StoreService.uploadImage(file);
+        const finalUrl = res && res.success && res.url ? res.url : objUrl;
         if (target === "new") {
           setNewVariantImage(finalUrl);
         } else {
           onUpdateVariantImage(target, finalUrl);
         }
       } catch {
-        // Already updated with visible dataUrl
+        // Already updated with object URL
       }
     } catch (err) {
       console.warn("Failed to process shade image:", err);

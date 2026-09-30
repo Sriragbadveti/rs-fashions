@@ -300,6 +300,14 @@ export default function Shop() {
   const initialSortParam = searchParams.get("sort");
 
   const [search, setSearch] = useState(initialSearch);
+  const [debouncedSearch, setDebouncedSearch] = useState(initialSearch);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [search]);
   const [filters, setFilters] = useState<FilterState>({
     category: (initialCategory as any) || "All",
     material: (initialMaterial as any) || "All",
@@ -436,8 +444,8 @@ export default function Shop() {
   const filteredProducts = useMemo(() => {
     let result = [...allProducts];
 
-    if (search.trim()) {
-      const query = search.toLowerCase();
+    if (debouncedSearch.trim()) {
+      const query = debouncedSearch.toLowerCase();
       result = result.filter((product: Product) =>
         [
           product.name,
@@ -501,7 +509,7 @@ export default function Shop() {
     }
 
     return result;
-  }, [allProducts, search, filters, customPriceRange, sort, showOnlyOffers, offerProductIds]);
+  }, [allProducts, debouncedSearch, filters, customPriceRange, sort, showOnlyOffers, offerProductIds]);
 
   const mobileFeedSections = useMemo<MobileFeedSection[]>(() => {
     const sections: MobileFeedSection[] = [];

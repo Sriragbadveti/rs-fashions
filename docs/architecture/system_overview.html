@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RS Fashions — System Architecture</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f0f1a; color: #e2e8f0; min-height: 100vh; }
+.header { background: linear-gradient(135deg, #1e1e3f, #2d1b69); padding: 24px 40px; border-bottom: 1px solid #2d2d6e; }
+.header h1 { font-size: 22px; font-weight: 700; color: #a78bfa; }
+.header p { color: #94a3b8; margin-top: 4px; font-size: 14px; }
+.canvas { padding: 40px; overflow-x: auto; }
+svg { width: 100%; max-width: 1200px; display: block; margin: 0 auto; }
+.legend { display: flex; gap: 20px; flex-wrap: wrap; padding: 20px 40px; justify-content: center; }
+.legend-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #94a3b8; }
+.legend-dot { width: 14px; height: 14px; border-radius: 3px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>RS Fashions — High-Level System Architecture</h1>
+  <p>Based on actual source code analysis · Generated 2026-09-30</p>
+</div>
+<div class="canvas">
+<svg viewBox="0 0 1100 700" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#94a3b8"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#34d399"/>
+    </marker>
+    <marker id="arrow-blue" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#60a5fa"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#fb923c"/>
+    </marker>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background sections -->
+  <rect x="10" y="10" width="320" height="680" rx="12" fill="#1a1a2e" stroke="#2d2d6e" stroke-width="1.5"/>
+  <rect x="350" y="10" width="340" height="680" rx="12" fill="#1a2a1a" stroke="#2d5a2d" stroke-width="1.5"/>
+  <rect x="710" y="10" width="380" height="680" rx="12" fill="#2a1a1a" stroke="#5a2d2d" stroke-width="1.5"/>
+
+  <!-- Section Labels -->
+  <text x="170" y="40" text-anchor="middle" fill="#a78bfa" font-size="13" font-weight="700" letter-spacing="1">CLIENT LAYER</text>
+  <text x="520" y="40" text-anchor="middle" fill="#4ade80" font-size="13" font-weight="700" letter-spacing="1">BACKEND LAYER</text>
+  <text x="900" y="40" text-anchor="middle" fill="#f87171" font-size="13" font-weight="700" letter-spacing="1">EXTERNAL SERVICES</text>
+
+  <!-- Customer Browser -->
+  <rect x="30" y="60" width="280" height="110" rx="8" fill="#1e1e3f" stroke="#6d28d9" stroke-width="2"/>
+  <text x="170" y="85" text-anchor="middle" fill="#a78bfa" font-size="12" font-weight="700">🌐 Customer Browser</text>
+  <text x="170" y="105" text-anchor="middle" fill="#94a3b8" font-size="11">React 19 + TypeScript + Vite</text>
+  <text x="170" y="120" text-anchor="middle" fill="#64748b" font-size="10">Deployed: Vercel (rsfashions25.com)</text>
+  <text x="170" y="137" text-anchor="middle" fill="#64748b" font-size="10">Routes: / /shop /product/:id /cart /checkout</text>
+  <text x="170" y="154" text-anchor="middle" fill="#64748b" font-size="10">State: CartContext + localStorage sessions</text>
+
+  <!-- Admin Browser -->
+  <rect x="30" y="195" width="280" height="110" rx="8" fill="#1e1e3f" stroke="#7c3aed" stroke-width="2"/>
+  <text x="170" y="220" text-anchor="middle" fill="#c4b5fd" font-size="12" font-weight="700">🔐 Admin Browser</text>
+  <text x="170" y="240" text-anchor="middle" fill="#94a3b8" font-size="11">React + Admin Dashboard</text>
+  <text x="170" y="258" text-anchor="middle" fill="#64748b" font-size="10">Route: /admin-7f9a2b8e (secret path)</text>
+  <text x="170" y="275" text-anchor="middle" fill="#64748b" font-size="10">15+ sub-pages: Catalog, Billing, CRM</text>
+  <text x="170" y="293" text-anchor="middle" fill="#64748b" font-size="10">Token: Bearer JWT-like in localStorage</text>
+
+  <!-- QuickPay -->
+  <rect x="30" y="330" width="280" height="75" rx="8" fill="#1e1e3f" stroke="#6d28d9" stroke-width="1.5"/>
+  <text x="170" y="353" text-anchor="middle" fill="#a78bfa" font-size="12" font-weight="700">💳 QuickPay Portal</text>
+  <text x="170" y="372" text-anchor="middle" fill="#94a3b8" font-size="11">Route: /pay?order_id=...&amp;session_id=...</text>
+  <text x="170" y="390" text-anchor="middle" fill="#64748b" font-size="10">POS payment link completion page</text>
+
+  <!-- Cashfree SDK note -->
+  <rect x="30" y="430" width="280" height="55" rx="8" fill="#1e1e2a" stroke="#374151" stroke-width="1"/>
+  <text x="170" y="452" text-anchor="middle" fill="#6b7280" font-size="11" font-weight="600">Cashfree JS SDK v3 (CDN)</text>
+  <text x="170" y="468" text-anchor="middle" fill="#4b5563" font-size="10">sdk.cashfree.com/js/v3/cashfree.js</text>
+  <text x="170" y="482" text-anchor="middle" fill="#4b5563" font-size="10">Loaded at runtime during checkout</text>
+
+  <!-- Backend: Express -->
+  <rect x="370" y="60" width="300" height="150" rx="8" fill="#1a2f1a" stroke="#16a34a" stroke-width="2"/>
+  <text x="520" y="85" text-anchor="middle" fill="#4ade80" font-size="12" font-weight="700">⚙️ Express Backend</text>
+  <text x="520" y="104" text-anchor="middle" fill="#94a3b8" font-size="11">Node.js · Deployed: Render.com</text>
+  <text x="520" y="122" text-anchor="middle" fill="#64748b" font-size="10">Port: 5001 (dev) · CORS: whitelisted origins</text>
+  <text x="520" y="140" text-anchor="middle" fill="#64748b" font-size="10">Body limit: 50MB (base64 images)</text>
+  <text x="520" y="158" text-anchor="middle" fill="#64748b" font-size="10">Middleware: CORS → JSON → Logger → Routes</text>
+  <text x="520" y="175" text-anchor="middle" fill="#64748b" font-size="10">13 route groups · 12 controllers</text>
+  <text x="520" y="192" text-anchor="middle" fill="#64748b" font-size="10">Custom JWT auth (adminAuth.js)</text>
+
+  <!-- Backend: Route Groups -->
+  <rect x="370" y="230" width="300" height="200" rx="8" fill="#162216" stroke="#15803d" stroke-width="1.5"/>
+  <text x="520" y="252" text-anchor="middle" fill="#86efac" font-size="11" font-weight="700">API Routes (routes/index.js)</text>
+  <text x="390" y="272" fill="#64748b" font-size="10">PUBLIC:  /api/catalog/* (products, categories)</text>
+  <text x="390" y="289" fill="#64748b" font-size="10">PUBLIC:  /api/payments/cashfree/* (pay, verify)</text>
+  <text x="390" y="306" fill="#64748b" font-size="10">PUBLIC:  /api/auth/* (admin-login, google)</text>
+  <text x="390" y="323" fill="#64748b" font-size="10">PUBLIC:  /api/billing/pos-checkout</text>
+  <text x="390" y="340" fill="#64748b" font-size="10">ADMIN:   /api/admin/catalog/* (write ops)</text>
+  <text x="390" y="357" fill="#64748b" font-size="10">ADMIN:   /api/admin/inventory/* (stock mgmt)</text>
+  <text x="390" y="374" fill="#64748b" font-size="10">ADMIN:   /api/admin/bootstrap/* (dashboard data)</text>
+  <text x="390" y="392" fill="#64748b" font-size="10">ADMIN:   /api/admin/admins/* (admin mgmt)</text>
+  <text x="390" y="409" fill="#64748b" font-size="10">ADMIN:   /api/crm /sales /settings /reviews</text>
+
+  <!-- Backend: Local Store -->
+  <rect x="370" y="450" width="300" height="100" rx="8" fill="#1a1a0f" stroke="#854d0e" stroke-width="1.5"/>
+  <text x="520" y="473" text-anchor="middle" fill="#fbbf24" font-size="11" font-weight="700">📁 Local JSON Store (Fallback)</text>
+  <text x="390" y="492" fill="#64748b" font-size="10">backend/src/database/data/</text>
+  <text x="390" y="508" fill="#64748b" font-size="10">products.json · orders.json · colors.json</text>
+  <text x="390" y="524" fill="#64748b" font-size="10">payment_attempts.json · webhook_events.json</text>
+  <text x="390" y="540" fill="#64748b" font-size="10">Active when Supabase is unreachable</text>
+
+  <!-- Supabase -->
+  <rect x="730" y="60" width="340" height="200" rx="8" fill="#1a1040" stroke="#7c3aed" stroke-width="2"/>
+  <text x="900" y="85" text-anchor="middle" fill="#c4b5fd" font-size="12" font-weight="700">🗄️ Supabase (PostgreSQL)</text>
+  <text x="750" y="108" fill="#94a3b8" font-size="11" font-weight="600">Tables:</text>
+  <text x="750" y="126" fill="#64748b" font-size="10">• products (catalog, variants via settings)</text>
+  <text x="750" y="143" fill="#64748b" font-size="10">• categories · orders · customers</text>
+  <text x="750" y="160" fill="#64748b" font-size="10">• stock_movements (audit trail)</text>
+  <text x="750" y="177" fill="#64748b" font-size="10">• coupons · tracked_orders · reviews</text>
+  <text x="750" y="194" fill="#64748b" font-size="10">• settings (key-value: variants, colors, admins)</text>
+  <text x="750" y="211" fill="#64748b" font-size="10">• auth_sessions (device tracking)</text>
+  <text x="900" y="238" text-anchor="middle" fill="#7c3aed" font-size="10">Two clients: adminClient (service-role) + publicClient (anon)</text>
+
+  <!-- Supabase Storage -->
+  <rect x="730" y="280" width="340" height="100" rx="8" fill="#1a1040" stroke="#6d28d9" stroke-width="1.5"/>
+  <text x="900" y="303" text-anchor="middle" fill="#c4b5fd" font-size="11" font-weight="700">📸 Supabase Storage</text>
+  <text x="750" y="323" fill="#64748b" font-size="10">Bucket: 'sarees'</text>
+  <text x="750" y="340" fill="#64748b" font-size="10">Path: uploads/&lt;filename&gt;.jpg</text>
+  <text x="750" y="357" fill="#64748b" font-size="10">Processing: HEIC→JPEG · sharp compress 1200x1200</text>
+  <text x="750" y="373" fill="#64748b" font-size="10">Fallback: returns JPEG data URL if Storage fails</text>
+
+  <!-- Cashfree -->
+  <rect x="730" y="400" width="340" height="130" rx="8" fill="#1a0f0f" stroke="#dc2626" stroke-width="2"/>
+  <text x="900" y="423" text-anchor="middle" fill="#f87171" font-size="12" font-weight="700">💳 Cashfree Payment Gateway</text>
+  <text x="750" y="445" fill="#94a3b8" font-size="11">API: api.cashfree.com/pg (production)</text>
+  <text x="750" y="463" fill="#64748b" font-size="10">sandbox.cashfree.com/pg (test)</text>
+  <text x="750" y="481" fill="#64748b" font-size="10">Auth: x-client-id + x-client-secret headers</text>
+  <text x="750" y="499" fill="#64748b" font-size="10">Operations: create-order · verify · webhook</text>
+  <text x="750" y="517" fill="#64748b" font-size="10">Webhook: HMAC-SHA256 signature verified</text>
+
+  <!-- Google OAuth -->
+  <rect x="730" y="550" width="340" height="80" rx="8" fill="#0f1a0f" stroke="#16a34a" stroke-width="1.5"/>
+  <text x="900" y="572" text-anchor="middle" fill="#4ade80" font-size="11" font-weight="700">🔑 Google OAuth 2.0</text>
+  <text x="750" y="591" fill="#64748b" font-size="10">Token verification: oauth2.googleapis.com/tokeninfo</text>
+  <text x="750" y="608" fill="#64748b" font-size="10">Auto-creates customer in Supabase on first login</text>
+
+  <!-- ARROWS: Customer → Backend -->
+  <line x1="310" y1="110" x2="368" y2="110" stroke="#60a5fa" stroke-width="1.5" marker-end="url(#arrow-blue)"/>
+  <text x="339" y="103" text-anchor="middle" fill="#60a5fa" font-size="9">HTTPS API</text>
+
+  <!-- Admin → Backend -->
+  <line x1="310" y1="250" x2="368" y2="250" stroke="#60a5fa" stroke-width="1.5" marker-end="url(#arrow-blue)"/>
+  <text x="339" y="243" text-anchor="middle" fill="#60a5fa" font-size="9">Bearer Token</text>
+
+  <!-- QuickPay → Backend -->
+  <line x1="310" y1="368" x2="368" y2="368" stroke="#60a5fa" stroke-width="1.5" marker-end="url(#arrow-blue)"/>
+
+  <!-- Backend → Supabase DB -->
+  <line x1="670" y1="140" x2="728" y2="140" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="699" y="133" text-anchor="middle" fill="#a78bfa" font-size="9">CRUD</text>
+
+  <!-- Backend → Supabase Storage -->
+  <line x1="670" y1="320" x2="728" y2="320" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="699" y="313" text-anchor="middle" fill="#a78bfa" font-size="9">Upload</text>
+
+  <!-- Backend → Cashfree -->
+  <line x1="670" y1="460" x2="728" y2="460" stroke="#f87171" stroke-width="1.5" marker-end="url(#arrow-orange)"/>
+  <text x="699" y="453" text-anchor="middle" fill="#f87171" font-size="9">Payments</text>
+
+  <!-- Backend → Google -->
+  <line x1="670" y1="580" x2="728" y2="580" stroke="#4ade80" stroke-width="1.5" marker-end="url(#arrow-green)"/>
+  <text x="699" y="573" text-anchor="middle" fill="#4ade80" font-size="9">Verify Token</text>
+
+  <!-- Cashfree → Backend (webhook) -->
+  <path d="M730 520 Q700 560 670 500" stroke="#fb923c" stroke-width="1.5" fill="none" marker-end="url(#arrow-orange)"/>
+  <text x="693" y="558" text-anchor="middle" fill="#fb923c" font-size="9">Webhook</text>
+
+  <!-- Local Store ↔ Backend -->
+  <line x1="520" y1="440" x2="520" y2="450" stroke="#fbbf24" stroke-width="1.5"/>
+
+  <!-- Legend -->
+  <text x="170" y="645" text-anchor="middle" fill="#475569" font-size="10">← → HTTPS API calls</text>
+  <text x="520" y="620" text-anchor="middle" fill="#475569" font-size="10">All admin operations require Bearer token</text>
+  <text x="900" y="645" text-anchor="middle" fill="#475569" font-size="10">Webhook events: idempotent processing</text>
+</svg>
+</div>
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#6d28d9"></div>Frontend (React + Vite, Vercel)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#16a34a"></div>Backend (Node.js + Express, Render)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#7c3aed"></div>Supabase (PostgreSQL + Storage)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#dc2626"></div>Cashfree (Payment Gateway)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#854d0e"></div>Local JSON Files (Fallback)</div>
+</div>
+</body>
+</html>

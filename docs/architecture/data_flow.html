@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>RS Fashions — Data Flow Diagram</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f0f1a; color: #e2e8f0; }
+.header { background: linear-gradient(135deg, #0f1a1a, #002d2d); padding: 24px 40px; border-bottom: 1px solid #004d4d; }
+.header h1 { font-size: 22px; font-weight: 700; color: #22d3ee; }
+.header p { color: #94a3b8; margin-top: 4px; font-size: 14px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; padding: 32px; }
+.card { background: #1a1a2e; border: 1px solid #2d2d6e; border-radius: 12px; padding: 24px; }
+.card h2 { font-size: 15px; color: #22d3ee; margin-bottom: 16px; }
+.flow-table { width: 100%; border-collapse: collapse; }
+.flow-table th { background: #0f1a2a; color: #94a3b8; font-size: 11px; font-weight: 600; text-align: left; padding: 8px 10px; border-bottom: 1px solid #2d2d6e; }
+.flow-table td { padding: 8px 10px; font-size: 11px; color: #94a3b8; border-bottom: 1px solid #1e1e3f; vertical-align: top; }
+.flow-table tr:hover td { background: #1e1e3f; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+.badge-primary { background: #1e3a5f; color: #60a5fa; }
+.badge-fallback { background: #2d1a00; color: #fb923c; }
+.badge-local { background: #1a1a00; color: #eab308; }
+.badge-supabase { background: #1a0f40; color: #a78bfa; }
+.storage-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.storage-item { background: #1a1a2e; border: 1px solid #2d2d6e; border-radius: 8px; padding: 12px; }
+.storage-item h4 { font-size: 12px; font-weight: 700; margin-bottom: 8px; }
+.storage-item p { font-size: 10px; color: #64748b; line-height: 1.6; }
+.key { color: #4ade80; font-family: monospace; font-size: 10px; }
+.full { grid-column: 1 / -1; }
+.section-title { font-size: 14px; font-weight: 700; color: #e2e8f0; margin-bottom: 12px; margin-top: 20px; }
+.section-title:first-child { margin-top: 0; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>RS Fashions — Data Flow Diagram</h1>
+  <p>Where data comes from, where it goes, and how it persists · Based on actual source code</p>
+</div>
+<div class="grid">
+
+<div class="card full">
+  <h2>Data Persistence Strategy: Dual-Write Pattern</h2>
+  <p style="font-size: 12px; color: #94a3b8; margin-bottom: 16px; line-height: 1.6;">
+    RS Fashions uses a <strong style="color: #22d3ee;">dual-write + dual-read pattern</strong> for resilience.
+    Every write operation goes to Supabase (primary) AND to a local JSON file (fallback).
+    Every read tries Supabase first; if unavailable or returning error, reads from the JSON file.
+    This means the system continues operating — even in read/write mode — when Supabase is unreachable.
+    The risk: data can drift out of sync if network issues occur during a write.
+  </p>
+  <table class="flow-table">
+    <thead>
+      <tr>
+        <th>Operation</th>
+        <th>Primary (Supabase)</th>
+        <th>Fallback (localStore)</th>
+        <th>Notes</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Read products</strong></td>
+        <td><span class="badge badge-primary">Memory cache → Supabase</span></td>
+        <td><span class="badge badge-fallback">products.json</span></td>
+        <td>Cache TTL: 5 min. Merged with variants from settings.</td>
+      </tr>
+      <tr>
+        <td><strong>Write product</strong></td>
+        <td><span class="badge badge-primary">Supabase products table</span></td>
+        <td><span class="badge badge-fallback">products.json</span></td>
+        <td>Both written on create/update/delete. Cache invalidated after write.</td>
+      </tr>
+      <tr>
+        <td><strong>Read orders</strong></td>
+        <td><span class="badge badge-primary">Supabase orders table</span></td>
+        <td><span class="badge badge-fallback">orders.json</span></td>
+        <td>Admin order list, customer order history.</td>
+      </tr>
+      <tr>
+        <td><strong>Write order</strong></td>
+        <td><span class="badge badge-primary">Supabase orders table</span></td>
+        <td><span class="badge badge-fallback">orders.json</span></td>
+        <td>Created on checkout; updated on payment confirmation.</td>
+      </tr>
+      <tr>
+        <td><strong>Read admin accounts</strong></td>
+        <td><span class="badge badge-primary">Supabase settings (admin_accounts)</span></td>
+        <td><span class="badge badge-fallback">admin_accounts.json (gitignored)</span></td>
+        <td>Cached in memory for 5 min. Deleted admin can auth for up to 5 min.</td>
+      </tr>
+      <tr>
+        <td><strong>Read product variants</strong></td>
+        <td><span class="badge badge-primary">Supabase settings (product_variants)</span></td>
+        <td>None</td>
+        <td>One JSON blob. Not queryable per-product. Merged in getProducts.</td>
+      </tr>
+      <tr>
+        <td><strong>Webhook idempotency</strong></td>
+        <td>None</td>
+        <td><span class="badge badge-fallback">webhook_events.json</span></td>
+        <td>Deduplication persists across restarts. Does NOT live in Supabase.</td>
+      </tr>
+      <tr>
+        <td><strong>Payment attempts</strong></td>
+        <td>None</td>
+        <td><span class="badge badge-fallback">payment_attempts.json</span></td>
+        <td>Tracks POS payment link status per invoice key.</td>
+      </tr>
+      <tr>
+        <td><strong>Stock movements</strong></td>
+        <td><span class="badge badge-primary">Supabase stock_movements table</span></td>
+        <td>None</td>
+        <td>Immutable audit trail. Not written to localStore.</td>
+      </tr>
+      <tr>
+        <td><strong>Customer session</strong></td>
+        <td>None</td>
+        <td><span class="badge badge-local">localStorage (browser)</span></td>
+        <td>No server validation on subsequent requests. 30-day expiry.</td>
+      </tr>
+      <tr>
+        <td><strong>Admin session token</strong></td>
+        <td>activeAdminSessions Map (in-memory)</td>
+        <td><span class="badge badge-local">localStorage (browser)</span></td>
+        <td>Token validated server-side on every /api/admin/* request.</td>
+      </tr>
+      <tr>
+        <td><strong>Cart items</strong></td>
+        <td>None</td>
+        <td><span class="badge badge-local">localStorage (browser)</span></td>
+        <td>CartContext loads from 'rs_fashions_cart' on mount. No expiry.</td>
+      </tr>
+      <tr>
+        <td><strong>Order fulfillment</strong></td>
+        <td><span class="badge badge-primary">Backend PUT /sales/:inv/fulfillment</span></td>
+        <td><span class="badge badge-local">localStorage (browser)</span></td>
+        <td>4 localStorage keys updated synchronously: rs_order_fulfillments, rs_fashions_orders, rs_admin_sales_history, rs_admin_sales.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>localStorage Key Inventory</h2>
+  <p style="font-size: 11px; color: #94a3b8; margin-bottom: 12px;">All browser localStorage keys used by the application</p>
+  <div class="storage-grid">
+    <div class="storage-item">
+      <h4 style="color: #a78bfa;">Cart</h4>
+      <p><span class="key">rs_fashions_cart</span><br>Array of CartItem objects. Updated by CartContext on every cart change. No expiry.</p>
+    </div>
+    <div class="storage-item">
+      <h4 style="color: #4ade80;">Customer Session</h4>
+      <p><span class="key">rs_user_session</span><br>{ id, name, email, role, authProvider, avatarUrl, expiresAt }. 30-day expiry. Written by userSession.ts.</p>
+    </div>
+    <div class="storage-item">
+      <h4 style="color: #22d3ee;">Customer Addresses</h4>
+      <p><span class="key">rs_master_addresses</span><br>All addresses across all users (master list).<br><br><span class="key">rs_addresses_{phone}</span><br>Per-user address list, keyed by phone number.</p>
+    </div>
+    <div class="storage-item">
+      <h4 style="color: #22d3ee;">Payment Methods</h4>
+      <p><span class="key">rs_payments_{phone}</span><br>Per-user saved payment methods. Keyed by phone number.</p>
+    </div>
+    <div class="storage-item">
+      <h4 style="color: #fb923c;">Admin Session</h4>
+      <p><span class="key">rs_admin_session</span><br>{ token, user, expiresAt }. 24-hour expiry. Written by adminSession.ts.</p>
+    </div>
+    <div class="storage-item">
+      <h4 style="color: #fb923c;">Admin Data</h4>
+      <p><span class="key">rs_admin_sales</span><br>Admin sales list cache.<br><br><span class="key">rs_admin_sales_history</span><br>Sales history for admin dashboard.<br><br><span class="key">rs_admin_customers</span><br>Customer list cache.</p>
+    </div>
+    <div class="storage-item">
+      <h4 style="color: #f87171;">Orders</h4>
+      <p><span class="key">rs_fashions_orders</span><br>Customer order history (online orders). Written on checkout success.</p>
+    </div>
+    <div class="storage-item">
+      <h4 style="color: #f87171;">Fulfillment</h4>
+      <p><span class="key">rs_order_fulfillments</span><br>Order fulfillment status and tracking numbers. Written by OrderFulfillmentContext.</p>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Supabase settings Table Keys</h2>
+  <p style="font-size: 11px; color: #94a3b8; margin-bottom: 12px;">The settings table functions as a key-value store for all configuration and dynamic data</p>
+  <table class="flow-table">
+    <thead>
+      <tr><th>Key</th><th>Value Type</th><th>Content</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="key">admin_accounts</span></td>
+        <td>JSON Array</td>
+        <td>Admin records with scrypt-hashed passwords. Loaded on every login. Cached 5 min.</td>
+      </tr>
+      <tr>
+        <td><span class="key">color_palette</span></td>
+        <td>JSON Array</td>
+        <td>[{name, code, slug}] — All registered fabric colors. Used in product forms and catalog.</td>
+      </tr>
+      <tr>
+        <td><span class="key">product_variants</span></td>
+        <td>JSON Object</td>
+        <td>{"product-id": [{sku, color, colorSlug, stock}]}. All variants as one blob. Merged during getProducts.</td>
+      </tr>
+      <tr>
+        <td><span class="key">store_info</span></td>
+        <td>JSON Object</td>
+        <td>Business name, address, GST number, contact info. Used for invoice generation.</td>
+      </tr>
+      <tr>
+        <td><span class="key">sale_config</span></td>
+        <td>JSON Object</td>
+        <td>Sale event configuration (start/end dates, discount rules for for_sale products).</td>
+      </tr>
+    </tbody>
+  </table>
+  <div style="margin-top: 16px; padding: 10px; background: #1a0f00; border-radius: 6px; font-size: 11px; color: #fb923c;">
+    ⚠️ Architectural Issue: Three very different types of data share the same settings table — authentication credentials (admin_accounts), product data (product_variants), and UI configuration (color_palette). This works at small scale but creates security and query concerns.
+  </div>
+</div>
+
+<div class="card full">
+  <h2>Stock Deduction Flow (inventory.service.js → deductStockForItem)</h2>
+  <p style="font-size: 12px; color: #94a3b8; margin-bottom: 16px;">This is the most complex data flow — triggered on every sale (both online and POS)</p>
+  <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; align-items: start;">
+    <div style="background: #1e1e3f; border: 1px solid #6d28d9; border-radius: 8px; padding: 12px;">
+      <div style="font-size: 11px; font-weight: 700; color: #a78bfa; margin-bottom: 8px;">Step 1: Find Product</div>
+      <div style="font-size: 10px; color: #64748b; line-height: 1.6;">
+        Try: Supabase by ID<br>
+        Try: Supabase by SKU<br>
+        Try: Supabase full scan by name<br>
+        Fallback: localStore search<br>
+        If not found → log warning, return null
+      </div>
+    </div>
+    <div style="background: #1e1e3f; border: 1px solid #6d28d9; border-radius: 8px; padding: 12px;">
+      <div style="font-size: 11px; font-weight: 700; color: #a78bfa; margin-bottom: 8px;">Step 2: Get Variant Map</div>
+      <div style="font-size: 10px; color: #64748b; line-height: 1.6;">
+        Loads product_variants from<br>
+        Supabase settings table<br><br>
+        Finds color-specific variant<br>
+        for the purchased item
+      </div>
+    </div>
+    <div style="background: #1e1e3f; border: 1px solid #6d28d9; border-radius: 8px; padding: 12px;">
+      <div style="font-size: 11px; font-weight: 700; color: #a78bfa; margin-bottom: 8px;">Step 3: Update Supabase</div>
+      <div style="font-size: 10px; color: #64748b; line-height: 1.6;">
+        UPDATE products<br>
+        SET stock = stock - qty<br>
+        WHERE id = productId<br><br>
+        Also updates variant stock<br>
+        in product_variants settings key
+      </div>
+    </div>
+    <div style="background: #1e1e3f; border: 1px solid #6d28d9; border-radius: 8px; padding: 12px;">
+      <div style="font-size: 11px; font-weight: 700; color: #a78bfa; margin-bottom: 8px;">Step 4: Audit Log</div>
+      <div style="font-size: 10px; color: #64748b; line-height: 1.6;">
+        INSERT stock_movements<br>
+        type: SALE<br>
+        previous_stock → new_stock<br>
+        reference: invoice number<br>
+        performed_by: context
+      </div>
+    </div>
+    <div style="background: #1e1e3f; border: 1px solid #6d28d9; border-radius: 8px; padding: 12px;">
+      <div style="font-size: 11px; font-weight: 700; color: #a78bfa; margin-bottom: 8px;">Step 5: Invalidate Caches</div>
+      <div style="font-size: 10px; color: #64748b; line-height: 1.6;">
+        localStore products.json updated<br><br>
+        invalidateCatalogCache()<br>
+        invalidateBootstrapCache()<br><br>
+        Next product read hits Supabase
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

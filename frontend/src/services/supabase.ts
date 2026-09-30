@@ -1002,62 +1002,184 @@ export const StoreService = {
     return sale;
   },
 
-  async uploadImage(base64OrDataUrl: string, onProgress?: (percent: number) => void): Promise<{ success: boolean; url: string; message?: string }> {
-    let safeDataUrl = base64OrDataUrl;
-    if (isUnrenderedHeicDataUrl(safeDataUrl)) {
-      safeDataUrl = await convertHeicDataUrlToJpeg(safeDataUrl);
+  uploadImageBinary(file: File | Blob, filename?: string, onProgress?: (percent: number) => void): Promise<{ success: boolean; url: string; message?: string }> {
+    return new Promise((resolve) => {
+      const formData = new FormData();
+      const fname = filename || (file instanceof File ? file.name : `saree-${Date.now()}.jpg`);
+      formData.append("file", file, fname);
+
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", `${API_BASE}/upload`);
+      const adminHeaders = getAdminAuthHeaders();
+      for (const [key, value] of Object.entries(adminHeaders)) {
+        xhr.setRequestHeader(key, value);
+      }
+
+      if (xhr.upload && onProgress) {
+        xhr.upload.onprogress = (evt) => {
+          if (evt.lengthComputable) {
+            const percent = Math.round((evt.loaded / evt.total) * 100);
+            onProgress(percent);
+          }
+        };
+      }
+
+      xhr.onload = () => {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          const uploadedUrl = data.url || data.data?.url || data.publicUrl || data.data?.publicUrl;
+          if (xhr.status >= 200 && xhr.status < 300 && data.success && uploadedUrl) {
+            if (onProgress) onProgress(100);
+            resolve({ success: true, url: uploadedUrl, message: data.message });
+            return;
+          }
+          resolve({ success: false, url: "", message: data.message || `Upload failed (${xhr.status})` });
+        } catch (e: any) {
+          resolve({ success: false, url: "", message: e.message || "Parse error" });
+        }
+      };
+
+      xhr.onerror = () => {
+        resolve({ success: false, url: "", message: "Network error during image upload" });
+      };
+
+      xhr.send(formData);
+    });
+  },
+
+  async uploadImagesBinary(files: (File | Blob)[], onProgress?: (percent: number) => void): Promise<string[]> {
+    if (!files || files.length === 0) return [];
+    const total = files.length;
+    let completed = 0;
+    const results: string[] = new Array(total);
+    const concurrency = 2; // Controlled concurrency to avoid UI freeze and server spike
+    let nextIdx = 0;
+
+    const worker = async () => {
+      while (nextIdx < total) {
+        const idx = nextIdx++;
+        const file = files[idx];
+        try {
+          const res = await this.uploadImageBinary(file);
+          if (res.success && res.url) {
+            results[idx] = res.url;
+          } else {
+            // Retry once on transient error
+            const retryRes = await this.uploadImageBinary(file);
+            results[idx] = retryRes.success && retryRes.url ? retryRes.url : "";
+          }
+        } catch {
+          results[idx] = "";
+        }
+        completed++;
+        if (onProgress) {
+          onProgress(Math.round((completed / total) * 100));
+        }
+      }
+    };
+
+    const workers = Array.from({ length: Math.min(concurrency, total) }, () => worker());
+    await Promise.all(workers);
+    return results.filter(Boolean);
+  },
+
+  async uploadImage(base64OrFile: string | File | Blob, onProgress?: (percent: number) => void): Promise<{ success: boolean; url: string; message?: string }> {
+    // If input is already a File or Blob, upload via high-speed binary multipart
+    if (typeof (base64OrFile as any)?.slice === "function" && typeof base64OrFile !== "string") {
+      return this.uploadImageBinary(base64OrFile as File | Blob, undefined, onProgress);
     }
+
+    const inputStr = String(base64OrFile || "");
+    if (inputStr.startsWith("http://") || inputStr.startsWith("https://")) {
+      if (onProgress) onProgress(100);
+      return { success: true, url: inputStr, message: "URL validated" };
+    }
+
+    // If it's a data URL, convert to Blob and upload via binary multipart
+    if (inputStr.startsWith("data:")) {
+      try {
+        let safeDataUrl = inputStr;
+        if (isUnrenderedHeicDataUrl(safeDataUrl)) {
+          safeDataUrl = await convertHeicDataUrlToJpeg(safeDataUrl);
+        }
+        const commaIdx = safeDataUrl.indexOf(",");
+        if (commaIdx !== -1) {
+          const mime = safeDataUrl.slice(5, commaIdx).split(";")[0] || "image/jpeg";
+          const bstr = atob(safeDataUrl.slice(commaIdx + 1));
+          let n = bstr.length;
+          const u8arr = new Uint8Array(n);
+          while (n--) {
+            u8arr[n] = bstr.charCodeAt(n);
+          }
+          const blob = new Blob([u8arr], { type: mime });
+          const res = await this.uploadImageBinary(blob, "saree.jpg", onProgress);
+          if (res.success && res.url) {
+            return res;
+          }
+        }
+      } catch (blobErr) {
+        console.warn("[StoreService] Binary blob conversion failed, falling back to JSON:", blobErr);
+      }
+    }
+
+    // Fallback JSON upload if needed
     try {
       if (onProgress) onProgress(25);
-
       const res = await fetch(`${API_BASE}/upload`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: safeDataUrl }),
+        headers: { "Content-Type": "application/json", ...getAdminAuthHeaders() },
+        body: JSON.stringify({ image: inputStr }),
       });
-
       if (onProgress) onProgress(75);
-
       const data = await res.json();
       if (onProgress) onProgress(100);
-
       const uploadedUrl = data.url || data.data?.url || data.publicUrl || data.data?.publicUrl;
-
       if (data.success && uploadedUrl) {
         return { success: true, url: uploadedUrl, message: data.message };
       }
-      return { success: false, url: safeDataUrl, message: data.message || "Upload failed" };
-    } catch (err: any) {
+      return { success: false, url: inputStr, message: data.message || "Upload failed" };
+    } catch {
       if (onProgress) onProgress(100);
-      return { success: true, url: safeDataUrl, message: "Saved locally (Network offline)" };
+      return { success: false, url: inputStr, message: "Network error" };
     }
   },
 
-  async uploadImages(base64Array: string[], onProgress?: (percent: number) => void): Promise<string[]> {
-    if (!base64Array || base64Array.length === 0) return [];
-    const safeArray = await Promise.all(
-      base64Array.map((item) =>
-        isUnrenderedHeicDataUrl(item) ? convertHeicDataUrlToJpeg(item) : Promise.resolve(item)
-      )
-    );
-    try {
-      if (onProgress) onProgress(20);
-      const res = await fetch(`${API_BASE}/upload`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ images: safeArray }),
-      });
-      if (onProgress) onProgress(80);
-      const data = await res.json();
-      if (onProgress) onProgress(100);
-      if (data.success && Array.isArray(data.urls)) {
-        return data.urls;
-      }
-      return safeArray;
-    } catch {
-      if (onProgress) onProgress(100);
-      return safeArray;
+  async uploadImages(items: (string | File | Blob)[], onProgress?: (percent: number) => void): Promise<string[]> {
+    if (!items || items.length === 0) return [];
+    
+    // Check if items are binary files
+    const allBinary = items.every((item) => typeof item !== "string" && typeof (item as any)?.slice === "function");
+    if (allBinary) {
+      return this.uploadImagesBinary(items as (File | Blob)[], onProgress);
     }
+
+    // Process with controlled concurrency of 2 to avoid blocking
+    const total = items.length;
+    let completed = 0;
+    const results: string[] = new Array(total);
+    const concurrency = 2;
+    let nextIdx = 0;
+
+    const worker = async () => {
+      while (nextIdx < total) {
+        const idx = nextIdx++;
+        const item = items[idx];
+        const res = await this.uploadImage(item);
+        if (res.success && res.url) {
+          results[idx] = res.url;
+        } else {
+          results[idx] = typeof item === "string" ? item : "";
+        }
+        completed++;
+        if (onProgress) {
+          onProgress(Math.round((completed / total) * 100));
+        }
+      }
+    };
+
+    const workers = Array.from({ length: Math.min(concurrency, total) }, () => worker());
+    await Promise.all(workers);
+    return results.filter(Boolean);
   },
 
   async signInWithGoogle(redirectPath = "/shop"): Promise<void> {

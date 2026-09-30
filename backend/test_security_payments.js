@@ -1,5 +1,6 @@
 import express from "express";
 import http from "http";
+import crypto from "crypto";
 import apiRouter from "./src/routes/index.js";
 import { ENV } from "./src/config/env.js";
 import { generateAdminToken, revokeAdminToken, verifyAdminToken } from "./src/middleware/adminAuth.js";
@@ -222,15 +223,29 @@ async function runTests() {
       },
     };
 
+    const webhookTs = String(Date.now());
+    const webhookBodyStr = JSON.stringify(mockWebhookBody);
+    const webhookSig = crypto
+      .createHmac("sha256", String(ENV.CASHFREE.SECRET_KEY).trim())
+      .update(webhookTs + webhookBodyStr)
+      .digest("base64");
+
+    const webhookHeaders = {
+      "x-webhook-timestamp": webhookTs,
+      "x-webhook-signature": webhookSig,
+    };
+
     const webhook1 = await fetchJson("/api/payments/cashfree/webhook", {
       method: "POST",
-      body: JSON.stringify(mockWebhookBody),
+      headers: webhookHeaders,
+      body: webhookBodyStr,
     });
     assert(webhook1.ok && webhook1.data?.data?.processed === true, "TEST 9: First webhook delivery successfully processed");
 
     const webhook2 = await fetchJson("/api/payments/cashfree/webhook", {
       method: "POST",
-      body: JSON.stringify(mockWebhookBody),
+      headers: webhookHeaders,
+      body: webhookBodyStr,
     });
     assert(webhook2.ok && webhook2.data?.data?.deduplicated === true, "TEST 9: Duplicate webhook delivery is identified and deduplicated without re-executing");
 

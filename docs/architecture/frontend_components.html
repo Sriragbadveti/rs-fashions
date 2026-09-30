@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>RS Fashions — Frontend Components</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f0f1a; color: #e2e8f0; }
+.header { background: linear-gradient(135deg, #1e3a5f, #1e1e3f); padding: 24px 40px; border-bottom: 1px solid #2d2d6e; }
+.header h1 { font-size: 22px; font-weight: 700; color: #60a5fa; }
+.header p { color: #94a3b8; margin-top: 4px; font-size: 14px; }
+.container { padding: 32px 40px; }
+.tree { display: flex; flex-direction: column; gap: 4px; }
+.node { display: flex; align-items: flex-start; margin-bottom: 4px; }
+.indent { width: 24px; flex-shrink: 0; border-left: 1px solid #3d3d6e; margin-left: 12px; height: 100%; position: relative; }
+.indent::before { content: ''; position: absolute; top: 14px; left: 0; width: 12px; border-top: 1px solid #3d3d6e; }
+.component { background: #1a1a2e; border: 1px solid #2d2d6e; border-radius: 6px; padding: 8px 12px; font-size: 13px; font-weight: 600; color: #e2e8f0; display: inline-flex; align-items: center; gap: 8px; min-width: 250px; }
+.component-desc { font-size: 11px; color: #94a3b8; font-weight: 400; margin-left: auto; padding-left: 16px; border-left: 1px solid #2d2d6e; }
+.type-provider { border-color: #6d28d9; }
+.type-provider .name { color: #c4b5fd; }
+.type-route { border-color: #16a34a; }
+.type-route .name { color: #4ade80; }
+.type-page { border-color: #0284c7; }
+.type-page .name { color: #38bdf8; }
+.type-ui { border-color: #374151; }
+.type-ui .name { color: #cbd5e1; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>RS Fashions — Frontend Component Hierarchy</h1>
+  <p>React 19 + React Router DOM v7 · Main component tree</p>
+</div>
+<div class="container">
+  <div class="tree">
+    
+    <div class="node">
+      <div class="component type-provider">
+        <span class="name">BrowserRouter</span>
+        <span class="component-desc">react-router-dom</span>
+      </div>
+    </div>
+    
+    <div class="node">
+      <div class="indent"></div>
+      <div class="component type-provider">
+        <span class="name">CartProvider</span>
+        <span class="component-desc">Global cart state + discount tiers</span>
+      </div>
+    </div>
+
+    <div class="node">
+      <div class="indent"></div><div class="indent"></div>
+      <div class="component type-ui">
+        <span class="name">ScrollToTop</span>
+        <span class="component-desc">Resets scroll on navigation</span>
+      </div>
+    </div>
+    
+    <div class="node">
+      <div class="indent"></div><div class="indent"></div>
+      <div class="component type-ui">
+        <span class="name">ErrorBoundary</span>
+        <span class="component-desc">Catches React rendering errors</span>
+      </div>
+    </div>
+
+    <div class="node">
+      <div class="indent"></div><div class="indent"></div>
+      <div class="component type-ui">
+        <span class="name">App</span>
+        <span class="component-desc">Root component, defines all Routes</span>
+      </div>
+    </div>
+
+    <!-- ADMIN ROUTE -->
+    <div class="node">
+      <div class="indent"></div><div class="indent"></div><div class="indent"></div>
+      <div class="component type-route">
+        <span class="name">Route path="/admin-7f9a2b8e"</span>
+        <span class="component-desc">Secret admin path</span>
+      </div>
+    </div>
+    
+    <div class="node">
+      <div class="indent"></div><div class="indent"></div><div class="indent"></div><div class="indent"></div>
+      <div class="component type-page">
+        <span class="name">Admin</span>
+        <span class="component-desc">Verifies token, decides Login vs Dashboard</span>
+      </div>
+    </div>
+    
+    <div class="node">
+      <div class="indent"></div><div class="indent"></div><div class="indent"></div><div class="indent"></div><div class="indent"></div>
+      <div class="component type-provider">
+        <span class="name">ModalProvider</span>
+        <span class="component-desc">Admin modal state management</span>
+      </div>
+    </div>
+
+    <div class="node">
+      <div class="indent"></div><div class="indent"></div><div class="indent"></div><div class="indent"></div><div class="indent"></div><div class="indent"></div>
+      <div class="component type-provider">
+        <span class="name">OrderFulfillmentProvider</span>
+        <span class="component-desc">Fulfillment sync logic</span>
+      </div>
+    </div>
+
+    <div class="node">
+      <div class="indent"></div><div class="indent"></div><div class="indent"></div><div class="indent"></div><div class="indent"></div><div class="indent"></div><div class="indent"></div>
+      <div class="component type-page">
+        <span class="name">Login</span>
+        <span class="component-desc">Rendered if !currentUser</span>
+      </div>
+    </div>
+
+    <div class="node">
+      <div class="indent"></div><div class="indent"></div><div class="indent"></div><div class="indent"></div><div class="indent"></div><div class="indent"></div><div class="indent"></div>
+      <div class="component type-page">
+        <span class="name">Dashboard</span>
+        <span class="component-desc">Rendered if currentUser (Admin Layout)</span>
+      </div>
+    </div>
+
+    <div class="node">
+      <div class="indent"></div><div class="indent"></div><div class="indent"></div><div class="indent"></div><div class="indent"></div><div class="indent"></div><div class="indent"></div><div class="indent"></div>
+      <div class="component type-ui">
+        <span class="name">SareeStock, Billing, CRM, etc.</span>
+        <span class="component-desc">15+ admin sub-pages (eagerly loaded)</span>
+      </div>
+    </div>
+
+    <!-- QUICKPAY ROUTE -->
+    <div class="node">
+      <div class="indent"></div><div class="indent"></div><div class="indent"></div>
+      <div class="component type-route">
+        <span class="name">Route path="/pay"</span>
+        <span class="component-desc">POS payment link portal</span>
+      </div>
+    </div>
+    <div class="node">
+      <div class="indent"></div><div class="indent"></div><div class="indent"></div><div class="indent"></div>
+      <div class="component type-page">
+        <span class="name">QuickPay</span>
+        <span class="component-desc">Loads Cashfree SDK to complete POS payment</span>
+      </div>
+    </div>
+
+    <!-- AUTH ROUTES -->
+    <div class="node">
+      <div class="indent"></div><div class="indent"></div><div class="indent"></div>
+      <div class="component type-route">
+        <span class="name">Route path="/login"</span>
+        <span class="component-desc">Customer login</span>
+      </div>
+    </div>
+    <div class="node">
+      <div class="indent"></div><div class="indent"></div><div class="indent"></div><div class="indent"></div>
+      <div class="component type-page">
+        <span class="name">Auth</span>
+        <span class="component-desc">Google OAuth login button</span>
+      </div>
+    </div>
+
+    <div class="node">
+      <div class="indent"></div><div class="indent"></div><div class="indent"></div>
+      <div class="component type-route">
+        <span class="name">Route path="/auth/callback"</span>
+        <span class="component-desc">Google redirect target</span>
+      </div>
+    </div>
+    <div class="node">
+      <div class="indent"></div><div class="indent"></div><div class="indent"></div><div class="indent"></div>
+      <div class="component type-page">
+        <span class="name">AuthCallback</span>
+        <span class="component-desc">Verifies token via backend, sets user session</span>
+      </div>
+    </div>
+
+    <!-- STOREFRONT ROUTE -->
+    <div class="node">
+      <div class="indent"></div><div class="indent"></div><div class="indent"></div>
+      <div class="component type-route">
+        <span class="name">Route path="/" element={&lt;SiteLayout/&gt;}</span>
+        <span class="component-desc">Public storefront wrapper</span>
+      </div>
+    </div>
+
+    <div class="node">
+      <div class="indent"></div><div class="indent"></div><div class="indent"></div><div class="indent"></div>
+      <div class="component type-ui">
+        <span class="name">SiteLayout</span>
+        <span class="component-desc">Contains Navbar + Outlet + HomeFooter</span>
+      </div>
+    </div>
+
+    <div class="node">
+      <div class="indent"></div><div class="indent"></div><div class="indent"></div><div class="indent"></div><div class="indent"></div>
+      <div class="component type-page">
+        <span class="name">Home (index)</span>
+        <span class="component-desc">Homepage</span>
+      </div>
+    </div>
+    
+    <div class="node">
+      <div class="indent"></div><div class="indent"></div><div class="indent"></div><div class="indent"></div><div class="indent"></div><div class="indent"></div>
+      <div class="component type-ui">
+        <span class="name">Hero, TrendingProducts, ProductShowcase...</span>
+        <span class="component-desc">Homepage sections</span>
+      </div>
+    </div>
+
+    <div class="node">
+      <div class="indent"></div><div class="indent"></div><div class="indent"></div><div class="indent"></div><div class="indent"></div>
+      <div class="component type-page">
+        <span class="name">Shop (path="shop")</span>
+        <span class="component-desc">Product catalog with client-side filters</span>
+      </div>
+    </div>
+
+    <div class="node">
+      <div class="indent"></div><div class="indent"></div><div class="indent"></div><div class="indent"></div><div class="indent"></div>
+      <div class="component type-page">
+        <span class="name">Product (path="product/:id")</span>
+        <span class="component-desc">Single product detail</span>
+      </div>
+    </div>
+    
+    <div class="node">
+      <div class="indent"></div><div class="indent"></div><div class="indent"></div><div class="indent"></div><div class="indent"></div><div class="indent"></div>
+      <div class="component type-ui">
+        <span class="name">ProductGallery, ProductInfo, ProductReviews...</span>
+        <span class="component-desc">Product sub-components</span>
+      </div>
+    </div>
+
+    <div class="node">
+      <div class="indent"></div><div class="indent"></div><div class="indent"></div><div class="indent"></div><div class="indent"></div>
+      <div class="component type-page">
+        <span class="name">Cart (path="cart")</span>
+        <span class="component-desc">Shows items from CartContext</span>
+      </div>
+    </div>
+
+    <div class="node">
+      <div class="indent"></div><div class="indent"></div><div class="indent"></div><div class="indent"></div><div class="indent"></div>
+      <div class="component type-page">
+        <span class="name">Checkout (path="checkout")</span>
+        <span class="component-desc">Address + Cashfree SDK payment wizard</span>
+      </div>
+    </div>
+
+    <div class="node">
+      <div class="indent"></div><div class="indent"></div><div class="indent"></div><div class="indent"></div><div class="indent"></div>
+      <div class="component type-page">
+        <span class="name">Account (path="account")</span>
+        <span class="component-desc">Customer order history + profile</span>
+      </div>
+    </div>
+    
+  </div>
+</div>
+</body>
+</html>

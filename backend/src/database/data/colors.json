@@ -34,5 +34,117 @@
   {
     "name": "Royal Blue",
     "code": "RB"
+  },
+  {
+    "name": "Pink",
+    "code": "PIN"
+  },
+  {
+    "name": "Emerald Green",
+    "code": "EG"
+  },
+  {
+    "name": "Grey",
+    "code": "GRE"
+  },
+  {
+    "name": "Crimson Red",
+    "code": "CR"
+  },
+  {
+    "name": "Rose",
+    "code": "ROS"
+  },
+  {
+    "name": "Silver",
+    "code": "SIL"
+  },
+  {
+    "name": "Deep Teal",
+    "code": "DT"
+  },
+  {
+    "name": "Light Pink",
+    "code": "LP"
+  },
+  {
+    "name": "Baby Pink",
+    "code": "BP"
+  },
+  {
+    "name": "Dark Green",
+    "code": "DG"
+  },
+  {
+    "name": "Ash",
+    "code": "ASH"
+  },
+  {
+    "name": "Maroon",
+    "code": "MAR"
+  },
+  {
+    "name": "Maroon Gold",
+    "code": "MG"
+  },
+  {
+    "name": "Rani Pink",
+    "code": "RP"
+  },
+  {
+    "name": "Gold",
+    "code": "GOL"
+  },
+  {
+    "name": "Dusty Rose",
+    "code": "DR"
+  },
+  {
+    "name": "Silver Sheen",
+    "code": "SS"
+  },
+  {
+    "name": "Sea Green",
+    "code": "SG"
+  },
+  {
+    "name": "Purple",
+    "code": "PUR"
+  },
+  {
+    "name": "Rose Pink",
+    "code": "ROK"
+  },
+  {
+    "name": "Hot Pink",
+    "code": "HP"
+  },
+  {
+    "name": "Rust Orange",
+    "code": "RO"
+  },
+  {
+    "name": "Midnight Blue",
+    "code": "MB"
+  },
+  {
+    "name": "Emerald",
+    "code": "EME"
+  },
+  {
+    "name": "Gold Zari",
+    "code": "GZ"
+  },
+  {
+    "name": "Cream",
+    "code": "CRE"
+  },
+  {
+    "name": "Beige",
+    "code": "BEI"
+  },
+  {
+    "name": "Mustard Yellow",
+    "code": "MY"
   }
 ]

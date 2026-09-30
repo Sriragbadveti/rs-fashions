@@ -7,6 +7,24 @@ import { invalidateBootstrapCache } from "../controllers/bootstrap.controller.js
  * Service: Unified Inventory Management & Variant-Aware Stock Deductions
  */
 
+// Mutex locks to serialize concurrent stock deductions on the same product
+const inventoryLocks = new Map();
+
+async function acquireInventoryLock(productId, timeoutMs = 6000) {
+  const start = Date.now();
+  while (inventoryLocks.has(productId)) {
+    if (Date.now() - start > timeoutMs) {
+      throw new Error(`Inventory deduction timeout for product ${productId}. Another checkout is currently processing.`);
+    }
+    await new Promise((r) => setTimeout(r, 40));
+  }
+  inventoryLocks.set(productId, Date.now());
+}
+
+function releaseInventoryLock(productId) {
+  inventoryLocks.delete(productId);
+}
+
 /**
  * Fetch persistent variant map from Supabase settings table.
  */
@@ -70,54 +88,56 @@ export async function deductStockForItem({
     return null;
   }
 
-  let currentProd = null;
+  const lockKey = prodId || itemSku || item.name;
+  await acquireInventoryLock(lockKey);
 
-  // 1. Locate product in Supabase or fallback store
-  if (supabase) {
-    try {
-      if (prodId) {
-        const { data } = await supabase.from("products").select("*").eq("id", prodId).maybeSingle();
-        if (data) currentProd = data;
-      }
+  try {
+    let currentProd = null;
 
-      if (!currentProd && itemSku) {
-        const { data } = await supabase.from("products").select("*").eq("id", itemSku).maybeSingle();
-        if (data) currentProd = data;
-      }
-
-      if (!currentProd) {
-        const { data: allProds } = await supabase.from("products").select("*");
-        if (Array.isArray(allProds)) {
-          currentProd = allProds.find((p) => {
-            if (p.id === prodId || p.id === itemSku) return true;
-            if (item.name && p.name && p.name.trim().toLowerCase() === item.name.trim().toLowerCase()) return true;
-            return false;
-          });
+    // 1. Locate product in Supabase (Single Source of Truth)
+    if (supabase) {
+      try {
+        if (prodId) {
+          const { data } = await supabase.from("products").select("*").eq("id", prodId).maybeSingle();
+          if (data) currentProd = data;
         }
+
+        if (!currentProd && itemSku) {
+          const { data } = await supabase.from("products").select("*").eq("id", itemSku).maybeSingle();
+          if (data) currentProd = data;
+        }
+
+        if (!currentProd) {
+          const { data: allProds } = await supabase.from("products").select("*");
+          if (Array.isArray(allProds)) {
+            currentProd = allProds.find((p) => {
+              if (p.id === prodId || p.id === itemSku) return true;
+              if (item.name && p.name && p.name.trim().toLowerCase() === item.name.trim().toLowerCase()) return true;
+              return false;
+            });
+          }
+        }
+      } catch (dbErr) {
+        console.warn("[InventoryService] DB query notice:", dbErr.message);
       }
-    } catch (dbErr) {
-      console.warn("[InventoryService] DB query notice:", dbErr.message);
+    } else {
+      // Offline local development fallback only
+      const localProds = getProductsFromStore();
+      currentProd = localProds.find((p) => {
+        if (p.id === prodId || p.id === itemSku) return true;
+        if (Array.isArray(p.variants) && p.variants.some((v) => v.sku === itemSku || v.sku === prodId)) return true;
+        if (item.name && p.name && p.name.trim().toLowerCase() === item.name.trim().toLowerCase()) return true;
+        return false;
+      });
     }
-  }
 
-  // Fallback to localStore if DB did not locate product
-  if (!currentProd) {
-    const localProds = getProductsFromStore();
-    currentProd = localProds.find((p) => {
-      if (p.id === prodId || p.id === itemSku) return true;
-      if (Array.isArray(p.variants) && p.variants.some((v) => v.sku === itemSku || v.sku === prodId)) return true;
-      if (item.name && p.name && p.name.trim().toLowerCase() === item.name.trim().toLowerCase()) return true;
-      return false;
-    });
-  }
+    if (!currentProd) {
+      console.warn(`[InventoryService] Product not found in database for deduction: prodId=${prodId}, sku=${itemSku}, name=${item.name}`);
+      return null;
+    }
 
-  if (!currentProd) {
-    console.warn(`[InventoryService] Product not found for deduction: prodId=${prodId}, sku=${itemSku}, name=${item.name}`);
-    return null;
-  }
-
-  const effectiveProdId = currentProd.id;
-  const previousStock = Number(currentProd.stock) || 0;
+    const effectiveProdId = currentProd.id;
+    const previousStock = Number(currentProd.stock) || 0;
 
   // 2. Load variants for this product
   const variantsMap = await getPersistentVariantsMap();
@@ -211,14 +231,16 @@ export async function deductStockForItem({
     }
   }
 
-  // 7. Update localStore fallback
-  try {
-    saveProductToStore({
-      ...currentProd,
-      stock: newTotalStock,
-      variants: productVariants,
-    });
-  } catch {}
+    // 7. Update localStore only in local offline development mode
+    if (!supabase) {
+      try {
+        saveProductToStore({
+          ...currentProd,
+          stock: newTotalStock,
+          variants: productVariants,
+        });
+      } catch {}
+    }
 
   // 8. Log SALE in stock_movements table
   const deductedColor = targetVariant?.color || itemColor || (currentProd.colors && currentProd.colors[0]) || "Standard";
@@ -253,13 +275,17 @@ export async function deductStockForItem({
     }
   }
 
-  return {
-    productId: effectiveProdId,
-    previousStock,
-    newTotalStock,
-    targetVariant,
-    variants: productVariants,
-  };
+    return {
+      productId: effectiveProdId,
+      previousStock,
+      newTotalStock,
+      newStock: newTotalStock,
+      targetVariant,
+      variants: productVariants,
+    };
+  } finally {
+    releaseInventoryLock(lockKey);
+  }
 }
 
 /**

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>RS Fashions — Image Upload Flow</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f0f1a; color: #e2e8f0; }
+.header { background: linear-gradient(135deg, #1e1b4b, #312e81); padding: 24px 40px; border-bottom: 1px solid #3730a3; }
+.header h1 { font-size: 22px; font-weight: 700; color: #a5b4fc; }
+.header p { color: #94a3b8; margin-top: 4px; font-size: 14px; }
+.content { padding: 40px; max-width: 1000px; margin: 0 auto; }
+.box { background: #1e1e3f; border: 1px solid #4f46e5; border-radius: 8px; padding: 20px; margin-bottom: 24px; position: relative; }
+.box h2 { font-size: 16px; color: #818cf8; margin-bottom: 12px; }
+.step { display: flex; align-items: flex-start; margin-bottom: 16px; }
+.step-icon { width: 32px; height: 32px; background: #4f46e5; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 16px; flex-shrink: 0; }
+.step-text { font-size: 13px; line-height: 1.6; color: #cbd5e1; }
+.step-code { background: #0f0f1a; border: 1px solid #312e81; padding: 8px 12px; border-radius: 4px; font-family: monospace; font-size: 11px; color: #a5b4fc; margin-top: 8px; }
+.arrow-down { text-align: center; color: #6366f1; font-size: 24px; margin: 16px 0; }
+.heic-badge { background: #ea580c; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 8px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>RS Fashions — Image Processing Pipeline</h1>
+  <p>HEIC Conversion · Sharp Optimization · Supabase Storage</p>
+</div>
+<div class="content">
+  
+  <div class="box">
+    <h2>1. Frontend Selection</h2>
+    <div class="step">
+      <div class="step-icon">1</div>
+      <div class="step-text">
+        Admin selects product image in SareeStock.tsx. If it's an iPhone photo (HEIC/HEIF format), the browser attempts client-side conversion using heic2any.
+        If that fails, it calls the backend conversion endpoint.
+        <div class="step-code">POST /api/upload/convert-heic</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-icon">2</div>
+      <div class="step-text">
+        Admin submits product form. Images are sent as base64 data URLs inside the product JSON payload.
+        <div class="step-code">POST /api/admin/catalog/products
+Body: { name, price, ..., images: ["data:image/jpeg;base64,..."] }</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow-down">↓</div>
+
+  <div class="box">
+    <h2>2. Backend Processing (upload.controller.js)</h2>
+    <div class="step">
+      <div class="step-icon">3</div>
+      <div class="step-text">
+        <strong>Buffer Extraction:</strong> Backend extracts the raw binary Buffer from the data URL.
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-icon">4</div>
+      <div class="step-text">
+        <strong>Server-Side HEIC Check:</strong> Checks magic bytes to see if it's still a HEIC file. If so, runs heic-convert. <span class="heic-badge">CPU INTENSIVE</span>
+        <div class="step-code">await heicConvert({ buffer, format: 'JPEG', quality: 0.9 })</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-icon">5</div>
+      <div class="step-text">
+        <strong>Sharp Optimization:</strong> The Sharp library optimizes the image.
+        <div class="step-code">sharp(buffer)
+  .rotate() // Extremely important: fixes EXIF orientation from phone cameras
+  .resize({ width: 1200, height: 1200, fit: 'inside' })
+  .jpeg({ quality: 82, progressive: true, mozjpeg: true })
+  .toBuffer()</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow-down">↓</div>
+
+  <div class="box">
+    <h2>3. Supabase Storage Upload</h2>
+    <div class="step">
+      <div class="step-icon">6</div>
+      <div class="step-text">
+        <strong>Upload to Bucket:</strong> The optimized buffer is uploaded to Supabase Storage.
+        <div class="step-code">supabase.storage.from('sarees').upload(`uploads/${fileName}`, optimizedBuffer, {
+  contentType: 'image/jpeg',
+  upsert: false
+})</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-icon">7</div>
+      <div class="step-text">
+        <strong>Get Public URL:</strong> Generates the CDN URL for the image.
+        <div class="step-code">supabase.storage.from('sarees').getPublicUrl(`uploads/${fileName}`)</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-icon">8</div>
+      <div class="step-text">
+        <strong>Fallback Mechanism:</strong> If Supabase Storage is unreachable or fails, the system falls back to returning the optimized base64 data URL.
+        <br><br><span style="color: #fb923c; font-size: 11px;">⚠️ Note: Storing data URLs directly in the products table database row bloats the database size significantly, but ensures the system works entirely offline.</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

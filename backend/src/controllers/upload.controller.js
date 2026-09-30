@@ -54,45 +54,54 @@ function parseDataUrlOrBase64(base64OrDataUrl) {
 }
 
 /**
- * Converts a base64 / Data URL image (including HEIC / HEIF) into a web-visible, compressed JPEG buffer and Data URL
+ * Processes an image Buffer into a web-optimized JPEG buffer.
+ * Preserves high resolution (up to 2000px) and disables harsh chroma subsampling
+ * (uses 4:4:4) to preserve intricate saree borders, zari work, embroidery, and texture details.
  */
-export async function processImageToWebFormat(base64OrDataUrl) {
-  const { mimeType: initialMime, rawBuffer } = parseDataUrlOrBase64(base64OrDataUrl);
-  let workingBuffer = rawBuffer;
-  let mimeType = initialMime;
+export async function processBufferToWebFormat(buffer, originalMime = "image/jpeg", filename = "") {
+  let workingBuffer = buffer;
+  let mimeType = originalMime || "image/jpeg";
   let extension = "jpg";
 
-  // 1. If HEIC / HEIF (by MIME or ftyp magic bytes), convert to JPEG first using heic-convert
-  if (isHeicBuffer(workingBuffer, mimeType)) {
+  // 1. If HEIC / HEIF (by MIME, extension, or ftyp magic bytes), convert to JPEG first using heic-convert
+  const isHeic = isHeicBuffer(workingBuffer, mimeType) || /\.(heic|heif)$/i.test(filename || "");
+  if (isHeic) {
     try {
       const converted = await heicConvert({
         buffer: workingBuffer,
         format: "JPEG",
-        quality: 0.88,
+        quality: 0.90, // High quality to retain fine zari threads
       });
       workingBuffer = Buffer.from(converted);
       mimeType = "image/jpeg";
       extension = "jpg";
     } catch (heicErr) {
-      console.warn("heic-convert warning:", heicErr.message);
+      console.warn("[UploadController] heic-convert warning:", heicErr.message);
     }
   }
 
   let uploadBuffer = workingBuffer;
   let uploadMimeType = mimeType || "image/jpeg";
 
-  // 2. Compress and optimize with sharp unless it's a vector SVG
+  // 2. High-Fidelity Saree Optimization with Sharp
   if (!uploadMimeType.includes("svg")) {
     try {
+      // 2000px maximum dimension preserves saree pallu, border zari, and weave details
+      // 88 quality with mozjpeg and 4:4:4 chroma subsampling ensures zero color bleeding on gold/red border edges
       uploadBuffer = await sharp(workingBuffer)
-        .rotate()
-        .resize({ width: 1200, height: 1200, fit: "inside", withoutEnlargement: true })
-        .jpeg({ quality: 82, progressive: true, mozjpeg: true })
+        .rotate() // auto-orient based on EXIF
+        .resize({ width: 2000, height: 2000, fit: "inside", withoutEnlargement: true })
+        .jpeg({
+          quality: 88,
+          progressive: true,
+          mozjpeg: true,
+          chromaSubsampling: "4:4:4", // Critical for metallic zari clarity
+        })
         .toBuffer();
       uploadMimeType = "image/jpeg";
       extension = "jpg";
     } catch (sharpErr) {
-      console.warn("Sharp optimization skipped, using working buffer:", sharpErr.message);
+      console.warn("[UploadController] Sharp optimization skipped, using raw buffer:", sharpErr.message);
       if (uploadMimeType.includes("png")) extension = "png";
       else if (uploadMimeType.includes("webp")) extension = "webp";
       else uploadMimeType = "image/jpeg";
@@ -112,16 +121,23 @@ export async function processImageToWebFormat(base64OrDataUrl) {
 }
 
 /**
- * Uploads a base64 or binary image into the public Supabase Storage bucket 'sarees'
- * Automatically converts HEIC/HEIF to JPEG, compresses, reorients, and resizes to web-optimal format (< 200 KB).
- * Falls back to returning the optimized JPEG Data URL if Supabase Storage is not configured or unreachable.
+ * Converts a base64 / Data URL image into web-visible JPEG buffer and Data URL
+ * Backward-compatible wrapper for existing controllers.
  */
-export async function uploadImageToSupabaseStorage(base64OrDataUrl, customFilename) {
-  const processed = await processImageToWebFormat(base64OrDataUrl);
+export async function processImageToWebFormat(base64OrDataUrl) {
+  const { mimeType: initialMime, rawBuffer } = parseDataUrlOrBase64(base64OrDataUrl);
+  return processBufferToWebFormat(rawBuffer, initialMime);
+}
+
+/**
+ * Uploads a buffer directly into the public Supabase Storage bucket 'sarees'
+ */
+export async function uploadBufferToSupabaseStorage(buffer, originalMime = "image/jpeg", customFilename = "") {
+  const processed = await processBufferToWebFormat(buffer, originalMime, customFilename);
   const { buffer: uploadBuffer, mimeType: uploadMimeType, extension, dataUrl } = processed;
 
   const cleanCustomName = customFilename
-    ? customFilename.replace(/\.(heic|heif)$/i, ".jpg")
+    ? customFilename.replace(/\.(heic|heif)$/i, ".jpg").replace(/[^a-zA-Z0-9._-]/g, "_")
     : null;
   const fileName =
     cleanCustomName ||
@@ -146,22 +162,24 @@ export async function uploadImageToSupabaseStorage(base64OrDataUrl, customFilena
           return {
             path: filePath,
             publicUrl: publicUrlData.publicUrl,
-            dataUrl,
+            url: publicUrlData.publicUrl,
             size: uploadBuffer.length,
             mimeType: uploadMimeType,
           };
         }
       } else {
-        console.warn("Supabase storage upload warning, using converted JPEG dataUrl:", error.message);
+        console.warn("[UploadController] Supabase storage upload warning:", error.message);
       }
     } catch (storageErr) {
-      console.warn("Supabase storage unreachable, using converted JPEG dataUrl:", storageErr.message);
+      console.warn("[UploadController] Supabase storage unreachable:", storageErr.message);
     }
   }
 
+  // Fallback: return dataUrl if storage client unreachable
   return {
     path: filePath,
     publicUrl: dataUrl,
+    url: dataUrl,
     dataUrl,
     size: uploadBuffer.length,
     mimeType: uploadMimeType,
@@ -169,25 +187,110 @@ export async function uploadImageToSupabaseStorage(base64OrDataUrl, customFilena
 }
 
 /**
+ * Uploads a base64 or binary image into Supabase Storage bucket 'sarees'
+ * Backward-compatible wrapper for existing calls.
+ */
+export async function uploadImageToSupabaseStorage(base64OrDataUrl, customFilename) {
+  if (Buffer.isBuffer(base64OrDataUrl)) {
+    return uploadBufferToSupabaseStorage(base64OrDataUrl, "image/jpeg", customFilename);
+  }
+
+  if (typeof base64OrDataUrl === "string" && (base64OrDataUrl.startsWith("http://") || base64OrDataUrl.startsWith("https://"))) {
+    return {
+      path: "",
+      publicUrl: base64OrDataUrl,
+      url: base64OrDataUrl,
+      size: 0,
+      mimeType: "image/jpeg",
+    };
+  }
+
+  const { mimeType, rawBuffer } = parseDataUrlOrBase64(base64OrDataUrl);
+  return uploadBufferToSupabaseStorage(rawBuffer, mimeType, customFilename);
+}
+
+/**
+ * Concurrency-limited helper: processes items with maximum `limit` in-flight tasks
+ */
+async function mapWithConcurrency(items, limit, fn) {
+  const results = new Array(items.length);
+  let currentIndex = 0;
+
+  async function worker() {
+    while (currentIndex < items.length) {
+      const idx = currentIndex++;
+      results[idx] = await fn(items[idx], idx);
+    }
+  }
+
+  const workerCount = Math.min(limit, items.length);
+  const workers = Array.from({ length: workerCount }, () => worker());
+  await Promise.all(workers);
+  return results;
+}
+
+/**
  * Controller endpoint: POST /api/upload
+ * Supports:
+ * 1. Multipart binary uploads (`req.file` or `req.files`) via Multer (FASTEST, NO BASE64 OVERHEAD)
+ * 2. JSON base64 payloads (`req.body.image`, `req.body.images`) for full backward compatibility
  */
 export async function uploadImage(req, res) {
   try {
-    const { image, file, filename, images, files } = req.body;
+    // A. Check for Multipart file uploads (Multer)
+    const uploadedFiles = req.files || (req.file ? [req.file] : null);
 
-    // Handle multiple images batch upload if array provided
+    if (Array.isArray(uploadedFiles) && uploadedFiles.length > 0) {
+      // Process binary files with controlled concurrency of 2 to protect server CPU/memory
+      const results = await mapWithConcurrency(uploadedFiles, 2, async (f, idx) => {
+        const uploadRes = await uploadBufferToSupabaseStorage(
+          f.buffer,
+          f.mimetype,
+          f.originalname || `saree-${Date.now()}-${idx + 1}.jpg`
+        );
+        return {
+          originalName: f.originalname,
+          url: uploadRes.publicUrl,
+          publicUrl: uploadRes.publicUrl,
+          path: uploadRes.path,
+          size: uploadRes.size,
+          mimeType: uploadRes.mimeType,
+        };
+      });
+
+      const validUrls = results.map((r) => r.publicUrl);
+      if (uploadedFiles.length === 1) {
+        return res.status(201).json({
+          success: true,
+          url: validUrls[0],
+          publicUrl: validUrls[0],
+          data: results[0],
+          message: "Image processed and uploaded successfully (binary)",
+        });
+      }
+
+      return res.status(201).json({
+        success: true,
+        urls: validUrls,
+        images: validUrls,
+        data: results,
+        message: `${validUrls.length} images processed and uploaded successfully (binary)`,
+      });
+    }
+
+    // B. Check for JSON / Base64 uploads (Backward Compatibility)
+    const { image, file, filename, images, files } = req.body || {};
     const targetImages = images || files;
+
     if (Array.isArray(targetImages) && targetImages.length > 0) {
-      const results = await Promise.all(
-        targetImages.map(async (img, idx) => {
-          if (!img) return null;
-          if (typeof img === "string" && (img.startsWith("http://") || img.startsWith("https://"))) {
-            return { url: img, publicUrl: img };
-          }
-          const uploadRes = await uploadImageToSupabaseStorage(img, `${Date.now()}-${idx + 1}.jpg`);
-          return { url: uploadRes.publicUrl, publicUrl: uploadRes.publicUrl, path: uploadRes.path };
-        })
-      );
+      const results = await mapWithConcurrency(targetImages, 2, async (img, idx) => {
+        if (!img) return null;
+        if (typeof img === "string" && (img.startsWith("http://") || img.startsWith("https://"))) {
+          return { url: img, publicUrl: img };
+        }
+        const uploadRes = await uploadImageToSupabaseStorage(img, `${Date.now()}-${idx + 1}.jpg`);
+        return { url: uploadRes.publicUrl, publicUrl: uploadRes.publicUrl, path: uploadRes.path };
+      });
 
       const validUrls = results.filter(Boolean).map((r) => r.publicUrl);
       return res.status(201).json({
@@ -200,27 +303,21 @@ export async function uploadImage(req, res) {
     }
 
     const targetImage = image || file;
-
     if (!targetImage) {
-      return errorResponse(res, "No image payload provided (must send 'image' as base64 string, data URL, or 'images' array)", 400);
+      return errorResponse(res, "No image payload provided (must send binary file or 'image' base64)", 400);
     }
 
-    // If it's already an http(s) URL, no need to re-upload
     if (typeof targetImage === "string" && (targetImage.startsWith("http://") || targetImage.startsWith("https://"))) {
       return res.status(200).json({
         success: true,
         url: targetImage,
         publicUrl: targetImage,
-        data: {
-          url: targetImage,
-          publicUrl: targetImage,
-        },
+        data: { url: targetImage, publicUrl: targetImage },
         message: "Image URL validated",
       });
     }
 
     const result = await uploadImageToSupabaseStorage(targetImage, filename);
-
     return res.status(201).json({
       success: true,
       url: result.publicUrl,
@@ -229,14 +326,13 @@ export async function uploadImage(req, res) {
       data: {
         url: result.publicUrl,
         publicUrl: result.publicUrl,
-        dataUrl: result.dataUrl,
         path: result.path,
         size: result.size,
       },
       message: "Image processed and uploaded successfully",
     });
   } catch (err) {
-    console.error("Image upload error:", err);
+    console.error("[UploadController] Image upload error:", err);
     return errorResponse(res, err.message || "Failed to process and upload image", 500);
   }
 }
@@ -250,11 +346,22 @@ export async function uploadMultipleImages(req, res) {
 
 /**
  * Controller endpoint: POST /api/upload/convert-heic
- * Converts a HEIC/HEIF base64 or Data URL into a browser-renderable JPEG Data URL
  */
 export async function convertHeicImage(req, res) {
   try {
-    const { image, file } = req.body;
+    const uploadedFile = req.file || (req.files && req.files[0]);
+    if (uploadedFile) {
+      const processed = await processBufferToWebFormat(uploadedFile.buffer, uploadedFile.mimetype, uploadedFile.originalname);
+      return res.status(200).json({
+        success: true,
+        url: processed.dataUrl,
+        dataUrl: processed.dataUrl,
+        mimeType: processed.mimeType,
+        size: processed.buffer.length,
+      });
+    }
+
+    const { image, file } = req.body || {};
     const target = image || file;
     if (!target) {
       return errorResponse(res, "No image payload provided for HEIC conversion", 400);
@@ -268,8 +375,7 @@ export async function convertHeicImage(req, res) {
       size: processed.buffer.length,
     });
   } catch (err) {
-    console.error("HEIC conversion error:", err);
+    console.error("[UploadController] HEIC conversion error:", err);
     return errorResponse(res, err.message || "Failed to convert HEIC image", 500);
   }
 }
-

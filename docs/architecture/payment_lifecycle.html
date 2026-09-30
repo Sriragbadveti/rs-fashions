@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>RS Fashions — Payment Lifecycle</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f0f1a; color: #e2e8f0; }
+.header { background: linear-gradient(135deg, #1a0f0f, #2d1b00); padding: 24px 40px; border-bottom: 1px solid #5a2d00; }
+.header h1 { font-size: 22px; font-weight: 700; color: #fb923c; }
+.header p { color: #94a3b8; margin-top: 4px; font-size: 14px; }
+.content { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; padding: 32px; }
+.card { background: #1a1a2e; border: 1px solid #2d2d6e; border-radius: 12px; padding: 24px; }
+.card h2 { font-size: 15px; color: #fb923c; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+.flow { display: flex; flex-direction: column; gap: 0; }
+.step { display: flex; gap: 12px; }
+.step-num { background: #7c2d12; color: #fb923c; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; z-index: 1; }
+.step-content { padding-bottom: 18px; border-left: 2px solid #2d2d6e; margin-left: -1px; padding-left: 16px; flex: 1; }
+.step:last-child .step-content { border-left-color: transparent; }
+.step-title { font-size: 13px; font-weight: 600; color: #e2e8f0; margin-bottom: 4px; }
+.step-detail { font-size: 11px; color: #94a3b8; line-height: 1.6; }
+.code { font-size: 11px; color: #4ade80; background: #0f1a0f; padding: 6px 10px; border-radius: 6px; margin-top: 6px; font-family: monospace; }
+.warn { font-size: 11px; color: #fb923c; background: #1a0f00; padding: 6px 10px; border-radius: 6px; margin-top: 6px; }
+.good { font-size: 11px; color: #4ade80; background: #0f1a0f; padding: 6px 10px; border-radius: 6px; margin-top: 6px; }
+.actor { background: #1e1e3f; border: 1px solid #3d3d6e; border-radius: 4px; padding: 2px 8px; font-size: 11px; color: #a78bfa; display: inline-block; margin: 2px 0; }
+.state-machine { padding: 20px; }
+.state { background: #1e1e3f; border: 2px solid #374151; border-radius: 8px; padding: 8px 16px; display: inline-block; font-size: 12px; font-weight: 600; color: #e2e8f0; }
+.state.created { border-color: #6b7280; }
+.state.pending { border-color: #d97706; color: #fbbf24; }
+.state.paid { border-color: #16a34a; color: #4ade80; }
+.state.failed { border-color: #dc2626; color: #f87171; }
+.state.terminal { opacity: 0.7; }
+.arrow { color: #94a3b8; font-size: 14px; display: inline-block; margin: 0 8px; }
+.state-row { display: flex; align-items: center; margin: 8px 0; flex-wrap: wrap; gap: 8px; }
+.full-width { grid-column: 1 / -1; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>RS Fashions — Payment Lifecycle</h1>
+  <p>Cashfree payment integration · POS billing flow · Webhook state machine · Based on actual source code</p>
+</div>
+<div class="content">
+
+<div class="card">
+  <h2>🛒 Mode 1: Online Storefront Checkout</h2>
+  <div class="flow">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <div class="step-title">Customer proceeds to checkout</div>
+        <div class="step-detail"><span class="actor">Checkout.tsx</span> — Address form filled. Payment method selected (Cashfree is default).</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <div class="step-title">Generate stable order number</div>
+        <div class="step-detail"><span class="actor">stableOrderNumberRef</span> — useRef ensures same order number on re-renders; prevents accidental duplicate orders</div>
+        <div class="code">orderNumber = "RSF-" + timestamp.toString(36).toUpperCase()</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <div class="step-title">Record pending sale</div>
+        <div class="step-detail"><span class="actor">POST /api/billing/pos-checkout</span> — Saves order to Supabase orders table with payment_status: 'pending'</div>
+        <div class="code">{ items, address, total, paymentMethod: 'cashfree',
+  paymentStatus: 'pending', billingType: 'online' }</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-content">
+        <div class="step-title">Create Cashfree order</div>
+        <div class="step-detail"><span class="actor">POST /api/payments/cashfree/create-order</span> — Backend calls Cashfree API. Returns payment_session_id.</div>
+        <div class="code">POST https://api.cashfree.com/pg/orders
+Headers: x-client-id, x-client-secret, x-api-version
+→ Returns: { payment_session_id: "session_..." }</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-content">
+        <div class="step-title">Load Cashfree SDK</div>
+        <div class="step-detail"><span class="actor">loadCashfreeScript()</span> — Dynamically adds script tag to DOM. Checks if already loaded to avoid duplicates.</div>
+        <div class="code">src="https://sdk.cashfree.com/js/v3/cashfree.js"</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">6</div>
+      <div class="step-content">
+        <div class="step-title">Open payment modal</div>
+        <div class="step-detail"><span class="actor">Cashfree SDK</span> — Customer sees UPI, credit/debit cards, net banking, wallets options.</div>
+        <div class="code">const cashfree = Cashfree({ mode: "production" });
+cashfree.checkout({ paymentSessionId: session_id,
+                    redirectTarget: "_modal" });</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">7</div>
+      <div class="step-content">
+        <div class="step-title">Cashfree redirect after payment</div>
+        <div class="step-detail">Cashfree redirects to: /checkout?order_id=RSF_...&status=cashfree_return</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">8</div>
+      <div class="step-content">
+        <div class="step-title">Verify payment</div>
+        <div class="step-detail"><span class="actor">POST /api/payments/cashfree/verify</span> — Backend calls Cashfree API to get payment status. Updates Supabase order if SUCCESS.</div>
+        <div class="code">GET https://api.cashfree.com/pg/orders/:id/payments
+→ payment_status: "SUCCESS" | "FAILED" | "PENDING"</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">9</div>
+      <div class="step-content">
+        <div class="step-title">Frontend completes order</div>
+        <div class="step-detail">clearCart() → save order to localStorage → navigate to success screen. Simultaneously: Cashfree webhook fires to update order asynchronously.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>🏪 Mode 2: POS Counter Billing (Payment Link)</h2>
+  <div class="flow">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <div class="step-title">Admin opens Billing.tsx</div>
+        <div class="step-detail"><span class="actor">Billing.tsx</span> — Admin selects products, enters customer name, phone, email. Invoice generated with GST breakdown.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <div class="step-title">Generate payment link</div>
+        <div class="step-detail"><span class="actor">POST /api/payments/cashfree/create-payment-link</span></div>
+        <div class="code">{ invoiceNumber, amountInRupees, customerName,
+  customerPhone, customerEmail, items,
+  subtotal, discount, total, billingType: 'pos' }</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <div class="step-title">Duplicate prevention (distributed lock)</div>
+        <div class="step-detail"><span class="actor">payments.controller.js → acquireLock(posKey)</span> — Prevents race condition if admin clicks "Generate" twice. If PENDING link already exists → reuses it.</div>
+        <div class="good">✓ If link already exists and is PENDING: reuses existing link (no duplicate order)</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-content">
+        <div class="step-title">Backend creates Cashfree order</div>
+        <div class="step-detail"><span class="actor">cashfree.service.js → createCashfreeOrder()</span> — Creates Cashfree order. Generates custom payment link URL pointing to /pay route.</div>
+        <div class="code">paymentLink = `${clientUrl}/pay?order_id=${orderId}
+  &session_id=${payment_session_id}
+  &amount=${amount}&invoice=${inv}
+  &customer=${customerName}`</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-content">
+        <div class="step-title">Admin shares payment link</div>
+        <div class="step-detail">Link copied → shared via WhatsApp, SMS, or displayed as QR code. Customer receives link on their phone.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">6</div>
+      <div class="step-content">
+        <div class="step-title">Customer opens QuickPay.tsx</div>
+        <div class="step-detail"><span class="actor">QuickPay.tsx</span> — Route: /pay. Reads URL params: order_id, session_id, amount, invoice, customer. Shows amount and invoice details.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">7</div>
+      <div class="step-content">
+        <div class="step-title">Check if already paid (on mount)</div>
+        <div class="step-detail"><span class="actor">POST /api/payments/cashfree/verify</span> — If already PAID → shows success screen immediately. Prevents re-payment of same invoice.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">8</div>
+      <div class="step-content">
+        <div class="step-title">Customer pays</div>
+        <div class="step-detail"><span class="actor">Cashfree SDK</span> — Same Cashfree JS SDK v3 loaded. Customer pays using session_id from URL params.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">9</div>
+      <div class="step-content">
+        <div class="step-title">Webhook auto-records sale</div>
+        <div class="step-detail"><span class="actor">handleCashfreeWebhook → autoRecordPosSale()</span> — When POS payment succeeds, automatically creates sale record in Supabase orders table, deducts stock, updates CRM.</div>
+        <div class="good">✓ Stock deduction + sale recording happens automatically via webhook — no manual action needed</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card full-width">
+  <h2>⚙️ Cashfree Webhook Handler (handleCashfreeWebhook)</h2>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+    <div class="flow">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <div class="step-title">Signature Verification (HMAC-SHA256)</div>
+          <div class="code">dataToSign = x-webhook-timestamp + JSON.stringify(body)
+computedSig = HMAC-SHA256(dataToSign, CASHFREE_SECRET_KEY)
+assert computedSig === x-webhook-signature</div>
+          <div class="good">✓ Prevents spoofed webhooks from attackers</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <div class="step-title">Idempotency Check</div>
+          <div class="code">eventId = cf_payment_id || event_id || computed
+if (isWebhookEventProcessed(eventId)) {
+  return 200; // Already handled, ignore
+}</div>
+          <div class="good">✓ Cashfree may send same event multiple times — safe to ignore duplicates</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <div class="step-title">State Machine Transition</div>
+          <div class="code">if (paymentStatus === "SUCCESS") {
+  // Check not already PAID first
+  markOrderPaidInStore(cfOrderId);
+  supabase.from('orders').update({payment_status: 'paid'})
+  autoRecordPosSale(cfOrderId); // If POS order
+}
+if (paymentStatus === "FAILED" || "CANCELLED" || "EXPIRED") {
+  // Check if already PAID — if so, SKIP (protect PAID state)
+  updatePaymentAttemptStatus(cfOrderId, paymentStatus);
+}</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <div class="step-title">Mark Event as Processed</div>
+          <div class="code">recordWebhookEvent(eventId, { cfOrderId, eventType, paymentStatus });
+// Writes to webhook_events.json (persistent across requests)</div>
+          <div class="good">✓ Even after server restart, already-processed events won't be re-handled</div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div style="margin-bottom: 20px;">
+        <h3 style="font-size: 14px; color: #e2e8f0; margin-bottom: 12px;">Payment State Machine</h3>
+        <div class="state-machine">
+          <div class="state-row">
+            <div class="state created">CREATED</div>
+            <span class="arrow">→</span>
+            <div class="state pending">PENDING</div>
+          </div>
+          <div style="margin-left: 80px; margin: 8px 0 8px 80px;">↓</div>
+          <div class="state-row" style="margin-left: 0;">
+            <div class="state paid">PAID ✓</div>
+            <span style="color: #6b7280; font-size: 12px;">Terminal (SUCCESS)</span>
+          </div>
+          <div class="state-row" style="margin-top: 4px;">
+            <div class="state failed">FAILED ✗</div>
+            <span style="color: #6b7280; font-size: 12px;">Terminal</span>
+          </div>
+          <div class="state-row">
+            <div class="state failed">CANCELLED</div>
+            <span style="color: #6b7280; font-size: 12px;">Terminal</span>
+          </div>
+          <div class="state-row">
+            <div class="state failed">EXPIRED</div>
+            <span style="color: #6b7280; font-size: 12px;">Terminal</span>
+          </div>
+        </div>
+        <div class="good" style="margin-top: 12px;">✓ Once PAID, the order can NEVER transition to FAILED, CANCELLED, or EXPIRED. Protected by isAlreadyPaid check in webhook handler.</div>
+      </div>
+      <div>
+        <h3 style="font-size: 14px; color: #e2e8f0; margin-bottom: 12px;">Persistence Points</h3>
+        <div class="step-detail" style="line-height: 2;">
+          <div>📁 payment_attempts.json — tracks all attempts per POS key</div>
+          <div>📁 webhook_events.json — processed event IDs for deduplication</div>
+          <div>📁 orders.json — local order state mirror</div>
+          <div>🗄️ Supabase orders table — payment_status updated on SUCCESS</div>
+          <div>🗄️ Supabase stock_movements — stock deduction audit trail</div>
+          <div>🗄️ Supabase customers — total_spent + orders_count updated</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

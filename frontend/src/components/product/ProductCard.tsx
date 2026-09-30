@@ -39,6 +39,7 @@ function ProductCard({ product }: ProductCardProps) {
             src={primaryImage}
             alt={product.name}
             loading="lazy"
+            decoding="async"
             className="h-full w-full object-cover object-center transition-all duration-700 ease-out group-hover:scale-105"
           />
 
@@ -48,6 +49,7 @@ function ProductCard({ product }: ProductCardProps) {
               src={hoverImage}
               alt={`${product.name} alternate view`}
               loading="lazy"
+              decoding="async"
               className="absolute inset-0 h-full w-full object-cover object-center opacity-0 transition-all duration-700 ease-out group-hover:scale-105 group-hover:opacity-100"
             />
           )}
