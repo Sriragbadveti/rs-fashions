@@ -1630,23 +1630,19 @@ export default function Catalog({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
 
-  const availableCategories = useMemo<Category[]>(() => {
-    const combined = [...CANONICAL_SAREE_CATEGORIES];
-    (categories || []).forEach((c) => {
-      if (!combined.some((x) => x.name.toLowerCase() === c.name.toLowerCase())) {
-        combined.push(c);
-      }
-    });
-    return combined;
+  const lockedCategoryName = "SiCo Gadwal Sarees";
+  const sicoCategoryId = useMemo(() => {
+    const found = (categories || []).find(
+      (c) =>
+        c.name.toLowerCase().includes("gadwal") ||
+        c.name.toLowerCase().includes("sico")
+    );
+    return found?.id || "cat_sico_gadwal";
   }, [categories]);
-
-  const defaultCategoryId = useMemo(() => {
-    return availableCategories[0]?.id || "cat_checks";
-  }, [availableCategories]);
 
   // Form State
   const [formName, setFormName] = useState("");
-  const [formCategory, setFormCategory] = useState(defaultCategoryId);
+  const [formCategory, setFormCategory] = useState(sicoCategoryId);
   const [formPurchasePrice, setFormPurchasePrice] = useState("");
   const [formSalePrice, setFormSalePrice] = useState("");
   const [formTags, setFormTags] = useState("");
@@ -1663,10 +1659,23 @@ export default function Catalog({
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const designOptions = useMemo(
-    () => getAvailableDesignOptions(inventory),
-    [inventory]
-  );
+  const designOptions = useMemo(() => {
+    const canonicalVerticals = [
+      "Checks",
+      "Equal Borders",
+      "Kanchi Big Borders",
+      "Gap Border",
+      "Maa Inti Bangaram",
+    ];
+    const available = getAvailableDesignOptions(inventory);
+    const combined = [...canonicalVerticals];
+    available.forEach((name) => {
+      if (!combined.some((v) => v.toLowerCase() === name.toLowerCase())) {
+        combined.push(name);
+      }
+    });
+    return combined;
+  }, [inventory]);
 
   const metrics = useMemo(
     () => calculateInventoryMetrics(inventory),
@@ -1823,7 +1832,7 @@ export default function Catalog({
   function openCreateModal() {
     setEditingProductId(null);
     setFormName("");
-    setFormCategory(defaultCategoryId);
+    setFormCategory(sicoCategoryId);
     setFormPurchasePrice("");
     setFormSalePrice("");
     setFormTags("handloom, zari");
@@ -1840,12 +1849,7 @@ export default function Catalog({
   function openEditModal(product: Product) {
     setEditingProductId(product.id);
     setFormName(product.name || "");
-    const matchingCat = availableCategories.find(
-      (c) =>
-        c.id === product.categoryId ||
-        c.name.toLowerCase() === (product.category || "").toLowerCase()
-    );
-    setFormCategory(matchingCat?.id || product.categoryId || defaultCategoryId);
+    setFormCategory(sicoCategoryId);
     setFormPurchasePrice(String(product.purchasePrice ?? 0));
     setFormSalePrice(String(product.salePrice ?? 0));
     setFormTags((product.tags || []).join(", "));
@@ -1890,9 +1894,8 @@ export default function Catalog({
     // allocates an RS SKU for them.
     const finalVariants = formVariants.map((v) => ({ ...v, sku: v.sku || "" }));
 
-    const selectedCategoryObj = availableCategories.find((c) => c.id === formCategory) || availableCategories[0];
-    const finalCategory = selectedCategoryObj?.id || formCategory || defaultCategoryId;
-    const finalCategoryName = selectedCategoryObj?.name || "Checks";
+    const finalCategory = sicoCategoryId;
+    const finalCategoryName = lockedCategoryName;
     // The gallery is the source of truth; the first photo is the primary image.
     const effectiveImages = formImages.length > 0
       ? formImages
@@ -2316,19 +2319,14 @@ export default function Catalog({
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="min-w-0">
                   <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-stone-400">
-                    Saree Vertical / Category
+                    Weave Classification (Locked)
                   </label>
-                  <select
-                    value={formCategory}
-                    onChange={(e) => setFormCategory(e.target.value)}
-                    className="h-11 w-full rounded-2xl border border-stone-200/80 bg-white px-3.5 text-xs font-semibold text-stone-800 outline-none transition-all focus:border-[#D4A373] focus:ring-2 focus:ring-[#D4A373]/10"
-                  >
-                    {availableCategories.map((cat) => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="flex h-11 items-center justify-between overflow-hidden rounded-2xl border border-stone-200/80 bg-stone-50 px-3.5 font-semibold text-stone-800 text-xs">
+                    <span className="truncate">{lockedCategoryName}</span>
+                    <span className="rounded-md bg-stone-200/60 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-stone-500">
+                      Standard
+                    </span>
+                  </div>
                 </div>
 
                 <div className="min-w-0">

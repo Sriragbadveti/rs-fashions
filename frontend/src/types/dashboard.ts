@@ -102,20 +102,24 @@ export interface Category {
   nextSequence: number;
 }
 
+export const CANONICAL_SAREE_CATEGORIES: Category[] = [
+  { id: "cat_sico_gadwal", name: "SiCo Gadwal Sarees", slug: "SICO-GADWAL", hsn: "5208", nextSequence: 1 },
+];
+
 /**
- * 5 Canonical Saree Verticals matching the storefront hamburger menu:
+ * 5 Canonical Saree Verticals / Motifs matching the storefront hamburger menu:
  * 1. Checks
  * 2. Equal Borders
  * 3. Kanchi Big Borders
  * 4. Gap Border
  * 5. Maa Inti Bangaram
  */
-export const CANONICAL_SAREE_CATEGORIES: Category[] = [
-  { id: "cat_checks", name: "Checks", slug: "CHECKS", hsn: "5208", nextSequence: 1 },
-  { id: "cat_equal_borders", name: "Equal Borders", slug: "EQUAL-BORDERS", hsn: "5208", nextSequence: 1 },
-  { id: "cat_kanchi_big_borders", name: "Kanchi Big Borders", slug: "KANCHI-BIG-BORDERS", hsn: "5208", nextSequence: 1 },
-  { id: "cat_gap_border", name: "Gap Border", slug: "GAP-BORDER", hsn: "5208", nextSequence: 1 },
-  { id: "cat_maa_inti_bangaram", name: "Maa Inti Bangaram", slug: "MAA-INTI-BANGARAM", hsn: "5208", nextSequence: 1 },
+export const CANONICAL_SAREE_VERTICALS: DesignOption[] = [
+  { name: "Checks", slug: "CHECKS" },
+  { name: "Equal Borders", slug: "EQUAL-BORDERS" },
+  { name: "Kanchi Big Borders", slug: "KANCHI-BIG-BORDERS" },
+  { name: "Gap Border", slug: "GAP-BORDER" },
+  { name: "Maa Inti Bangaram", slug: "MAA-INTI-BANGARAM" },
 ];
 
 export interface DesignOption {

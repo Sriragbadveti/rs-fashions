@@ -152,13 +152,14 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const merged = [...parsed];
-          CANONICAL_SAREE_CATEGORIES.forEach((can) => {
-            if (!merged.some((c) => c.name.toLowerCase() === can.name.toLowerCase())) {
-              merged.push(can);
-            }
-          });
-          return merged;
+          const nonVerticals = parsed.filter(
+            (c) =>
+              c.name.toLowerCase().includes("gadwal") ||
+              c.name.toLowerCase().includes("sico")
+          );
+          if (nonVerticals.length > 0) {
+            return nonVerticals;
+          }
         }
       }
     } catch { }
@@ -418,12 +419,12 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       const d = json?.data || json;
       if (d) {
         if (Array.isArray(d.categories)) {
-          const merged = [...d.categories];
-          CANONICAL_SAREE_CATEGORIES.forEach((can) => {
-            if (!merged.some((c) => c.name.toLowerCase() === can.name.toLowerCase())) {
-              merged.push(can);
-            }
-          });
+          const filtered = d.categories.filter(
+            (c: any) =>
+              c.name.toLowerCase().includes("gadwal") ||
+              c.name.toLowerCase().includes("sico")
+          );
+          const merged = filtered.length > 0 ? filtered : [...CANONICAL_SAREE_CATEGORIES];
           setCategories(merged);
           safeStorageSet("rs_admin_categories", merged);
         }

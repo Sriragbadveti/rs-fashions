@@ -155,7 +155,31 @@ export interface DesignOption {
  * Vintage Checks -> VC
  * Gatti Borders  -> GB
  */
+export const CANONICAL_SAREE_VERTICALS: DesignOption[] = [
+  {
+    name: "Checks",
+    slug: "CHECKS",
+  },
+  {
+    name: "Equal Borders",
+    slug: "EQUAL-BORDERS",
+  },
+  {
+    name: "Kanchi Big Borders",
+    slug: "KANCHI-BIG-BORDERS",
+  },
+  {
+    name: "Gap Border",
+    slug: "GAP-BORDER",
+  },
+  {
+    name: "Maa Inti Bangaram",
+    slug: "MAA-INTI-BANGARAM",
+  },
+];
+
 export const MOCK_DESIGNS: DesignOption[] = [
+  ...CANONICAL_SAREE_VERTICALS,
   {
     name: "Vintage Checks",
     slug: "VC",
@@ -561,11 +585,7 @@ export const MOCK_CUSTOMERS: CustomerProfile[] = [];
 ========================================================= */
 
 export const CANONICAL_SAREE_CATEGORIES: Category[] = [
-  { id: "cat_checks", name: "Checks", slug: "CHECKS", hsn: "5208", nextSequence: 1 },
-  { id: "cat_equal_borders", name: "Equal Borders", slug: "EQUAL-BORDERS", hsn: "5208", nextSequence: 1 },
-  { id: "cat_kanchi_big_borders", name: "Kanchi Big Borders", slug: "KANCHI-BIG-BORDERS", hsn: "5208", nextSequence: 1 },
-  { id: "cat_gap_border", name: "Gap Border", slug: "GAP-BORDER", hsn: "5208", nextSequence: 1 },
-  { id: "cat_maa_inti_bangaram", name: "Maa Inti Bangaram", slug: "MAA-INTI-BANGARAM", hsn: "5208", nextSequence: 1 },
+  { id: "cat_sico_gadwal", name: "SiCo Gadwal Sarees", slug: "SICO-GADWAL", hsn: "5208", nextSequence: 1 },
 ];
 
 export const MOCK_CATEGORIES: Category[] = [...CANONICAL_SAREE_CATEGORIES];

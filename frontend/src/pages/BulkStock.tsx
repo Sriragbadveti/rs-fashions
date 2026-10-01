@@ -494,33 +494,26 @@ export default function BulkStock({
   } | null>(null);
 
   const designOptions: DropdownOption[] = useMemo(
-    () =>
-      MOCK_DESIGNS.map((design) => ({
-        value: design.slug,
-        label: design.name,
-        code: design.slug,
-      })),
+    () => [
+      { value: "CHECKS", label: "Checks", code: "CHECKS" },
+      { value: "EQUAL-BORDERS", label: "Equal Borders", code: "EQUAL-BORDERS" },
+      { value: "KANCHI-BIG-BORDERS", label: "Kanchi Big Borders", code: "KANCHI-BIG-BORDERS" },
+      { value: "GAP-BORDER", label: "Gap Border", code: "GAP-BORDER" },
+      { value: "MAA-INTI-BANGARAM", label: "Maa Inti Bangaram", code: "MAA-INTI-BANGARAM" },
+    ],
     []
   );
 
-  const categoryOptions: DropdownOption[] = useMemo(() => {
-    const combined: Category[] = [...CANONICAL_SAREE_CATEGORIES];
-    (categories || []).forEach((c) => {
-      if (!combined.some((x) => x.name.toLowerCase() === c.name.toLowerCase())) {
-        combined.push(c);
-      }
-    });
-    return combined.map((cat) => ({
-      value: cat.id,
-      label: cat.name,
-      code: cat.hsn || "5208",
-      description: `HSN: ${cat.hsn || "5208"} · ${cat.name} Collection`,
-    }));
-  }, [categories]);
+  const categoryOptions: DropdownOption[] = useMemo(() => [
+    {
+      value: "cat_sico_gadwal",
+      label: "SiCo Gadwal",
+      code: "5208",
+      description: "HSN: 5208 · Handloom Pure SiCo Gadwal Standard",
+    },
+  ], []);
 
-  const [selectedCategoryId, setSelectedCategoryId] = useState(
-    () => CANONICAL_SAREE_CATEGORIES[0]?.id || "cat_checks"
-  );
+  const [selectedCategoryId, setSelectedCategoryId] = useState("cat_sico_gadwal");
 
   const colorOptions: DropdownOption[] = useMemo(
     () =>
@@ -903,14 +896,13 @@ export default function BulkStock({
       if (rowBorder) saveBorderColorToRegistry(rowBorder);
       const borderColor = rowBorder || batchBorder;
 
-      const selectedCat = categoryOptions.find((c) => c.value === selectedCategoryId) || categoryOptions[0];
-      const categoryName = selectedCat?.label || "Checks";
+      const categoryName = "SiCo Gadwal Sarees";
 
       return {
         id: "",
         clientRef: row.id,
         name: designObj.name,
-        categoryId: selectedCategoryId,
+        categoryId: "cat_sico_gadwal",
         category: categoryName,
         purchasePrice: purchasePrice ?? 0,
         salePrice: salePrice ?? 0,
@@ -980,7 +972,7 @@ export default function BulkStock({
       designName: designObj.name,
       totalPieces: savedRows.reduce((sum, r) => sum + r.qty, 0),
       variantsCount: savedRows.length,
-      categoryName: catObj?.label || "Checks",
+      categoryName: catObj?.label || "SiCo Gadwal",
       skus: validRows.filter((r) => savedRowIds.has(r.id)).map((r) => skuByRowId.get(r.id)!),
     });
   };
