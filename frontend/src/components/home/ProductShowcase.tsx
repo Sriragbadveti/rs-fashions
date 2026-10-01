@@ -276,7 +276,7 @@ export default function ProductShowcase() {
   const resolvedActiveImg = resolveAssetSrc(activeItem.image);
 
   return (
-    <section className="psc-section" aria-label="Featured Saree Lookbook Showcase">
+    <section className="psc-section border-b-0" aria-label="Featured Saree Lookbook Showcase">
       <style>{`
         .psc-section {
           --bg-color: #F7EBEC;
@@ -295,6 +295,7 @@ export default function ProductShowcase() {
           padding: clamp(20px, 4vw, 44px) clamp(16px, 3.5vw, 40px);
           box-sizing: border-box;
           overflow: hidden;
+          border-bottom: none;
         }
 
         .psc-showcase {

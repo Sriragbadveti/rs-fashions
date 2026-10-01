@@ -148,9 +148,6 @@ export default function ReturnPolicy() {
                 <p>
                   <strong>Step 3:</strong> Our team reviews the clip within 24 hours to verify the issue.
                 </p>
-                <p>
-                  <strong>Step 4:</strong> Once verified, we arrange a reverse pickup from your address and immediately send a replacement saree or issue a 100% refund to your original payment method.
-                </p>
               </div>
             </section>
 
