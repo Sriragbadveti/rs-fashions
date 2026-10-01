@@ -256,9 +256,15 @@ function CartDrawer({ open, onClose }: CartDrawerProps) {
                     </span>
                   </div>
 
+                  {tierOffer.eligibleCount > 0 && (
+                    <div className="rounded-lg bg-amber-50 px-2 py-1.5 text-[10.5px] font-semibold text-amber-900 border border-amber-200/70">
+                      {tierOffer.label}
+                    </div>
+                  )}
+
                   {offerDiscount > 0 && (
                     <div className="flex items-center justify-between text-xs text-emerald-700 font-medium bg-emerald-50 px-2 py-1 rounded-lg">
-                      <span className="text-[10.5px]">Special Offer ({tierOffer.percent}% Off)</span>
+                      <span className="text-[10.5px]">Special Offer bundle</span>
                       <span className="font-mono font-bold">-₹{offerDiscount.toLocaleString("en-IN")}</span>
                     </div>
                   )}

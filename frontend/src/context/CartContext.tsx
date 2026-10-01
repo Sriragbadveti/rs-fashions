@@ -1,3 +1,4 @@
+import { computeBundleOffer, isSpecialOfferProduct } from "../utils/specialOffer";
 import {
   createContext,
   useContext,
@@ -35,6 +36,11 @@ export interface TierOfferInfo {
   nextTierNeeded: number;
   nextTierPercent: number;
   isMaxTier: boolean;
+  /** Bundle price of the eligible sarees in the cart. */
+  offerTotal: number;
+  /** Bundle price after adding `nextTierNeeded` more eligible sarees. */
+  nextTotal: number;
+  eligibleCount: number;
 }
 
 /* ============================================================
@@ -189,18 +195,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   // Subtotal and count of eligible Special Edition items only
   const specialEditionItems = useMemo(
     () =>
-      items.filter((item) => {
-        const p = item.product as any;
-        const tags = Array.isArray(p.tags)
-          ? p.tags.map((t: string) => String(t).toLowerCase())
-          : [];
-        return (
-          p.isSpecialEdition === true ||
-          p.isLimitedEdition === true ||
-          tags.includes("special_edition") ||
-          tags.includes("limited_edition")
-        );
-      }),
+      items.filter((item) => isSpecialOfferProduct(item.product as any)),
     [items]
   );
 
@@ -218,56 +213,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
     [specialEditionItems]
   );
 
-  /* Tiered Offer Calculation (Buy 1 get 5%, Buy 2 get 10%, Buy 3+ get 15% exclusively for Special Edition) */
+  /* Special Offer bundles: Buy 1 @ ₹2,500 · Buy 2 @ ₹4,900 · Buy 3 @ ₹4,800 (eligible sarees only) */
   const tierOffer: TierOfferInfo = useMemo(() => {
-    if (specialEditionCount === 0) {
-      return {
-        tier: 0,
-        percent: 0,
-        discountAmount: 0,
-        label: "Buy 1 Get 5% Off • Buy 2 Get 10% Off • Buy 3+ Get 15% Off (Special Edition)",
-        nextTierNeeded: 1,
-        nextTierPercent: 5,
-        isMaxTier: false,
-      };
-    }
-
-    if (specialEditionCount === 1) {
-      const discount = Math.round(specialEditionSubtotal * 0.05);
-      return {
-        tier: 1,
-        percent: 5,
-        discountAmount: discount,
-        label: "Tier 1 Unlocked: 5% Special Edition Offer",
-        nextTierNeeded: 1,
-        nextTierPercent: 10,
-        isMaxTier: false,
-      };
-    }
-
-    if (specialEditionCount === 2) {
-      const discount = Math.round(specialEditionSubtotal * 0.10);
-      return {
-        tier: 2,
-        percent: 10,
-        discountAmount: discount,
-        label: "Tier 2 Unlocked: 10% Special Edition Bundle Offer",
-        nextTierNeeded: 1,
-        nextTierPercent: 15,
-        isMaxTier: false,
-      };
-    }
-
-    // 3 or more Special Edition sarees
-    const discount = Math.round(specialEditionSubtotal * 0.15);
+    const o = computeBundleOffer(specialEditionCount, specialEditionSubtotal);
     return {
-      tier: 3,
-      percent: 15,
-      discountAmount: discount,
-      label: "VIP Tier 3 Unlocked: 15% Special Edition Mega Offer",
-      nextTierNeeded: 0,
-      nextTierPercent: 15,
-      isMaxTier: true,
+      tier: Math.min(3, specialEditionCount),
+      percent: 0,
+      discountAmount: o.discount,
+      label: o.message,
+      nextTierNeeded: o.moreNeeded,
+      nextTierPercent: 0,
+      isMaxTier: specialEditionCount > 0 && o.moreNeeded === 0,
+      offerTotal: o.offerTotal,
+      nextTotal: o.nextTotal,
+      eligibleCount: specialEditionCount,
     };
   }, [specialEditionCount, specialEditionSubtotal]);
 

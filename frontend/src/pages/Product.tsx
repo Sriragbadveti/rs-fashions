@@ -616,6 +616,10 @@ export default function Product() {
                 {product.name}
               </h1>
 
+              <p className="mt-1.5 text-xs font-semibold uppercase tracking-wider text-[#756A60]">
+                SKU: <span className="font-mono text-[#2A2421]" data-testid="product-sku">{product.id}</span>
+              </p>
+
               {effectiveBorderColor && (
                 <div className="mt-3 inline-flex items-center gap-2 rounded-xl border border-amber-200/80 bg-linear-to-r from-amber-50 to-orange-50/40 px-3.5 py-1.5 shadow-2xs">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">

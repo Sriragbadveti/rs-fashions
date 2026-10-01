@@ -86,47 +86,27 @@ function Cart() {
                   <Sparkles size={18} className="text-amber-300" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
-                    <span className="rounded-full bg-[#8E3D51] px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-white">
-                      Special Offer
-                    </span>
-                    <span className="text-xs sm:text-sm font-semibold text-stone-900">
-                      {tierOffer.tier > 0 ? tierOffer.label : "Tiered Bundle Savings Active"}
-                    </span>
-                  </div>
-                  <p className="mt-0.5 text-xs text-stone-600">
-                    {!tierOffer.isMaxTier ? (
-                      <>
-                        Add{" "}
-                        <strong className="text-[#8E3D51] font-bold">
-                          {tierOffer.nextTierNeeded} more saree
-                        </strong>{" "}
-                        to unlock{" "}
-                        <strong className="text-stone-900 font-bold">
-                          {tierOffer.nextTierPercent}% Instant Order Discount!
-                        </strong>
-                      </>
-                    ) : (
-                      <span className="text-emerald-700 font-medium">
-                        🎉 Maximum Tier Unlocked: Extra 15% discount automatically subtracted!
-                      </span>
-                    )}
-                  </p>
+                  <span className="rounded-full bg-[#8E3D51] px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-white">
+                    Special Offer
+                  </span>
+                  <p className="mt-1 text-xs sm:text-sm font-semibold text-stone-900">{tierOffer.label}</p>
+                  {tierOffer.eligibleCount > 0 && offerDiscount > 0 && (
+                    <p className="mt-0.5 text-xs text-emerald-700 font-medium">
+                      You save ₹{offerDiscount.toLocaleString("en-IN")} on your Special Offer sarees
+                    </p>
+                  )}
                 </div>
               </div>
-
-              <div className="flex items-center gap-2 self-start sm:self-auto">
-                <div className="flex gap-1.5 text-[10px] font-bold">
-                  <span className={`px-2.5 py-1 rounded-full border transition-all ${itemCount >= 1 ? "bg-amber-100 border-amber-300 text-amber-900" : "bg-white/60 border-stone-200 text-stone-400"}`}>
-                    Buy 1: 5% Off
+              <div className="flex gap-1.5 text-[10px] font-bold self-start sm:self-auto">
+                {[
+                  { n: 1, t: "Buy 1 @ ₹2,500" },
+                  { n: 2, t: "Buy 2 @ ₹4,900" },
+                  { n: 3, t: "Buy 3 @ ₹4,800" },
+                ].map(({ n, t }) => (
+                  <span key={n} className={`px-2.5 py-1 rounded-full border transition-all ${tierOffer.eligibleCount >= n ? "bg-amber-100 border-amber-300 text-amber-900" : "bg-white/60 border-stone-200 text-stone-400"}`}>
+                    {t}
                   </span>
-                  <span className={`px-2.5 py-1 rounded-full border transition-all ${itemCount >= 2 ? "bg-amber-200 border-amber-400 text-amber-950 font-extrabold shadow-2xs" : "bg-white/60 border-stone-200 text-stone-400"}`}>
-                    Buy 2: 10% Off
-                  </span>
-                  <span className={`px-2.5 py-1 rounded-full border transition-all ${itemCount >= 3 ? "bg-[#8E3D51] border-[#8E3D51] text-white shadow-xs" : "bg-white/60 border-stone-200 text-stone-400"}`}>
-                    Buy 3+: 15% Off
-                  </span>
-                </div>
+                ))}
               </div>
             </div>
           </div>
@@ -372,7 +352,7 @@ function Cart() {
                     <div className="flex items-center justify-between rounded-xl bg-emerald-50/80 px-3 py-2 text-emerald-800 border border-emerald-200/60">
                       <span className="flex items-center gap-1.5 font-semibold text-xs">
                         <FiTag size={13} className="text-emerald-600" />
-                        <span>{tierOffer.percent}% Special Offer Discount</span>
+                        <span>Special Offer bundle discount</span>
                       </span>
                       <span className="font-mono font-bold text-emerald-700">
                         -{formatCurrency(offerDiscount)}

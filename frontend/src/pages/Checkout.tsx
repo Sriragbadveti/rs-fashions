@@ -1263,7 +1263,7 @@ function Checkout() {
 
                   {offerDiscount > 0 && (
                     <div className="flex justify-between text-emerald-700 font-medium bg-emerald-50 px-2 py-0.5 rounded">
-                      <span>Special Offer ({tierOffer.percent}% Off)</span>
+                      <span>Special Offer bundle</span>
                       <span className="font-mono font-semibold">-₹{offerDiscount.toLocaleString("en-IN")}</span>
                     </div>
                   )}
@@ -1899,7 +1899,7 @@ function Checkout() {
 
                   {offerDiscount > 0 && (
                     <div className="flex justify-between text-emerald-700 font-medium bg-emerald-50 px-2.5 py-1 rounded-lg">
-                      <span>Special Offer ({tierOffer.percent}% Off)</span>
+                      <span>Special Offer bundle</span>
                       <span className="font-mono font-semibold">-₹{offerDiscount.toLocaleString("en-IN")}</span>
                     </div>
                   )}
