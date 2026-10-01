@@ -4,7 +4,7 @@ import { ArrowUpRight } from "lucide-react";
 // Guaranteed verified local high-resolution saree assets
 import sicoGreenKuttu from "../../assets/images/Home.jpg";
 import roseKanchiZari from "../../assets/images/Home1.jpg";
-import tealRoyalChecks from "../../assets/images/Vintage checks.jpg";
+import tealRoyalChecks from "../../assets/images/Home_laptop_1.png";
 import pitLoomCrimson from "../../assets/images/home_banner.jpeg";
 
 interface ReelItem {
