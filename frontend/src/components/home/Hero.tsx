@@ -1,5 +1,5 @@
 import React from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { FiArrowDownRight } from "react-icons/fi";
 import homePortraitImg from "../../assets/images/home_banner.jpeg";
@@ -39,6 +39,7 @@ export const heroBanner = {
 };
 
 export default function Hero() {
+  const prefersReducedMotion = useReducedMotion();
   const resolvedPortraitSrc = resolveAssetSrc(heroBanner.portraitImageSrc);
   const resolvedLandscapeSrc = resolveAssetSrc(
     heroBanner.landscapeImageSrc || heroBanner.portraitImageSrc
@@ -48,14 +49,14 @@ export default function Hero() {
   return (
     <section className="relative overflow-hidden px-3.5 pb-4 pt-1 sm:px-6 sm:pb-6 sm:pt-1">
       <motion.div
-        initial={{ opacity: 0, y: 18, scale: 0.985 }}
+        initial={prefersReducedMotion ? false : { opacity: 0, y: 18, scale: 0.985 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
         className="relative mx-auto flex h-[calc(100dvh-96px)] min-h-130 max-w-[1600px] overflow-hidden rounded-3xl sm:rounded-[2.25rem] bg-[#1A1513] shadow-[0_20px_50px_rgba(26,21,19,0.14)] transform-gpu will-change-transform"
       >
         {/* Single Responsive Hero Image (Portrait on Mobile/Tablet, Landscape on Laptop/Desktop) */}
         <motion.picture
-          initial={{ scale: 1.05 }}
+          initial={prefersReducedMotion ? false : { scale: 1.05 }}
           animate={{ scale: 1 }}
           transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
           className="absolute inset-0 block h-full w-full transform-gpu will-change-transform"
@@ -94,7 +95,7 @@ export default function Hero() {
           <div className="flex w-full items-end justify-between gap-6">
             <div className="max-w-xl overflow-hidden">
               <motion.h1
-                initial={{ opacity: 0, y: 28 }}
+                initial={prefersReducedMotion ? false : { opacity: 0, y: 28 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.25, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
                 className="font-serif text-3xl font-light tracking-tight text-[#F5E6C8]  sm:text-5xl lg:text-6xl leading-[1.08]"
@@ -107,7 +108,7 @@ export default function Hero() {
               </motion.h1>
 
               <motion.p
-                initial={{ opacity: 0, y: 18 }}
+                initial={prefersReducedMotion ? false : { opacity: 0, y: 18 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
                 className="mt-2.5 text-xs sm:text-sm lg:text-base text-white/85 font-light max-w-md leading-relaxed"
@@ -117,7 +118,7 @@ export default function Hero() {
             </div>
 
             <motion.div
-              initial={{ opacity: 0, scale: 0.88 }}
+              initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.88 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.5, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
             >

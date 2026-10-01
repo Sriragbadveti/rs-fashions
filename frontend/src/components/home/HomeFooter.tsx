@@ -59,9 +59,9 @@ function HomeFooter() {
       <footer className="relative isolate overflow-hidden bg-[#8E3D51] font-sans text-[#F7F4EE] selection:bg-white selection:text-[#8E3D51] rounded-t-[3.5rem] sm:rounded-t-[5rem] shadow-[0_-20px_60px_rgba(42,36,33,0.25)]">
         {/* Ambient background glows */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute -left-28 -top-24 h-112.5 w-112.5 rounded-full bg-linear-to-br from-[#A64D63]/35 via-[#8E3D51]/15 to-transparent blur-3xl" />
-          <div className="absolute -right-24 top-1/4 h-125 w-125 rounded-full bg-linear-to-bl from-[#D4A373]/25 via-[#C28C57]/10 to-transparent blur-3xl" />
-          <div className="absolute bottom-0 left-1/3 h-64 w-64 rounded-full bg-[#D4AF37]/10 blur-3xl" />
+          <div className="absolute -left-28 -top-24 hidden h-112.5 w-112.5 rounded-full bg-linear-to-br from-[#A64D63]/35 via-[#8E3D51]/15 to-transparent blur-3xl sm:block" />
+          <div className="absolute -right-24 top-1/4 hidden h-125 w-125 rounded-full bg-linear-to-bl from-[#D4A373]/25 via-[#C28C57]/10 to-transparent blur-3xl sm:block" />
+          <div className="absolute bottom-0 left-1/3 hidden h-64 w-64 rounded-full bg-[#D4AF37]/10 blur-3xl sm:block" />
           <div className="absolute inset-0 opacity-[0.04] bg-[linear-gradient(#fff_1px,transparent_1px),linear-gradient(90deg,#fff_1px,transparent_1px)] bg-size-[48px_48px]" />
         </div>
 
@@ -105,8 +105,8 @@ function HomeFooter() {
 
             {/* Quick Connect Card */}
             <div className="lg:col-span-5">
-              <div className="relative overflow-hidden rounded-3xl border border-white/15 bg-white/12 p-6 shadow-[0_16px_40px_-8px_rgba(0,0,0,0.2)] backdrop-blur-xs sm:backdrop-blur-md sm:p-8 transform-gpu">
-                <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
+              <div className="relative overflow-hidden rounded-3xl border border-white/15 bg-white/15 p-6 shadow-[0_16px_40px_-8px_rgba(0,0,0,0.2)] sm:backdrop-blur-md sm:p-8">
+                <div className="pointer-events-none absolute -right-10 -top-10 hidden h-32 w-32 rounded-full bg-white/10 blur-2xl sm:block" />
 
                 <div className="relative flex items-center justify-between">
                   <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#F3C68F]">
@@ -131,7 +131,7 @@ function HomeFooter() {
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label="WhatsApp Support (+91 78420 70881)"
-                    className="group/btn flex flex-col items-center justify-center gap-1.5 rounded-2xl border border-emerald-200 bg-linear-to-b from-[#F0FDF4] to-[#DCFCE7] p-3.5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-emerald-400 cursor-pointer transform-gpu"
+                    className="group/btn flex flex-col items-center justify-center gap-1.5 rounded-2xl border border-emerald-200 bg-linear-to-b from-[#F0FDF4] to-[#DCFCE7] p-3.5 transition-transform duration-300 hover:-translate-y-1 cursor-pointer"
                   >
                     <span className="transition-transform duration-300 group-hover/btn:scale-110">
                       <FaWhatsapp size={18} className="text-emerald-600" />
@@ -142,7 +142,7 @@ function HomeFooter() {
                   <a
                     href="mailto:support@rsfashions.com"
                     aria-label="Email Support"
-                    className="group/btn flex flex-col items-center justify-center gap-1.5 rounded-2xl border border-rose-200 bg-linear-to-b from-[#FFF5F6] to-[#FFE2E7] p-3.5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-rose-400"
+                    className="group/btn flex flex-col items-center justify-center gap-1.5 rounded-2xl border border-rose-200 bg-linear-to-b from-[#FFF5F6] to-[#FFE2E7] p-3.5 transition-transform duration-300 hover:-translate-y-1"
                   >
                     <span className="transition-transform duration-300 group-hover/btn:scale-110">
                       <FiMail size={18} className="text-[#8E3D51]" />
@@ -155,7 +155,7 @@ function HomeFooter() {
                     target="_blank"
                     rel="noreferrer"
                     aria-label="Instagram Support"
-                    className="group/btn flex flex-col items-center justify-center gap-1.5 rounded-2xl border border-pink-200 bg-linear-to-b from-[#FDF2F8] to-[#FCE7F3] p-3.5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-pink-400"
+                    className="group/btn flex flex-col items-center justify-center gap-1.5 rounded-2xl border border-pink-200 bg-linear-to-b from-[#FDF2F8] to-[#FCE7F3] p-3.5 transition-transform duration-300 hover:-translate-y-1"
                   >
                     <span className="transition-transform duration-300 group-hover/btn:scale-110">
                       <FiInstagram size={18} className="text-[#BE185D]" />

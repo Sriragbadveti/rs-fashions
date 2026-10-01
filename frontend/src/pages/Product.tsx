@@ -926,7 +926,6 @@ export default function Product() {
               <Link
                 key={rel.id}
                 to={`/product/${rel.id}`}
-                onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
                 className="group flex flex-col"
               >
                 <div className="relative aspect-3/4 w-full overflow-hidden rounded-2xl bg-stone-100">
@@ -974,7 +973,6 @@ export default function Product() {
               <Link
                 key={rel.id}
                 to={`/product/${rel.id}`}
-                onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
                 className="group flex flex-col"
               >
                 <div className="relative aspect-3/4 w-full overflow-hidden rounded-2xl bg-stone-100">

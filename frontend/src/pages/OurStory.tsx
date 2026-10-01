@@ -136,7 +136,7 @@ export default function OurStory() {
 
       {/* Screen Atmosphere Grain */}
       <div
-        className="pointer-events-none fixed inset-0 z-[90] opacity-[0.035] mix-blend-screen"
+        className="pointer-events-none fixed inset-0 z-90 opacity-[0.035] mix-blend-screen"
         style={{
           backgroundImage:
             "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E\")",
@@ -146,7 +146,7 @@ export default function OurStory() {
       {/* Floating Story Chapter Rail */}
       <nav
         aria-label="Story chapters"
-        className="fixed right-6 top-1/2 z-[80] hidden -translate-y-1/2 xl:block select-none"
+        className="fixed right-6 top-1/2 z-80 hidden -translate-y-1/2 xl:block select-none"
       >
         <div className="flex flex-col gap-3.5 rounded-full border border-white/10 bg-[#161210]/70 p-2.5 shadow-2xl backdrop-blur-2xl">
           {chapters.map((chap) => {

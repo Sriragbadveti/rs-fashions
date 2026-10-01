@@ -44,6 +44,8 @@ function EtherealLuminescentDust({ isExiting }: { isExiting: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -204,7 +206,7 @@ function DraperyHalf({ side, containerRef, foldRefs }: DraperyHalfProps) {
               ref={(el) => {
                 if (el) foldRefs.current[globalIdx] = el;
               }}
-              className="relative h-full flex-1 will-change-transform"
+              className="relative h-full flex-1"
               style={{
                 background: `
                   linear-gradient(
@@ -287,11 +289,20 @@ export default function CurtainIntro({
       const tl = gsap.timeline({
         onComplete: () => {
           setIsVisible(false);
+          window.scrollTo(0, 0);
+          document.documentElement.scrollTop = 0;
+          document.body.scrollTop = 0;
+          window.dispatchEvent(new CustomEvent("rs:curtain-finished"));
           onComplete?.();
         },
       });
 
       timelineRef.current?.kill();
+
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        tl.to(rootRef.current, { opacity: 0, duration: 0.15, ease: "none" });
+        return;
+      }
 
       // 1. Gently fade out center card & center seam
       tl.to(glassCardRef.current, {
@@ -315,40 +326,45 @@ export default function CurtainIntro({
         0,
       );
 
-      const leftFolds = foldsRef.current.slice(0, TOTAL_FOLDS);
-      const rightFolds = foldsRef.current.slice(TOTAL_FOLDS);
+      const skipFoldAnimation =
+        window.matchMedia("(max-width: 640px)").matches ||
+        (navigator.hardwareConcurrency || 8) <= 4;
 
-      // Ensure folds scale and gather toward outer screen edges
-      gsap.set(leftFolds, { transformOrigin: "left center" });
-      gsap.set(rightFolds, { transformOrigin: "right center" });
+      if (!skipFoldAnimation) {
+        const leftFolds = foldsRef.current.slice(0, TOTAL_FOLDS);
+        const rightFolds = foldsRef.current.slice(TOTAL_FOLDS);
 
-      // 2. Curtains gather and part open with silky velvet easing
-      tl.to(
-        leftFolds,
-        {
-          scaleX: 0.25,
-          xPercent: (i) => -15 - (TOTAL_FOLDS - 1 - i) * 6,
-          stagger: 0.01,
-          duration: 1.25,
-          ease: "power2.inOut",
-          force3D: true,
-        },
-        0.18,
-      );
+        gsap.set(leftFolds, { transformOrigin: "left center" });
+        gsap.set(rightFolds, { transformOrigin: "right center" });
 
-      tl.to(
-        rightFolds,
-        {
-          scaleX: 0.25,
-          xPercent: (i) => 15 + i * 6,
-          stagger: -0.01,
-          duration: 1.25,
-          ease: "power2.inOut",
-          force3D: true,
-        },
-        0.18,
-      );
+        tl.to(
+          leftFolds,
+          {
+            scaleX: 0.25,
+            xPercent: (i) => -15 - (TOTAL_FOLDS - 1 - i) * 6,
+            stagger: 0.01,
+            duration: 1.25,
+            ease: "power2.inOut",
+            force3D: true,
+          },
+          0.18,
+        );
 
+        tl.to(
+          rightFolds,
+          {
+            scaleX: 0.25,
+            xPercent: (i) => 15 + i * 6,
+            stagger: -0.01,
+            duration: 1.25,
+            ease: "power2.inOut",
+            force3D: true,
+          },
+          0.18,
+        );
+      }
+
+      // 2. Move each curtain as a single compositor-friendly layer
       tl.to(
         leftCurtainRef.current,
         {
@@ -428,6 +444,14 @@ export default function CurtainIntro({
     if (!isVisible || !rootRef.current) return;
 
     document.body.style.overflow = "hidden";
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      gsap.set(glassCardRef.current, { opacity: 1, scale: 1, y: 0 });
+      gsap.set(seamLightRef.current, { scaleY: 1, opacity: 0.85 });
+      return () => {
+        document.body.style.overflow = "";
+      };
+    }
 
     const ctx = gsap.context(() => {
       const tl = gsap.timeline();

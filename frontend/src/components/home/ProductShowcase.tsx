@@ -156,13 +156,23 @@ export default function ProductShowcase() {
     return () => window.removeEventListener("resize", updateHeight);
   }, [items.length]);
 
-  // Keep active item in view inside mobile horizontal scroll rail
+  const isInitialMount = useRef(true);
+
+  // Keep active item in view inside mobile horizontal scroll rail WITHOUT scrolling window
   useEffect(() => {
-    if (window.innerWidth <= 920 && activeThumbRef.current) {
-      activeThumbRef.current.scrollIntoView({
-        behavior: "smooth",
-        inline: "center",
-        block: "nearest",
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    if (window.innerWidth <= 920 && curveRailRef.current && activeThumbRef.current) {
+      const rail = curveRailRef.current;
+      const thumb = activeThumbRef.current;
+      const targetLeft = thumb.offsetLeft - (rail.clientWidth - thumb.clientWidth) / 2;
+      rail.scrollTo({
+        left: targetLeft,
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "auto"
+          : "smooth",
       });
     }
   }, [safeIndex]);
@@ -330,9 +340,6 @@ export default function ProductShowcase() {
                       border-color 0.25s ease,
                       box-shadow 0.25s ease;
           touch-action: manipulation;
-          will-change: transform;
-          transform: translate3d(0, 0, 0);
-          backface-visibility: hidden;
           z-index: 2;
         }
 
@@ -376,8 +383,6 @@ export default function ProductShowcase() {
           transition: transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1),
                       opacity 0.3s ease;
           will-change: transform, opacity;
-          transform: translate3d(0, 0, 0);
-          backface-visibility: hidden;
         }
 
         .psc-visual-card img {
@@ -387,8 +392,6 @@ export default function ProductShowcase() {
           object-position: top center;
           display: block;
           transition: transform 0.4s ease;
-          will-change: transform;
-          backface-visibility: hidden;
         }
 
         .psc-visual-card:hover img {

@@ -7,8 +7,8 @@ export default function ReturnPolicy() {
   return (
     <div className="relative min-h-screen bg-linear-to-b from-[#F7EBEC] via-[#F4E7E4] to-[#E9C9C3]/40 font-sans text-[#2C2420] py-12 px-4 sm:px-6 lg:px-8 overflow-hidden selection:bg-[#8E3D51] selection:text-white">
       {/* Soft warm silk accents */}
-      <div className="pointer-events-none absolute -top-24 -left-20 h-96 w-96 rounded-full bg-[#CBC0D3]/50 blur-3xl" />
-      <div className="pointer-events-none absolute top-1/3 -right-24 h-96 w-96 rounded-full bg-[#E9C9C3]/60 blur-3xl" />
+      <div className="pointer-events-none absolute -top-24 -left-20 hidden h-96 w-96 rounded-full bg-[#CBC0D3]/50 blur-3xl sm:block" />
+      <div className="pointer-events-none absolute top-1/3 -right-24 hidden h-96 w-96 rounded-full bg-[#E9C9C3]/60 blur-3xl sm:block" />
 
       <div className="relative mx-auto max-w-3xl">
         {/* Back Link */}
@@ -21,7 +21,7 @@ export default function ReturnPolicy() {
         </Link>
 
         {/* Main Content Card */}
-        <article className="rounded-2xl border border-white/60 bg-white/75 p-6 sm:p-10 shadow-sm backdrop-blur-md">
+        <article className="rounded-2xl border border-white/60 bg-white/85 p-6 sm:p-10 shadow-sm sm:backdrop-blur-md">
           {/* Header */}
           <header className="border-b border-[#8E3D51]/10 pb-6">
             <div className="inline-flex items-center gap-2 rounded-full border border-[#8E3D51]/15 bg-[#8E3D51]/5 px-3 py-1 text-[11px] font-semibold text-[#8E3D51] mb-3">
@@ -164,10 +164,10 @@ export default function ReturnPolicy() {
                   href="https://api.whatsapp.com/send?phone=917842070881&text=Hi%20RS%20Fashions,%20I%20need%20assistance%20with%20my%20recent%20order"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 rounded-xl bg-[#345C38] text-white px-4 py-2.5 text-xs font-semibold tracking-wide hover:bg-[#28492C] transition-colors"
+                  className="inline-flex items-center gap-2 rounded-xl bg-green-700 text-white px-4 py-2.5 text-xs font-semibold tracking-wide hover:bg-[#28492C] transition-colors"
                 >
                   <FaWhatsapp size={15} />
-                  <span>WhatsApp Support (+91 78420 70881)</span>
+                  <span>WhatsApp Support</span>
                 </a>
 
                 <a

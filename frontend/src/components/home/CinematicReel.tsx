@@ -1,12 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
-import {
-  Sparkles,
-  ArrowUpRight,
-  Eye,
-} from "lucide-react";
-import { StoreService } from "../../services/supabase";
-
+import { ArrowUpRight } from "lucide-react";
 // Guaranteed verified local high-resolution saree assets
 import sicoGreenKuttu from "../../assets/images/Home.jpg";
 import roseKanchiZari from "../../assets/images/Home1.jpg";
@@ -38,20 +32,6 @@ function humanizeText(text?: string): string {
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
 }
-
-const isAuthenticSareeImage = (url?: string) => {
-  if (!url || typeof url !== "string") return false;
-  const lower = url.toLowerCase();
-  if (
-    lower.includes("bill") ||
-    lower.includes("screen") ||
-    lower.includes("monitor") ||
-    lower.includes("test")
-  ) {
-    return false;
-  }
-  return true;
-};
 
 const GUARANTEED_EDITORIAL_SAREES: ReelItem[] = [
   {
@@ -105,56 +85,23 @@ const LOCAL_FALLBACK_IMAGES = [
 
 export default function CinematicReel(): React.JSX.Element {
   const [isPausedRow2, setIsPausedRow2] = useState(false);
-  const [liveProducts, setLiveProducts] = useState<ReelItem[]>([]);
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const [isInView, setIsInView] = useState(false);
 
-  // Fetch live products from backend/Supabase; gracefully combine with guaranteed sarees
   useEffect(() => {
-    let isMounted = true;
-    async function loadBackendProducts() {
-      try {
-        const list = await StoreService.getProducts();
-        if (isMounted && Array.isArray(list) && list.length > 0) {
-          const formatted = list
-            .filter((p) => p && p.id)
-            .map((p, idx) => {
-              const rawImg: string =
-                Array.isArray(p.images) && typeof p.images[0] === "string" ? p.images[0] : "";
-              const safeImg: string =
-                rawImg && isAuthenticSareeImage(rawImg)
-                  ? rawImg
-                  : LOCAL_FALLBACK_IMAGES[idx % LOCAL_FALLBACK_IMAGES.length];
-              return {
-                id: p.id,
-                name: humanizeText(p.name) || "Artisan Handloom SiCo",
-                category: humanizeText(p.category) || "SiCo Gadwal Sarees",
-                material: p.material ? humanizeText(p.material) : "Pure Silk & Cotton",
-                borderColor: p.borderColor ? humanizeText(p.borderColor) : "Authentic Temple Border",
-                image: safeImg,
-                link: `/product/${p.id}`,
-                badge: p.featured ? "Featured Drape" : "Artisan Handloom",
-              };
-            });
-          if (formatted.length > 0) {
-            setLiveProducts(formatted);
-          }
-        }
-      } catch (err) {
-        console.warn("Cinematic marquee live product sync note:", err);
-      }
-    }
-    loadBackendProducts();
-    return () => {
-      isMounted = false;
-    };
+    const section = sectionRef.current;
+    if (!section) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsInView(entry.isIntersecting),
+      { rootMargin: "120px 0px" }
+    );
+    observer.observe(section);
+    return () => observer.disconnect();
   }, []);
 
-  // Merge live database sarees with our guaranteed editorial sarees
-  const displayItems = useMemo(() => {
-    if (liveProducts.length >= 4) {
-      return [...liveProducts, ...GUARANTEED_EDITORIAL_SAREES];
-    }
-    return GUARANTEED_EDITORIAL_SAREES;
-  }, [liveProducts]);
+  // Purely local curated sarees with zero backend network dependency
+  const displayItems = GUARANTEED_EDITORIAL_SAREES;
 
   // Triple items for mathematically seamless infinite continuous CSS marquee
   const rowTwoTripled = useMemo(() => {
@@ -162,10 +109,9 @@ export default function CinematicReel(): React.JSX.Element {
     const reversed = [...displayItems].reverse();
     return [...reversed, ...reversed, ...reversed];
   }, [displayItems]);
-  const marqueeSpeedFactor = displayItems.length / GUARANTEED_EDITORIAL_SAREES.length;
 
   return (
-    <section className="relative w-full overflow-hidden bg-linear-to-b from-[#F7EBEC] via-[#F4E7E4] to-[#E9C9C3]/45 pt-12 sm:pt-16 pb-6 sm:pb-8 font-sans select-none border-t-0">
+    <section ref={sectionRef} className="relative w-full overflow-hidden bg-linear-to-b from-[#F7EBEC] via-[#F4E7E4] to-[#E9C9C3]/45 pt-12 sm:pt-16 pb-6 sm:pb-8 font-sans select-none border-t-0">
       {/* =========================================================
           HIGH-EFFICIENCY MATHEMATICAL CONTINUOUS MARQUEE CSS
           (Calculated at -100%/3 for 0% to 100% glitchless infinite loop)
@@ -192,7 +138,7 @@ export default function CinematicReel(): React.JSX.Element {
         .cinematic-track-left {
           display: flex;
           width: max-content;
-          animation: cinematicStreamLeft ${75 * marqueeSpeedFactor}s linear infinite;
+          animation: cinematicStreamLeft 75s linear infinite;
           will-change: transform;
           transform: translate3d(0, 0, 0);
           backface-visibility: hidden;
@@ -201,7 +147,7 @@ export default function CinematicReel(): React.JSX.Element {
         .cinematic-track-right {
           display: flex;
           width: max-content;
-          animation: cinematicStreamRight ${80 * marqueeSpeedFactor}s linear infinite;
+          animation: cinematicStreamRight 80s linear infinite;
           will-change: transform;
           transform: translate3d(0, 0, 0);
           backface-visibility: hidden;
@@ -220,17 +166,33 @@ export default function CinematicReel(): React.JSX.Element {
 
         @media (max-width: 640px) {
           .cinematic-track-left {
-            animation-duration: ${70 * marqueeSpeedFactor}s;
+            animation-duration: 70s;
           }
           .cinematic-track-right {
-            animation-duration: ${75 * marqueeSpeedFactor}s;
+            animation-duration: 75s;
+          }
+        }
+
+        @media (hover: none) {
+          .cinematic-card-image {
+            transition: none;
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .cinematic-track-left,
+          .cinematic-track-right {
+            animation: none !important;
+          }
+          .cinematic-card-image {
+            transition: none;
           }
         }
       `}</style>
 
       {/* Ambient background glow accents */}
-      <div className="pointer-events-none absolute -top-24 left-1/4 h-80 w-80 rounded-full bg-linear-to-br from-[#CBC0D3]/45 to-[#E9C9C3]/35 blur-3xl" />
-      <div className="pointer-events-none absolute top-1/2 right-10 h-96 w-96 rounded-full bg-linear-to-tl from-[#D4A373]/25 to-transparent blur-3xl" />
+      <div className="pointer-events-none absolute -top-24 left-1/4 hidden h-80 w-80 rounded-full bg-linear-to-br from-[#CBC0D3]/45 to-[#E9C9C3]/35 blur-3xl sm:block" />
+      <div className="pointer-events-none absolute top-1/2 right-10 hidden h-96 w-96 rounded-full bg-linear-to-tl from-[#D4A373]/25 to-transparent blur-3xl sm:block" />
 
       {/* Section Header */}
       <div className="relative mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8 mb-4 sm:mb-6">
@@ -252,7 +214,7 @@ export default function CinematicReel(): React.JSX.Element {
         onTouchStart={() => setIsPausedRow2(true)}
         onTouchEnd={() => setIsPausedRow2(false)}
       >
-        <div className={`cinematic-track-right gap-4 sm:gap-6 px-4 ${isPausedRow2 ? "paused" : ""}`}>
+        <div className={`cinematic-track-right gap-4 sm:gap-6 px-4 ${isPausedRow2 || !isInView ? "paused" : ""}`}>
           {rowTwoTripled.map((item, idx) => (
             <div
               key={`row2-${item.id}-${idx}`}
@@ -260,7 +222,7 @@ export default function CinematicReel(): React.JSX.Element {
             >
               <Link
                 to={item.link}
-                className="group relative flex aspect-3/4.5 w-full flex-col justify-between overflow-hidden rounded-2xl sm:rounded-3xl shadow-[0_12px_32px_rgba(42,36,33,0.12)] transition-all duration-300 hover:shadow-[0_22px_48px_rgba(142,61,81,0.28)] hover:-translate-y-2 border border-white/30 hover:border-[#8E3D51] transform-gpu"
+                className="group relative flex aspect-3/4.5 w-full flex-col justify-between overflow-hidden rounded-2xl sm:rounded-3xl border border-white/30 shadow-[0_12px_32px_rgba(42,36,33,0.12)] transition-transform duration-300 hover:-translate-y-2 transform-gpu"
               >
                 {/* Full-Bleed Image: The Image itself is the card */}
                 <img
@@ -275,7 +237,7 @@ export default function CinematicReel(): React.JSX.Element {
                       e.currentTarget.src = fallback;
                     }
                   }}
-                  className="absolute inset-0 h-full w-full object-cover object-center saturate-[1.05] contrast-[1.02] transition-transform duration-500 ease-out group-hover:scale-108 will-change-transform"
+                  className="cinematic-card-image absolute inset-0 h-full w-full object-cover object-center saturate-[1.05] contrast-[1.02] transition-transform duration-500 ease-out group-hover:scale-108"
                 />
 
                 {/* Scrim Gradient for Crisp Contrast */}
@@ -283,7 +245,7 @@ export default function CinematicReel(): React.JSX.Element {
 
                 {/* Top Floating Badge Row */}
                 <div className="relative z-10 p-3.5 sm:p-4 flex items-start justify-end">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/20 backdrop-blur-md text-white border border-white/30 shadow-sm transition-all duration-300 group-hover:bg-[#8E3D51] group-hover:scale-110 group-hover:rotate-45">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/25 text-white border border-white/30 shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:rotate-45">
                     <ArrowUpRight size={14} />
                   </span>
                 </div>
@@ -312,7 +274,7 @@ export default function CinematicReel(): React.JSX.Element {
       </div>
 
       {/* Feature: Spotlight Ingress Runway (Left Fixed Card + Right Moving Marquee) */}
-      <SpotlightIngressStage items={displayItems} />
+      <SpotlightIngressStage items={displayItems} isInView={isInView} />
     </section>
   );
 }
@@ -321,7 +283,13 @@ export default function CinematicReel(): React.JSX.Element {
    SPOTLIGHT INGRESS RUNWAY: FIXED LEFT CARD + RIGHT-TO-LEFT STREAM
    (Full-Bleed Image Cards with Deep Silk Atelier Atmosphere)
 ===================================================================== */
-function SpotlightIngressStage({ items }: { items: ReelItem[] }): React.JSX.Element {
+function SpotlightIngressStage({
+  items,
+  isInView,
+}: {
+  items: ReelItem[];
+  isInView: boolean;
+}): React.JSX.Element {
   const [activeCard, setActiveCard] = useState<ReelItem>(items[0] || GUARANTEED_EDITORIAL_SAREES[0]);
   const [isPaused, setIsPaused] = useState(false);
   const pauseAutoRotateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -431,7 +399,7 @@ function SpotlightIngressStage({ items }: { items: ReelItem[] }): React.JSX.Elem
           onTouchStart={() => setIsPaused(true)}
           onTouchEnd={() => setIsPaused(false)}
         >
-          <div className={`cinematic-track-left gap-4 sm:gap-6 px-4 ${isPaused ? "paused" : ""}`}>
+          <div className={`cinematic-track-left gap-4 sm:gap-6 px-4 ${isPaused || !isInView ? "paused" : ""}`}>
             {tripledItems.map((item, idx) => {
               const isCurrent = item.id === activeCard.id;
               return (
@@ -457,7 +425,7 @@ function SpotlightIngressStage({ items }: { items: ReelItem[] }): React.JSX.Elem
                         e.currentTarget.src = fallback;
                       }
                     }}
-                    className="absolute inset-0 h-full w-full object-cover object-center saturate-[1.05] contrast-[1.02] transition-transform duration-500 ease-out group-hover:scale-108 will-change-transform"
+                    className="cinematic-card-image absolute inset-0 h-full w-full object-cover object-center saturate-[1.05] contrast-[1.02] transition-transform duration-500 ease-out group-hover:scale-108"
                   />
 
                   {/* Scrim Overlay */}
