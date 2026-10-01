@@ -46,6 +46,7 @@ import {
 } from "../types/useBilling";
 import type { UseBillingProps } from "../types/useBilling";
 import { useShowroomSettings } from "../types/settings";
+import { variantImgProps } from "../utils/imageVariants";
 
 // Secure internal hashing / encryption helper for robust billing storage & telemetry
 function secureHashPayload(data: unknown): string {
@@ -1441,7 +1442,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
         <div className="h-18 w-18 shrink-0 overflow-visible rounded-xl border border-stone-200/70 bg-stone-100 flex items-center justify-center">
           {product.imageUrl ? (
             <img
-              src={product.imageUrl}
+              {...variantImgProps(product.imageUrl, "sm")}
               alt={product.name}
               loading="lazy"
               decoding="async"

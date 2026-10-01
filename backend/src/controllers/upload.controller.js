@@ -2,6 +2,7 @@ import sharp from "sharp";
 import heicConvert from "heic-convert";
 import { supabase } from "../config/supabase.js";
 import { errorResponse } from "../utils/response.js";
+import { IMAGE_VARIANTS, IMMUTABLE_CACHE_CONTROL, variantPathFor, uploadImageVariants } from "../utils/imageVariants.js";
 
 const HEIC_FTYP_BRANDS = new Set([
   "heic",
@@ -177,10 +178,16 @@ export async function uploadBufferToSupabaseStorage(buffer, originalMime = "imag
         .from("sarees")
         .upload(filePath, uploadBuffer, {
           contentType: uploadMimeType,
+          cacheControl: IMMUTABLE_CACHE_CONTROL,
           upsert: false,
         });
 
       if (!error) {
+        // Small copies for cards/lists so shoppers don't download the full-size original.
+        if (!uploadMimeType.includes("svg")) {
+          await uploadImageVariants(supabase, "sarees", filePath, uploadBuffer);
+        }
+
         const { data: publicUrlData } = supabase.storage
           .from("sarees")
           .getPublicUrl(filePath);
@@ -423,6 +430,21 @@ export async function createSignedUploadUrl(req, res) {
   try {
     if (!supabase) {
       return res.status(503).json({ success: false, message: "Storage service unavailable" });
+    }
+
+    // Variant mode: signed URL for a smaller copy of an already-uploaded original.
+    if (req.query.variantOf) {
+      const variantPath = variantPathFor(String(req.query.variantOf), String(req.query.size || ""));
+      if (!variantPath) {
+        return res.status(400).json({ success: false, message: "Invalid variantOf or size" });
+      }
+      const { data: vData, error: vError } = await supabase.storage
+        .from("sarees")
+        .createSignedUploadUrl(variantPath, { upsert: true });
+      if (vError || !vData?.signedUrl) {
+        return res.status(500).json({ success: false, message: vError?.message || "Could not generate upload URL" });
+      }
+      return res.status(200).json({ success: true, signedUrl: vData.signedUrl, token: vData.token, path: variantPath, sizes: Object.keys(IMAGE_VARIANTS) });
     }
 
     const rawName = String(req.query.filename || `saree-${Date.now()}`).replace(/[^a-zA-Z0-9._-]/g, "_");

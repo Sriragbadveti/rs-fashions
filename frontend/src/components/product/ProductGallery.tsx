@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
 
 import type { Product } from "../../types/product";
+import { variantImgProps } from "../../utils/imageVariants";
 
 interface ProductGalleryProps {
   product: Product;
@@ -84,7 +85,7 @@ function ProductGallery({ product }: ProductGalleryProps) {
             }`}
           >
             <img
-              src={image}
+              {...variantImgProps(image, "sm")}
               alt={`${product.name} thumbnail ${index + 1}`}
               className="h-full w-full object-cover"
             />
@@ -95,4 +96,4 @@ function ProductGallery({ product }: ProductGalleryProps) {
   );
 }
 
-export default ProductGallery;
+export default ProductGallery;

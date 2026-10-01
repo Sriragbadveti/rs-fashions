@@ -41,6 +41,7 @@ import {
   getRegisteredBorderColors,
   saveBorderColorToRegistry,
 } from "../components/admin/BorderColorInput";
+import { variantImgProps } from "../utils/imageVariants";
 
 interface BulkStockProps {
   inventory: Product[];
@@ -1386,7 +1387,7 @@ export default function BulkStock({
                   {row.imageUrl ? (
                     <>
                       <img
-                        src={row.imageUrl}
+                        {...variantImgProps(row.imageUrl, "sm")}
                         alt={`${row.color1} drape`}
                         onError={(e) => {
                           handleSareeImageError(e, row.imageUrl, (recovered) => {
@@ -1614,7 +1615,7 @@ export default function BulkStock({
                   <div className="flex flex-wrap gap-2">
                     {row.imageUrl && (
                       <div className="relative h-16 w-16 overflow-hidden rounded-xl border-2 border-[#D4A373] bg-stone-50" title="Primary photo">
-                        <img src={row.imageUrl} alt="Primary" className="h-full w-full object-cover" />
+                        <img {...variantImgProps(row.imageUrl, "sm")} alt="Primary" className="h-full w-full object-cover" />
                         <span className="absolute bottom-0 left-0 right-0 bg-[#2A0E20]/80 text-center text-[8px] font-bold uppercase text-amber-100">Primary</span>
                         {row.uploadStatus !== "uploading" && (
                           <button

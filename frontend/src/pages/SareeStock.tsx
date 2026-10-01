@@ -1,3 +1,4 @@
+import { getImageVariantUrl, fallbackToOriginalImage } from "../utils/imageVariants";
 import {
   useState,
   useMemo,
@@ -874,11 +875,11 @@ function MultiImageUploadInput({
               >
                 <div className="relative aspect-square rounded-xl overflow-hidden bg-stone-100">
                   <img
-                    src={imgUrl}
+                    src={getImageVariantUrl(imgUrl, "sm")}
                     alt={`Saree View ${index + 1}`}
                     loading="lazy"
                     decoding="async"
-                    onError={() => handleGalleryImageError(imgUrl)}
+                    onError={(e) => { if (!fallbackToOriginalImage(e, imgUrl)) handleGalleryImageError(imgUrl); }}
                     className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                   />
                   {healingUrls.has(imgUrl) && (
@@ -1166,9 +1167,10 @@ function VariantShadeManager({
                     ) : v.imageUrl ? (
                       <>
                         <img
-                          src={v.imageUrl}
+                          src={getImageVariantUrl(v.imageUrl, "sm")}
                           alt={v.color}
                           onError={(e) => {
+                            if (fallbackToOriginalImage(e, v.imageUrl)) return;
                             handleSareeImageError(e, v.imageUrl, (recovered) => {
                               onUpdateVariantImage(idx, recovered);
                             });
@@ -1376,11 +1378,12 @@ function ProductCard({
 
         {displayImageUrl ? (
           <img
-            src={displayImageUrl}
+            src={getImageVariantUrl(displayImageUrl, "sm")}
             alt={product.name}
             loading="lazy"
             decoding="async"
             onError={(e) => {
+              if (fallbackToOriginalImage(e, displayImageUrl)) return;
               handleSareeImageError(e, displayImageUrl, (recovered) => {
                 onRecoverImage?.(recovered);
               });

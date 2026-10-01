@@ -25,6 +25,7 @@ import {
 import type { OrderStatus } from "../context/OrderFulfillmentContext";
 import { sound } from "../types/soundEngine";
 import { useShowroomSettings } from "../types/settings";
+import { variantImgProps } from "../utils/imageVariants";
 
 interface TrackOrderProps {
   salesHistory: CompletedSale[];
@@ -353,7 +354,7 @@ export default function TrackOrder({ salesHistory }: TrackOrderProps) {
                         >
                           {img ? (
                             <img
-                              src={img}
+                              {...variantImgProps(img, "sm")}
                               alt={it.sku}
                               className="w-full h-full object-cover"
                             />

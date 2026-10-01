@@ -8,6 +8,7 @@ import { StoreService } from "../services/supabase";
 import { useCart } from "../context/CartContext";
 import { handleSareeImageError } from "../utils/imageConverter";
 import { API_BASE } from "../config/api";
+import { getImageVariantUrl, fallbackToOriginalImage } from "../utils/imageVariants";
 
 const DUMMY_PRODUCT_IDS = new Set([
   "emerald-sico-gadwal",
@@ -93,20 +94,20 @@ function ProductCard({ product }: { product: CardProduct }) {
       <div className="relative aspect-[3/4.2] w-full overflow-hidden rounded-xl sm:rounded-2xl bg-[#E9C9C3]/55">
         <Link to={`/product/${product.id}`} state={{ product }} className="block h-full w-full">
           <img
-            src={primaryImage}
+            src={getImageVariantUrl(primaryImage, "sm")}
             alt={product.name}
             loading="lazy"
             decoding="async"
-            onError={(e) => handleSareeImageError(e, primaryImage)}
+            onError={(e) => { if (!fallbackToOriginalImage(e, primaryImage)) handleSareeImageError(e, primaryImage); }}
             className="h-full w-full object-cover object-center transition-transform duration-500 ease-out group-hover:scale-105 will-change-transform"
           />
           {hasSecondaryImage && (
             <img
-              src={hoverImage}
+              src={getImageVariantUrl(hoverImage, "sm")}
               alt={`${product.name} alternate view`}
               loading="lazy"
               decoding="async"
-              onError={(e) => handleSareeImageError(e, hoverImage)}
+              onError={(e) => { if (!fallbackToOriginalImage(e, hoverImage)) handleSareeImageError(e, hoverImage); }}
               className="absolute inset-0 h-full w-full object-cover object-center opacity-0 transition-all duration-500 ease-out group-hover:opacity-100 group-hover:scale-105 will-change-transform"
             />
           )}
@@ -178,19 +179,19 @@ function HorizontalProductCard({ product, isOffer, offerBadgeText }: { product: 
       {/* Image — stretched to fill the full card height */}
       <Link to={`/product/${product.id}`} state={{ product }} className="relative w-32 shrink-0 overflow-hidden rounded-xl bg-[#E9C9C3]/55 min-h-30">
         <img
-          src={primaryImage}
+          src={getImageVariantUrl(primaryImage, "sm")}
           alt={product.name}
           loading="lazy"
           decoding="async"
-          onError={(e) => handleSareeImageError(e, primaryImage)}
+          onError={(e) => { if (!fallbackToOriginalImage(e, primaryImage)) handleSareeImageError(e, primaryImage); }}
           className="absolute inset-0 h-full w-full object-cover object-center transition-transform duration-500 ease-out group-hover:scale-105 will-change-transform"
         />
         {hasSecondaryImage && (
           <img
-            src={hoverImage}
+            src={getImageVariantUrl(hoverImage, "sm")}
             alt={`${product.name} alternate view`}
             decoding="async"
-            onError={(e) => handleSareeImageError(e, hoverImage)}
+            onError={(e) => { if (!fallbackToOriginalImage(e, hoverImage)) handleSareeImageError(e, hoverImage); }}
             className="absolute inset-0 h-full w-full object-cover object-center opacity-0 transition-all duration-500 ease-out group-hover:opacity-100 group-hover:scale-105 will-change-transform"
           />
         )}
