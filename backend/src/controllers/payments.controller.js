@@ -10,6 +10,15 @@ import { successResponse, errorResponse } from "../utils/response.js";
 import { invalidateBootstrapCache } from "./bootstrap.controller.js";
 import { deductStockForOrderItems } from "../services/inventory.service.js";
 import {
+  claimWebhookEvent,
+  releaseWebhookEvent,
+  savePendingSale,
+  claimPendingSale,
+  unclaimPendingSale,
+  recordPaymentAlert,
+} from "../services/paymentStore.js";
+import { finalizePaidOrder, markOrderPaymentFailed, orderNumberFromCfOrderId } from "../services/onlineOrders.js";
+import {
   getPaymentHistory,
   savePaymentAttempt,
   updatePaymentAttemptStatus,
@@ -322,43 +331,19 @@ export async function verifyCashfreePayment(req, res) {
     const paymentMethod = successfulPayment.payment_group || "cashfree";
 
     if (isPaid) {
-      // Auto-record POS sale to database if this order had pending items from Counter Billing
+      // Counter (POS) link: record the sale if the webhook/another poll hasn't already.
       await autoRecordPosSale(orderId, paymentId, successfulPayment);
+      // Storefront order: mark paid, deduct stock, update customer (idempotent).
+      await finalizeOnlineOrderFor(orderId, orderData.order_tags, { paymentId, paymentMethod, paymentDetails: successfulPayment });
 
-      // Update Payment Attempt Status
-      updatePaymentAttemptStatus(orderId, "PAID", {
-        paymentId,
-        paymentDetails: successfulPayment,
-      });
-
-      // Update Local Order Store
-      markOrderPaidInStore(orderId, {
-        paymentId,
-        paymentMethod,
-        paymentDetails: successfulPayment,
-      });
-
-      // Update Supabase if connected
-      if (supabase) {
-        try {
-          await supabase
-            .from("orders")
-            .update({
-              payment_status: "paid",
-              payment_method: "cashfree",
-              updated_at: new Date().toISOString(),
-            })
-            .or(`order_number.eq.${orderId},id.eq.${orderId}`);
-
-          invalidateBootstrapCache();
-        } catch (dbErr) {
-          console.warn("[Cashfree Verify] DB update note:", dbErr.message);
-        }
-      }
+      updatePaymentAttemptStatus(orderId, "PAID", { paymentId, paymentDetails: successfulPayment });
+      markOrderPaidInStore(orderId, { paymentId, paymentMethod, paymentDetails: successfulPayment });
     } else if (orderData.order_status === "EXPIRED" || orderData.order_status === "TERMINATED") {
       updatePaymentAttemptStatus(orderId, "EXPIRED");
+      await handleFailedPayment(orderId, orderData.order_tags, "expired");
     } else if (orderData.order_status === "FAILED") {
       updatePaymentAttemptStatus(orderId, "FAILED");
+      await handleFailedPayment(orderId, orderData.order_tags, "failed");
     }
 
     return successResponse(
@@ -459,21 +444,16 @@ function getPublicClientUrl(req) {
   return "https://www.rsfashions25.com";
 }
 
-// In-memory registry for pending POS counter sales linked to Cashfree orders
-export const posPendingSales = new Map();
-
 /**
- * Automatically persists a completed Counter POS sale into Supabase orders table
- * and deducts inventory stock when Cashfree confirms payment.
+ * Persists a completed Counter POS sale into the orders table and deducts stock when Cashfree
+ * confirms payment. The pending cart is stored in the database (pending_sales) so this works even
+ * after a server restart, and it is CLAIMED atomically so the admin page polling and the webhook
+ * can never both record (and both deduct) the same sale.
  */
-async function autoRecordPosSale(orderId, paymentId, paymentData = {}) {
-  const pending = posPendingSales.get(orderId);
-  if (!pending || pending.committed) return false;
-
-  pending.committed = true;
-  if (!supabase || !Array.isArray(pending.items) || pending.items.length === 0) {
-    return false;
-  }
+async function autoRecordPosSale(orderId, paymentId) {
+  if (!supabase) return false;
+  const pending = await claimPendingSale(orderId);
+  if (!pending || !Array.isArray(pending.items) || pending.items.length === 0) return false;
 
   try {
     const finalInvoiceNumber = pending.invoiceNumber;
@@ -483,43 +463,69 @@ async function autoRecordPosSale(orderId, paymentId, paymentData = {}) {
       .or(`order_number.eq.${finalInvoiceNumber},invoice_number.eq.${finalInvoiceNumber}`)
       .limit(1)
       .maybeSingle();
+    if (existing) return false; // already recorded (e.g. by the admin page): nothing to deduct
 
-    if (!existing) {
-      const saleId = `pos-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
-      await supabase.from("orders").insert([{
-        id: saleId,
-        order_number: finalInvoiceNumber,
-        invoice_number: finalInvoiceNumber,
-        customer_name: pending.customerName || "Patron",
-        phone: pending.customerPhone,
-        email: pending.customerEmail,
-        shipping_address: pending.customerAddress || "In-Store Showroom Counter",
-        items: pending.items,
-        subtotal: Number(pending.subtotal) || Number(pending.total) || 0,
-        discount_amount: Number(pending.discount) || 0,
-        total: Number(pending.total) || 0,
-        payment_method: "cashfree",
-        payment_status: "paid",
-        order_status: "ordered",
-        billing_type: pending.billingType || "gst",
-        notes: `Paid via Cashfree Payment Link (${paymentId})`,
-      }]);
-
-      // Decrement stock for each item (variant-aware & multi-source synchronized)
-      await deductStockForOrderItems(pending.items, {
-        referenceNumber: finalInvoiceNumber,
-        paymentMethod: "cashfree",
-        performedBy: "Cashfree Payment Link (POS)",
-        notePrefix: `POS Sale Invoice`,
-      });
-
-      console.log(`[Cashfree POS] Auto-recorded sale for invoice ${finalInvoiceNumber} (Ref: ${paymentId})`);
-      return true;
+    const saleId = `pos-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+    const { error: insertErr } = await supabase.from("orders").insert([{
+      id: saleId,
+      order_number: finalInvoiceNumber,
+      invoice_number: finalInvoiceNumber,
+      customer_name: pending.customerName || "Patron",
+      phone: pending.customerPhone,
+      email: pending.customerEmail,
+      shipping_address: pending.customerAddress || "In-Store Showroom Counter",
+      items: pending.items,
+      subtotal: Number(pending.subtotal) || Number(pending.total) || 0,
+      discount_amount: Number(pending.discount) || 0,
+      total: Number(pending.total) || 0,
+      payment_method: "cashfree",
+      payment_status: "paid",
+      order_status: "completed",
+      billing_type: pending.billingType || "gst",
+      notes: `Paid via Cashfree Payment Link (${paymentId})`,
+    }]);
+    if (insertErr) {
+      if (insertErr.code === "23505") return false; // lost the race to another recorder: no double deduction
+      throw insertErr;
     }
+
+    await deductStockForOrderItems(pending.items, {
+      referenceNumber: finalInvoiceNumber,
+      paymentMethod: "cashfree",
+      performedBy: "Cashfree Payment Link (POS)",
+      notePrefix: `POS Sale Invoice`,
+    });
+    invalidateBootstrapCache();
+    console.log(`[Cashfree POS] Auto-recorded sale for invoice ${finalInvoiceNumber} (Ref: ${paymentId})`);
+    return true;
   } catch (err) {
-    console.warn(`[Cashfree POS] Auto-record sale warning for order ${orderId}:`, err.message);
+    console.warn(`[Cashfree POS] Auto-record failed for order ${orderId}:`, err.message);
+    await unclaimPendingSale(orderId).catch(() => {});
+    await recordPaymentAlert({
+      type: "record_failed", orderKey: orderId,
+      message: `A customer paid for ${pending.invoiceNumber} but the sale could not be recorded automatically (${err.message}). Check Transaction History.`,
+    });
+    return false;
   }
-  return false;
+}
+
+/** Marks a storefront order paid (idempotent). Used by webhook, verify and finalize. */
+async function finalizeOnlineOrderFor(cfOrderId, tags, payment) {
+  const orderNumber = tags?.orderNumber || orderNumberFromCfOrderId(cfOrderId);
+  if (!orderNumber) return null;
+  return finalizePaidOrder(String(orderNumber), payment);
+}
+
+/** Records a failed/expired/cancelled payment for the right kind of order. */
+async function handleFailedPayment(cfOrderId, tags, status) {
+  const orderNumber = tags?.orderNumber || orderNumberFromCfOrderId(cfOrderId);
+  if (orderNumber) return markOrderPaymentFailed(String(orderNumber), status);
+  const invoice = tags?.invoiceNumber || cfOrderId;
+  await recordPaymentAlert({
+    type: "payment_failed", orderKey: cfOrderId,
+    message: `Payment link ${invoice} ${String(status).toLowerCase()}. The customer was not charged; generate a new link if needed.`,
+  });
+  return true;
 }
 
 /**
@@ -644,8 +650,7 @@ export async function createCashfreePaymentLink(req, res) {
       billingType,
       committed: false,
     };
-    posPendingSales.set(orderId, pendingSaleData);
-    posPendingSales.set(posKey, pendingSaleData);
+    await savePendingSale(orderId, pendingSaleData, posKey);
 
     return successResponse(
       res,
@@ -671,17 +676,18 @@ export async function createCashfreePaymentLink(req, res) {
 }
 
 /**
- * 5. CASHFREE WEBHOOK HANDLER (Idempotent & Signature-Verified)
+ * 5. CASHFREE WEBHOOK HANDLER (signature-verified on the raw body, de-duplicated in the database)
  * POST /api/payments/cashfree/webhook
+ * Works with nobody logged in: a successful payment records the counter sale or finalises the
+ * storefront order; a failed payment closes the pending order and raises an admin alert.
  */
 export async function handleCashfreeWebhook(req, res) {
+  let eventId = null;
   try {
     const signature = req.headers["x-webhook-signature"];
     const timestamp = req.headers["x-webhook-timestamp"];
 
-    // 1. Signature Verification
-    const isValid = verifyCashfreeWebhookSignature(req.body, timestamp, signature);
-    if (!isValid) {
+    if (!verifyCashfreeWebhookSignature(req.rawBody || req.body, timestamp, signature)) {
       console.warn("[Cashfree Webhook] Invalid webhook signature received.");
       return errorResponse(res, "Invalid webhook signature", 401);
     }
@@ -690,88 +696,84 @@ export async function handleCashfreeWebhook(req, res) {
     const eventType = event.type || event.event || "UNKNOWN";
     const orderData = event.data?.order || {};
     const paymentData = event.data?.payment || {};
-
     const cfOrderId = orderData.order_id || paymentData.order_id;
+    const tags = orderData.order_tags || {};
     const paymentStatus = String(paymentData.payment_status || orderData.order_status || "").toUpperCase();
-    const eventId =
+    eventId =
       paymentData.cf_payment_id ||
       paymentData.payment_id ||
       event.event_id ||
       `evt_${cfOrderId}_${paymentStatus}_${timestamp || Date.now()}`;
+    eventId = `${eventId}:${paymentStatus}`;
 
-    // 2. Webhook Idempotency Deduplication Check
-    if (isWebhookEventProcessed(eventId)) {
-      console.log(`[Cashfree Webhook] Duplicate webhook event ignored: ${eventId}`);
-      return successResponse(
-        res,
-        { received: true, deduplicated: true, eventId },
-        "Webhook event already processed (idempotent response)"
-      );
+    // Atomic claim: a duplicate delivery (or two instances) can never process an event twice.
+    const isFirst = await claimWebhookEvent(String(eventId), { cfOrderId, eventType, paymentStatus });
+    if (!isFirst) {
+      return successResponse(res, { received: true, deduplicated: true, eventId }, "Webhook event already processed (idempotent response)");
     }
 
-    // 3. Process Event based on State Machine
     if (cfOrderId) {
       if (paymentStatus === "SUCCESS") {
-        // Auto-record POS sale to database if this order had pending items from Counter Billing
-        await autoRecordPosSale(cfOrderId, eventId, paymentData);
-
-        // Record Attempt Status as PAID
-        updatePaymentAttemptStatus(cfOrderId, "PAID", {
-          paymentId: eventId,
-          paymentDetails: paymentData,
-        });
-
-        // Mark Local Order as PAID
-        markOrderPaidInStore(cfOrderId, {
-          paymentId: eventId,
-          paymentMethod: "cashfree",
-          paymentDetails: paymentData,
-        });
-
-        // Update Supabase if active
-        if (supabase) {
-          try {
-            await supabase
-              .from("orders")
-              .update({
-                payment_status: "paid",
-                payment_method: "cashfree",
-                updated_at: new Date().toISOString(),
-              })
-              .or(`order_number.eq.${cfOrderId},id.eq.${cfOrderId}`);
-
-            invalidateBootstrapCache();
-          } catch (dbErr) {
-            console.warn("[Cashfree Webhook] Supabase update note:", dbErr.message);
-          }
-        }
-
+        await autoRecordPosSale(cfOrderId, eventId);
+        await finalizeOnlineOrderFor(cfOrderId, tags, { paymentId: eventId, paymentMethod: "cashfree", paymentDetails: paymentData });
+        updatePaymentAttemptStatus(cfOrderId, "PAID", { paymentId: eventId, paymentDetails: paymentData });
+        markOrderPaidInStore(cfOrderId, { paymentId: eventId, paymentMethod: "cashfree", paymentDetails: paymentData });
         console.log(`[Cashfree Webhook] Order ${cfOrderId} transitioned to PAID via event ${eventType}`);
-      } else if (paymentStatus === "FAILED" || paymentStatus === "CANCELLED" || paymentStatus === "EXPIRED") {
-        // Ensure an already PAID order is NEVER downgraded to FAILED due to out-of-order delivery
+      } else if (paymentStatus === "FAILED" || paymentStatus === "CANCELLED" || paymentStatus === "EXPIRED" || paymentStatus === "USER_DROPPED") {
+        // An out-of-order failure must never downgrade an already paid order
+        // (markOrderPaymentFailed only touches orders that are still pending).
         const history = getPaymentHistory(cfOrderId);
         const isAlreadyPaid =
           history?.currentStatus === "PAID" ||
           history?.attempts?.some((a) => a.cfOrderId === cfOrderId && a.status === "PAID");
-
-        if (isAlreadyPaid) {
-          console.warn(`[Cashfree Webhook] Out-of-order ${paymentStatus} event ignored for already PAID order ${cfOrderId}`);
-        } else {
+        if (!isAlreadyPaid) {
           updatePaymentAttemptStatus(cfOrderId, paymentStatus);
+          await handleFailedPayment(cfOrderId, tags, paymentStatus);
         }
       }
     }
 
-    // 4. Mark Event as processed in persistent store
-    recordWebhookEvent(eventId, {
-      cfOrderId,
-      eventType,
-      paymentStatus,
-    });
-
     return successResponse(res, { received: true, processed: true, eventId }, "Webhook processed successfully");
   } catch (err) {
     console.error("[Cashfree Webhook Error]:", err);
-    return errorResponse(res, err.message || "Webhook processing error", 500);
+    // Let Cashfree's retry process this event again.
+    if (eventId) await releaseWebhookEvent(String(eventId)).catch(() => {});
+    return errorResponse(res, "Webhook processing error", 500);
+  }
+}
+
+/**
+ * 6. FINALIZE A STOREFRONT ORDER AFTER PAYMENT
+ * POST /api/payments/cashfree/finalize { orderNumber, cfOrderId }
+ * The server asks Cashfree itself whether the payment succeeded (the browser's word is not trusted),
+ * then marks the order paid exactly once. Safe to call repeatedly / alongside the webhook.
+ */
+export async function finalizeCashfreeOrder(req, res) {
+  try {
+    const orderNumber = String(req.body?.orderNumber || "").trim();
+    let cfOrderId = String(req.body?.cfOrderId || "").trim();
+    if (!orderNumber) return errorResponse(res, "orderNumber is required", 400);
+    if (!cfOrderId) {
+      const attempts = getPaymentHistory(orderNumber)?.attempts || [];
+      cfOrderId = attempts[attempts.length - 1]?.cfOrderId || "";
+    }
+    if (!cfOrderId) return successResponse(res, { paid: false, found: false }, "No payment found for this order");
+    if (orderNumberFromCfOrderId(cfOrderId) !== orderNumber) {
+      return errorResponse(res, "Payment does not belong to this order", 400);
+    }
+
+    const orderData = await getCashfreeOrder(cfOrderId);
+    const payments = await getCashfreeOrderPayments(cfOrderId);
+    const success = payments.find((p) => String(p.payment_status).toUpperCase() === "SUCCESS");
+    const isPaid = orderData.order_status === "PAID" || Boolean(success);
+    if (!isPaid) {
+      return successResponse(res, { paid: false, found: true, orderStatus: orderData.order_status || "ACTIVE" }, "Payment not completed");
+    }
+
+    const result = await finalizePaidOrder(orderNumber, { paymentId: success?.payment_id || cfOrderId, paymentMethod: "cashfree", paymentDetails: success || {} });
+    return successResponse(res, { paid: true, found: Boolean(result.found), finalized: Boolean(result.finalized), orderNumber }, "Order confirmed");
+  } catch (err) {
+    console.error("[Cashfree Controller] Finalize error:", safeErrorMsg(err));
+    return errorResponse(res, safeErrorMsg(err), 500);
   }
 }

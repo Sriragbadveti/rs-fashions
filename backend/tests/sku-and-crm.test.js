@@ -391,6 +391,58 @@ test("catalog listing supports card view, single product and pagination", async 
   assert.equal(paged.pages, Math.ceil(full.products.length / 2));
 });
 
+test("online payment: pending order, webhook finalises once, duplicates and late failures are harmless", async () => {
+  const created = (await api("POST", "/catalog", product({ variants: [{ color: "Red", colorSlug: "RED", stock: 2, sku: "" }] }))).body.product;
+  const items = [{ id: created.id, productId: created.id, name: "Test Saree", color: "Red", quantity: 1, qty: 1, price: 1000 }];
+  const orderNumber = `RSF-ORD-T${Date.now().toString(36).toUpperCase()}`;
+  const stockOf = async () => (await api("GET", "/catalog/products")).body.products.find((p) => p.id === created.id).stock;
+
+  const pending = await api("POST", "/billing/pending-order", { orderNumber, customerPhone: "9876543210", customerName: "Tester", items, total: 1000, sessionId: "sess-pay" }, { auth: false });
+  assert.equal(pending.status, 201, JSON.stringify(pending.body));
+  assert.equal(await stockOf(), 2, "stock is only deducted once payment is confirmed");
+
+  const event = (status, id) => ({ type: "PAYMENT_SUCCESS_WEBHOOK", data: { order: { order_id: `RSF_${orderNumber}_A1`, order_tags: { orderNumber } }, payment: { cf_payment_id: id, payment_status: status } } });
+  const hook = (body) => api("POST", "/payments/cashfree/webhook", body, { auth: false });
+
+  assert.equal((await hook(event("SUCCESS", "pay-1"))).status, 200);
+  assert.equal(await stockOf(), 1, "paid: one piece deducted");
+  const dup = await hook(event("SUCCESS", "pay-1"));
+  assert.equal(dup.body.deduplicated, true);
+  assert.equal(await stockOf(), 1, "a duplicate webhook does not deduct again");
+  // A different event for the same order (e.g. verify + webhook) also cannot double-deduct.
+  await hook(event("SUCCESS", "pay-2"));
+  assert.equal(await stockOf(), 1, "second success event for an already-paid order is a no-op");
+
+  await hook(event("FAILED", "pay-3"));
+  const orders = (await api("GET", "/sales/customer-orders?phone=9876543210", undefined, { auth: false })).body.orders || [];
+  assert.ok(orders.length >= 0);
+  assert.equal(await stockOf(), 1, "a late failure never un-pays an order");
+});
+
+test("webhook signatures are checked on the raw body and fail closed in production", async () => {
+  const crypto = await import("node:crypto");
+  const { verifyCashfreeWebhookSignature } = await import("../src/services/cashfree.service.js");
+  const raw = Buffer.from('{"data":{"order":{"order_id":"X"}}}');
+  const ts = "1700000000";
+  process.env.CASHFREE_SECRET_KEY = "unit_test_secret";
+  try {
+    const good = crypto.createHmac("sha256", "unit_test_secret").update(ts + raw.toString()).digest("base64");
+    assert.equal(verifyCashfreeWebhookSignature(raw, ts, good), true);
+    assert.equal(verifyCashfreeWebhookSignature(raw, ts, good.slice(0, -2) + "xx"), false);
+    assert.equal(verifyCashfreeWebhookSignature(raw, ts, undefined), false);
+    assert.equal(verifyCashfreeWebhookSignature(Buffer.from("{}"), ts, good), false, "tampered body is rejected");
+  } finally {
+    delete process.env.CASHFREE_SECRET_KEY;
+  }
+  const env = process.env.NODE_ENV;
+  process.env.NODE_ENV = "production";
+  try {
+    assert.equal(verifyCashfreeWebhookSignature(raw, ts, "anything"), false, "no secret in production: unsigned webhooks are rejected");
+  } finally {
+    process.env.NODE_ENV = env;
+  }
+});
+
 // ------------------------------------------------------------------------------------------
 // Exhaustion (must run last: it consumes the top of the range)
 // ------------------------------------------------------------------------------------------

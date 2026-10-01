@@ -4,6 +4,7 @@ import {
   verifyCashfreePayment,
   createCashfreePaymentLink,
   handleCashfreeWebhook,
+  finalizeCashfreeOrder,
   getPaymentStatus,
 } from "../controllers/payments.controller.js";
 
@@ -15,5 +16,6 @@ router.post("/cashfree/verify", verifyCashfreePayment);
 router.get("/cashfree/status/:orderId", getPaymentStatus);
 router.post("/cashfree/create-payment-link", createCashfreePaymentLink);
 router.post("/cashfree/webhook", handleCashfreeWebhook);
+router.post("/cashfree/finalize", finalizeCashfreeOrder);
 
 export default router;

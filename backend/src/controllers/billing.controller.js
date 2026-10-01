@@ -3,6 +3,7 @@ import { successResponse, errorResponse } from "../utils/response.js";
 import { invalidateCatalogCache } from "./catalog.controller.js";
 import { invalidateBootstrapCache } from "./bootstrap.controller.js";
 import { saveOrderToStore, getNextSequentialInvoiceNumberFromStore } from "../database/localStore.js";
+import { createPendingOrder } from "../services/onlineOrders.js";
 import { deductStockForOrderItems, findStockShortages, holdStock, releaseHolds, withStockLock } from "../services/inventory.service.js";
 
 /**
@@ -328,5 +329,16 @@ export async function checkStock(req, res) {
     );
   } catch (err) {
     return errorResponse(res, err.message, 500);
+  }
+}
+
+// 4. PENDING ONLINE ORDER (created before the customer pays)
+export async function createPendingOrderHandler(req, res) {
+  try {
+    const out = await createPendingOrder(req.body || {});
+    return res.status(out.status).json(out.body);
+  } catch (err) {
+    console.error("Pending order error:", err);
+    return errorResponse(res, "Could not create the order. Please try again.", 500);
   }
 }

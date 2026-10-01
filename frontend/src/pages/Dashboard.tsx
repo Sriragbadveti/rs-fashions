@@ -107,6 +107,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [paymentAlerts, setPaymentAlerts] = useState<{ id: string; at: string; type: string; message: string }[]>([]);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState("");
@@ -455,6 +456,9 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
           setInventory(merged);
           safeStorageSet("rs_admin_inventory", merged);
           syncInventoryToStorefront(merged);
+        }
+        if (Array.isArray(d.settings?.payment_alerts)) {
+          setPaymentAlerts(d.settings.payment_alerts);
         }
         if (Array.isArray(d.stockMovements)) {
           setStockHistory(d.stockMovements);
@@ -1425,6 +1429,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
         {isNotificationsOpen && (
           <Notifications
             salesHistory={salesHistory}
+            paymentAlerts={paymentAlerts}
             onNavigateTab={(tab) => {
               sound.playClick();
               setActiveTab(tab);

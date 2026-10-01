@@ -15,6 +15,8 @@ import { sound } from "../types/soundEngine";
 
 interface NotificationsProps {
   salesHistory: CompletedSale[];
+  /** Failed / expired payments and paid-but-unrecorded orders raised by the server. */
+  paymentAlerts?: { id: string; at: string; type: string; message: string }[];
   onNavigateTab: (tab: any) => void;
   onClose: () => void;
 }
@@ -36,7 +38,7 @@ function getStoredCRMContactsWithMilestones() {
   return [];
 }
 
-export default function Notifications({ salesHistory, onNavigateTab, onClose }: NotificationsProps) {
+export default function Notifications({ salesHistory, paymentAlerts = [], onNavigateTab, onClose }: NotificationsProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [readIds, setReadIds] = useState<string[]>(() => {
     try {
@@ -101,6 +103,19 @@ export default function Notifications({ salesHistory, onNavigateTab, onClose }: 
       });
     });
 
+    paymentAlerts.forEach((a) => {
+      const label = a.type === "oversold" ? "Paid order needs attention" : a.type === "record_failed" ? "Payment received but not recorded" : "Payment failed";
+      list.push({
+        id: `pay-${a.id}`,
+        type: "order",
+        title: `⚠️ ${label}`,
+        description: a.message,
+        timestamp: new Date(a.at).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }),
+        actionTab: "sales-ledger",
+        badgeText: "Payment Alert",
+      });
+    });
+
     const contacts = getStoredCRMContactsWithMilestones();
     const today = new Date();
 
@@ -138,7 +153,7 @@ export default function Notifications({ salesHistory, onNavigateTab, onClose }: 
     });
 
     return list;
-  }, [salesHistory]);
+  }, [salesHistory, paymentAlerts]);
 
   const activeNotifications = useMemo(() => {
     return allNotifications.filter(

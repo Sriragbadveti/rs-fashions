@@ -263,17 +263,24 @@ export async function createCashfreePaymentLink({
  * 5. Verify Cashfree Webhook Signature
  */
 export function verifyCashfreeWebhookSignature(rawBody, timestamp, signature) {
-  if (!ENV.CASHFREE.SECRET_KEY) return true;
+  const secret = String(ENV.CASHFREE.SECRET_KEY || "").trim().replace(/[\r\n\t"']/g, "");
+  if (!secret) {
+    // Never accept unsigned webhooks in production; allow them only for local/mock development.
+    return process.env.NODE_ENV !== "production";
+  }
+  if (!signature || !timestamp) return false;
 
   try {
-    const bodyStr = typeof rawBody === "string" ? rawBody : JSON.stringify(rawBody);
-    const dataToSign = timestamp + bodyStr;
-    const computedSignature = crypto
-      .createHmac("sha256", String(ENV.CASHFREE.SECRET_KEY).trim().replace(/[\r\n\t"']/g, ""))
-      .update(dataToSign)
-      .digest("base64");
-
-    return computedSignature === signature;
+    // Cashfree signs the exact bytes it sent. Prefer them over a re-serialised copy, which can differ.
+    const bodyStr = Buffer.isBuffer(rawBody)
+      ? rawBody.toString("utf8")
+      : typeof rawBody === "string"
+        ? rawBody
+        : JSON.stringify(rawBody);
+    const computed = crypto.createHmac("sha256", secret).update(String(timestamp) + bodyStr).digest("base64");
+    const a = Buffer.from(computed);
+    const b = Buffer.from(String(signature));
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
   } catch (err) {
     console.error("[Cashfree Webhook] Verification error:", err?.message || err);
     return false;

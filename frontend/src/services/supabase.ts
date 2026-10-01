@@ -1789,6 +1789,42 @@ export const StoreService = {
     }
   },
 
+  /** Creates the order on the server (payment pending) before an online payment starts. */
+  async createPendingOrder(payload: Record<string, unknown>): Promise<{ ok: boolean; stockConflict?: { name: string; available: number }; message?: string }> {
+    try {
+      const res = await fetch(`${API_BASE}/billing/pending-order`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...payload, sessionId: this.getSessionId() }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (res.status === 409) {
+        const first = json.shortages?.[0];
+        return { ok: false, stockConflict: first ? { name: first.name, available: first.available } : { name: "", available: 0 }, message: json.message };
+      }
+      return { ok: res.ok, message: json.message };
+    } catch {
+      return { ok: false, message: "Network error" };
+    }
+  },
+
+  /** Asks the server to confirm payment with Cashfree and finalise the order. null = unreachable. */
+  async finalizeCashfreeOrder(payload: { orderNumber: string; cfOrderId?: string }): Promise<{ paid: boolean; found: boolean } | null> {
+    try {
+      const res = await fetch(`${API_BASE}/payments/cashfree/finalize`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) return null;
+      const json = await res.json();
+      const d = json.data || json;
+      return { paid: Boolean(d.paid), found: Boolean(d.found) };
+    } catch {
+      return null;
+    }
+  },
+
   /** Authoritative server-side stock check; null when the server can't be reached. */
   async checkStock(
     items: { id: string; name?: string; color?: string; quantity: number }[]

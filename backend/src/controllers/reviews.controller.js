@@ -181,6 +181,7 @@ export async function createReview(req, res) {
           title: reviewData.title,
           content: reviewData.content,
           verified_buyer: reviewData.verifiedBuyer,
+          approved: reviewData.approved !== false,
           date: reviewData.date,
         }]);
       } catch (sbErr) {
@@ -222,6 +223,7 @@ export async function updateReview(req, res) {
           title: updates.title,
           content: updates.content,
           verified_buyer: updates.verifiedBuyer,
+          ...(updates.approved !== undefined ? { approved: Boolean(updates.approved) } : {}),
           date: updates.date,
         }).eq("id", id);
       } catch (sbErr) {

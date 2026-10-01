@@ -395,3 +395,25 @@ DO $$ BEGIN
         GRANT EXECUTE ON FUNCTION public.allocate_skus(TEXT, INTEGER) TO service_role;
     END IF;
 END $$;
+
+-- ------------------------------------------------------------------------------
+-- 11. PAYMENT STATE (survives restarts/redeploys) — safe to re-run
+-- webhook_events: PRIMARY KEY makes Cashfree webhook de-duplication atomic.
+-- pending_sales : counter (POS) carts waiting for their Cashfree payment link to be paid.
+-- Only the backend (service role) can read/write these tables.
+-- ------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.webhook_events (
+    event_id TEXT PRIMARY KEY,
+    details JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS public.pending_sales (
+    order_id TEXT PRIMARY KEY,
+    sale JSONB NOT NULL,
+    committed BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.webhook_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.pending_sales ENABLE ROW LEVEL SECURITY;

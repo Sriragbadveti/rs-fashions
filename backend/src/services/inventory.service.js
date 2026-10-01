@@ -106,7 +106,7 @@ export function withStockLock(fn) {
  * Reserves the cart's pieces for `sessionId` for 10 minutes. Pieces other customers have
  * reserved (and not yet bought) don't count as available. Returns the shortages ([] = reserved).
  */
-export function holdStock(items, sessionId) {
+export function holdStock(items, sessionId, ttlMs = HOLD_TTL_MS) {
   return withStockLock(async () => {
     const { demand } = await computeStockDemand(items);
     const shortages = [];
@@ -118,7 +118,7 @@ export function holdStock(items, sessionId) {
     releaseHolds(sessionId);
     for (const [key, d] of demand) {
       const holders = stockHolds.get(key) || new Map();
-      holders.set(sessionId, { qty: d.requested, expiresAt: Date.now() + HOLD_TTL_MS });
+      holders.set(sessionId, { qty: d.requested, expiresAt: Date.now() + ttlMs });
       stockHolds.set(key, holders);
     }
     return [];

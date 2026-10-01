@@ -49,7 +49,8 @@ app.use(cors({
     "X-Admin-Token",
   ],
 }));
-app.use(express.json({ limit: "50mb" }));
+// Keep the exact request bytes: Cashfree webhook signatures are computed over the raw body.
+app.use(express.json({ limit: "50mb", verify: (req, _res, buf) => { req.rawBody = buf; } }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(requestLogger);
 

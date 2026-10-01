@@ -602,8 +602,25 @@ function Checkout() {
       }
     }
 
+    // If this checkout created the order on the server before payment, the server confirms the
+    // payment with Cashfree and finalises it (idempotent with the webhook): nothing to re-create.
+    let confirmedByServer = false;
+    const serverOrderNumber = stableOrderNumberRef.current || orderId.replace(/^RSF_(.+)_A\d+$/, "$1");
+    let hadPending = false;
+    try { hadPending = Boolean(serverOrderNumber && sessionStorage.getItem(`rs_pending_${serverOrderNumber}`)); } catch {}
+    if (hadPending) {
+      const fin = await StoreService.finalizeCashfreeOrder({
+        orderNumber: serverOrderNumber,
+        cfOrderId: /^RSF_.+_A\d+$/.test(orderId) ? orderId : undefined,
+      });
+      confirmedByServer = Boolean(fin?.paid && fin.found);
+      if (confirmedByServer) { try { sessionStorage.removeItem(`rs_pending_${serverOrderNumber}`); } catch {} }
+    }
+
     try {
-      if (existingOrderId || existingOrderNumber) {
+      if (confirmedByServer) {
+        // Already saved and paid on the server.
+      } else if (existingOrderId || existingOrderNumber) {
         await StoreService.updateOrderPaymentStatus(
           existingOrderId || existingOrderNumber!,
           "paid",
@@ -681,6 +698,57 @@ function Checkout() {
     // If Cashfree Gateway is selected
     if (paymentMethod === "cashfree") {
       try {
+        // Create the order on the server BEFORE paying: if the customer's connection or browser
+        // dies after paying, the webhook still finalises it and it shows up in My Orders.
+        if (!existingOrderNumber && !existingOrderId) {
+          const pending = await StoreService.createPendingOrder({
+            orderNumber: orderNum,
+            customerName: `${address.firstName} ${address.lastName}`.trim(),
+            email: address.email || currentUser?.email,
+            phone: `${address.countryDial} ${address.phone}`,
+            address: {
+              address: address.address,
+              apartment: address.apartment,
+              city: address.city,
+              state: address.state,
+              pincode: address.pincode,
+            },
+            items: items.map((item) => {
+              const matchingVariant = ((item.product as any).variants || []).find(
+                (v: any) => v.color?.toLowerCase() === item.selectedColor?.toLowerCase()
+              );
+              return {
+                id: item.product.id,
+                productId: item.product.id,
+                sku: matchingVariant?.sku || (item.product as any).sku || item.product.id,
+                name: item.product.name,
+                material: item.product.material,
+                color: item.selectedColor || "Standard",
+                quantity: item.quantity,
+                qty: item.quantity,
+                price: item.product.price,
+                image: item.product.images?.[0] || "",
+              };
+            }),
+            subtotal,
+            shippingFee: shipping,
+            discount: Math.max(0, subtotal - finalSubtotal),
+            total,
+          });
+          if (pending.stockConflict) {
+            setStockConflict({
+              productId: items[0]?.product.id,
+              productName: pending.stockConflict.name || items[0]?.product.name || "",
+              availableStock: Math.max(0, pending.stockConflict.available),
+            });
+            isSubmittingRef.current = false;
+            setIsProcessing(false);
+            return;
+          }
+          if (pending.ok) {
+            try { sessionStorage.setItem(`rs_pending_${orderNum}`, "1"); } catch {}
+          }
+        }
         await loadCashfreeScript();
 
         const cfRes = await StoreService.createCashfreeOrder({
