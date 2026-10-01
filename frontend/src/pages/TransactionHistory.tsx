@@ -263,7 +263,7 @@ export default function TransactionHistory({
   const getNetPayable = (sale: CompletedSale) =>
     Math.max(
       0,
-      Number(sale.subtotal || 0) - Number(sale.discount || 0)
+      Number(sale.subtotal || 0) - Number(sale.discount || 0) + Number(sale.shippingFee || 0)
     );
 
   /* ------------------------------------------------------------------------ */
@@ -386,6 +386,9 @@ export default function TransactionHistory({
             "en-IN"
           )}`
         : null,
+      Number(sale.shippingFee) > 0
+        ? `• Shipping: ₹${Number(sale.shippingFee).toLocaleString("en-IN")}`
+        : null,
       `• Net Amount Paid: ₹${trueNetPayable.toLocaleString(
         "en-IN"
       )}`,
@@ -412,7 +415,8 @@ export default function TransactionHistory({
         Math.max(
           0,
           Number(sale.subtotal || 0) -
-            Number(sale.discount || 0)
+            Number(sale.discount || 0) +
+            Number(sale.shippingFee || 0)
         ),
       0
     );
@@ -532,6 +536,9 @@ export default function TransactionHistory({
       `*Subtotal:* ${currency(sale.subtotal)}`,
       Number(sale.discount) > 0
         ? `*Trade Discount:* -${currency(sale.discount)}`
+        : null,
+      Number(sale.shippingFee) > 0
+        ? `*Shipping:* ${currency(Number(sale.shippingFee))}`
         : null,
       `*Net Payable:* ${currency(trueNetPayable)}`,
       `*Payment Mode:* ${getPaymentLabel(
@@ -1486,7 +1493,8 @@ export default function TransactionHistory({
                       Math.max(
                         0,
                         Number(sale.subtotal || 0) -
-                          Number(sale.discount || 0)
+                          Number(sale.discount || 0) +
+                          Number(sale.shippingFee || 0)
                       ),
                     0
                   )
@@ -1884,6 +1892,13 @@ export default function TransactionHistory({
                     <span className="shrink-0">
                       -{currency(inspectInvoice.discount)}
                     </span>
+                  </div>
+                )}
+
+                {Number(inspectInvoice.shippingFee) > 0 && (
+                  <div className="flex items-center justify-between gap-4 font-medium">
+                    <span>Shipping</span>
+                    <span className="shrink-0">{currency(Number(inspectInvoice.shippingFee))}</span>
                   </div>
                 )}
 

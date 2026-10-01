@@ -67,6 +67,7 @@ export async function getTransactions(req, res) {
       cgst: Number(o.cgst) || 0,
       sgst: Number(o.sgst) || 0,
       discount: Number(o.discount_amount) || 0,
+      shippingFee: Number(o.shipping_fee) || 0,
       total: Number(o.total) || 0,
       paymentMethod: o.payment_method,
       billType: o.billing_type || "gst",

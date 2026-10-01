@@ -102,6 +102,8 @@ export interface CompletedSale {
   items: CartItem[];
   subtotal: number;
   discount: number;
+  /** Delivery charge on online orders (counter bills have none). */
+  shippingFee?: number;
   cgst: number;
   sgst: number;
   total: number;
