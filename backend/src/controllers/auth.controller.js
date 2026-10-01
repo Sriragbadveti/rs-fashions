@@ -229,6 +229,36 @@ export async function logoutSession(req, res) {
 }
 
 /**
+ * Helper: Safely resolve canonical frontend client URL
+ * Prioritizes requests from production canonical domain or local dev
+ */
+export function getResolvedClientUrl(req) {
+  // 1. Check incoming Origin or Referer header from trusted hosts
+  const incoming = req?.headers?.origin || req?.headers?.referer;
+  if (incoming && typeof incoming === "string") {
+    try {
+      const parsed = new URL(incoming);
+      if (parsed.hostname === "www.rsfashions25.com" || parsed.hostname === "rsfashions25.com") {
+        return "https://www.rsfashions25.com";
+      }
+      if (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1") {
+        return `${parsed.protocol}//${parsed.host}`;
+      }
+    } catch {}
+  }
+  // 2. Check CLIENT_URL environment variable
+  const envUrl = String(process.env.CLIENT_URL || "").trim().replace(/\/+$/, "");
+  if (envUrl && !envUrl.includes("vercel.app") && !envUrl.includes("localhost")) {
+    return envUrl;
+  }
+  // 3. In production, always default to canonical custom domain
+  if ((process.env.NODE_ENV || "").toLowerCase() === "production") {
+    return "https://www.rsfashions25.com";
+  }
+  return envUrl || "http://localhost:5173";
+}
+
+/**
  * 5. Initiate Google OAuth 2.0 Flow
  * GET /api/auth/google
  */
@@ -238,7 +268,7 @@ export async function initiateGoogleAuth(req, res) {
     const backendUrl = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 5001}`;
     const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${backendUrl}/api/auth/google/callback`;
     const clientRedirect = req.query.redirect || "/shop";
-    const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
+    const clientUrl = getResolvedClientUrl(req);
 
     if (!clientId) {
       console.warn("[GoogleAuth] GOOGLE_CLIENT_ID not configured in backend/.env.");
@@ -252,6 +282,7 @@ export async function initiateGoogleAuth(req, res) {
     const statePayload = Buffer.from(
       JSON.stringify({
         redirect: clientRedirect,
+        clientUrl,
         ts: Date.now(),
       })
     ).toString("base64url");
@@ -271,7 +302,7 @@ export async function initiateGoogleAuth(req, res) {
     return res.redirect(googleAuthUrl);
   } catch (err) {
     console.error("[GoogleAuth] Error initiating OAuth:", err);
-    const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
+    const clientUrl = getResolvedClientUrl(req);
     return res.redirect(`${clientUrl}/auth/callback?error=${encodeURIComponent(err.message)}`);
   }
 }
@@ -281,7 +312,7 @@ export async function initiateGoogleAuth(req, res) {
  * GET /api/auth/google/callback
  */
 export async function handleGoogleCallback(req, res) {
-  const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
+  let clientUrl = getResolvedClientUrl(req);
   try {
     const { code, state, error: oauthError } = req.query;
 
@@ -290,6 +321,17 @@ export async function handleGoogleCallback(req, res) {
       try {
         const decodedState = JSON.parse(Buffer.from(String(state), "base64url").toString("utf-8"));
         if (decodedState?.redirect) destination = decodedState.redirect;
+        if (decodedState?.clientUrl && typeof decodedState.clientUrl === "string") {
+          const u = new URL(decodedState.clientUrl);
+          if (
+            u.hostname === "www.rsfashions25.com" ||
+            u.hostname === "rsfashions25.com" ||
+            u.hostname === "localhost" ||
+            u.hostname === "127.0.0.1"
+          ) {
+            clientUrl = decodedState.clientUrl.replace(/\/+$/, "");
+          }
+        }
       } catch {}
     }
 

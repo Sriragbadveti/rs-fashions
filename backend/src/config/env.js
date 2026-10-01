@@ -19,8 +19,16 @@ export const ENV = {
   NODE_ENV: process.env.NODE_ENV || "development",
   SUPABASE_URL: cleanEnv(process.env.SUPABASE_URL),
   SUPABASE_SERVICE_ROLE_KEY: cleanEnv(process.env.SUPABASE_SERVICE_ROLE_KEY),
-  SUPABASE_ANON_KEY: cleanEnv(process.env.SUPABASE_ANON_KEY),
-  CLIENT_URL: cleanEnv(process.env.CLIENT_URL) || "http://localhost:5173",
+  CLIENT_URL: (() => {
+    const val = cleanEnv(process.env.CLIENT_URL).replace(/\/+$/, "");
+    if (val && !val.includes("vercel.app") && !val.includes("localhost")) {
+      return val;
+    }
+    if ((process.env.NODE_ENV || "").toLowerCase() === "production") {
+      return "https://www.rsfashions25.com";
+    }
+    return val || "http://localhost:5173";
+  })(),
   BACKEND_URL: cleanEnv(process.env.BACKEND_URL) || "http://localhost:5001",
   CASHFREE: {
     get APP_ID() {

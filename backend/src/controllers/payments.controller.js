@@ -446,14 +446,17 @@ function getPublicClientUrl(req) {
   if (origin && typeof origin === "string" && origin.startsWith("https://")) {
     try {
       const u = new URL(origin);
+      if (u.hostname === "www.rsfashions25.com" || u.hostname === "rsfashions25.com") {
+        return "https://www.rsfashions25.com";
+      }
       return u.origin;
     } catch {}
   }
   const envUrl = String(ENV.CLIENT_URL || "").trim();
-  if (envUrl.startsWith("https://")) {
+  if (envUrl.startsWith("https://") && !envUrl.includes("vercel.app")) {
     return envUrl;
   }
-  return "https://rsfashions25.com";
+  return "https://www.rsfashions25.com";
 }
 
 // In-memory registry for pending POS counter sales linked to Cashfree orders

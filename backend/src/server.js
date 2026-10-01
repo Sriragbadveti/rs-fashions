@@ -19,6 +19,7 @@ const allowedOrigins = [
   "http://localhost:3000",
   "http://127.0.0.1:5173",
   "https://rs-fashions.vercel.app",
+  "https://rs-fashions-d5h8.vercel.app",
   "https://rsfashions25.com",
   "https://www.rsfashions25.com",
 ].filter(Boolean);

@@ -5,6 +5,30 @@
   "env": {
     "VITE_API_BASE_URL": "https://rs-fashions.onrender.com"
   },
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "rs-fashions-d5h8.vercel.app"
+        }
+      ],
+      "destination": "https://www.rsfashions25.com/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "rs-fashions.vercel.app"
+        }
+      ],
+      "destination": "https://www.rsfashions25.com/:path*",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/(.*)",
