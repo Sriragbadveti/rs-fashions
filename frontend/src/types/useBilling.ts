@@ -269,7 +269,7 @@ export function useBilling({
   const [promoCode, setPromoCode] = useState("");
   const [promoMessage, setPromoMessage] = useState("");
 
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("upi");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
 
   const [showCustomer, setShowCustomer] = useState(true);
   const [showInvoice, setShowInvoice] = useState(false);
@@ -420,19 +420,7 @@ export function useBilling({
         return;
       }
 
-      // Ctrl/Cmd + Shift + 1..4 -> pick a payment method
-      if (modifier && event.shiftKey && event.key === "1") {
-        event.preventDefault();
-        setPaymentMethod("upi");
-        return;
-      }
-
-      if (modifier && event.shiftKey && event.key === "2") {
-        event.preventDefault();
-        setPaymentMethod("card");
-        return;
-      }
-
+      // Ctrl/Cmd + Shift + 3 -> Cash, + 4 -> Split (UPI and Card were removed from the counter)
       if (modifier && event.shiftKey && event.key === "3") {
         event.preventDefault();
         setPaymentMethod("cash");
@@ -983,7 +971,7 @@ export function useBilling({
     setCustomDiscount("");
     setPromoCode("");
     setPromoMessage("");
-    setPaymentMethod("upi");
+    setPaymentMethod("cash");
     setCompletedSale(null);
     setShowInvoice(false);
     setIsSaleCommitted(false);

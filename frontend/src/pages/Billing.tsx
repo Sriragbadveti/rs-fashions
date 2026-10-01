@@ -7,7 +7,6 @@ import {
   Layers,
   ChevronDown,
   ChevronUp,
-  CreditCard,
   Mail,
   MapPin,
   Minus,
@@ -19,7 +18,6 @@ import {
   ShoppingBag,
   Trash2,
   User,
-  Wallet,
   X,
   Share2,
   AlertCircle,
@@ -273,6 +271,16 @@ const Billing: React.FC<BillingProps> = ({
         });
         const json = await res.json();
         const actual = json.data || json;
+
+        if (!isCancelled && ["FAILED", "EXPIRED", "TERMINATED"].includes(String(actual.orderStatus || "").toUpperCase())) {
+          isCancelled = true;
+          activePollingRefId.current = null;
+          clearInterval(interval);
+          sound.playNotification();
+          setPaymentLinkError(`Payment ${String(actual.orderStatus).toLowerCase()}: the customer was not charged. Generate a new payment link to try again.`);
+          triggerToast("⚠️ Payment failed / expired. No money was taken.");
+          return;
+        }
 
         if (!isCancelled && (actual.paid || actual.verified)) {
           if (isAutoRecordingRef.current) return;
@@ -1083,31 +1091,7 @@ const Billing: React.FC<BillingProps> = ({
                     Payment Method
                   </p>
 
-                  <div className="grid grid-cols-4 gap-1.5">
-                    <PaymentButton
-                      active={paymentMethod === "upi"}
-                      onClick={() => {
-                        setPaymentMethod("upi");
-                        setPaymentLinkData(null);
-                        setPaymentLinkError(null);
-                        triggerToast("Payment mode: UPI / QR");
-                      }}
-                      icon={<Wallet className="h-3.5 w-3.5" />}
-                      label="UPI"
-                    />
-
-                    <PaymentButton
-                      active={paymentMethod === "card"}
-                      onClick={() => {
-                        setPaymentMethod("card");
-                        setPaymentLinkData(null);
-                        setPaymentLinkError(null);
-                        triggerToast("Payment mode: Card");
-                      }}
-                      icon={<CreditCard className="h-3.5 w-3.5" />}
-                      label="Card"
-                    />
-
+                  <div className="grid grid-cols-2 gap-1.5">
                     <PaymentButton
                       active={paymentMethod === "cash"}
                       onClick={() => {
