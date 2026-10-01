@@ -105,7 +105,6 @@ function ProductCard({ product }: { product: CardProduct }) {
             <img
               src={getImageVariantUrl(hoverImage, "sm")}
               alt={`${product.name} alternate view`}
-              loading="lazy"
               decoding="async"
               onError={(e) => { if (!fallbackToOriginalImage(e, hoverImage)) handleSareeImageError(e, hoverImage); }}
               className="absolute inset-0 h-full w-full object-cover object-center opacity-0 transition-all duration-500 ease-out group-hover:opacity-100 group-hover:scale-105 will-change-transform"
