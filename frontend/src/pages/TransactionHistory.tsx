@@ -19,6 +19,7 @@ import {
   Copy,
   Check,
   Smartphone,
+  XCircle,
 } from "lucide-react";
 import type { CompletedSale } from "../types/inventory";
 import logo from "../assets/logo/logo1.png";
@@ -30,6 +31,9 @@ import {
 import type { OrderStatus } from "../context/OrderFulfillmentContext";
 import { useShowroomSettings } from "../types/settings";
 import { STORE_ADDRESS, STORE_WHATSAPP_NUMBER, formatInvoiceNumber } from "../types/useBilling";
+import { API_BASE } from "../config/api";
+import { adminFetch } from "../utils/adminSession";
+import { toWhatsAppNumber } from "../utils/celebrations";
 
 interface TransactionHistoryProps {
   salesHistory: CompletedSale[];
@@ -160,6 +164,7 @@ export default function TransactionHistory({
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
   const { getFulfillment, updateStatus } = useOrderFulfillment();
+  const [cancellingInvoice, setCancellingInvoice] = useState<string | null>(null);
 
   /* ------------------------------------------------------------------------ */
   /* CUSTOMER HELPERS                                                         */
@@ -178,6 +183,75 @@ export default function TransactionHistory({
     sale.customer?.address ||
     (sale as any).shippingAddress ||
     "";
+
+  /**
+   * Cancels the order on the server (status + stock restored once) and opens WhatsApp with a
+   * prefilled message to the customer. WhatsApp can't send by itself: the admin presses Send.
+   */
+  const handleCancelOrder = async (sale: CompletedSale) => {
+    const inv = sale.invoiceNumber;
+    const status = getFulfillment(inv).status;
+    if (status === "cancelled") return;
+    if (status === "delivered") {
+      alert("A delivered order can't be cancelled. Process a return instead.");
+      return;
+    }
+
+    const name = sale.customerName || sale.customer?.name || "Customer";
+    const waNumber = toWhatsAppNumber(sale.customerPhone || sale.customer?.phone || "");
+    const confirmed = window.confirm(
+      `Cancel order ${inv} for ${name}?\n\n• The saree stock will be put back.\n• ${waNumber ? "WhatsApp will open with a cancellation message for the customer." : "The customer's phone number is not a valid mobile number, so no WhatsApp message can be prepared."}\n\nThis can't be undone.`
+    );
+    if (!confirmed) return;
+
+    // Open the tab now (inside the click) so the browser doesn't block it after the request.
+    const waWindow = waNumber ? window.open("", "_blank") : null;
+    setCancellingInvoice(inv);
+    try {
+      const res = await adminFetch(`${API_BASE}/sales/${encodeURIComponent(inv)}/cancel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        waWindow?.close();
+        alert(`Order was NOT cancelled: ${json.message || `server error ${res.status}`}`);
+        if (json.code === "ALREADY_CANCELLED") updateStatus(inv, "cancelled");
+        return;
+      }
+
+      updateStatus(inv, "cancelled");
+      window.dispatchEvent(new Event("rs_admin_refresh"));
+
+      const store = showroom.storeName || "RS Fashions";
+      const message =
+        `Namaste ${name} Ji,\n\n` +
+        `Your order ${inv} with ${store} has been cancelled.\n\n` +
+        `If you have already paid for it, our team will get in touch with you about the refund. ` +
+        `For any questions, simply reply to this message.\n\n` +
+        `We're sorry for the inconvenience and hope to serve you again soon.\n\n` +
+        `Warm regards,\n${store}`;
+
+      if (waNumber && waWindow) {
+        waWindow.location.href = `https://wa.me/${waNumber}?text=${encodeURIComponent(message)}`;
+        alert("Order cancelled and stock restored.\n\nWhatsApp has opened with the message ready — press Send there to notify the customer.");
+      } else {
+        waWindow?.close();
+        alert(
+          waNumber
+            ? "Order cancelled and stock restored. Your browser blocked the WhatsApp tab; please allow pop-ups and message the customer manually."
+            : "Order cancelled and stock restored. The customer's phone number isn't a valid mobile number, so no WhatsApp message was prepared."
+        );
+      }
+    } catch (err) {
+      waWindow?.close();
+      console.warn("Cancel order error:", err);
+      alert("Order was NOT cancelled: could not reach the server. Please check your connection and try again.");
+    } finally {
+      setCancellingInvoice(null);
+    }
+  };
 
   const getSaleQty = (sale: CompletedSale) =>
     (sale.items || []).reduce(
@@ -331,7 +405,8 @@ export default function TransactionHistory({
   /* ------------------------------------------------------------------------ */
 
   const metrics = useMemo(() => {
-    const totalRevenue = salesHistory.reduce(
+    const liveSales = salesHistory.filter((sale) => getFulfillment(sale.invoiceNumber).status !== "cancelled");
+    const totalRevenue = liveSales.reduce(
       (sum, sale) =>
         sum +
         Math.max(
@@ -342,7 +417,7 @@ export default function TransactionHistory({
       0
     );
 
-    const totalDrapesSold = salesHistory.reduce(
+    const totalDrapesSold = liveSales.reduce(
       (sum, sale) => sum + getSaleQty(sale),
       0
     );
@@ -351,7 +426,7 @@ export default function TransactionHistory({
       totalRevenue,
       totalDrapesSold,
     };
-  }, [salesHistory]);
+  }, [salesHistory, getFulfillment]);
 
   /* ------------------------------------------------------------------------ */
   /* FILTERING                                                                */
@@ -749,6 +824,10 @@ export default function TransactionHistory({
                     onClick={(e) => e.stopPropagation()}
                     onChange={(e) => {
                       e.stopPropagation();
+                      if (e.target.value === "cancelled") {
+                        handleCancelOrder(sale);
+                        return;
+                      }
                       updateStatus(
                         sale.invoiceNumber,
                         e.target.value as OrderStatus
@@ -821,6 +900,20 @@ export default function TransactionHistory({
                   <Eye size={12} className="shrink-0" />
                   <span>View Bill</span>
                 </button>
+                {currentStatus !== "cancelled" && currentStatus !== "delivered" && (
+                  <button
+                    type="button"
+                    disabled={cancellingInvoice === sale.invoiceNumber}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCancelOrder(sale);
+                    }}
+                    className="col-span-2 inline-flex min-w-0 items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-2 py-2.5 text-[10px] font-semibold text-rose-700 active:bg-rose-100 disabled:opacity-50"
+                  >
+                    <XCircle size={12} className="shrink-0" />
+                    <span>{cancellingInvoice === sale.invoiceNumber ? "Cancelling..." : "Cancel Order"}</span>
+                  </button>
+                )}
               </div>
             </article>
           );
@@ -1080,6 +1173,10 @@ export default function TransactionHistory({
                       onClick={(e) => e.stopPropagation()}
                       onChange={(e) => {
                         e.stopPropagation();
+                        if (e.target.value === "cancelled") {
+                          handleCancelOrder(sale);
+                          return;
+                        }
                         updateStatus(
                           sale.invoiceNumber,
                           e.target.value as OrderStatus
@@ -1148,6 +1245,20 @@ export default function TransactionHistory({
                         <Eye size={11} />
                         <span>View</span>
                       </button>
+                      {currentStatus !== "cancelled" && currentStatus !== "delivered" && (
+                        <button
+                          type="button"
+                          disabled={cancellingInvoice === sale.invoiceNumber}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCancelOrder(sale);
+                          }}
+                          className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-2 py-1.5 text-[10px] font-semibold text-rose-700 transition-all hover:bg-rose-100 disabled:opacity-50"
+                        >
+                          <XCircle size={11} />
+                          <span>{cancellingInvoice === sale.invoiceNumber ? "Cancelling..." : "Cancel"}</span>
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -1367,7 +1478,9 @@ export default function TransactionHistory({
 
               <p className="mt-0.5 font-display text-sm font-semibold text-stone-800">
                 {currency(
-                  filteredSales.reduce(
+                  filteredSales
+                    .filter((sale) => getFulfillment(sale.invoiceNumber).status !== "cancelled")
+                    .reduce(
                     (sum, sale) =>
                       sum +
                       Math.max(

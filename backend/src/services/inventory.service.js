@@ -189,6 +189,81 @@ async function computeStockDemand(items) {
 }
 
 /**
+ * Puts the pieces of a cancelled order back into stock (variant + product total) and logs a
+ * RETURN movement per line. Mirror image of deductStockForOrderItems.
+ */
+export function restoreStockForOrderItems(items, { referenceNumber = "CANCEL", performedBy = "Store Manager", note = "Order cancelled: stock restored" } = {}) {
+  return withStockLock(async () => {
+    const variantsMap = await getPersistentVariantsMap();
+    const restored = [];
+
+    for (const item of Array.isArray(items) ? items : []) {
+      const prodId = item.productId || item.id || item.sku;
+      const itemSku = item.sku || null;
+      const itemColor = String(item.color || item.selectedColor || "").trim().toLowerCase();
+      const qty = Math.max(1, Number(item.qty || item.quantity) || 1);
+
+      let prod = null;
+      if (supabase) {
+        for (const id of [prodId, itemSku]) {
+          if (!id || prod) continue;
+          const { data } = await supabase.from("products").select("*").eq("id", id).maybeSingle();
+          if (data) prod = data;
+        }
+      } else {
+        prod = getProductsFromStore().find((p) => p.id === prodId || p.id === itemSku) || null;
+      }
+      if (!prod) continue;
+
+      let variants = Array.isArray(variantsMap[prod.id]) ? JSON.parse(JSON.stringify(variantsMap[prod.id])) : [];
+      if (variants.length === 0 && !supabase && Array.isArray(prod.variants)) variants = JSON.parse(JSON.stringify(prod.variants));
+      const previousStock = variants.length > 0 ? variants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0) : Number(prod.stock) || 0;
+
+      let color = itemColor ? item.color || item.selectedColor : prod.colors?.[0] || "Standard";
+      if (variants.length > 0) {
+        let idx = -1;
+        if (itemSku) idx = variants.findIndex((v) => v.sku && v.sku.toLowerCase() === String(itemSku).toLowerCase());
+        if (idx === -1 && prodId) idx = variants.findIndex((v) => v.sku && v.sku.toLowerCase() === String(prodId).toLowerCase());
+        if (idx === -1 && itemColor) idx = variants.findIndex((v) => v.color && v.color.trim().toLowerCase() === itemColor);
+        if (idx === -1) idx = 0;
+        variants[idx] = { ...variants[idx], stock: (Number(variants[idx].stock) || 0) + qty };
+        color = variants[idx].color || color;
+        variantsMap[prod.id] = variants;
+      }
+      const newStock = previousStock + qty;
+
+      if (supabase) {
+        await supabase.from("products").update({ stock: newStock, updated_at: new Date().toISOString() }).eq("id", prod.id);
+        const { error: movErr } = await supabase.from("stock_movements").insert([{
+          id: `mov-cancel-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          date: new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }),
+          sku: itemSku || prod.id,
+          product_name: item.name || prod.name,
+          color: color || "Standard",
+          color_slug: String(color || "STD").slice(0, 3).toUpperCase(),
+          type: "RETURN",
+          quantity: qty,
+          previous_stock: previousStock,
+          new_stock: newStock,
+          reference_number: referenceNumber,
+          performed_by: performedBy,
+          note,
+        }]);
+        if (movErr) console.warn("[InventoryService] cancel movement log notice:", movErr.message);
+      } else {
+        saveProductToStore({ ...prod, stock: newStock, variants: variants.length > 0 ? variants : prod.variants });
+      }
+      restored.push({ productId: prod.id, name: prod.name, qty, newStock });
+    }
+
+    if (supabase && Object.keys(variantsMap).length > 0) await savePersistentVariantsMap(variantsMap);
+    invalidateCatalogCache();
+    invalidateBootstrapCache();
+    return restored;
+  });
+}
+
+/**
  * Deducts stock for a purchased item both at the variant level and product level.
  * Updates:
  * 1. Supabase products table (stock column)

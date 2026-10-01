@@ -449,6 +449,45 @@ test("Cash on Delivery orders are refused", async () => {
   assert.match(r.body.message, /Cash on Delivery is no longer available/);
 });
 
+test("cancelling an order restores its stock exactly once and reports the customer's phone", async () => {
+  const created = (await api("POST", "/catalog", product({ variants: [{ color: "Red", colorSlug: "RED", stock: 2, sku: "" }] }))).body.product;
+  const stockOf = async () => (await api("GET", "/catalog/products")).body.products.find((p) => p.id === created.id).stock;
+  const line = { id: created.id, productId: created.id, name: "Test Saree", color: "Red", quantity: 1, qty: 1, price: 1000 };
+
+  const sale = await api("POST", "/billing/checkout", { customerPhone: "9876543210", customerName: "Cancel Tester", items: [line], total: 1000, paymentMethod: "cash", invoiceNumber: `CXL-${Date.now()}` }, { auth: false });
+  assert.equal(sale.status, 201, JSON.stringify(sale.body));
+  const inv = sale.body.invoiceNumber;
+  assert.equal(await stockOf(), 1, "sold: stock 2 -> 1");
+
+  assert.equal((await api("POST", `/sales/${inv}/cancel`, {}, { auth: false })).status, 401, "admin only");
+
+  const cancelled = await api("POST", `/sales/${inv}/cancel`, { reason: "Customer request" });
+  assert.equal(cancelled.status, 200, JSON.stringify(cancelled.body));
+  assert.equal(cancelled.body.order.phone, "9876543210");
+  assert.equal(cancelled.body.order.customerName, "Cancel Tester");
+  assert.equal(await stockOf(), 2, "stock restored by the ordered quantity");
+
+  const again = await api("POST", `/sales/${inv}/cancel`, {});
+  assert.equal(again.status, 409);
+  assert.equal(again.body.code, "ALREADY_CANCELLED");
+  assert.equal(await stockOf(), 2, "a second cancel never restores stock again");
+
+  // Choosing "Cancelled" in the status list of an already-cancelled order is also a no-op for stock.
+  await api("PUT", `/sales/${inv}/fulfillment`, { status: "cancelled" });
+  assert.equal(await stockOf(), 2);
+});
+
+test("a delivered order cannot be cancelled", async () => {
+  const created = (await api("POST", "/catalog", product({ variants: [{ color: "Red", colorSlug: "RED", stock: 2, sku: "" }] }))).body.product;
+  const line = { id: created.id, productId: created.id, name: "Test Saree", color: "Red", quantity: 1, qty: 1, price: 1000 };
+  const sale = await api("POST", "/billing/checkout", { customerPhone: "9876543210", items: [line], total: 1000, paymentMethod: "cash", invoiceNumber: `DLV-${Date.now()}` }, { auth: false });
+  const inv = sale.body.invoiceNumber;
+  await api("PUT", `/sales/${inv}/fulfillment`, { status: "delivered" });
+  const r = await api("POST", `/sales/${inv}/cancel`, {});
+  assert.equal(r.status, 409);
+  assert.match(r.body.message, /delivered/i);
+});
+
 // ------------------------------------------------------------------------------------------
 // Exhaustion (must run last: it consumes the top of the range)
 // ------------------------------------------------------------------------------------------

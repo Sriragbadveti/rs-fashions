@@ -5,6 +5,7 @@ import {
   processRefund,
   getAnalyticsSummary,
   updateFulfillment,
+  cancelOrder,
 } from "../controllers/sales.controller.js";
 import { requireAdminAuth } from "../middleware/adminAuth.js";
 
@@ -20,5 +21,6 @@ router.get("/transactions", requireAdminAuth, getTransactions);
 router.post("/refund", requireAdminAuth, processRefund);
 router.get("/analytics/summary", requireAdminAuth, getAnalyticsSummary);
 router.put("/:invoiceNumber/fulfillment", requireAdminAuth, updateFulfillment);
+router.post("/:invoiceNumber/cancel", requireAdminAuth, cancelOrder);
 
 export default router;

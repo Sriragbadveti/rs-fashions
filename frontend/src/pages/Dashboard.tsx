@@ -581,10 +581,13 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       }
     };
 
+    const handleAdminRefresh = () => loadLiveBootstrap(true);
+    window.addEventListener("rs_admin_refresh", handleAdminRefresh);
     document.addEventListener("visibilitychange", handleVisibility);
     window.addEventListener("focus", handleVisibility);
 
     return () => {
+      window.removeEventListener("rs_admin_refresh", handleAdminRefresh);
       document.removeEventListener("visibilitychange", handleVisibility);
       window.removeEventListener("focus", handleVisibility);
     };

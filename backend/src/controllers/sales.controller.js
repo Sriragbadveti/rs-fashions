@@ -2,9 +2,13 @@ import { supabase } from "../config/supabase.js";
 import { successResponse, errorResponse } from "../utils/response.js";
 import {
   getOrdersFromStore,
+  findOrderFromStore,
+  saveOrderToStore,
   saveFulfillmentToStore,
   getFulfillmentFromStore,
 } from "../database/localStore.js";
+import { restoreStockForOrderItems } from "../services/inventory.service.js";
+import { invalidateBootstrapCache } from "./bootstrap.controller.js";
 
 /**
  * Controller: Sales Ledger, Returns/Refunds & Financial Intelligence
@@ -341,6 +345,93 @@ export async function getAnalyticsSummary(req, res) {
   }
 }
 
+/**
+ * Cancels an order exactly once and puts its pieces back into stock. The status flip is the atomic
+ * claim, so double clicks / two admins can never restore the stock twice. Orders whose payment never
+ * completed were never deducted, so nothing is restored for them.
+ * Returns { ok, status, message, order?, restored? }.
+ */
+export async function cancelOrderAndRestock(invoiceNumber, { reason = "", performedBy = "Store Manager" } = {}) {
+  const key = String(invoiceNumber || "").trim();
+  if (!key || /[,()]/.test(key)) return { ok: false, status: 400, message: "Invalid invoice number" };
+
+  let order = null;
+  let claimed = false;
+
+  if (supabase) {
+    const filter = `invoice_number.eq.${key},order_number.eq.${key},id.eq.${key}`;
+    const { data: existing, error } = await supabase.from("orders").select("*").or(filter).limit(1).maybeSingle();
+    if (error) return { ok: false, status: 500, message: error.message };
+    if (!existing) return { ok: false, status: 404, message: `Order ${key} not found` };
+    order = existing;
+    const current = String(existing.order_status || "").toLowerCase();
+    if (current === "cancelled") return { ok: false, status: 409, code: "ALREADY_CANCELLED", message: "This order is already cancelled." };
+    if (current === "delivered") return { ok: false, status: 409, message: "A delivered order can't be cancelled. Process a return instead." };
+
+    const { data: won } = await supabase
+      .from("orders")
+      .update({ order_status: "cancelled", updated_at: new Date().toISOString() })
+      .eq("id", existing.id)
+      .neq("order_status", "cancelled")
+      .select()
+      .maybeSingle();
+    claimed = Boolean(won);
+    if (!claimed) return { ok: false, status: 409, code: "ALREADY_CANCELLED", message: "This order is already cancelled." };
+  } else {
+    order = findOrderFromStore(key);
+    if (!order) return { ok: false, status: 404, message: `Order ${key} not found` };
+    const current = String(order.order_status || order.orderStatus || "").toLowerCase();
+    if (current === "cancelled") return { ok: false, status: 409, code: "ALREADY_CANCELLED", message: "This order is already cancelled." };
+    if (current === "delivered") return { ok: false, status: 409, message: "A delivered order can't be cancelled. Process a return instead." };
+    saveOrderToStore({ ...order, order_status: "cancelled", orderStatus: "cancelled" });
+    claimed = true;
+  }
+
+  const paymentStatus = String(order.payment_status || order.paymentStatus || "").toLowerCase();
+  const wasDeducted = !["pending", "failed"].includes(paymentStatus);
+  const items = Array.isArray(order.items) ? order.items : [];
+  let restored = [];
+  if (wasDeducted) {
+    restored = await restoreStockForOrderItems(items, {
+      referenceNumber: `CANCEL-${key}`,
+      performedBy,
+      note: `Order ${key} cancelled${reason ? `: ${reason}` : ""}. Stock restored.`,
+    });
+  }
+
+  saveFulfillmentToStore(key, { status: "cancelled" });
+  invalidateBootstrapCache();
+  return {
+    ok: true,
+    status: 200,
+    message: wasDeducted ? "Order cancelled and stock restored." : "Order cancelled (payment was never completed, so no stock was held).",
+    order: {
+      invoiceNumber: order.invoice_number || order.invoiceNumber || key,
+      customerName: order.customer_name || order.customerName || "Customer",
+      phone: order.phone || order.customerPhone || "",
+      total: Number(order.total) || 0,
+      paymentMethod: order.payment_method || order.paymentMethod || "",
+      paymentStatus,
+    },
+    restored,
+  };
+}
+
+// 3b. CANCEL ORDER (admin) — POST /sales/:invoiceNumber/cancel
+export async function cancelOrder(req, res) {
+  try {
+    const result = await cancelOrderAndRestock(req.params.invoiceNumber, {
+      reason: String(req.body?.reason || "").slice(0, 200),
+      performedBy: req.adminUser?.name || "Store Manager",
+    });
+    if (!result.ok) return res.status(result.status).json({ success: false, code: result.code, message: result.message });
+    return successResponse(res, { order: result.order, restored: result.restored }, result.message);
+  } catch (err) {
+    console.error("Cancel order error:", err);
+    return errorResponse(res, "Could not cancel the order. Please try again.", 500);
+  }
+}
+
 // 4. UPDATE ORDER FULFILLMENT & TRACKING
 export async function updateFulfillment(req, res) {
   try {
@@ -424,6 +515,14 @@ export async function updateFulfillment(req, res) {
         `Cannot change order status from Refused by User back to ${targetStatus}`,
         400
       );
+    }
+
+    // Choosing "Cancelled" in the status list does the same as the Cancel button: stock is restored once.
+    if (targetStatus === "cancelled" && currentStatus !== "cancelled") {
+      const cancelled = await cancelOrderAndRestock(invoiceNumber, { performedBy: req.adminUser?.name || "Store Manager" });
+      if (!cancelled.ok && cancelled.code !== "ALREADY_CANCELLED") {
+        return res.status(cancelled.status).json({ success: false, message: cancelled.message });
+      }
     }
 
     const effectiveCarrier = carrierPartner !== undefined ? carrierPartner : (existingCarrier || "RS Fashions Express");

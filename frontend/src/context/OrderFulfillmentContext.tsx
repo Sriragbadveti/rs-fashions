@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
 import { API_BASE } from "../config/api";
+import { adminFetch } from "../utils/adminSession";
 
 // The canonical stages an order can be in.
 export type OrderStatus = "ordered" | "new" | "packaging" | "shipped" | "delivered" | "refused_by_user" | "cancelled";
@@ -251,7 +252,7 @@ export function OrderFulfillmentProvider({
 
     // Sync to Express Backend API
     try {
-      const res = await fetch(`${API_BASE}/sales/${encodeURIComponent(invoiceNumber)}/fulfillment`, {
+      const res = await adminFetch(`${API_BASE}/sales/${encodeURIComponent(invoiceNumber)}/fulfillment`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(merged),
@@ -265,7 +266,7 @@ export function OrderFulfillmentProvider({
 
   const updateStatus = async (invoiceNumber: string, status: OrderStatus): Promise<boolean> => {
     try {
-      const res = await fetch(`${API_BASE}/sales/${encodeURIComponent(invoiceNumber)}/fulfillment`, {
+      const res = await adminFetch(`${API_BASE}/sales/${encodeURIComponent(invoiceNumber)}/fulfillment`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
@@ -294,7 +295,7 @@ export function OrderFulfillmentProvider({
       return { ...prev, [invoiceNumber]: updated };
     });
 
-    fetch(`${API_BASE}/sales/${encodeURIComponent(invoiceNumber)}/fulfillment`, {
+    adminFetch(`${API_BASE}/sales/${encodeURIComponent(invoiceNumber)}/fulfillment`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ trackingNumber }),
@@ -308,7 +309,7 @@ export function OrderFulfillmentProvider({
       return { ...prev, [invoiceNumber]: updated };
     });
 
-    fetch(`${API_BASE}/sales/${encodeURIComponent(invoiceNumber)}/fulfillment`, {
+    adminFetch(`${API_BASE}/sales/${encodeURIComponent(invoiceNumber)}/fulfillment`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ carrierPartner }),
