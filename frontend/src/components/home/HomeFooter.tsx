@@ -26,11 +26,11 @@ function HomeFooter() {
     {
       title: "Explore Sarees",
       links: [
-        { label: "Vintage Checks", path: "/shop?search=Vintage+Checks" },
+        { label: "Checks", path: "/shop?search=Checks" },
         { label: "Gatti Borders", path: "/shop?search=Gatti+borders" },
         { label: "Ma Inti Bangaram", path: "/shop?search=Ma+inti+Bangaram" },
         { label: "Big Kanchi Borders", path: "/shop?search=Big+Kanchi" },
-        { label: "Gap Border", path: "/shop?category=SiCo+Gadwal+Sarees" },
+        { label: "Gap Border", path: "/shop?search=Gap+Border" },
       ],
     },
     {
@@ -42,7 +42,7 @@ function HomeFooter() {
       links: [
         { label: "Track Your Order", path: "/account" },
         { label: "Shipping & Delivery", path: "/shipping" },
-        { label: "FAQs", path: "/faq" },
+        { label: "Return & Replacement", path: "/returns" },
       ],
     },
   ];
@@ -81,7 +81,7 @@ function HomeFooter() {
                     Fashions
                   </span>
                   <span className="mt-1 block text-[10px] font-bold uppercase tracking-[0.22em] text-[#F3C68F]">
-                    Handcrafted SiCo Gadwal Sarees
+                    SiCo Gadwal Sarees
                   </span>
                 </div>
               </Link>

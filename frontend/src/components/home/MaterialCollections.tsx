@@ -113,7 +113,6 @@ export default function MaterialCollections() {
       {/* Continuous Marquee Rail */}
       <div
         className="relative w-full overflow-hidden py-4 -my-4"
-        onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
         onTouchStart={() => setIsPaused(true)}
         onTouchEnd={() => setIsPaused(false)}
@@ -126,7 +125,7 @@ export default function MaterialCollections() {
             >
               <Link
                 to={mat.link}
-                className="group relative flex aspect-[3/4.2] w-full flex-col justify-between overflow-hidden rounded-2xl sm:rounded-3xl bg-black p-4 shadow-sm transition-all duration-300 hover:shadow-xl hover:-translate-y-1.5 active:scale-[0.98] transform-gpu"
+                className="group relative flex aspect-3/4.5 w-full flex-col justify-between overflow-hidden rounded-2xl sm:rounded-3xl bg-black p-4 shadow-sm transition-all duration-300 hover:shadow-xl hover:-translate-y-1.5 active:scale-[0.98] transform-gpu"
               >
                 {/* Saree Image */}
                 <img
@@ -143,7 +142,7 @@ export default function MaterialCollections() {
 
                 {/* Top Action Row */}
                 <div className="relative z-10 flex items-center justify-end">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-md transition-all duration-300 group-hover:bg-white group-hover:text-black group-hover:rotate-45">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/30 text-white backdrop-blur-md transition-all duration-300 group-hover:bg-[#8E3D51] group-hover:rotate-45">
                     <FiArrowUpRight size={13} />
                   </span>
                 </div>

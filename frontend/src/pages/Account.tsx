@@ -1,55 +1,12 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import {
-  Package,
-  Truck,
-  CreditCard,
-  MapPin,
-  User,
-  ExternalLink,
-  Copy,
-  Check,
-  Printer,
-  RotateCcw,
-  Plus,
-  Trash2,
-  Edit2,
-  ShieldCheck,
-  Clock,
-  CheckCircle2,
-  LogOut,
-  ShoppingBag,
-  Sparkles,
-  Phone,
-  Mail,
-  Home,
-  Briefcase,
-  X,
-  MessageCircle,
-  AlertCircle,
-} from "lucide-react";
-import {
-  getUserSession,
-  setUserSession,
-  clearUserSession,
-  getSavedAddresses,
-  saveAddress,
-  deleteAddress,
-  setDefaultAddress,
-  getSavedPayments,
-  savePaymentMethod,
-  deletePaymentMethod,
-  type UserSession,
-  type SavedAddress,
-  type SavedPayment,
-} from "../utils/userSession";
+import { motion, AnimatePresence } from "framer-motion";
+import { Package, Truck, CreditCard, MapPin, User, ExternalLink, Copy, Check, Printer, RotateCcw, Plus, Trash2, Edit2, ShieldCheck, Clock, CheckCircle2, LogOut, ShoppingBag, Sparkles, Phone, Mail, Home, Briefcase, X, AlertCircle } from "lucide-react";
+import { getUserSession, setUserSession, clearUserSession, getSavedAddresses, saveAddress, deleteAddress, setDefaultAddress, getSavedPayments, savePaymentMethod, deletePaymentMethod, type UserSession, type SavedAddress, type SavedPayment } from "../utils/userSession";
 import { API_BASE } from "../config/api";
 import { STORE_WHATSAPP_NUMBER } from "../config/routes";
 import { StoreService } from "../services/supabase";
-import {
-  ORDER_FULFILLED_EVENT,
-  getCourierTrackingUrl,
-} from "../context/OrderFulfillmentContext";
+import { ORDER_FULFILLED_EVENT, getCourierTrackingUrl } from "../context/OrderFulfillmentContext";
 import { useCart } from "../context/CartContext";
 import logo from "../assets/logo/logo1.png";
 import { FaWhatsapp } from "react-icons/fa";
@@ -947,7 +904,7 @@ export default function Account() {
                   No Orders Placed Yet
                 </h3>
                 <p className="text-stone-600 text-xs sm:text-sm leading-relaxed">
-                  Your ordered heirloom sarees will appear here with dynamic courier dispatch status.
+                  Your ordered sarees will appear here along with the courier dispatch status.
                 </p>
                 <Link
                   to="/shop"
@@ -1284,9 +1241,6 @@ export default function Account() {
               <h3 className="text-base sm:text-lg font-serif font-bold text-stone-900">
                 Payment History
               </h3>
-              <p className="text-xs text-stone-500">
-                Complete record of gateway-settled orders.
-              </p>
             </div>
 
             {orders.length === 0 ? (
@@ -1462,9 +1416,6 @@ export default function Account() {
                 <h3 className="text-base sm:text-lg font-serif font-bold text-stone-900">
                   Saved Cards & UPI Handles
                 </h3>
-                <p className="text-xs text-stone-500">
-                  Masked tokenized methods for immediate checkout.
-                </p>
               </div>
               <button
                 onClick={() => setIsPaymentModalOpen(true)}
@@ -1613,18 +1564,16 @@ export default function Account() {
               )}
 
               <div className="flex justify-end pt-2">
-                <button
+               
+              </div>
+
+              <div className="pt-3 border-t border-stone-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+                 <button
                   type="submit"
                   className="px-5 py-2 rounded-xl bg-[#38152B] text-white text-xs font-semibold hover:bg-[#4E1D3D] transition-all active:scale-95"
                 >
                   Update Profile
                 </button>
-              </div>
-
-              <div className="pt-3 border-t border-stone-100 flex flex-col sm:flex-row items-center justify-between gap-3">
-                <p className="text-[11px] text-stone-400 text-center sm:text-left">
-                  Session retained for convenience.
-                </p>
                 <button
                   type="button"
                   onClick={handleLogout}
@@ -2023,10 +1972,10 @@ export default function Account() {
                 <img src={logo} alt="RS Fashions" className="h-7 w-auto" />
                 <div>
                   <h4 className="font-serif font-bold text-sm text-[#38152B]">
-                    RS FASHIONS
+                    FASHIONS
                   </h4>
                   <p className="text-[9px] text-stone-500">
-                    Handloom Heritage Studio
+                    Hyderabad, Telangana, India
                   </p>
                 </div>
               </div>

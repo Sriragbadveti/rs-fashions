@@ -249,7 +249,7 @@ export default function Overview({
       {/* CORE COUNTER METRIC CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Metric 1: Sales */}
-        <div className="rounded-3xl border border-white/80 bg-white/70 backdrop-blur-xl p-5 shadow-[0_6px_25px_rgba(42,14,32,0.03)] flex flex-col justify-between min-h-[135px]">
+        <div className="rounded-3xl border border-white/80 bg-white/70 backdrop-blur-xl p-5 shadow-[0_6px_25px_rgba(42,14,32,0.03)] flex flex-col justify-between min-h-33.75">
           <div className="flex items-center justify-between">
             <span className="text-[10px] uppercase tracking-wider font-bold text-stone-400">
               Today's Gross Sales
@@ -269,7 +269,7 @@ export default function Overview({
         </div>
 
         {/* Metric 2: Stock */}
-        <div className="rounded-3xl border border-white/80 bg-white/70 backdrop-blur-xl p-5 shadow-[0_6px_25px_rgba(42,14,32,0.03)] flex flex-col justify-between min-h-[135px]">
+        <div className="rounded-3xl border border-white/80 bg-white/70 backdrop-blur-xl p-5 shadow-[0_6px_25px_rgba(42,14,32,0.03)] flex flex-col justify-between min-h-33.75">
           <div className="flex items-center justify-between">
             <span className="text-[10px] uppercase tracking-wider font-bold text-stone-400">
               Live Showroom Stock
@@ -289,7 +289,7 @@ export default function Overview({
         </div>
 
         {/* Metric 3: Terminals */}
-        <div className="rounded-3xl border border-white/80 bg-white/70 backdrop-blur-xl p-5 shadow-[0_6px_25px_rgba(42,14,32,0.03)] flex flex-col justify-between min-h-[135px]">
+        <div className="rounded-3xl border border-white/80 bg-white/70 backdrop-blur-xl p-5 shadow-[0_6px_25px_rgba(42,14,32,0.03)] flex flex-col justify-between min-h-33.75">
           <div className="flex items-center justify-between">
             <span className="text-[10px] uppercase tracking-wider font-bold text-stone-400">
               Active POS Terminals
@@ -309,7 +309,7 @@ export default function Overview({
         </div>
 
         {/* Metric 4: Stock Movement Logs */}
-        <div className="rounded-3xl border border-white/80 bg-white/70 backdrop-blur-xl p-5 shadow-[0_6px_25px_rgba(42,14,32,0.03)] flex flex-col justify-between min-h-[135px]">
+        <div className="rounded-3xl border border-white/80 bg-white/70 backdrop-blur-xl p-5 shadow-[0_6px_25px_rgba(42,14,32,0.03)] flex flex-col justify-between min-h-33.75">
           <div className="flex items-center justify-between">
             <span className="text-[10px] uppercase tracking-wider font-bold text-stone-400">
               Movement Audit Logs

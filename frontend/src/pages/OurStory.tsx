@@ -3,6 +3,7 @@ import { motion, useScroll, useTransform, useSpring } from "framer-motion";
 import { Link } from "react-router-dom";
 import { FiVolume2, FiVolumeX, FiChevronDown, FiHeart, FiArrowRight, FiHelpCircle } from "react-icons/fi";
 import { Sparkles } from "lucide-react";
+import { FaWhatsapp } from "react-icons/fa";
 import homeBannerImg from "../assets/images/home_banner.jpeg";
 import founderImg from "../assets/images/founder.jpeg";
 import founder1Img from "../assets/images/founder1.jpeg";
@@ -302,7 +303,7 @@ export default function OurStory() {
 
             <div className="lg:col-span-5 relative">
               <Reveal delay={0.2}>
-                <div className="relative aspect-[4/5] w-full overflow-hidden rounded-3xl border border-[#D4AF37]/30 shadow-2xl group">
+                <div className="relative aspect-4/5 w-full overflow-hidden rounded-3xl border border-[#D4AF37]/30 shadow-2xl group">
                   <img
                     src={founderImg}
                     alt="Handloom weaving threads and tradition"
@@ -350,7 +351,7 @@ export default function OurStory() {
           <div className="mt-12 grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
             <div className="lg:col-span-5 order-2 lg:order-1 relative">
               <Reveal delay={0.1}>
-                <div className="relative aspect-[4/5] w-full overflow-hidden rounded-3xl border border-white/15 shadow-2xl group">
+                <div className="relative aspect-4/5 w-full overflow-hidden rounded-3xl border border-white/15 shadow-2xl group">
                   <img
                     src={founder1Img}
                     alt="Authentic SiCo Gadwal drape weaving"
@@ -564,10 +565,10 @@ export default function OurStory() {
                 href="https://api.whatsapp.com/send?phone=917842070881&text=Hi%20RS%20Fashions,%20I%20would%20like%20to%20connect%20with%20you"
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-6 py-4 text-xs font-semibold uppercase tracking-[0.18em] text-[#FAF7F2] transition-all hover:bg-white/10 active:scale-95"
+                className="flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-6 py-4 text-xs font-semibold uppercase tracking-[0.18em] text-[#FAF7F2] transition-all hover:bg-green-600 active:scale-95"
               >
-                <FiHelpCircle size={14} className="text-[#D4AF37]" />
-                <span>Contact WhatsApp</span>
+                <FaWhatsapp size={18} className="text-white" />
+                <span className="text-white">Contact WhatsApp</span>
               </a>
             </div>
           </div>

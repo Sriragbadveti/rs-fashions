@@ -1,10 +1,11 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { ArrowUp } from "lucide-react";
 
 export default function ScrollToTop() {
-  const { pathname, search, hash } = useLocation();
+  const { pathname, hash } = useLocation();
   const [showScrollBtn, setShowScrollBtn] = useState(false);
+  const prevPathnameRef = useRef(pathname);
 
   // Force window to top instantly
   const scrollToTopInstant = useCallback(() => {
@@ -32,12 +33,15 @@ export default function ScrollToTop() {
     return () => window.removeEventListener("rs:curtain-finished", handleCurtainFinished);
   }, [scrollToTopInstant]);
 
-  // 2. Route Changes: Always scroll to top unless navigating to a hash anchor
+  // 2. Route Changes: Only scroll to top when pathname actually changes (not on query params/tab switches)
   useEffect(() => {
-    if (!hash) {
-      scrollToTopInstant();
+    if (prevPathnameRef.current !== pathname) {
+      prevPathnameRef.current = pathname;
+      if (!hash) {
+        scrollToTopInstant();
+      }
     }
-  }, [pathname, search, hash, scrollToTopInstant]);
+  }, [pathname, hash, scrollToTopInstant]);
 
   // 3. Floating Scroll To Top Button visibility
   useEffect(() => {

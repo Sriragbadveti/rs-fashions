@@ -245,7 +245,7 @@ export default function CinematicReel(): React.JSX.Element {
 
                 {/* Top Floating Badge Row */}
                 <div className="relative z-10 p-3.5 sm:p-4 flex items-start justify-end">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/25 text-white border border-white/30 shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:rotate-45">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/25 group-hover:bg-[#8E3D51] text-white border border-white/30 shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:rotate-45">
                     <ArrowUpRight size={14} />
                   </span>
                 </div>
