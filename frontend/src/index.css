@@ -195,14 +195,14 @@ img {
   display: flex;
   width: max-content;
   will-change: transform;
-  animation: marquee-infinite 42s linear infinite;
+  animation: marquee-infinite 70s linear infinite;
 }
 
 .animate-marquee-reverse {
   display: flex;
   width: max-content;
   will-change: transform;
-  animation: marquee-reverse 48s linear infinite;
+  animation: marquee-reverse 75s linear infinite;
 }
 
 @media (hover: hover) {

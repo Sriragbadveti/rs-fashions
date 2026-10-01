@@ -169,7 +169,7 @@ export default function TrendingProducts() {
         .trending-track {
           display: flex;
           width: max-content;
-          animation: trendingStreamLeft 36s linear infinite;
+          animation: trendingStreamLeft 75s linear infinite;
           will-change: transform;
           transform: translate3d(0, 0, 0);
           backface-visibility: hidden;
@@ -181,7 +181,7 @@ export default function TrendingProducts() {
 
         @media (max-width: 640px) {
           .trending-track {
-            animation-duration: 26s;
+            animation-duration: 70s;
           }
         }
       `}</style>

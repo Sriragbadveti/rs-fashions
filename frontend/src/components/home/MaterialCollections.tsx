@@ -70,7 +70,7 @@ export default function MaterialCollections() {
         .marquee-track {
           display: flex;
           width: max-content;
-          animation: continuousMarquee 32s linear infinite;
+          animation: continuousMarquee 65s linear infinite;
           will-change: transform;
           transform: translate3d(0, 0, 0);
           backface-visibility: hidden;
@@ -82,7 +82,7 @@ export default function MaterialCollections() {
 
         @media (max-width: 640px) {
           .marquee-track {
-            animation-duration: 24s;
+            animation-duration: 60s;
           }
         }
       `}</style>

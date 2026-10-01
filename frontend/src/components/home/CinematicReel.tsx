@@ -162,6 +162,7 @@ export default function CinematicReel(): React.JSX.Element {
     const reversed = [...displayItems].reverse();
     return [...reversed, ...reversed, ...reversed];
   }, [displayItems]);
+  const marqueeSpeedFactor = displayItems.length / GUARANTEED_EDITORIAL_SAREES.length;
 
   return (
     <section className="relative w-full overflow-hidden bg-linear-to-b from-[#F7EBEC] via-[#F4E7E4] to-[#E9C9C3]/45 pt-12 sm:pt-16 pb-6 sm:pb-8 font-sans select-none border-t-0">
@@ -191,7 +192,7 @@ export default function CinematicReel(): React.JSX.Element {
         .cinematic-track-left {
           display: flex;
           width: max-content;
-          animation: cinematicStreamLeft 36s linear infinite;
+          animation: cinematicStreamLeft ${75 * marqueeSpeedFactor}s linear infinite;
           will-change: transform;
           transform: translate3d(0, 0, 0);
           backface-visibility: hidden;
@@ -200,7 +201,7 @@ export default function CinematicReel(): React.JSX.Element {
         .cinematic-track-right {
           display: flex;
           width: max-content;
-          animation: cinematicStreamRight 42s linear infinite;
+          animation: cinematicStreamRight ${80 * marqueeSpeedFactor}s linear infinite;
           will-change: transform;
           transform: translate3d(0, 0, 0);
           backface-visibility: hidden;
@@ -219,10 +220,10 @@ export default function CinematicReel(): React.JSX.Element {
 
         @media (max-width: 640px) {
           .cinematic-track-left {
-            animation-duration: 26s;
+            animation-duration: ${70 * marqueeSpeedFactor}s;
           }
           .cinematic-track-right {
-            animation-duration: 30s;
+            animation-duration: ${75 * marqueeSpeedFactor}s;
           }
         }
       `}</style>

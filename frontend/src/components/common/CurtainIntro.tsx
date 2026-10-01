@@ -293,12 +293,14 @@ export default function CurtainIntro({
 
       timelineRef.current?.kill();
 
+      // 1. Gently fade out center card & center seam
       tl.to(glassCardRef.current, {
         opacity: 0,
-        scale: 0.95,
-        y: -15,
-        duration: 0.32,
-        ease: "power2.in",
+        scale: 0.96,
+        y: -12,
+        duration: 0.35,
+        ease: "power2.out",
+        force3D: true,
       });
 
       tl.to(
@@ -307,89 +309,87 @@ export default function CurtainIntro({
           opacity: 0,
           scaleX: 0,
           duration: 0.25,
+          ease: "power2.out",
+          force3D: true,
         },
         0,
-      );
-
-      tl.to(
-        backdropGlowRef.current,
-        {
-          opacity: 0,
-          duration: 0.35,
-          ease: "power1.out",
-        },
-        0.1,
       );
 
       const leftFolds = foldsRef.current.slice(0, TOTAL_FOLDS);
       const rightFolds = foldsRef.current.slice(TOTAL_FOLDS);
 
+      // Ensure folds scale and gather toward outer screen edges
+      gsap.set(leftFolds, { transformOrigin: "left center" });
+      gsap.set(rightFolds, { transformOrigin: "right center" });
+
+      // 2. Curtains gather and part open with silky velvet easing
       tl.to(
         leftFolds,
         {
-          xPercent: (i) => -110 - (TOTAL_FOLDS - i) * 12,
-          scaleX: 0.3,
-          stagger: 0.015,
-          duration: 1.05,
-          ease: "power3.inOut",
+          scaleX: 0.25,
+          xPercent: (i) => -15 - (TOTAL_FOLDS - 1 - i) * 6,
+          stagger: 0.01,
+          duration: 1.25,
+          ease: "power2.inOut",
           force3D: true,
         },
-        0.05,
+        0.18,
       );
 
       tl.to(
         rightFolds,
         {
-          xPercent: (i) => 110 + i * 12,
-          scaleX: 0.3,
-          stagger: -0.015,
-          duration: 1.05,
-          ease: "power3.inOut",
+          scaleX: 0.25,
+          xPercent: (i) => 15 + i * 6,
+          stagger: -0.01,
+          duration: 1.25,
+          ease: "power2.inOut",
           force3D: true,
         },
-        0.05,
+        0.18,
       );
 
       tl.to(
         leftCurtainRef.current,
         {
-          xPercent: -108,
-          duration: 1.1,
-          ease: "power3.inOut",
+          xPercent: -105,
+          duration: 1.3,
+          ease: "power2.inOut",
           force3D: true,
         },
-        0.1,
+        0.18,
       );
 
       tl.to(
         rightCurtainRef.current,
         {
-          xPercent: 108,
-          duration: 1.1,
-          ease: "power3.inOut",
+          xPercent: 105,
+          duration: 1.3,
+          ease: "power2.inOut",
           force3D: true,
         },
-        0.1,
+        0.18,
       );
 
+      // 3. Fade out backdrop ambient glow & root container
       tl.to(
-        blurBackplateRef.current,
+        [backdropGlowRef.current, blurBackplateRef.current],
         {
           opacity: 0,
-          duration: 0.3,
-          ease: "power2.out",
+          duration: 0.65,
+          ease: "power1.out",
         },
-        "-=0.7",
+        "-=0.6",
       );
 
       tl.to(
         rootRef.current,
         {
           opacity: 0,
-          duration: 0.2,
+          duration: 0.25,
           ease: "power1.out",
         },
-        "-=0.25",
+        "-=0.2",
       );
     }, rootRef);
 
@@ -443,8 +443,9 @@ export default function CurtainIntro({
           opacity: 0.85,
           duration: 0.55,
           ease: "power2.out",
+          force3D: true,
         },
-        0.2,
+        0.15,
       );
 
       tl.to(
@@ -453,10 +454,11 @@ export default function CurtainIntro({
           opacity: 1,
           scale: 1,
           y: 0,
-          duration: 0.7,
-          ease: "power3.out",
+          duration: 0.75,
+          ease: "power2.out",
+          force3D: true,
         },
-        0.35,
+        0.25,
       );
 
       tl.call(finishIntro, [], 3.0);
@@ -587,7 +589,8 @@ export default function CurtainIntro({
       <div
         className="pointer-events-none absolute inset-0 z-50"
         style={{
-          boxShadow: "inset 0 0 100px 35px rgba(0, 0, 0, 0.7)",
+          background:
+            "radial-gradient(ellipse at center, transparent 60%, rgba(0, 0, 0, 0.75) 100%)",
         }}
       />
     </div>

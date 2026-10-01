@@ -73,7 +73,7 @@ export default function TestimonialsMarquee() {
         .testimonials-track {
           display: flex;
           width: max-content;
-          animation: testimonialsMarquee 45s linear infinite;
+          animation: testimonialsMarquee 70s linear infinite;
           will-change: transform;
         }
 
