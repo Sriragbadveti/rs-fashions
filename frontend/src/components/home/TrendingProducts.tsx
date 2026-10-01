@@ -19,6 +19,7 @@ const INITIAL_TRENDING_FALLBACK: Product[] = [];
 export default function TrendingProducts() {
   const [products, setProducts] = useState<Product[]>(INITIAL_TRENDING_FALLBACK);
   const [loading, setLoading] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -155,20 +156,46 @@ export default function TrendingProducts() {
         </div>
       </div>
 
-      {/* Marquee Track Container with Fade Edges */}
-      <div className="group/track relative w-full overflow-hidden">
+      <style>{`
+        @keyframes trendingStreamLeft {
+          0% {
+            transform: translate3d(0, 0, 0);
+          }
+          100% {
+            transform: translate3d(-50%, 0, 0);
+          }
+        }
 
+        .trending-track {
+          display: flex;
+          width: max-content;
+          animation: trendingStreamLeft 36s linear infinite;
+          will-change: transform;
+          transform: translate3d(0, 0, 0);
+          backface-visibility: hidden;
+        }
+
+        .trending-track.paused {
+          animation-play-state: paused;
+        }
+
+        @media (max-width: 640px) {
+          .trending-track {
+            animation-duration: 26s;
+          }
+        }
+      `}</style>
+
+      {/* Marquee Track Container with Fade Edges */}
+      <div
+        className="group/track relative w-full overflow-hidden"
+        onMouseEnter={() => setIsPaused(true)}
+        onMouseLeave={() => setIsPaused(false)}
+        onTouchStart={() => setIsPaused(true)}
+        onTouchEnd={() => setIsPaused(false)}
+      >
         {/* Moving Track */}
-        <motion.div
-          className="flex w-max gap-6 px-4"
-          animate={{ x: products.length >= 3 ? ["0%", "-50%"] : "0%" }}
-          transition={{
-            ease: "linear",
-            duration: Math.max(20, products.length * 6),
-            repeat: Infinity,
-          }}
-          whileHover={{ animationPlayState: "paused" }}
-        >
+        <div className={`trending-track gap-6 px-4 ${isPaused ? "paused" : ""}`}>
           {displayItems.map((item, idx) => {
             const primaryImage =
               item.imageUrl ||
@@ -184,7 +211,7 @@ export default function TrendingProducts() {
                 className="group relative flex w-72 shrink-0 flex-col sm:w-[320px] lg:w-80"
               >
                 {/* Saree Card Frame */}
-                <div className="relative block aspect-[0.78] w-full overflow-hidden rounded-[26px] bg-[#E9C9C3]/55 shadow-[0_8px_30px_rgba(42,36,33,0.04)] border border-[#CBC0D3]/50 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(142,61,81,0.14)] hover:-translate-y-1">
+                <div className="relative block aspect-[0.78] w-full overflow-hidden rounded-[26px] bg-[#E9C9C3]/55 shadow-[0_8px_30px_rgba(42,36,33,0.04)] border border-[#CBC0D3]/50 transition-all duration-300 hover:shadow-[0_20px_50px_rgba(142,61,81,0.14)] hover:-translate-y-1 transform-gpu">
                   <Link to={`/product/${item.id}`} className="absolute inset-0 z-0">
                     {/* Primary Image */}
                     {primaryImage ? (
@@ -192,8 +219,9 @@ export default function TrendingProducts() {
                         src={primaryImage}
                         alt={item.name}
                         loading="lazy"
+                        decoding="async"
                         onError={(e) => handleSareeImageError(e, primaryImage)}
-                        className="h-full w-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-105"
+                        className="h-full w-full object-cover object-center transition-transform duration-500 ease-out group-hover:scale-105 will-change-transform"
                       />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center bg-stone-100">
@@ -207,8 +235,9 @@ export default function TrendingProducts() {
                         src={hoverImage}
                         alt={`${item.name} alternate view`}
                         loading="lazy"
+                        decoding="async"
                         onError={(e) => handleSareeImageError(e, hoverImage)}
-                        className="absolute inset-0 h-full w-full object-cover object-center opacity-0 transition-opacity duration-700 ease-out group-hover:opacity-100 group-hover:scale-105"
+                        className="absolute inset-0 h-full w-full object-cover object-center opacity-0 transition-opacity duration-500 ease-out group-hover:opacity-100 group-hover:scale-105 will-change-transform"
                       />
                     )}
 
@@ -242,7 +271,7 @@ export default function TrendingProducts() {
                   })()}
 
                   {/* Floating Glassmorphic Details Plate */}
-                  <div className="absolute inset-x-3 bottom-3 z-10 rounded-2xl bg-white/85 p-3.5 shadow-sm backdrop-blur-md border border-white/70 transition-all duration-300 group-hover:bg-white/95 group-hover:shadow-md">
+                  <div className="absolute inset-x-3 bottom-3 z-10 rounded-2xl bg-white/92 p-3.5 shadow-sm backdrop-blur-xs border border-white/70 transition-all duration-300 group-hover:bg-white group-hover:shadow-md">
                     <div className="flex items-center justify-between text-[10px] tracking-wider text-[#8C7A6B] mb-1">
                       <span className="font-semibold text-[#8E3D51] truncate">
                         SiCo Gadwal Handloom
@@ -274,7 +303,7 @@ export default function TrendingProducts() {
               </div>
             );
           })}
-        </motion.div>
+        </div>
       </div>
 
       {/* Mobile View All Button */}

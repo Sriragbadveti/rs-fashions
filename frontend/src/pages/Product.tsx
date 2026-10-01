@@ -796,10 +796,6 @@ export default function Product() {
                   <span>Dispatched in 24 Hours</span>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-stone-700">
-                  <ShieldCheck size={16} className="text-[#8E3D51] shrink-0" />
-                  <span>100% Genuine Handloom</span>
-                </div>
-                <div className="flex items-center gap-2 text-xs text-stone-700">
                   <Package size={16} className="text-[#8E3D51] shrink-0" />
                   <span>Secure Protective Packaging</span>
                 </div>
@@ -811,45 +807,6 @@ export default function Product() {
                   <span>Return &amp; Exchange Policy &rarr;</span>
                 </Link>
               </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* WHY CHOOSE THIS WEAVE */}
-      <section className="mx-auto max-w-375 px-4 sm:px-6 lg:px-10 mt-16 sm:mt-24">
-        <div className="rounded-3xl border border-stone-200 bg-white p-6 sm:p-10 shadow-xs">
-          <div className="max-w-2xl">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-[#8E3D51]">The Artisan Difference</span>
-            <h2 className="mt-1.5 font-serif text-2xl sm:text-3xl font-normal text-stone-900">
-              Why You'll Love This Saree
-            </h2>
-            <p className="mt-3 text-xs sm:text-sm font-light text-stone-600 leading-relaxed">
-              {product.longDescription ||
-                "Woven on authentic pit looms in Gadwal, Telangana. Crafted using natural silk in the warp and premium cotton in the weft for an effortless drape that stays wrinkle-resistant and breathable all day long."}
-            </p>
-          </div>
-
-          <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4 border-t border-stone-100 pt-6">
-            <div>
-              <h3 className="font-serif text-base text-stone-900">Featherlight Feel</h3>
-              <p className="mt-1 text-xs text-stone-500 font-light">
-                Comfortable weight designed for 10+ hours of festive or ceremonial wear without feeling heavy.
-              </p>
-            </div>
-            <div>
-              <h3 className="font-serif text-base text-stone-900">Interlocked Zari</h3>
-              <p className="mt-1 text-xs text-stone-500 font-light">
-                {effectiveBorderColor
-                  ? `Authentic kuttu border in ${effectiveBorderColor} ensuring rich zari threads never unravel.`
-                  : "Authentic kuttu border technique ensuring the rich golden threads never unravel."}
-              </p>
-            </div>
-            <div>
-              <h3 className="font-serif text-base text-stone-900">Dry Clean Friendly</h3>
-              <p className="mt-1 text-xs text-stone-500 font-light">
-                Store folded inside a breathable cotton bag to maintain genuine shine for generations.
-              </p>
             </div>
           </div>
         </div>
@@ -869,7 +826,7 @@ export default function Product() {
             <div className="mt-5 flex flex-col sm:flex-row lg:flex-col gap-2.5">
               <div className="flex flex-col gap-1.5">
                 <a
-                  href={`https://wa.me/?text=${encodeURIComponent(
+                  href={`https://api.whatsapp.com/send?phone=917842070881&text=${encodeURIComponent(
                     `Hi RS Fashions, I am inquiring about "${product.name}" (Ref: ${product.id}). Is this available?`
                   )}`}
                   target="_blank"
@@ -900,10 +857,6 @@ export default function Product() {
 
           <div className="lg:col-span-8 divide-y divide-stone-200 border-y border-stone-200">
             {[
-              {
-                q: "Is Fall and Pico included?",
-                a: "Yes! Every saree arrives completely finished with pre-stitched matching fall and delicate pico hem roll at no extra charge.",
-              },
               {
                 q: "Does it come with a blouse piece?",
                 a: "Yes, an unstitched 0.8-meter matching contrast blouse piece is connected to the saree drape.",

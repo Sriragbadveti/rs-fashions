@@ -60,10 +60,10 @@ export default function MaterialCollections() {
       <style>{`
         @keyframes continuousMarquee {
           0% {
-            transform: translateX(0);
+            transform: translate3d(0, 0, 0);
           }
           100% {
-            transform: translateX(calc(-100% / 3));
+            transform: translate3d(calc(-100% / 3), 0, 0);
           }
         }
 
@@ -72,16 +72,24 @@ export default function MaterialCollections() {
           width: max-content;
           animation: continuousMarquee 32s linear infinite;
           will-change: transform;
+          transform: translate3d(0, 0, 0);
+          backface-visibility: hidden;
         }
 
         .marquee-track.paused {
           animation-play-state: paused;
         }
+
+        @media (max-width: 640px) {
+          .marquee-track {
+            animation-duration: 24s;
+          }
+        }
       `}</style>
 
       {/* Jewel-Tone Background Light */}
-      <div className="pointer-events-none absolute -left-24 top-1/4 h-80 w-80 rounded-full bg-linear-to-br from-[#CBC0D3]/55 to-[#E9C9C3]/40 blur-[120px]" />
-      <div className="pointer-events-none absolute -right-24 bottom-1/4 h-80 w-80 rounded-full bg-linear-to-tl from-[#E9C9C3]/60 to-[#CBC0D3]/35 blur-[120px]" />
+      <div className="pointer-events-none absolute -left-24 top-1/4 h-80 w-80 rounded-full bg-linear-to-br from-[#CBC0D3]/45 to-[#E9C9C3]/30 blur-3xl" />
+      <div className="pointer-events-none absolute -right-24 bottom-1/4 h-80 w-80 rounded-full bg-linear-to-tl from-[#E9C9C3]/50 to-[#CBC0D3]/25 blur-3xl" />
 
       <div className="mx-auto max-w-[1600px] px-3.5 sm:px-6 lg:px-8">
         {/* Header */}
@@ -118,15 +126,16 @@ export default function MaterialCollections() {
             >
               <Link
                 to={mat.link}
-                className="group relative flex aspect-[3/4.2] w-full flex-col justify-between overflow-hidden rounded-2xl sm:rounded-3xl bg-black p-4 shadow-sm transition-all duration-300 hover:shadow-xl hover:-translate-y-1.5 active:scale-[0.98]"
+                className="group relative flex aspect-[3/4.2] w-full flex-col justify-between overflow-hidden rounded-2xl sm:rounded-3xl bg-black p-4 shadow-sm transition-all duration-300 hover:shadow-xl hover:-translate-y-1.5 active:scale-[0.98] transform-gpu"
               >
                 {/* Saree Image */}
                 <img
                   src={mat.image}
                   alt={mat.name}
                   loading="lazy"
+                  decoding="async"
                   draggable={false}
-                  className="absolute inset-0 h-full w-full object-cover object-center saturate-[1.2] contrast-[1.05] transition-transform duration-700 ease-out group-hover:scale-105 pointer-events-none"
+                  className="absolute inset-0 h-full w-full object-cover object-center saturate-[1.2] contrast-[1.05] transition-transform duration-500 ease-out group-hover:scale-105 pointer-events-none will-change-transform"
                 />
 
                 {/* Dark Gradient Overlay */}

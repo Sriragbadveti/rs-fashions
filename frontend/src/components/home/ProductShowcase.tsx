@@ -330,6 +330,9 @@ export default function ProductShowcase() {
                       border-color 0.25s ease,
                       box-shadow 0.25s ease;
           touch-action: manipulation;
+          will-change: transform;
+          transform: translate3d(0, 0, 0);
+          backface-visibility: hidden;
           z-index: 2;
         }
 
@@ -372,6 +375,9 @@ export default function ProductShowcase() {
           cursor: pointer;
           transition: transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1),
                       opacity 0.3s ease;
+          will-change: transform, opacity;
+          transform: translate3d(0, 0, 0);
+          backface-visibility: hidden;
         }
 
         .psc-visual-card img {
@@ -380,7 +386,9 @@ export default function ProductShowcase() {
           object-fit: cover;
           object-position: top center;
           display: block;
-          transition: transform 0.5s ease;
+          transition: transform 0.4s ease;
+          will-change: transform;
+          backface-visibility: hidden;
         }
 
         .psc-visual-card:hover img {
@@ -730,6 +738,7 @@ export default function ProductShowcase() {
                   src={thumbSrc}
                   alt={item.name}
                   loading="lazy"
+                  decoding="async"
                   onError={(e) => handleSareeImageError(e, thumbSrc)}
                 />
               </button>
@@ -761,6 +770,7 @@ export default function ProductShowcase() {
             <img
               src={resolvedActiveImg}
               alt={activeItem.name}
+              decoding="async"
               onError={(e) => handleSareeImageError(e, resolvedActiveImg)}
             />
           </div>

@@ -384,7 +384,7 @@ export default function ForSaleProducts() {
                   dragElastic={0.15}
                   onDragStart={() => setIsTierDragging(true)}
                   onDragEnd={handleTierDragEnd}
-                  className="flex w-max gap-2"
+                  className="flex w-max gap-2 touch-pan-y transform-gpu will-change-transform"
                 >
                   {clonedTiers.map((tier, idx) => (
                     <div
@@ -438,7 +438,7 @@ export default function ForSaleProducts() {
           dragElastic={0.15}
           onDragStart={() => setIsDragging(true)}
           onDragEnd={handleCardDragEnd}
-          className="flex w-max gap-4 sm:gap-6"
+          className="flex w-max gap-4 sm:gap-6 touch-pan-y transform-gpu will-change-transform"
         >
           {clonedDisplayItems.map((item, idx) => {
             const inCart = isItemInCart(item.id);
@@ -449,15 +449,16 @@ export default function ForSaleProducts() {
               <div
                 key={`card-clone-${item.id}-${idx}`}
                 ref={idx === 0 ? firstCardRef : null}
-                className="group relative flex w-60 shrink-0 flex-col overflow-hidden rounded-2xl border border-stone-200/90 bg-white p-2.5 shadow-xs transition-all duration-300 hover:shadow-md sm:w-67.5 sm:p-3"
+                className="group relative flex w-60 shrink-0 flex-col overflow-hidden rounded-2xl border border-stone-200/90 bg-white p-2.5 shadow-xs transition-all duration-300 hover:shadow-md sm:w-67.5 sm:p-3 transform-gpu"
               >
                 <div className="relative aspect-3/4 w-full overflow-hidden rounded-xl bg-stone-100">
                   <img
                     src={item.imageUrl}
                     alt={item.name}
                     loading="lazy"
+                    decoding="async"
                     draggable={false}
-                    className="h-full w-full object-cover object-center saturate-[1.08] transition-transform duration-500 ease-out group-hover:scale-105 pointer-events-none"
+                    className="h-full w-full object-cover object-center saturate-[1.08] transition-transform duration-500 ease-out group-hover:scale-105 pointer-events-none will-change-transform"
                   />
                   <div className="pointer-events-none absolute inset-0 bg-black/35 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
                   <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-0 transition-all duration-300 group-hover:pointer-events-auto group-hover:opacity-100">

@@ -193,6 +193,8 @@ export default function CinematicReel(): React.JSX.Element {
           width: max-content;
           animation: cinematicStreamLeft 36s linear infinite;
           will-change: transform;
+          transform: translate3d(0, 0, 0);
+          backface-visibility: hidden;
         }
 
         .cinematic-track-right {
@@ -200,6 +202,8 @@ export default function CinematicReel(): React.JSX.Element {
           width: max-content;
           animation: cinematicStreamRight 42s linear infinite;
           will-change: transform;
+          transform: translate3d(0, 0, 0);
+          backface-visibility: hidden;
         }
 
         .cinematic-track-left.paused,
@@ -210,6 +214,7 @@ export default function CinematicReel(): React.JSX.Element {
         .mask-linear-fade {
           -webkit-mask-image: linear-gradient(to right, transparent, black 4%, black 96%, transparent);
           mask-image: linear-gradient(to right, transparent, black 4%, black 96%, transparent);
+          contain: paint;
         }
 
         @media (max-width: 640px) {
@@ -254,13 +259,14 @@ export default function CinematicReel(): React.JSX.Element {
             >
               <Link
                 to={item.link}
-                className="group relative flex aspect-[3/4.5] w-full flex-col justify-between overflow-hidden rounded-2xl sm:rounded-3xl shadow-[0_12px_32px_rgba(42,36,33,0.12)] transition-all duration-500 hover:shadow-[0_22px_48px_rgba(142,61,81,0.28)] hover:-translate-y-2 border border-white/30 hover:border-[#8E3D51]"
+                className="group relative flex aspect-3/4.5 w-full flex-col justify-between overflow-hidden rounded-2xl sm:rounded-3xl shadow-[0_12px_32px_rgba(42,36,33,0.12)] transition-all duration-300 hover:shadow-[0_22px_48px_rgba(142,61,81,0.28)] hover:-translate-y-2 border border-white/30 hover:border-[#8E3D51] transform-gpu"
               >
                 {/* Full-Bleed Image: The Image itself is the card */}
                 <img
                   src={item.image}
                   alt={humanizeText(item.name)}
                   loading="lazy"
+                  decoding="async"
                   draggable={false}
                   onError={(e) => {
                     const fallback = LOCAL_FALLBACK_IMAGES[(idx + 1) % LOCAL_FALLBACK_IMAGES.length];
@@ -268,7 +274,7 @@ export default function CinematicReel(): React.JSX.Element {
                       e.currentTarget.src = fallback;
                     }
                   }}
-                  className="absolute inset-0 h-full w-full object-cover object-center saturate-[1.05] contrast-[1.02] transition-transform duration-700 ease-out group-hover:scale-108"
+                  className="absolute inset-0 h-full w-full object-cover object-center saturate-[1.05] contrast-[1.02] transition-transform duration-500 ease-out group-hover:scale-108 will-change-transform"
                 />
 
                 {/* Scrim Gradient for Crisp Contrast */}
@@ -374,13 +380,14 @@ function SpotlightIngressStage({ items }: { items: ReelItem[] }): React.JSX.Elem
             LEFT FIXED SPOTLIGHT CARD (Permanent Brand Anchor)
             Full-Bleed: The Image Itself IS The Card
         ========================================================== */}
-        <div className="group relative z-20 shrink-0 w-full sm:w-[380px] lg:w-[410px] xl:w-[440px] aspect-[3/4.4] sm:aspect-[3/4.2] rounded-3xl overflow-hidden ring-4 ring-[#8E3D51] flex flex-col justify-between">
+        <div className="group relative z-20 shrink-0 w-full sm:w-95 lg:w-102.5 xl:w-110 aspect-[3/4.4] sm:aspect-[3/4.2] rounded-3xl overflow-hidden ring-4 ring-[#8E3D51] flex flex-col justify-between">
           {/* Full-bleed high-res drape image */}
           <img
             key={activeCard.id}
             src={activeCard.image}
             alt={humanizeText(activeCard.name)}
-            className="absolute inset-0 h-full w-full object-cover object-center saturate-[1.05] contrast-[1.02] transition-transform duration-700 ease-out group-hover:scale-105"
+            decoding="async"
+            className="absolute inset-0 h-full w-full object-cover object-center saturate-[1.05] contrast-[1.02] transition-transform duration-500 ease-out group-hover:scale-105 will-change-transform"
           />
 
           {/* Scrim Gradient for text clarity */}
@@ -430,7 +437,7 @@ function SpotlightIngressStage({ items }: { items: ReelItem[] }): React.JSX.Elem
                 <div
                   key={`ingress-${item.id}-${idx}`}
                   onClick={() => handleCardClick(item)}
-                  className={`group relative flex aspect-[3/4.2] w-56 sm:w-64 md:w-70 shrink-0 cursor-pointer flex-col justify-between overflow-hidden rounded-2xl sm:rounded-3xl transition-all duration-500 ${
+                  className={`group relative flex aspect-[3/4.2] w-56 sm:w-64 md:w-70 shrink-0 cursor-pointer flex-col justify-between overflow-hidden rounded-2xl sm:rounded-3xl transition-all duration-300 transform-gpu ${
                     isCurrent
                       ? "ring-4 ring-[#8E3D51] shadow-[0_16px_40px_rgba(243,198,143,0.3)] -translate-y-2 scale-[1.02]"
                       : "border border-white/25 shadow-[0_10px_28px_rgba(0,0,0,0.25)] hover:shadow-[0_18px_38px_rgba(0,0,0,0.35)] hover:-translate-y-1.5 hover:border-white/50"
@@ -441,6 +448,7 @@ function SpotlightIngressStage({ items }: { items: ReelItem[] }): React.JSX.Elem
                     src={item.image}
                     alt={humanizeText(item.name)}
                     loading="lazy"
+                    decoding="async"
                     draggable={false}
                     onError={(e) => {
                       const fallback = LOCAL_FALLBACK_IMAGES[(idx + 1) % LOCAL_FALLBACK_IMAGES.length];
@@ -448,7 +456,7 @@ function SpotlightIngressStage({ items }: { items: ReelItem[] }): React.JSX.Elem
                         e.currentTarget.src = fallback;
                       }
                     }}
-                    className="absolute inset-0 h-full w-full object-cover object-center saturate-[1.05] contrast-[1.02] transition-transform duration-700 ease-out group-hover:scale-108"
+                    className="absolute inset-0 h-full w-full object-cover object-center saturate-[1.05] contrast-[1.02] transition-transform duration-500 ease-out group-hover:scale-108 will-change-transform"
                   />
 
                   {/* Scrim Overlay */}

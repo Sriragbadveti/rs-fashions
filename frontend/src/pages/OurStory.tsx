@@ -561,13 +561,13 @@ export default function OurStory() {
               </Link>
 
               <a
-                href="https://wa.me/"
+                href="https://api.whatsapp.com/send?phone=917842070881&text=Hi%20RS%20Fashions,%20I%20would%20like%20to%20connect%20with%20you"
                 target="_blank"
                 rel="noreferrer"
                 className="flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-6 py-4 text-xs font-semibold uppercase tracking-[0.18em] text-[#FAF7F2] transition-all hover:bg-white/10 active:scale-95"
               >
                 <FiHelpCircle size={14} className="text-[#D4AF37]" />
-                <span>Contact Us</span>
+                <span>Contact WhatsApp</span>
               </a>
             </div>
           </div>

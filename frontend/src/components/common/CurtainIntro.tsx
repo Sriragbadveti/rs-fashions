@@ -1,7 +1,6 @@
 import React, {
   useCallback,
   useEffect,
-  useId,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -31,7 +30,7 @@ interface ShimmerParticle {
   vy: number;
   vx: number;
   baseVx: number;
-  color: string;
+  colorIdx: number;
 }
 
 const PALETTE_COLORS = [
@@ -54,6 +53,36 @@ function EtherealLuminescentDust({ isExiting }: { isExiting: boolean }) {
     let width = (canvas.width = window.innerWidth);
     let height = (canvas.height = window.innerHeight);
 
+    const isSmallScreen = width < 768;
+    const particleCount = isSmallScreen ? 12 : 24;
+
+    // Pre-render soft glowing particle sprites once to avoid 1,800 per-second GC gradient allocations
+    const spriteSize = 32;
+    const sprites = PALETTE_COLORS.map((col) => {
+      const offCanvas = document.createElement("canvas");
+      offCanvas.width = spriteSize;
+      offCanvas.height = spriteSize;
+      const oCtx = offCanvas.getContext("2d");
+      if (oCtx) {
+        const rad = oCtx.createRadialGradient(
+          spriteSize / 2,
+          spriteSize / 2,
+          0,
+          spriteSize / 2,
+          spriteSize / 2,
+          spriteSize / 2,
+        );
+        rad.addColorStop(0, `rgba(${col}, 1)`);
+        rad.addColorStop(0.35, `rgba(${col}, 0.5)`);
+        rad.addColorStop(1, `rgba(${col}, 0)`);
+        oCtx.fillStyle = rad;
+        oCtx.beginPath();
+        oCtx.arc(spriteSize / 2, spriteSize / 2, spriteSize / 2, 0, Math.PI * 2);
+        oCtx.fill();
+      }
+      return offCanvas;
+    });
+
     const handleResize = () => {
       if (!canvas) return;
       width = canvas.width = window.innerWidth;
@@ -62,60 +91,50 @@ function EtherealLuminescentDust({ isExiting }: { isExiting: boolean }) {
     window.addEventListener("resize", handleResize);
 
     const createParticle = (initialSpawn = false): ShimmerParticle => {
-      const maxLife = 90 + Math.random() * 100;
+      const maxLife = 90 + Math.random() * 90;
       return {
         x: Math.random() * width,
         y: initialSpawn ? Math.random() * height : height + 10 + Math.random() * 20,
-        size: Math.random() * 2.2 + 0.8,
+        size: Math.random() * 2.0 + 0.8,
         alpha: 0.1,
         life: initialSpawn ? Math.random() * maxLife : 0,
         maxLife,
-        vy: -(Math.random() * 1.6 + 0.9),
+        vy: -(Math.random() * 1.5 + 0.8),
         vx: 0,
-        baseVx: (Math.random() - 0.5) * 0.6,
-        color: PALETTE_COLORS[Math.floor(Math.random() * PALETTE_COLORS.length)],
+        baseVx: (Math.random() - 0.5) * 0.5,
+        colorIdx: Math.floor(Math.random() * PALETTE_COLORS.length),
       };
     };
 
-    const particles: ShimmerParticle[] = Array.from({ length: 30 }, () =>
+    const particles: ShimmerParticle[] = Array.from({ length: particleCount }, () =>
       createParticle(true),
     );
 
     const render = () => {
       ctx.clearRect(0, 0, width, height);
-      ctx.globalCompositeOperation = "screen";
 
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
         p.life += 1;
 
         const progress = p.life / p.maxLife;
-        p.vx = p.baseVx + Math.sin(p.life * 0.05) * 0.5;
+        p.vx = p.baseVx + Math.sin(p.life * 0.05) * 0.4;
         p.x += p.vx;
         p.y += p.vy;
 
-        if (progress < 0.2) {
-          p.alpha = (progress / 0.2) * 0.85;
-        } else {
-          p.alpha = (1 - progress) * 0.85;
-        }
+        p.alpha = progress < 0.2 ? (progress / 0.2) * 0.85 : (1 - progress) * 0.85;
 
-        const rad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 2.5);
-        rad.addColorStop(0, `rgba(${p.color}, ${Math.max(0, p.alpha)})`);
-        rad.addColorStop(0.4, `rgba(${p.color}, ${Math.max(0, p.alpha * 0.45)})`);
-        rad.addColorStop(1, `rgba(${p.color}, 0)`);
-
-        ctx.fillStyle = rad;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size * 2.5, 0, Math.PI * 2);
-        ctx.fill();
+        const sprite = sprites[p.colorIdx % sprites.length];
+        const sz = p.size * 5.5;
+        ctx.globalAlpha = Math.max(0, Math.min(1, p.alpha));
+        ctx.drawImage(sprite, p.x - sz / 2, p.y - sz / 2, sz, sz);
 
         if (p.life >= p.maxLife || p.y < -20) {
           particles[i] = createParticle(false);
         }
       }
 
-      ctx.globalCompositeOperation = "source-over";
+      ctx.globalAlpha = 1;
       animId = requestAnimationFrame(render);
     };
 
@@ -148,7 +167,6 @@ interface DraperyHalfProps {
 
 function DraperyHalf({ side, containerRef, foldRefs }: DraperyHalfProps) {
   const isLeft = side === "left";
-  const filterId = useId();
 
   const foldData = useMemo(() => {
     return Array.from({ length: TOTAL_FOLDS }, (_, i) => {
@@ -164,28 +182,17 @@ function DraperyHalf({ side, containerRef, foldRefs }: DraperyHalfProps) {
   return (
     <div
       ref={containerRef}
-      className={`absolute inset-y-0 z-30 flex w-[55%] overflow-hidden ${
+      className={`absolute inset-y-0 z-30 flex w-[55%] overflow-hidden transform-gpu will-change-transform ${
         isLeft ? "left-0 justify-start" : "right-0 justify-end"
       }`}
       style={{
         boxShadow: isLeft
-          ? "24px 0 45px rgba(0,0,0,0.85)"
-          : "-24px 0 45px rgba(0,0,0,0.85)",
+          ? "16px 0 32px rgba(0,0,0,0.75)"
+          : "-16px 0 32px rgba(0,0,0,0.75)",
+        transform: "translate3d(0, 0, 0)",
+        backfaceVisibility: "hidden",
       }}
     >
-      <svg className="pointer-events-none absolute inset-0 h-full w-full opacity-20 mix-blend-overlay">
-        <filter id={filterId}>
-          <feTurbulence
-            type="fractalNoise"
-            baseFrequency="0.9"
-            numOctaves="1"
-            stitchTiles="stitch"
-          />
-          <feColorMatrix type="saturate" values="0" />
-        </filter>
-        <rect width="100%" height="100%" filter={`url(#${filterId})`} />
-      </svg>
-
       <div
         className={`flex h-full w-full ${isLeft ? "flex-row" : "flex-row-reverse"}`}
       >
@@ -325,6 +332,7 @@ export default function CurtainIntro({
           stagger: 0.015,
           duration: 1.05,
           ease: "power3.inOut",
+          force3D: true,
         },
         0.05,
       );
@@ -337,6 +345,7 @@ export default function CurtainIntro({
           stagger: -0.015,
           duration: 1.05,
           ease: "power3.inOut",
+          force3D: true,
         },
         0.05,
       );
@@ -347,6 +356,7 @@ export default function CurtainIntro({
           xPercent: -108,
           duration: 1.1,
           ease: "power3.inOut",
+          force3D: true,
         },
         0.1,
       );
@@ -357,6 +367,7 @@ export default function CurtainIntro({
           xPercent: 108,
           duration: 1.1,
           ease: "power3.inOut",
+          force3D: true,
         },
         0.1,
       );
@@ -386,6 +397,17 @@ export default function CurtainIntro({
   }, [onComplete]);
 
   useEffect(() => {
+    const handleReplay = () => {
+      completedRef.current = false;
+      setIsExiting(false);
+      setIsVisible(true);
+    };
+
+    window.addEventListener("rs:replay-intro", handleReplay);
+    return () => window.removeEventListener("rs:replay-intro", handleReplay);
+  }, []);
+
+  useEffect(() => {
     if (!isVisible) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -395,18 +417,10 @@ export default function CurtainIntro({
       }
     };
 
-    const handleReplay = () => {
-      completedRef.current = false;
-      setIsExiting(false);
-      setIsVisible(true);
-    };
-
     window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("rs:replay-intro", handleReplay);
 
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("rs:replay-intro", handleReplay);
     };
   }, [isVisible, finishIntro]);
 

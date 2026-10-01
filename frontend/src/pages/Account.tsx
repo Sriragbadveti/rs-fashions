@@ -79,7 +79,7 @@ const getWhatsAppTrackingUrl = (order: any) => {
   }
 
   const message = `Namaste RS Fashions Support,\n\n${statusMsg}\n\n*Invoice Ref:* ${invoice}`;
-  return `https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`;
+  return `https://api.whatsapp.com/send?phone=${formattedPhone}&text=${encodeURIComponent(message)}`;
 };
 
 type AccountTab = "orders" | "payments" | "addresses" | "cards" | "profile";
@@ -790,7 +790,7 @@ export default function Account() {
                     {currentUser.phone}
                   </span>
                   {currentUser.email && (
-                    <span className="flex items-center gap-1.5 truncate max-w-[200px] sm:max-w-none">
+                    <span className="flex items-center gap-1.5 truncate max-w-50 sm:max-w-none">
                       <Mail size={13} className="text-amber-400 shrink-0" />
                       <span className="truncate">{currentUser.email}</span>
                     </span>

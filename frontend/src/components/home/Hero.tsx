@@ -51,14 +51,14 @@ export default function Hero() {
         initial={{ opacity: 0, y: 18, scale: 0.985 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
-        className="relative mx-auto flex h-[calc(100dvh-96px)] min-h-130 max-w-[1600px] overflow-hidden rounded-3xl sm:rounded-[2.25rem] bg-[#1A1513] shadow-[0_20px_50px_rgba(26,21,19,0.14)]"
+        className="relative mx-auto flex h-[calc(100dvh-96px)] min-h-130 max-w-[1600px] overflow-hidden rounded-3xl sm:rounded-[2.25rem] bg-[#1A1513] shadow-[0_20px_50px_rgba(26,21,19,0.14)] transform-gpu will-change-transform"
       >
         {/* Single Responsive Hero Image (Portrait on Mobile/Tablet, Landscape on Laptop/Desktop) */}
         <motion.picture
-          initial={{ scale: 1.08 }}
+          initial={{ scale: 1.05 }}
           animate={{ scale: 1 }}
-          transition={{ duration: 1.6, ease: [0.16, 1, 0.3, 1] }}
-          className="absolute inset-0 block h-full w-full"
+          transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+          className="absolute inset-0 block h-full w-full transform-gpu will-change-transform"
         >
           <source
             media="(min-width: 1920px), (min-width: 1080px) and (orientation: landscape)"
@@ -67,6 +67,9 @@ export default function Hero() {
           <img
             src={resolvedPortraitSrc}
             alt="RS Fashions SiCo collection"
+            loading="eager"
+            fetchPriority="high"
+            decoding="async"
             className="h-full w-full object-cover object-top lg:object-[center_18%]"
           />
         </motion.picture>

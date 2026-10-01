@@ -74,6 +74,7 @@ function OfferBanner() {
             src="https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=1600&q=85"
             alt="Handloom Silk Offer"
             loading="lazy"
+            decoding="async"
             className="
               h-full
               w-full

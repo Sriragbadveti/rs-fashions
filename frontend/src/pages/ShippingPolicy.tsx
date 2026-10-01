@@ -189,13 +189,13 @@ export default function ShippingPolicy() {
               </p>
               <div className="flex flex-wrap gap-2.5">
                 <a
-                  href="https://wa.me/?text=Hi%20RS%20Fashions,%20I%20need%20an%20update%20on%20my%20saree%20shipment"
+                  href="https://api.whatsapp.com/send?phone=917842070881&text=Hi%20RS%20Fashions,%20I%20need%20an%20update%20on%20my%20saree%20shipment"
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center gap-2 rounded-xl bg-[#345C38] text-white px-4 py-2.5 text-xs font-semibold tracking-wide hover:bg-[#28492C] transition-colors"
                 >
                   <FaWhatsapp size={15} />
-                  <span>WhatsApp Support</span>
+                  <span>WhatsApp Support (+91 78420 70881)</span>
                 </a>
 
                 <a

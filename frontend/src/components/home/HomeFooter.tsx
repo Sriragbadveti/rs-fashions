@@ -17,9 +17,10 @@ function HomeFooter() {
   }
 
   const defaultMsg = encodeURIComponent("Hello RS Fashions, I would like to inquire about your handcrafted sarees and special offers.");
-  const waNumber = STORE_WHATSAPP_NUMBER || "919876543210";
+  const waNumber = STORE_WHATSAPP_NUMBER || "917842070881";
+  const whatsappUrl = `https://api.whatsapp.com/send?phone=${waNumber}&text=${defaultMsg}`;
   const whatsappWebUrl = `https://web.whatsapp.com/send?phone=${waNumber}&text=${defaultMsg}`;
-  const whatsappAppUrl = `https://wa.me/${waNumber}?text=${defaultMsg}`;
+  const whatsappAppUrl = `https://api.whatsapp.com/send?phone=${waNumber}&text=${defaultMsg}`;
 
   const footerColumns = [
     {
@@ -29,7 +30,7 @@ function HomeFooter() {
         { label: "Gatti Borders", path: "/shop?search=Gatti+borders" },
         { label: "Ma Inti Bangaram", path: "/shop?search=Ma+inti+Bangaram" },
         { label: "Big Kanchi Borders", path: "/shop?search=Big+Kanchi" },
-        { label: "Festive Silk Editions", path: "/shop?category=SiCo+Gadwal+Sarees" },
+        { label: "Gap Border", path: "/shop?category=SiCo+Gadwal+Sarees" },
       ],
     },
     {
@@ -55,16 +56,16 @@ function HomeFooter() {
 
   return (
     <>
-      <footer className="relative isolate overflow-hidden bg-[#8E3D51] font-sans text-[#F7F4EE] selection:bg-white selection:text-[#8E3D51] rounded-t-[3.5rem] sm:rounded-t-[5rem] shadow-[0_-20px_60px_rgba(42,36,33,0.25)] mt-12">
+      <footer className="relative isolate overflow-hidden bg-[#8E3D51] font-sans text-[#F7F4EE] selection:bg-white selection:text-[#8E3D51] rounded-t-[3.5rem] sm:rounded-t-[5rem] shadow-[0_-20px_60px_rgba(42,36,33,0.25)]">
         {/* Ambient background glows */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute -left-28 -top-24 h-112.5 w-112.5 rounded-full bg-linear-to-br from-[#A64D63]/40 via-[#8E3D51]/20 to-transparent blur-[110px]" />
-          <div className="absolute -right-24 top-1/4 h-125 w-125 rounded-full bg-linear-to-bl from-[#D4A373]/30 via-[#C28C57]/15 to-transparent blur-[130px]" />
-          <div className="absolute bottom-0 left-1/3 h-64 w-64 rounded-full bg-[#D4AF37]/15 blur-[100px]" />
+          <div className="absolute -left-28 -top-24 h-112.5 w-112.5 rounded-full bg-linear-to-br from-[#A64D63]/35 via-[#8E3D51]/15 to-transparent blur-3xl" />
+          <div className="absolute -right-24 top-1/4 h-125 w-125 rounded-full bg-linear-to-bl from-[#D4A373]/25 via-[#C28C57]/10 to-transparent blur-3xl" />
+          <div className="absolute bottom-0 left-1/3 h-64 w-64 rounded-full bg-[#D4AF37]/10 blur-3xl" />
           <div className="absolute inset-0 opacity-[0.04] bg-[linear-gradient(#fff_1px,transparent_1px),linear-gradient(90deg,#fff_1px,transparent_1px)] bg-size-[48px_48px]" />
         </div>
 
-        <div className="relative mx-auto max-w-7xl px-5 pb-8 pt-16 sm:px-8 sm:pt-24 sm:pb-10 lg:px-10">
+        <div className="relative mx-auto max-w-7xl px-5 pb-8 pt-12 sm:px-8 sm:pt-16 sm:pb-10 lg:px-10">
           
           {/* Main Section: Brand + Quick Connect */}
           <div className="grid grid-cols-1 items-center gap-10 pb-12 lg:grid-cols-12 lg:gap-14">
@@ -104,7 +105,7 @@ function HomeFooter() {
 
             {/* Quick Connect Card */}
             <div className="lg:col-span-5">
-              <div className="relative overflow-hidden rounded-3xl border border-white/15 bg-white/10 p-6 shadow-[0_16px_40px_-8px_rgba(0,0,0,0.2)] backdrop-blur-xl sm:p-8">
+              <div className="relative overflow-hidden rounded-3xl border border-white/15 bg-white/12 p-6 shadow-[0_16px_40px_-8px_rgba(0,0,0,0.2)] backdrop-blur-xs sm:backdrop-blur-md sm:p-8 transform-gpu">
                 <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
 
                 <div className="relative flex items-center justify-between">
@@ -124,18 +125,19 @@ function HomeFooter() {
                 </p>
 
                 <div className="relative mt-6 grid grid-cols-3 gap-3">
-                  {/* WhatsApp Action Button with options */}
-                  <button
-                    type="button"
-                    onClick={() => setWhatsappModalOpen(true)}
-                    aria-label="WhatsApp Support"
-                    className="group/btn flex flex-col items-center justify-center gap-1.5 rounded-2xl border border-emerald-200 bg-linear-to-b from-[#F0FDF4] to-[#DCFCE7] p-3.5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-emerald-400 cursor-pointer"
+                  {/* WhatsApp Action Button linking directly to WhatsApp chat */}
+                  <a
+                    href={whatsappUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="WhatsApp Support (+91 78420 70881)"
+                    className="group/btn flex flex-col items-center justify-center gap-1.5 rounded-2xl border border-emerald-200 bg-linear-to-b from-[#F0FDF4] to-[#DCFCE7] p-3.5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-emerald-400 cursor-pointer transform-gpu"
                   >
                     <span className="transition-transform duration-300 group-hover/btn:scale-110">
                       <FaWhatsapp size={18} className="text-emerald-600" />
                     </span>
                     <span className="text-[10px] font-bold uppercase tracking-wide text-stone-800">WhatsApp</span>
-                  </button>
+                  </a>
 
                   <a
                     href="mailto:support@rsfashions.com"
