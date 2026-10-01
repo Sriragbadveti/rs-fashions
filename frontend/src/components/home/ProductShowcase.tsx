@@ -1,16 +1,12 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { handleSareeImageError } from "../../utils/imageConverter";
-// NOTE: the pattern photos (all/Kanchi borders/Vintage checks/Gatti border/Gap border/Ma inti
-// bangaram .jpg) were referenced but never committed, which broke the production build. These
-// placeholders use images that exist in the repo; swap the imports back once the files are added
-// to src/assets/images.
-import tempImg1 from "../../assets/images/Home.jpg";
-import tempImg2 from "../../assets/images/Home1.jpg";
-import tempImg3 from "../../assets/images/Home_laptop_1.png";
-import tempImg4 from "../../assets/images/Home.jpg";
-import tempImg5 from "../../assets/images/Home1.jpg";
-import tempImg6 from "../../assets/images/Home.jpg";
+import tempImg1 from "../../assets/images/all.jpg";
+import tempImg2 from "../../assets/images/Kanchi borders.jpg";
+import tempImg3 from "../../assets/images/Vintage checks.jpg";
+import tempImg4 from "../../assets/images/Gatti border.jpg";
+import tempImg5 from "../../assets/images/Gap border.jpg";
+import tempImg6 from "../../assets/images/Ma inti bangaram.jpg";
 
 const localAssets = import.meta.glob<string>("../../assets/**/*", {
   eager: true,
