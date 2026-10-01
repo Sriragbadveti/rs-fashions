@@ -1,4 +1,4 @@
-import { VISIBLE_ORDERS_FILTER, isVisibleOrder } from "../services/orderVisibility.js";
+import { isVisibleOrder } from "../services/orderVisibility.js";
 import { supabase } from "../config/supabase.js";
 import { successResponse, errorResponse } from "../utils/response.js";
 import {
@@ -47,7 +47,6 @@ export async function getTransactions(req, res) {
     const { data, error } = await supabase
       .from("orders")
       .select("*")
-      .or(VISIBLE_ORDERS_FILTER)
       .order("created_at", { ascending: false })
       .limit(300);
 
@@ -126,7 +125,7 @@ export async function getCustomerOrders(req, res) {
     let sbOrders = [];
     if (supabase) {
       try {
-        let query = supabase.from("orders").select("*").or(VISIBLE_ORDERS_FILTER);
+        let query = supabase.from("orders").select("*");
         if (rawPhone && rawEmail) {
           query = query.or(`phone.ilike.%${rawPhone}%,email.ilike.${rawEmail}`);
         } else if (rawPhone) {
@@ -323,11 +322,11 @@ export async function getAnalyticsSummary(req, res) {
     }
 
     const [ordersRes, prodsRes] = await Promise.all([
-      supabase.from("orders").select("total, cgst, sgst, items, created_at").or(VISIBLE_ORDERS_FILTER),
+      supabase.from("orders").select("total, cgst, sgst, items, created_at, payment_status, payment_method"),
       supabase.from("products").select("id, name, price, stock, category"),
     ]);
 
-    const orders = ordersRes.data || [];
+    const orders = (ordersRes.data || []).filter(isVisibleOrder);
     const products = prodsRes.data || [];
 
     const totalRevenue = orders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
