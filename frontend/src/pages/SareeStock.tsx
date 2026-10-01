@@ -247,7 +247,7 @@ function DesignInput({
 function ColorInput({
   value,
   onChange,
-  placeholder = "Select or type shade...",
+  placeholder = "Select, type shade, or leave empty (optional)...",
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -343,8 +343,22 @@ function ColorInput({
             }
           }}
           placeholder={placeholder}
-          className="h-full w-full rounded-2xl bg-transparent py-3 pl-9 pr-9 text-xs font-semibold text-stone-900 outline-none placeholder:text-stone-400 placeholder:font-normal"
+          className="h-full w-full rounded-2xl bg-transparent py-3 pl-9 pr-14 text-xs font-semibold text-stone-900 outline-none placeholder:text-stone-400 placeholder:font-normal"
         />
+
+        {value.trim() && (
+          <button
+            type="button"
+            aria-label="Clear color selection"
+            onClick={(e) => {
+              e.stopPropagation();
+              onChange("");
+            }}
+            className="absolute right-8 flex h-7 w-7 items-center justify-center rounded-lg text-stone-400 hover:bg-stone-100 hover:text-stone-700 transition-colors"
+          >
+            <X size={13} />
+          </button>
+        )}
 
         <button
           type="button"
@@ -375,6 +389,25 @@ function ColorInput({
           </div>
 
           <div className="max-h-56 overflow-y-auto p-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                onChange("");
+                setIsOpen(false);
+              }}
+              className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs transition-colors duration-150 border-b border-stone-100 mb-1 ${!value.trim()
+                  ? "bg-amber-50 font-bold text-[#2A0E20]"
+                  : "text-stone-500 hover:bg-stone-50 font-medium"
+                }`}
+            >
+              <div className="flex items-center gap-2">
+                <span className="flex h-3.5 w-3.5 items-center justify-center rounded border border-dashed border-stone-300 text-[10px] text-stone-400">/</span>
+                <span className="truncate italic">None / No Specific Colour (Optional)</span>
+              </div>
+              {!value.trim() && (
+                <Check size={12} className="ml-3 shrink-0 text-[#8E3D51]" />
+              )}
+            </button>
             {filteredColors.map((color) => {
               const selected = normalizeText(value) === normalizeText(color);
               return (
@@ -1778,29 +1811,30 @@ export default function Catalog({
 
   function handlePrimaryColorChange(color: string) {
     setPrimaryColor(color);
-    if (!color.trim()) return;
-    const slug = generateColorSlug(color.trim());
+    const trimmed = color.trim();
+    const colorName = trimmed;
+    const slug = trimmed ? generateColorSlug(trimmed) : "STANDARD";
 
     setFormVariants((prev) => {
       if (prev.length === 0) {
         return [
           {
-            color: color.trim(),
+            color: colorName,
             colorSlug: slug,
             stock:
               primaryStock.trim() === ""
-                ? 0
+                ? 1
                 : Math.max(0, Number(primaryStock)),
             sku: "",
           },
         ];
       }
 
-      // An existing shade keeps its SKU when its colour name is corrected.
+      // An existing shade keeps its SKU when its colour name is corrected or cleared.
       return [
         {
           ...prev[0],
-          color: color.trim(),
+          color: colorName,
           colorSlug: slug,
         },
         ...prev.slice(1),
@@ -1821,7 +1855,14 @@ export default function Catalog({
           },
           ...prev.slice(1),
         ]
-        : prev
+        : [
+          {
+            color: primaryColor.trim(),
+            colorSlug: primaryColor.trim() ? generateColorSlug(primaryColor.trim()) : "STANDARD",
+            stock: parsed,
+            sku: "",
+          },
+        ]
     );
   }
 
@@ -1832,9 +1873,16 @@ export default function Catalog({
     setFormPurchasePrice("");
     setFormSalePrice("");
     setFormTags("handloom, zari");
-    setFormVariants([]);
+    setFormVariants([
+      {
+        color: "",
+        colorSlug: "STANDARD",
+        stock: 1,
+        sku: "",
+      },
+    ]);
     setPrimaryColor("");
-    setPrimaryStock("");
+    setPrimaryStock("1");
     setFormImages([]);
     setFormIsSpecialOffer(false);
     setFormBorderColor("");
@@ -1848,9 +1896,21 @@ export default function Catalog({
     setFormPurchasePrice(String(product.purchasePrice ?? 0));
     setFormSalePrice(String(product.salePrice ?? 0));
     setFormTags((product.tags || []).join(", "));
-    setFormVariants((product.variants || []).map((v) => ({ ...v })));
+    const loadedVariants = (product.variants || []).map((v) => ({ ...v }));
+    setFormVariants(
+      loadedVariants.length > 0
+        ? loadedVariants
+        : [
+            {
+              color: "",
+              colorSlug: "STANDARD",
+              stock: 1,
+              sku: "",
+            },
+          ]
+    );
     setPrimaryColor(product.variants?.[0]?.color || "");
-    setPrimaryStock(product.variants?.[0] ? String(product.variants[0].stock) : "");
+    setPrimaryStock(product.variants?.[0] ? String(product.variants[0].stock) : "1");
     const initialImgs = Array.isArray(product.images) && product.images.length > 0
       ? product.images
       : product.imageUrl
@@ -1878,16 +1938,34 @@ export default function Catalog({
     if (
       !name ||
       !formPurchasePrice ||
-      !formSalePrice ||
-      formVariants.length === 0
+      !formSalePrice
     ) {
-      alert("Please complete required design title, pricing, and at least one shade variant.");
+      alert("Please complete required design title and pricing.");
       return;
     }
 
     // Variants keep their existing SKUs; new shades are sent without one and the backend
     // allocates an RS SKU for them.
-    const finalVariants = formVariants.map((v) => ({ ...v, sku: v.sku || "" }));
+    const effectiveVariants = formVariants.length > 0
+      ? formVariants
+      : [
+          {
+            color: primaryColor.trim(),
+            colorSlug: primaryColor.trim() ? generateColorSlug(primaryColor.trim()) : "STANDARD",
+            stock: primaryStock.trim() === "" ? 1 : Math.max(0, Number(primaryStock)),
+            sku: "",
+          },
+        ];
+
+    const finalVariants = effectiveVariants.map((v) => {
+      const c = (v.color || "").trim();
+      return {
+        ...v,
+        color: c,
+        colorSlug: c ? generateColorSlug(c) : "STANDARD",
+        sku: v.sku || "",
+      };
+    });
 
     const finalCategory = sicoCategoryId;
     const finalCategoryName = lockedCategoryName;
@@ -2340,12 +2418,14 @@ export default function Catalog({
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="min-w-0">
-                  <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-stone-400">
-                    Primary Signature Shade
+                  <label className="mb-1.5 flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-stone-400">
+                    <span>Primary Signature Shade</span>
+                    <span className="font-normal lowercase text-[9px] text-stone-400">(optional)</span>
                   </label>
                   <ColorInput
                     value={primaryColor}
                     onChange={handlePrimaryColorChange}
+                    placeholder="Select, type shade, or leave empty (optional)..."
                   />
                 </div>
 

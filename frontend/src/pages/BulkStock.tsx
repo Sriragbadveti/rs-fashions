@@ -97,6 +97,7 @@ interface PremiumDropdownProps {
   disabled?: boolean;
   className?: string;
   allowCustom?: boolean;
+  allowClear?: boolean;
   onRegisterCustom?: (customValue: string) => Promise<string | void> | string | void;
   customActionLabel?: string;
 }
@@ -111,6 +112,7 @@ function PremiumDropdown({
   disabled = false,
   className = "",
   allowCustom = false,
+  allowClear = false,
   onRegisterCustom,
   customActionLabel = "Register Color",
 }: PremiumDropdownProps) {
@@ -232,15 +234,32 @@ function PremiumDropdown({
         )}
 
         <span className="min-w-0 flex-1 truncate">
-          <span className="block truncate text-xs font-semibold text-stone-900">
+          <span className={`block truncate text-xs ${value ? "font-semibold text-stone-900" : "font-normal text-stone-400"}`}>
             {selected?.label || placeholder}
           </span>
-          {selected?.description && (
+          {selected?.description && value && (
             <span className="block truncate text-[9.5px] text-stone-400 font-light">
               {selected.description}
             </span>
           )}
         </span>
+
+        {value && allowClear && (
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={(e) => {
+              e.stopPropagation();
+              sound.playClick();
+              onChange("");
+              setSearch("");
+            }}
+            title="Clear selection"
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full hover:bg-stone-200 text-stone-400 hover:text-stone-700 transition-colors"
+          >
+            <X size={12} />
+          </span>
+        )}
 
         {selected?.code && (
           <span className="hidden shrink-0 rounded-md bg-stone-100 px-1.5 py-0.5 font-mono text-[9px] font-bold text-[#8E3D51] sm:inline-block">
@@ -292,6 +311,28 @@ function PremiumDropdown({
           )}
 
           <div className="max-h-56 overflow-y-auto p-1.5 [scrollbar-width:thin]">
+            {allowClear && (
+              <button
+                type="button"
+                onClick={() => {
+                  sound.playClick();
+                  onChange("");
+                  setOpen(false);
+                  setSearch("");
+                }}
+                className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs transition-colors duration-150 border-b border-stone-100 mb-1 ${
+                  !value
+                    ? "bg-[#2A0E20] text-amber-100 font-bold"
+                    : "text-stone-500 hover:bg-stone-50 font-medium"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="flex h-3.5 w-3.5 items-center justify-center rounded border border-dashed border-stone-300 text-[10px]">/</span>
+                  <span className="italic">None (Optional)</span>
+                </div>
+                {!value && <Check size={12} className="ml-3 shrink-0 text-[#8E3D51]" />}
+              </button>
+            )}
             {filteredOptions.length === 0 && !hasCustom ? (
               <div className="px-4 py-6 text-center">
                 <Search size={16} className="mx-auto mb-1.5 text-stone-300" />
@@ -458,8 +499,8 @@ export default function BulkStock({
   const [bulkRows, setBulkRows] = useState<BulkRow[]>([
     {
       id: "row-1",
-      color1: COLOR_CODES[0]?.name || "",
-      color2: COLOR_CODES[1]?.name || "",
+      color1: "",
+      color2: "",
       qty: 5,
       imageUrl: "",
       uploadStatus: "idle",
@@ -520,13 +561,20 @@ export default function BulkStock({
   const [selectedCategoryId, setSelectedCategoryId] = useState("cat_sico_gadwal");
 
   const colorOptions: DropdownOption[] = useMemo(
-    () =>
-      colorPalette.map((color) => ({
+    () => [
+      {
+        value: "",
+        label: "None (Optional)",
+        description: "No specific shade specified",
+        code: "OPT",
+      },
+      ...colorPalette.map((color) => ({
         value: color.name,
         label: color.name,
         description: `Code: ${color.code}`,
         code: color.code,
       })),
+    ],
     [colorPalette]
   );
 
@@ -536,6 +584,7 @@ export default function BulkStock({
   );
 
   const colorCodeFor = (name: string) => {
+    if (!name || !name.trim()) return "STANDARD";
     const obj = colorPalette.find((c) => normalizeText(c.name) === normalizeText(name));
     return obj ? obj.code : generateColorSlug(name);
   };
@@ -563,8 +612,8 @@ export default function BulkStock({
       ...prev,
       {
         id: `row-${Date.now()}-${Math.random()}`,
-        color1: COLOR_CODES[0]?.name || "",
-        color2: COLOR_CODES[1]?.name || "",
+        color1: "",
+        color2: "",
         qty: 5,
         imageUrl: "",
       },
@@ -974,7 +1023,7 @@ export default function BulkStock({
         .map((row) => (failedByRowId.has(row.id) ? { ...row, saveError: failedByRowId.get(row.id) } : row));
       return remaining.length > 0
         ? remaining
-        : [{ id: `bulk-row-${Date.now()}-0`, color1: COLOR_CODES[0]?.name || "", color2: COLOR_CODES[1]?.name || "", qty: 5 }];
+        : [{ id: `bulk-row-${Date.now()}-0`, color1: "", color2: "", qty: 5 }];
     });
 
     if (result.failed.length > 0) {
@@ -1400,22 +1449,26 @@ export default function BulkStock({
                 {/* Dropdowns & SKU */}
                 <div className={`grid flex-1 grid-cols-1 gap-2.5 sm:grid-cols-2 ${orderMode === "dual" ? "xl:grid-cols-4" : "xl:grid-cols-3"}`}>
                   <PremiumDropdown
-                    label="Primary Body Shade"
+                    label="Primary Body Shade (Optional)"
                     value={row.color1}
                     options={colorOptions}
+                    placeholder="Select shade (optional)..."
                     onChange={(value) => updateRow(row.id, "color1", value)}
                     allowCustom={true}
+                    allowClear={true}
                     onRegisterCustom={handleRegisterColor}
                     customActionLabel="Register Color"
                   />
 
                   {orderMode === "dual" ? (
                     <PremiumDropdown
-                      label="Second Tone / Contrast Shade"
+                      label="Second Tone / Contrast Shade (Optional)"
                       value={row.color2}
                       options={colorOptions}
+                      placeholder="Select contrast (optional)..."
                       onChange={(value) => updateRow(row.id, "color2", value)}
                       allowCustom={true}
+                      allowClear={true}
                       onRegisterCustom={handleRegisterColor}
                       customActionLabel="Register Color"
                     />
@@ -1784,8 +1837,8 @@ export default function BulkStock({
                     setBulkRows([
                       {
                         id: `bulk-row-${Date.now()}-0`,
-                        color1: COLOR_CODES[0]?.name || "",
-                        color2: COLOR_CODES[1]?.name || "",
+                        color1: "",
+                        color2: "",
                         qty: 5,
                       },
                     ]);
