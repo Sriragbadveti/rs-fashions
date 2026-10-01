@@ -153,6 +153,17 @@ export async function getBootstrapData(req, res) {
       note: m.note || "",
     }));
 
+    // Thumbnail for sales history: the image stored on the order line, else the catalog photo of
+    // that shade (counter bills don't store one).
+    const productById = new Map(products.map((p) => [p.id, p]));
+    const thumbFor = (item) => {
+      if (item.image) return item.image;
+      const prod = productById.get(item.productId || item.id);
+      if (!prod) return "";
+      const v = (prod.variants || []).find((x) => String(x.color || "").toLowerCase() === String(item.color || "").toLowerCase());
+      return v?.imageUrl || prod.imageUrl || "";
+    };
+
     const sales = (ordersRes.data || []).filter(isVisibleOrder).map((o) => {
       const normalizedItems = (Array.isArray(o.items) ? o.items : []).map((item, idx) => ({
         ...item,
@@ -167,6 +178,7 @@ export async function getBootstrapData(req, res) {
         sku: item.sku || item.id || `RSF-SR-${idx + 1}`,
         color: item.color || "Standard",
         colorSlug: item.colorSlug || "STD",
+        image: thumbFor(item),
       }));
 
       const fullAddress = typeof o.shipping_address === "string"

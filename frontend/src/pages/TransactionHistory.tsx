@@ -122,6 +122,29 @@ const PaymentIcon = ({
   return <ReceiptIndianRupee size={size} />;
 };
 
+/** Tiny photo + SKU for each saree on an order, so the admin can spot what was bought at a glance. */
+const SaleItemThumbs = ({ items }: { items: any[] }) => (
+  <div className="space-y-1">
+    {(items || []).slice(0, 4).map((item: any, idx: number) => {
+      const src = item.image || item.imageUrl || item.images?.[0];
+      return (
+        <div key={item.cartId || idx} className="flex min-w-0 items-center gap-2">
+          {src ? (
+            <img src={src} alt="" loading="lazy" className="h-8 w-8 shrink-0 rounded-md border border-stone-200 object-cover" />
+          ) : (
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-amber-50 text-amber-700"><Package size={12} /></div>
+          )}
+          <div className="min-w-0">
+            <p className="truncate text-[10px] font-semibold text-stone-700">{item.name || "Saree"}</p>
+            <p className="font-mono text-[9px] font-bold text-[#8E3D51]">{item.sku || "N/A"}</p>
+          </div>
+        </div>
+      );
+    })}
+    {(items || []).length > 4 && <p className="text-[9px] text-stone-400">+{items.length - 4} more</p>}
+  </div>
+);
+
 const PaymentBadge = ({ method }: { method: string }) => {
   const normalized = (method || "").toLowerCase();
 
@@ -781,35 +804,11 @@ export default function TransactionHistory({
               </div>
 
               {/* ITEM */}
-              <div className="mt-3 flex min-w-0 items-start gap-2.5 rounded-xl border border-stone-100 bg-white p-3">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-700">
-                  <Package size={14} />
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[11px] font-semibold text-stone-800">
-                    {itemCount === 1
-                      ? firstItem?.name || "Saree"
-                      : `${itemCount} Items`}
-                  </p>
-
-                  {itemCount === 1 ? (
-                    <p className="mt-0.5 text-[9px] text-stone-400">
-                      {totalQty} piece
-                      {totalQty !== 1 ? "s" : ""}
-                      {firstItem?.color
-                        ? ` • ${firstItem.color}`
-                        : ""}
-                    </p>
-                  ) : (
-                    <p className="mt-0.5 break-words text-[9px] leading-4 text-stone-400">
-                      {(sale.items || [])
-                        .map((item: any) => item.name)
-                        .filter(Boolean)
-                        .join(", ")}
-                    </p>
-                  )}
-                </div>
+              <div className="mt-3 min-w-0 rounded-xl border border-stone-100 bg-white p-3">
+                <SaleItemThumbs items={(sale.items || []) as any[]} />
+                <p className="mt-1.5 text-[9px] text-stone-400">
+                  {totalQty} piece{totalQty !== 1 ? "s" : ""}
+                </p>
               </div>
 
               {/* PAYMENT + STATUS */}
@@ -1146,18 +1145,12 @@ export default function TransactionHistory({
                           : `${(sale.items || []).length} Items`}
                       </p>
 
-                      {(sale.items || []).length === 1 ? (
-                        <p className="mt-1 text-[10px] text-stone-400">
-                          {totalQty} piece
-                          {totalQty !== 1 ? "s" : ""}
-                        </p>
-                      ) : (
-                        <p className="mt-1 truncate text-[10px] text-stone-400">
-                          {(sale.items || [])
-                            .map((item: any) => item.name)
-                            .join(", ")}
-                        </p>
-                      )}
+                      <div className="mt-1.5">
+                        <SaleItemThumbs items={(sale.items || []) as any[]} />
+                      </div>
+                      <p className="mt-1 text-[10px] text-stone-400">
+                        {totalQty} piece{totalQty !== 1 ? "s" : ""}
+                      </p>
                     </div>
                   </td>
 
