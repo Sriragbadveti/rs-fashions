@@ -3,7 +3,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { FiArrowDownRight } from "react-icons/fi";
 import homePortraitImg from "../../assets/images/home_banner.jpeg";
-import homeLandscapeImg from "../../assets/images/Home_laptop.png";
+import homeLandscapeImg from "../../assets/images/Home_laptop_1.png";
 
 // Tip: You can either import an image from "../../assets/..." like above,
 // or type a relative path string from src/assets (e.g., "../assets/images/Home.jpg")
