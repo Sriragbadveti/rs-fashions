@@ -443,6 +443,12 @@ test("webhook signatures are checked on the raw body and fail closed in producti
   }
 });
 
+test("Cash on Delivery orders are refused", async () => {
+  const r = await api("POST", "/billing/checkout", { customerPhone: "9876543210", paymentMethod: "cod", items: [{ id: "x", name: "x", quantity: 1, price: 1 }], total: 1 }, { auth: false });
+  assert.equal(r.status, 400);
+  assert.match(r.body.message, /Cash on Delivery is no longer available/);
+});
+
 // ------------------------------------------------------------------------------------------
 // Exhaustion (must run last: it consumes the top of the range)
 // ------------------------------------------------------------------------------------------

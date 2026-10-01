@@ -7,7 +7,6 @@ import {
   FiLock,
   FiMapPin,
   FiShoppingBag,
-  FiTruck,
   FiShield,
   FiChevronDown,
   FiPrinter,
@@ -245,7 +244,7 @@ function Checkout() {
     const stateParam = searchParams.get("state") || "";
     const pincodeParam = searchParams.get("pincode") || "";
 
-    if (methodParam === "razorpay" || methodParam === "phonepe" || methodParam === "cod") {
+    if (methodParam === "razorpay" || methodParam === "phonepe") {
       setPaymentMethod(methodParam);
     }
 
@@ -1860,47 +1859,6 @@ function Checkout() {
                         }`}
                       >
                         {paymentMethod === "cashfree" && <FiCheck size={11} />}
-                      </div>
-                    </div>
-                  </button>
-
-                  {/* Cash on Delivery */}
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod("cod")}
-                    className={`w-full rounded-2xl sm:rounded-3xl border p-4 sm:p-5 text-left transition-all duration-200 bg-white ${
-                      paymentMethod === "cod"
-                        ? "border-[#8E3D51] shadow-[0_10px_30px_rgba(142,61,81,0.08)] ring-2 ring-[#8E3D51]/20"
-                        : "border-black/10 hover:border-black/20"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3.5">
-                      <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl bg-[#FAF4ED] text-[#8E3D51]">
-                        <FiTruck size={18} />
-                      </div>
-
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <span className="font-serif text-base sm:text-lg text-[#2A2421]">
-                            Cash on Delivery
-                          </span>
-                          <span className="rounded-full bg-black/5 px-2.5 py-0.5 text-[8.5px] sm:text-[9px] font-medium uppercase tracking-wider text-[#6E6359]">
-                            Doorstep
-                          </span>
-                        </div>
-                        <p className="mt-0.5 text-[10px] sm:text-xs font-light text-[#756A60]">
-                          Pay when your luxury package arrives at your delivery coordinates.
-                        </p>
-                      </div>
-
-                      <div
-                        className={`flex h-4.5 w-4.5 sm:h-5 sm:w-5 shrink-0 items-center justify-center rounded-full border transition-all ${
-                          paymentMethod === "cod"
-                            ? "border-[#8E3D51] bg-[#8E3D51] text-white"
-                            : "border-black/20"
-                        }`}
-                      >
-                        {paymentMethod === "cod" && <FiCheck size={10} />}
                       </div>
                     </div>
                   </button>

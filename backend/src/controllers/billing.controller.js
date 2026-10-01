@@ -100,6 +100,10 @@ async function handleCheckoutUnlocked(req, res) {
     const effectiveEmail = customerEmail || req.body.email || req.body.customer_email || null;
     const effectiveAddress = req.body.shipping_address || req.body.address || null;
 
+    if (String(paymentMethod).toLowerCase() === "cod") {
+      return errorResponse(res, "Cash on Delivery is no longer available. Please pay online.", 400);
+    }
+
     if (!effectivePhone || items.length === 0) {
       return errorResponse(res, "Customer phone and at least one item are required", 400);
     }
