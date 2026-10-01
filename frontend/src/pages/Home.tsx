@@ -1,12 +1,12 @@
 import { motion } from "framer-motion";
 
+import SEO from "../components/common/SEO";
 import Hero from "../components/home/Hero";
 import MaterialCollections from "../components/home/MaterialCollections";
 import ForSaleProducts from "../components/home/ForSaleProducts";
 import TrendingProducts from "../components/home/TrendingProducts";
 import ProductShowcase from "../components/home/ProductShowcase";
-import HomeFooter from "../components/home/HomeFooter";
-// import Marquee from "../components/ui/Marquee";
+import CinematicReel from "../components/home/CinematicReel";
 
 function Home() {
   return (
@@ -24,6 +24,11 @@ function Home() {
         duration: 0.4,
       }}
     >
+      <SEO
+        title="RS Fashions — Authentic Handloom SiCo Gadwal & Silk Sarees"
+        description="Shop authentic handloom SiCo Gadwal sarees, pure Kanchipuram silks, Kuttu border weaves, and bridal heritage collections at RS Fashions. Thoughtfully chosen artisan drapes shipped across India."
+        canonicalPath="/"
+      />
       <Hero />
 
       {/* <Marquee
@@ -38,15 +43,11 @@ function Home() {
       {/* Trending Section: Exclusively displays sarees marked as Special Offer */}
       <TrendingProducts />
 
-      {/* <LoomStories /> */}
-
-      {/* Full-Screen Curved Lookbook Showcase right before HomeFooter */}
+      {/* Full-Screen Curved Lookbook Showcase */}
       <ProductShowcase />
 
-      {/* Footer temporarily hidden — remove display:none to restore */}
-      <div style={{ display: "none" }}>
-        <HomeFooter />
-      </div>
+      {/* Netflix Cinematic View & Infinite Artisan Marquee Reel */}
+      <CinematicReel />
     </motion.div>
   );
 }

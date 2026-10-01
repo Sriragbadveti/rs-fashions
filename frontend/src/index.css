@@ -170,6 +170,49 @@ img {
 }
 
 /* =========================================================
+   CINEMATIC MARQUEE STREAMS
+========================================================= */
+
+@keyframes marquee-infinite {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@keyframes marquee-reverse {
+  0% {
+    transform: translate3d(-50%, 0, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.animate-marquee-infinite {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+  animation: marquee-infinite 42s linear infinite;
+}
+
+.animate-marquee-reverse {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+  animation: marquee-reverse 48s linear infinite;
+}
+
+@media (hover: hover) {
+  .animate-marquee-infinite:hover,
+  .animate-marquee-reverse:hover {
+    animation-play-state: paused;
+  }
+}
+
+/* =========================================================
    REDUCE MOTION
 ========================================================= */
 

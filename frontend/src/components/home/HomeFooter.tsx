@@ -211,6 +211,15 @@ function HomeFooter() {
                       {index < legalLinks.length - 1 && <span className="select-none text-white/40">&bull;</span>}
                     </React.Fragment>
                   ))}
+                  <span className="select-none text-white/40">&bull;</span>
+                  <button
+                    type="button"
+                    onClick={() => window.dispatchEvent(new CustomEvent("rs:replay-intro"))}
+                    className="transition-colors hover:text-[#F3C68F] cursor-pointer inline-flex items-center gap-1 text-[#F3C68F]/90"
+                    title="Watch the grand curtain reveal intro again"
+                  >
+                    <span>Replay Intro</span>
+                  </button>
                 </div>
               </div>
 

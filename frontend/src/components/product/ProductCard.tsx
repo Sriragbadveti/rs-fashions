@@ -39,7 +39,6 @@ function ProductCard({ product }: ProductCardProps) {
             src={primaryImage}
             alt={product.name}
             loading="lazy"
-            decoding="async"
             className="h-full w-full object-cover object-center transition-all duration-700 ease-out group-hover:scale-105"
           />
 
@@ -49,7 +48,6 @@ function ProductCard({ product }: ProductCardProps) {
               src={hoverImage}
               alt={`${product.name} alternate view`}
               loading="lazy"
-              decoding="async"
               className="absolute inset-0 h-full w-full object-cover object-center opacity-0 transition-all duration-700 ease-out group-hover:scale-105 group-hover:opacity-100"
             />
           )}
@@ -61,11 +59,9 @@ function ProductCard({ product }: ProductCardProps) {
         {/* Top Badges */}
         <div className="pointer-events-none absolute inset-x-3 top-3 flex items-center justify-between">
           <div className="flex flex-col gap-1.5">
-            {(product.isSpecialOffer || product.isSpecialEdition || (product.tags || []).some((t: string) => ["special_offer", "special_edition", "limited_edition"].includes(t))) && (
-              <span className="rounded-full bg-[#8E3D51] px-2.5 py-1 text-[8.5px] font-bold uppercase tracking-widest text-white shadow-md backdrop-blur-md">
-                {product.isSpecialEdition ? "Special Edition" : "Special Offer"}
-              </span>
-            )}
+            <span className="rounded-full bg-[#8E3D51] px-2.5 py-1 text-[8.5px] font-bold uppercase tracking-widest text-white shadow-md backdrop-blur-md">
+              Special Offer
+            </span>
             {discountPercentage > 0 ? (
               <span className="rounded-full bg-amber-500/90 px-2.5 py-1 text-[8.5px] font-bold uppercase tracking-widest text-white shadow-sm backdrop-blur-md">
                 {discountPercentage}% Off

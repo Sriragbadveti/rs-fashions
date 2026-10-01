@@ -348,7 +348,7 @@ export default function Auth() {
   };
 
   return (
-    <main className="relative min-h-[100dvh] w-full overflow-x-hidden bg-linear-to-br from-[#F7EBEC] via-[#F4E7E4] to-[#E9C9C3]/55 font-sans text-[#2A2421] flex items-center justify-center py-4 px-3 sm:py-8 sm:px-6 select-none">
+    <main className="relative min-h-dvh w-full overflow-x-hidden bg-linear-to-br from-[#F7EBEC] via-[#F4E7E4] to-[#E9C9C3]/55 font-sans text-[#2A2421] flex items-center justify-center py-4 px-3 sm:py-8 sm:px-6 select-none">
       <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="rsf-blob rsf-blob-1" />
         <div className="rsf-blob rsf-blob-2" />

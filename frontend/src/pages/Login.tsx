@@ -195,9 +195,6 @@ export default function Login({ onLoginSuccess }: LoginProps) {
         <div className="flex-1 flex flex-col justify-between p-8 md:p-12 overflow-y-auto bg-white/50 backdrop-blur-md">
           <div className="my-auto max-w-sm w-full mx-auto">
             <div className="mb-7">
-              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#8E3D51]">
-                Protected Console
-              </span>
               <h2 className="text-2xl font-serif font-medium text-stone-900 tracking-tight mt-0.5">
                 Sign in to Dashboard
               </h2>

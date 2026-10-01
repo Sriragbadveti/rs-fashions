@@ -58,7 +58,7 @@ export default function TestimonialsMarquee() {
   return (
     <aside
       aria-label="Customer Testimonials"
-      className="relative overflow-hidden bg-gradient-to-b from-transparent via-[#F4E7E4]/50 to-[#E9C9C3]/30 py-10 font-sans select-none sm:py-14"
+      className="relative overflow-hidden bg-linear-to-b from-transparent via-[#F4E7E4]/50 to-[#E9C9C3]/30 py-10 font-sans select-none sm:py-14"
     >
       <style>{`
         @keyframes testimonialsMarquee {
@@ -117,14 +117,14 @@ export default function TestimonialsMarquee() {
         onTouchEnd={() => setIsPaused(false)}
       >
         {/* Soft Fade Masks */}
-        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-12 bg-gradient-to-r from-[#F7EBEC] to-transparent sm:w-28" />
-        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-12 bg-gradient-to-l from-[#F7EBEC] to-transparent sm:w-28" />
+        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-12 bg-linear-to-r from-[#F7EBEC] to-transparent sm:w-28" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-12 bg-linear-to-l from-[#F7EBEC] to-transparent sm:w-28" />
 
         <div className={`testimonials-track gap-4 px-4 sm:gap-6 sm:px-8 ${isPaused ? "paused" : ""}`}>
           {marqueeList.map((review, idx) => (
             <article
               key={`${review.id}-${idx}`}
-              className="flex w-[290px] shrink-0 flex-col justify-between rounded-2xl border border-white/80 bg-white/80 p-5 shadow-xs backdrop-blur-md transition-all duration-300 hover:border-[#8E3D51]/40 hover:bg-white hover:shadow-md sm:w-[340px]"
+              className="flex w-72.5 shrink-0 flex-col justify-between rounded-2xl border border-white/80 bg-white/80 p-5 shadow-xs backdrop-blur-md transition-all duration-300 hover:border-[#8E3D51]/40 hover:bg-white hover:shadow-md sm:w-85"
             >
               <div>
                 {/* Star Rating & Verified Badge */}
@@ -137,7 +137,7 @@ export default function TestimonialsMarquee() {
 
                   {review.verifiedBuyer !== false && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-semibold text-emerald-700 border border-emerald-200/60">
-                      <FiCheck size={10} className="stroke-[3]" />
+                      <FiCheck size={10} className="stroke-3" />
                       Verified Patron
                     </span>
                   )}
@@ -163,7 +163,7 @@ export default function TestimonialsMarquee() {
                   <p className="text-[10px] text-stone-500">{review.reviewerLocation}</p>
                 </div>
                 {review.productName && (
-                  <span className="max-w-[130px] truncate text-[9.5px] font-medium text-[#8E3D51]">
+                  <span className="max-w-32.5 truncate text-[9.5px] font-medium text-[#8E3D51]">
                     {review.productName}
                   </span>
                 )}

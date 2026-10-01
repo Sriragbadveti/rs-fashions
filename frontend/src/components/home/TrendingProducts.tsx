@@ -27,28 +27,24 @@ export default function TrendingProducts() {
       const realList = (list || []).filter(
         (p) => p && p.id && !DUMMY_PRODUCT_IDS.has(String(p.id))
       );
-      const trendingItems = realList.filter((p) => {
-        const isSpecialEdition =
-          p.isSpecialEdition === true ||
+      let trendingItems = realList.filter((p) => {
+        const isLimited =
           p.isLimitedEdition === true ||
           (Array.isArray(p.tags) &&
             p.tags.some(
-              (tag) => {
-                const t = String(tag).trim().toLowerCase();
-                return t === "special_edition" || t === "limited_edition";
-              }
+              (tag) => String(tag).trim().toLowerCase() === "limited_edition"
             ));
-        const isSpecialOffer =
+        const isSpecial =
           p.isSpecialOffer === true ||
           (Array.isArray(p.tags) &&
             p.tags.some(
-              (tag) => {
-                const t = String(tag).trim().toLowerCase();
-                return t === "special_offer" || t === "trending" || t === "offers";
-              }
+              (tag) => String(tag).trim().toLowerCase() === "special_offer"
             ));
-        return isSpecialEdition || isSpecialOffer;
+        return isLimited || isSpecial;
       });
+      if (trendingItems.length === 0 && realList.length > 0) {
+        trendingItems = realList.slice(0, 6);
+      }
       return trendingItems;
     }
 
@@ -134,14 +130,14 @@ export default function TrendingProducts() {
           <div>
             <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-100/80 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-[#8E3D51]">
               <Sparkles size={11} className="text-amber-600" />
-              <span>Special Edition &amp; Trending &bull; SiCo Gadwal</span>
+              <span>Limited Edition &amp; Trending &bull; SiCo Gadwal</span>
             </div>
             <h2 className="mt-2 font-serif text-3xl sm:text-5xl font-normal tracking-tight text-[#2A2421]">
-              Special Edition &amp;{" "}
+              Limited Edition &amp;{" "}
               <span className="italic font-light text-[#8E3D51]">Trending Pieces.</span>
             </h2>
             <p className="mt-1.5 text-xs text-[#7A6E64] font-light max-w-lg leading-relaxed">
-              Exclusively curated SiCo Gadwal sarees and special edition weaves handcrafted by our master artisans.
+              Exclusively curated SiCo Gadwal sarees and limited edition weaves handcrafted by our master artisans.
             </p>
           </div>
 
@@ -220,21 +216,19 @@ export default function TrendingProducts() {
                     <div className="absolute inset-0 bg-linear-to-t from-stone-950/75 via-stone-950/20 to-black/10 opacity-70 transition-opacity duration-300 group-hover:opacity-85" />
                   </Link>
 
-                  {/* Special Edition or Special Offer Luxury Ribbon Badge */}
+                  {/* Limited Edition or Special Offer Luxury Ribbon Badge */}
                   {(() => {
-                    const isSpecial =
-                      item.isSpecialEdition === true ||
+                    const isLimited =
                       item.isLimitedEdition === true ||
                       (Array.isArray(item.tags) &&
-                        item.tags.some((t) => {
-                          const tag = String(t).trim().toLowerCase();
-                          return tag === "special_edition" || tag === "limited_edition";
-                        }));
-                    return isSpecial ? (
+                        item.tags.some(
+                          (t) => String(t).trim().toLowerCase() === "limited_edition"
+                        ));
+                    return isLimited ? (
                       <div className="absolute left-3.5 top-3.5 z-10 flex items-center gap-1.5 rounded-full bg-linear-to-r from-purple-950 via-purple-900 to-amber-700 px-3 py-1 shadow-md backdrop-blur-xs border border-amber-300/40">
                         <Sparkles size={11} className="text-amber-300 animate-pulse" />
                         <span className="text-[9.5px] font-bold uppercase tracking-wider text-amber-100">
-                          ✨ Special Edition
+                          ✨ Limited Edition
                         </span>
                       </div>
                     ) : (
