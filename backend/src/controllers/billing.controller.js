@@ -4,6 +4,7 @@ import { invalidateCatalogCache } from "./catalog.controller.js";
 import { invalidateBootstrapCache } from "./bootstrap.controller.js";
 import { saveOrderToStore, getNextSequentialInvoiceNumberFromStore } from "../database/localStore.js";
 import { createPendingOrder } from "../services/onlineOrders.js";
+import { peekNextOrderNumber } from "../services/orderNumber.js";
 import { deductStockForOrderItems, findStockShortages, holdStock, releaseHolds, withStockLock } from "../services/inventory.service.js";
 
 /**
@@ -19,31 +20,7 @@ async function resolveSequentialInvoiceNumber(providedInvoice, providedOrder) {
     return candidate;
   }
 
-  let maxNumber = 0;
-  try {
-    const localNext = getNextSequentialInvoiceNumberFromStore();
-    const localVal = parseInt(localNext, 10);
-    if (!isNaN(localVal) && localVal - 1 > maxNumber) {
-      maxNumber = localVal - 1;
-    }
-  } catch {}
-
-  if (supabase) {
-    try {
-      const { data } = await supabase.from("orders").select("invoice_number, order_number").limit(500);
-      if (Array.isArray(data)) {
-        for (const o of data) {
-          const inv = o.invoice_number || o.order_number;
-          if (inv && /^\d+$/.test(String(inv).trim())) {
-            const val = parseInt(String(inv).trim(), 10);
-            if (!isNaN(val) && val > maxNumber) maxNumber = val;
-          }
-        }
-      }
-    } catch {}
-  }
-
-  return String(maxNumber + 1).padStart(3, "0");
+  return peekNextOrderNumber();
 }
 
 

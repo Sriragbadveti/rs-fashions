@@ -14,13 +14,14 @@ import {
   releaseHolds,
   withStockLock,
 } from "./inventory.service.js";
+import { peekNextOrderNumber, withOrderNumberLock } from "./orderNumber.js";
 import { recordPaymentAlert } from "./paymentStore.js";
 import { invalidateCatalogCache } from "../controllers/catalog.controller.js";
 import { invalidateBootstrapCache } from "../controllers/bootstrap.controller.js";
 
 const ONLINE_HOLD_MS = 30 * 60 * 1000; // Cashfree sessions live ~30 min
 const STALE_PENDING_MS = 2 * 60 * 60 * 1000;
-export const ORDER_NUMBER_PATTERN = /^[A-Za-z0-9_-]{4,60}$/;
+export const ORDER_NUMBER_PATTERN = /^[A-Za-z0-9_-]{3,60}$/;
 
 const holdOf = (notes) => /hold:([\w-]+)/.exec(String(notes || ""))?.[1] || null;
 
@@ -42,13 +43,17 @@ async function getOrder(orderNumber) {
 
 /** POST /billing/pending-order — called by checkout right before the Cashfree payment opens. */
 export async function createPendingOrder(body = {}) {
-  const orderNumber = String(body.orderNumber || "").trim();
+  const clientKey = String(body.orderNumber || "").trim();
   const items = Array.isArray(body.items) ? body.items : [];
   const phone = body.customerPhone || body.phone;
-  if (!ORDER_NUMBER_PATTERN.test(orderNumber)) return { status: 400, body: { success: false, message: "A valid order number is required" } };
+  if (!ORDER_NUMBER_PATTERN.test(clientKey)) return { status: 400, body: { success: false, message: "A valid order number is required" } };
   if (!phone || items.length === 0) return { status: 400, body: { success: false, message: "Customer phone and at least one item are required" } };
 
-  const existing = await getOrder(orderNumber);
+  // A number the server already issued (001, 002…) is a retry of the same order. Anything else is
+  // a temporary client key: the server assigns the next sequential number when saving the order.
+  const isIssued = /^\d{3,}$/.test(clientKey);
+  let orderNumber = clientKey;
+  const existing = isIssued ? await getOrder(orderNumber) : null;
   if (existing && String(existing.payment_status).toLowerCase() === "paid") {
     return { status: 200, body: { success: true, alreadyPaid: true, orderNumber } };
   }
@@ -88,15 +93,30 @@ export async function createPendingOrder(body = {}) {
       const { error } = await supabase.from("orders").update(row).eq("order_number", orderNumber);
       if (error) throw error;
     } else {
-      const { error } = await supabase.from("orders").insert({ id: `ord-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`, ...row });
-      if (error && error.code !== "23505") throw error;
+      await withOrderNumberLock(async () => {
+        for (let attempt = 0; attempt < 5; attempt++) {
+          orderNumber = await peekNextOrderNumber();
+          const { error } = await supabase.from("orders").insert({
+            id: `ord-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+            ...row, order_number: orderNumber, invoice_number: orderNumber,
+          });
+          if (!error) return;
+          if (error.code !== "23505") throw error;
+        }
+        throw new Error("Could not allocate an order number");
+      });
     }
     // Housekeeping: online orders never paid within 2 hours are closed.
     const cutoff = new Date(Date.now() - STALE_PENDING_MS).toISOString();
     await supabase.from("orders").update({ payment_status: "failed", order_status: "cancelled" })
       .eq("payment_status", "pending").eq("payment_method", "cashfree").lt("updated_at", cutoff);
+  } else if (existing) {
+    saveOrderToStore({ id: existing.id || `ord-${Date.now().toString(36)}`, ...row, paymentStatus: "pending", orderStatus: "ordered", orderNumber, invoiceNumber: orderNumber });
   } else {
-    saveOrderToStore({ id: `ord-${Date.now().toString(36)}`, ...row, paymentStatus: "pending", orderStatus: "ordered", orderNumber, invoiceNumber: orderNumber });
+    await withOrderNumberLock(async () => {
+      orderNumber = await peekNextOrderNumber();
+      saveOrderToStore({ id: `ord-${Date.now().toString(36)}`, ...row, order_number: orderNumber, invoice_number: orderNumber, paymentStatus: "pending", orderStatus: "ordered", orderNumber, invoiceNumber: orderNumber });
+    });
   }
   invalidateBootstrapCache();
   return { status: 201, body: { success: true, orderNumber, holdMinutes: 30 } };

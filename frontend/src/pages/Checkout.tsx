@@ -693,7 +693,7 @@ function Checkout() {
     if (!stableOrderNumberRef.current) {
       stableOrderNumberRef.current = existingOrderNumber || `RSF-ORD-${Date.now().toString(36).toUpperCase()}`;
     }
-    const orderNum = stableOrderNumberRef.current;
+    let orderNum = stableOrderNumberRef.current;
 
     // If Cashfree Gateway is selected
     if (paymentMethod === "cashfree") {
@@ -746,6 +746,11 @@ function Checkout() {
             return;
           }
           if (pending.ok) {
+            // The server assigns the sequential order number (001, 002…); use it from here on.
+            if (pending.orderNumber) {
+              orderNum = pending.orderNumber;
+              stableOrderNumberRef.current = pending.orderNumber;
+            }
             try { sessionStorage.setItem(`rs_pending_${orderNum}`, "1"); } catch {}
           }
         }

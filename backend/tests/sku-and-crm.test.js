@@ -394,11 +394,14 @@ test("catalog listing supports card view, single product and pagination", async 
 test("online payment: pending order, webhook finalises once, duplicates and late failures are harmless", async () => {
   const created = (await api("POST", "/catalog", product({ variants: [{ color: "Red", colorSlug: "RED", stock: 2, sku: "" }] }))).body.product;
   const items = [{ id: created.id, productId: created.id, name: "Test Saree", color: "Red", quantity: 1, qty: 1, price: 1000 }];
-  const orderNumber = `RSF-ORD-T${Date.now().toString(36).toUpperCase()}`;
+  const clientKey = `RSF-ORD-T${Date.now().toString(36).toUpperCase()}`;
   const stockOf = async () => (await api("GET", "/catalog/products")).body.products.find((p) => p.id === created.id).stock;
 
-  const pending = await api("POST", "/billing/pending-order", { orderNumber, customerPhone: "9876543210", customerName: "Tester", items, total: 1000, sessionId: "sess-pay" }, { auth: false });
+  const pending = await api("POST", "/billing/pending-order", { orderNumber: clientKey, customerPhone: "9876543210", customerName: "Tester", items, total: 1000, sessionId: "sess-pay" }, { auth: false });
   assert.equal(pending.status, 201, JSON.stringify(pending.body));
+  // The server replaces the client's temporary key with the next sequential number (001, 002…).
+  const orderNumber = pending.body.orderNumber;
+  assert.match(orderNumber, /^\d{3,}$/);
   assert.equal(await stockOf(), 2, "stock is only deducted once payment is confirmed");
 
   const event = (status, id) => ({ type: "PAYMENT_SUCCESS_WEBHOOK", data: { order: { order_id: `RSF_${orderNumber}_A1`, order_tags: { orderNumber } }, payment: { cf_payment_id: id, payment_status: status } } });
