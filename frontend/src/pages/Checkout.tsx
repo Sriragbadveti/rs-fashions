@@ -185,8 +185,9 @@ function Checkout() {
   useEffect(() => {
     const session = getUserSession();
     if (!session) {
-      // Guests can check out: no forced sign-in (and no redirect loop when pressing Back).
-      setCurrentUser(null);
+      // replace: the login page takes this entry's place in history, so pressing Back from
+      // the login page returns to the saree instead of bouncing to /checkout and back to /login.
+      navigate("/login?redirect=/checkout", { replace: true });
     } else {
       setCurrentUser(session);
       const savedAddresses = getSavedAddresses(session.phone, session.email, session.id);
@@ -1034,8 +1035,47 @@ function Checkout() {
   }
 
   /* =========================================================
-      1. (Guest checkout allowed; signing in is optional)
+      1. AUTHENTICATION REQUIRED VIEW (Must be logged in to purchase)
   ========================================================== */
+  if (!currentUser) {
+    return (
+      <main className="min-h-screen bg-linear-to-b from-[#F7EBEC] via-[#F4E7E4] to-[#E9C9C3]/40 font-sans px-5 pb-20 pt-20 text-[#2A2421] select-none flex items-center justify-center">
+        <div className="mx-auto max-w-md w-full rounded-3xl bg-white p-8 shadow-xl border border-black/8 text-center space-y-5">
+          <div className="flex h-16 w-16 mx-auto items-center justify-center rounded-2xl bg-[#8E3D51]/10 text-[#8E3D51]">
+            <FiLock size={28} />
+          </div>
+
+          <div>
+            <span className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#8C7A6B]">
+              RS Fashions Private Studio
+            </span>
+            <h1 className="mt-1 font-serif text-2xl font-light text-[#2A2421]">
+              Login Required to Purchase
+            </h1>
+            <p className="mt-2 text-xs font-light leading-relaxed text-[#756A60]">
+              To ensure order authenticity and secure courier tracking, please sign in or create an account to complete your saree purchase. Your cart items remain saved.
+            </p>
+          </div>
+
+          <div className="pt-2 flex flex-col gap-3">
+            <button
+              type="button"
+              onClick={() => navigate("/login?redirect=/checkout")}
+              className="w-full py-3.5 rounded-full bg-[#8E3D51] hover:bg-[#783144] text-white text-xs font-semibold uppercase tracking-[0.16em] shadow-md transition-all active:scale-95"
+            >
+              Sign In or Create Account
+            </button>
+            <Link
+              to="/cart"
+              className="w-full py-3 rounded-full border border-black/10 text-[#2A2421] text-xs font-medium hover:bg-stone-50 transition-colors block text-center"
+            >
+              Return to Shopping Bag
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   /* =========================================================
       2. EMPTY CART VIEW
@@ -1277,15 +1317,6 @@ function Checkout() {
             {/* STEP 1: ADDRESS */}
             {step === "address" && (
               <div>
-                {!currentUser && (
-                  <p className="mb-4 rounded-2xl border border-[#8E3D51]/15 bg-white/70 px-4 py-3 text-xs text-[#756A60]">
-                    Checking out as a guest.{" "}
-                    <Link to="/login?redirect=/checkout" className="font-semibold text-[#8E3D51] underline underline-offset-2">
-                      Sign in
-                    </Link>{" "}
-                    to use saved addresses and track your orders.
-                  </p>
-                )}
                 <div className="mb-5 sm:mb-6">
                   <span className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.24em] text-[#8E3D51]">
                     Step 1 of 2

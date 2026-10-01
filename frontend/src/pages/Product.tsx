@@ -7,6 +7,7 @@ import { type Product as ProductType } from "../data/products";
 import { useCart } from "../context/CartContext";
 import { StoreService } from "../services/supabase";
 import SEO from "../components/common/SEO";
+import { getUserSession } from "../utils/userSession";
 import { getDesignDescription, isAutoDescription } from "../types/designDescriptions";
 
 interface ColorVariantItem {
@@ -177,7 +178,9 @@ export default function Product() {
         selectedSize: "Free Size (5.5m + 0.8m Blouse)",
       });
     }
-    navigate("/checkout");
+    // Signed-out customers go straight to sign-in (no /checkout hop in history), so Back from the
+    // login page returns to this saree.
+    navigate(getUserSession() ? "/checkout" : "/login?redirect=/checkout");
   };
 
   const shareUrl = typeof window !== "undefined" ? window.location.href : "";
