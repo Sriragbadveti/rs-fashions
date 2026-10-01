@@ -26,6 +26,7 @@ import {
   ChevronDown,
   Mail,
   Clock,
+  Trash2,
 } from "lucide-react";
 import type { CustomerProfile } from "../types/inventory";
 import { MOCK_CUSTOMERS } from "../types/inventory";
@@ -33,12 +34,15 @@ import { getSavedCrmCustomers } from "../types/useBilling";
 import { API_BASE } from "../config/api";
 import { useShowroomSettings } from "../types/settings";
 import { adminFetch } from "../utils/adminSession";
+import { useModal } from "../context/ModalContext";
 import { toWhatsAppNumber } from "../utils/celebrations";
 
 interface CRMProps {
   customers?: CustomerProfile[];
   /** Resolves true once the backend has confirmed the customer was saved. */
   onAddCustomer?: (newCustomer: CustomerProfile) => void | Promise<boolean>;
+  /** Permanently removes a customer profile (their past orders and invoices are kept). */
+  onDeleteCustomer?: (customer: CustomerProfile) => void | Promise<boolean>;
 }
 
 type MessageTemplateType =
@@ -502,7 +506,9 @@ function DatePicker({
 export default function CRM({
   customers: initialData = [],
   onAddCustomer,
+  onDeleteCustomer,
 }: CRMProps) {
+  const { confirm } = useModal();
   const [customers, setCustomers] =
     useState<CustomerProfile[]>(() => {
       if (initialData && Array.isArray(initialData)) return initialData;
@@ -1606,6 +1612,25 @@ export default function CRM({
                         className="text-brand-gold transition-transform duration-300 group-hover/action:rotate-12"
                       />
                     </button>
+
+                    {onDeleteCustomer && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const ok = await confirm({
+                            title: "Delete customer profile?",
+                            message: `${client.name || "This customer"} will be removed from your customer list. Their past orders and invoices are kept. This cannot be undone.`,
+                            confirmText: "Delete",
+                            destructive: true,
+                          });
+                          if (ok) await onDeleteCustomer(client);
+                        }}
+                        title="Delete customer profile"
+                        className="p-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.94] focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-300"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
                   </div>
                 </article>
               );

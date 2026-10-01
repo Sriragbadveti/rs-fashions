@@ -1003,6 +1003,24 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       .catch((err) => console.warn("Movement sync error:", err));
   }
 
+  async function handleDeleteCustomer(customer: CustomerProfile): Promise<boolean> {
+    try {
+      const res = await adminFetch(`${API_BASE}/crm/customers/${encodeURIComponent(customer.id)}`, { method: "DELETE" });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.message || `Server returned ${res.status}`);
+      setCustomers((prev) => {
+        const updated = prev.filter((c) => c.id !== customer.id);
+        safeStorageSet("rs_admin_customers", updated);
+        return updated;
+      });
+      await loadLiveBootstrap(true);
+      return true;
+    } catch (err: any) {
+      alert(`Could not delete the customer: ${err?.message || "please try again"}`);
+      return false;
+    }
+  }
+
   async function handleAddCustomer(newCustomer: CustomerProfile): Promise<boolean> {
     sound.playClick();
     setCustomers((prev) => {
@@ -1404,7 +1422,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
               )}
 
               {activeTab === "crm" && (
-                <CRM customers={customers} onAddCustomer={handleAddCustomer} />
+                <CRM customers={customers} onAddCustomer={handleAddCustomer} onDeleteCustomer={handleDeleteCustomer} />
               )}
 
               {activeTab === ("low-stock" as DashboardTab) && (

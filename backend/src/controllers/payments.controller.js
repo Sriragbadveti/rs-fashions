@@ -68,14 +68,20 @@ export async function createCashfreeOrder(req, res) {
     amount,
     currency = "INR",
     customerName = "Valued Customer",
-    customerPhone = "",
-    customerEmail = "customer@rsfashions.in",
+    customerPhone: rawCustomerPhone,
+    customerEmail: rawCustomerEmail,
+    phone: aliasPhone,
+    email: aliasEmail,
     customerId,
     orderNumber,
     idempotencyKey,
     orderNote = "RS Fashions Saree Order",
     returnUrl,
   } = req.body;
+
+  // The storefront sends the customer's details as `phone` / `email`; accept both spellings.
+  const customerPhone = rawCustomerPhone || aliasPhone || "";
+  const customerEmail = rawCustomerEmail || aliasEmail || "customer@rsfashions.in";
 
   const amountInRupees = Number(amount) || 0;
   if (amountInRupees <= 0) {

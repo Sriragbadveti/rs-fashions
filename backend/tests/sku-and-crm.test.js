@@ -523,3 +523,10 @@ test("the RS9999 limit is reported instead of generating an invalid SKU", async 
   assert.ok(all.every((p) => p.id.startsWith("RSF-") || sku.isValidSku(p.id)), "no invalid SKU was stored");
 });
 
+
+test("create-order accepts the storefront's phone/email fields and rejects a missing phone", async () => {
+  const ok = await api("POST", "/payments/cashfree/create-order", { amount: 222, customerName: "T", email: "t@example.com", phone: "+91 9876543210", orderNumber: "RSF-PHONE-TEST-A" }, { auth: false });
+  assert.notEqual(ok.status, 400, JSON.stringify(ok.body));
+  const missing = await api("POST", "/payments/cashfree/create-order", { amount: 222, customerName: "T", orderNumber: "RSF-PHONE-TEST-B" }, { auth: false });
+  assert.equal(missing.status, 400);
+});
