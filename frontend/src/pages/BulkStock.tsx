@@ -64,6 +64,8 @@ interface BulkRow {
   saveError?: string;
   /** Additional photos for this row's product only (the primary photo stays in imageUrl). */
   extraImages?: ExtraImage[];
+  /** Enables the Buy 1/2/3 bundle offers for this row's saree. */
+  specialOffer?: boolean;
 }
 
 interface ExtraImage {
@@ -589,7 +591,7 @@ export default function BulkStock({
   const updateRow = (
     id: string,
     field: keyof BulkRow,
-    value: string | number | undefined
+    value: string | number | boolean | undefined
   ) => {
     setBulkRows((prev) =>
       prev.map((row) => (row.id === id ? { ...row, [field]: value } : row))
@@ -836,6 +838,12 @@ export default function BulkStock({
     }
   };
 
+  const allSpecialOffer = bulkRows.length > 0 && bulkRows.every((r) => r.specialOffer);
+  const toggleSpecialOfferForAll = () => {
+    sound.playClick();
+    setBulkRows((prev) => prev.map((r) => ({ ...r, specialOffer: !allSpecialOffer })));
+  };
+
   const applyQuantityToAll = () => {
     const safeQty = Math.max(1, Number(applyQty) || 1);
     sound.playClick();
@@ -909,7 +917,9 @@ export default function BulkStock({
         tags: [
           "bulk-restock",
           orderMode === "dual" ? "dual-tone" : "single-tone",
+          ...(row.specialOffer ? ["special_offer"] : []),
         ],
+        isSpecialOffer: Boolean(row.specialOffer),
         imageUrl: allImages[0],
         images: allImages.length > 0 ? allImages : undefined,
         ...(borderColor ? { borderColor } : {}),
@@ -1255,6 +1265,16 @@ export default function BulkStock({
 
               <button
                 type="button"
+                onClick={toggleSpecialOfferForAll}
+                title="Enable or disable the Special Offer for every row"
+                className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-amber-200/80 bg-amber-50 px-3 text-xs font-semibold text-amber-900 shadow-2xs transition-all hover:bg-amber-100 active:scale-95"
+              >
+                <Sparkles size={13} className="text-amber-700" />
+                <span>{allSpecialOffer ? "Special Offer: Off for All" : "Special Offer: On for All"}</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={addRow}
                 className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-amber-50 px-3.5 text-xs font-bold text-amber-900 border border-amber-200/70 shadow-2xs transition-all hover:bg-amber-100 active:scale-95"
               >
@@ -1491,6 +1511,20 @@ export default function BulkStock({
                     <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-stone-500">
                       Photos for row #{index + 1} ({(row.imageUrl ? 1 : 0) + (row.extraImages || []).length})
                     </span>
+                    <label
+                      className={`inline-flex cursor-pointer items-center gap-1.5 rounded-xl px-3 py-1.5 text-[11px] font-bold border ${row.specialOffer ? "bg-[#8E3D51] text-white border-[#8E3D51]" : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50"}`}
+                      title="Enables Buy 1 @ ₹2,500 / Buy 2 @ ₹4,900 / Buy 3 @ ₹4,800 for this saree"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={Boolean(row.specialOffer)}
+                        onChange={(e) => updateRow(row.id, "specialOffer", e.target.checked)}
+                        className="h-3 w-3 accent-[#8E3D51]"
+                        data-testid={`special-offer-${index}`}
+                      />
+                      <Sparkles size={12} />
+                      <span>Special Offer</span>
+                    </label>
                     <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-amber-50 px-3 py-1.5 text-[11px] font-bold text-amber-900 border border-amber-200/70 hover:bg-amber-100">
                       <ImagePlus size={12} />
                       <span>Add More Images</span>

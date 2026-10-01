@@ -309,8 +309,30 @@ test("bulk intake: too many photos for one product is rejected for that row only
 });
 
 // ------------------------------------------------------------------------------------------
+// CRM customers (birthday / anniversary)
+// ------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------
+// Bulk intake with multiple photos per product
+// ------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------
 // Exhaustion (must run last: it consumes the top of the range)
 // ------------------------------------------------------------------------------------------
+test("bulk intake: per-row special_offer tag is saved only for the rows that enabled it", async () => {
+  const r = await api("POST", "/inventory/bulk-intake", {
+    products: [
+      { clientRef: "so-on", ...product({ tags: ["bulk-restock", "special_offer"], isSpecialOffer: true }) },
+      { clientRef: "so-off", ...product({ tags: ["bulk-restock"] }) },
+    ],
+  });
+  assert.equal(r.status, 201, JSON.stringify(r.body));
+  const all = (await api("GET", "/catalog/products")).body.products;
+  const on = all.find((p) => p.id === r.body.inserted.find((x) => x.clientRef === "so-on").id);
+  const off = all.find((p) => p.id === r.body.inserted.find((x) => x.clientRef === "so-off").id);
+  assert.equal(on.isSpecialOffer, true);
+  assert.equal(off.isSpecialOffer, false);
+});
+
+
 test("the RS9999 limit is reported instead of generating an invalid SKU", async () => {
   const top = await api("POST", "/catalog", product({ sku: "RS9999" }));
   assert.equal(top.status, 201, JSON.stringify(top.body));
