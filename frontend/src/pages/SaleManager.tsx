@@ -20,6 +20,7 @@ import type {
 } from "../types/inventory";
 import { API_BASE } from "../config/api";
 import { useModal } from "../context/ModalContext";
+import { variantImgProps } from "../utils/imageVariants";
 
 interface SaleManagerProps {
   inventory: Product[];
@@ -579,7 +580,7 @@ export default function SaleManager({ inventory }: SaleManagerProps) {
                   {/* Image Container with Hover Action */}
                   <div className="relative aspect-[3/4] w-full overflow-hidden bg-stone-100">
                     <img
-                      src={item.imageUrl}
+                      {...variantImgProps(item.imageUrl, "sm")}
                       alt={item.name}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
@@ -835,7 +836,7 @@ export default function SaleManager({ inventory }: SaleManagerProps) {
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="w-12 h-14 rounded-xl overflow-hidden bg-stone-100 shrink-0 border border-stone-200">
                         <img
-                          src={prodImg}
+                          {...variantImgProps(prodImg, "sm")}
                           alt={prod.name}
                           className="w-full h-full object-cover"
                         />

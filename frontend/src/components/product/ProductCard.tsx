@@ -3,6 +3,7 @@ import { FiStar, FiArrowUpRight } from "react-icons/fi";
 import { Link } from "react-router-dom";
 
 import type { Product } from "../../data/products";
+import { variantImgProps } from "../../utils/imageVariants";
 
 interface ProductCardProps {
   product: Product;
@@ -36,7 +37,7 @@ function ProductCard({ product }: ProductCardProps) {
         >
           {/* Primary View */}
           <img
-            src={primaryImage}
+            {...variantImgProps(primaryImage, "sm")}
             alt={product.name}
             loading="lazy"
             className="h-full w-full object-cover object-center transition-all duration-700 ease-out group-hover:scale-105"
@@ -45,7 +46,7 @@ function ProductCard({ product }: ProductCardProps) {
           {/* Alternate View on Hover */}
           {hoverImage && (
             <img
-              src={hoverImage}
+              {...variantImgProps(hoverImage, "sm")}
               alt={`${product.name} alternate view`}
               loading="lazy"
               className="absolute inset-0 h-full w-full object-cover object-center opacity-0 transition-all duration-700 ease-out group-hover:scale-105 group-hover:opacity-100"

@@ -18,6 +18,7 @@ import { useCart } from "../context/CartContext";
 import { API_BASE } from "../config/api";
 import type { SaleConfig, SaleProductItem, SaleTierOffer } from "../types/inventory";
 import { type Product } from "../data/products";
+import { variantImgProps } from "../utils/imageVariants";
 
 const DEFAULT_TIERS: SaleTierOffer[] = [
   { id: "tier-1", qty: 1, price: 2500, label: "Buy 1 @2500/-", savingsText: "Special Single Drape Offer" },
@@ -307,7 +308,7 @@ export default function OffersStore() {
                   {/* Image Container with Badge */}
                   <div className="relative aspect-[0.78] w-full overflow-hidden rounded-2xl bg-[#E9C9C3]/55">
                     <img
-                      src={item.imageUrl}
+                      {...variantImgProps(item.imageUrl, "sm")}
                       alt={item.name}
                       loading="lazy"
                       className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"

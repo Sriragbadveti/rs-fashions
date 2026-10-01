@@ -7,6 +7,7 @@ import tempImg3 from "../../assets/images/Home_laptop_1.png";
 import tempImg4 from "../../assets/images/Home.jpg";
 import tempImg5 from "../../assets/images/Home.jpg";
 import tempImg6 from "../../assets/images/Home.jpg";
+import { getImageVariantUrl, fallbackToOriginalImage } from "../../utils/imageVariants";
 
 const localAssets = import.meta.glob<string>("../../assets/**/*", {
   eager: true,
@@ -738,11 +739,11 @@ export default function ProductShowcase() {
                 }}
               >
                 <img
-                  src={thumbSrc}
+                  src={getImageVariantUrl(thumbSrc, "sm")}
                   alt={item.name}
                   loading="lazy"
                   decoding="async"
-                  onError={(e) => handleSareeImageError(e, thumbSrc)}
+                  onError={(e) => { if (!fallbackToOriginalImage(e, thumbSrc)) handleSareeImageError(e, thumbSrc); }}
                 />
               </button>
             );
@@ -771,10 +772,10 @@ export default function ProductShowcase() {
             title={`View ${activeItem.name} in shop`}
           >
             <img
-              src={resolvedActiveImg}
+              src={getImageVariantUrl(resolvedActiveImg, "md")}
               alt={activeItem.name}
               decoding="async"
-              onError={(e) => handleSareeImageError(e, resolvedActiveImg)}
+              onError={(e) => { if (!fallbackToOriginalImage(e, resolvedActiveImg)) handleSareeImageError(e, resolvedActiveImg); }}
             />
           </div>
 

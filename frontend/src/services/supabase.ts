@@ -12,6 +12,7 @@ import {
   prepareImageForUpload,
   type PreparedUpload,
 } from "../utils/imageConverter";
+import { uploadImageVariants } from "../utils/imageVariants";
 
 function adminFetch(url: string, init: RequestInit = {}): Promise<Response> {
   const adminHeaders = getAdminAuthHeaders();
@@ -1069,6 +1070,8 @@ export const StoreService = {
             xhr.open("PUT", signData.signedUrl);
             xhr.timeout = 180000;
             xhr.setRequestHeader("Content-Type", prepared!.contentType);
+            // Filenames are unique and never overwritten, so browsers/CDNs may cache for a year.
+            xhr.setRequestHeader("cache-control", "max-age=31536000");
 
             if (xhr.upload && onProgress) {
               xhr.upload.onprogress = (evt) => {
@@ -1091,6 +1094,10 @@ export const StoreService = {
             // Confirm the object is publicly readable before reporting success.
             const head = await fetch(signData.publicUrl, { method: "HEAD", cache: "no-store" }).catch(() => null);
             if (head && head.ok) {
+              // Small copies for cards and lists (best effort; failures fall back to the original).
+              if (signData.path) {
+                await uploadImageVariants(prepared.blob, signData.path, API_BASE, adminHeaders);
+              }
               if (onProgress) onProgress(100);
               return { success: true, url: signData.publicUrl, message: "Uploaded via direct CDN" };
             }

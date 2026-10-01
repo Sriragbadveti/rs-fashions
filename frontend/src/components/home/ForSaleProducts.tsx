@@ -6,6 +6,7 @@ import { API_BASE } from "../../config/api";
 import { type Product } from "../../data/products";
 import type { SaleConfig, SaleProductItem, SaleTierOffer } from "../../types/inventory";
 import { useCart } from "../../context/CartContext";
+import { variantImgProps } from "../../utils/imageVariants";
 
 const DEFAULT_TIER_OFFERS: SaleTierOffer[] = [
   { id: "tier-1", qty: 1, price: 2500, label: "Buy 1 @ ₹2,500", savingsText: "Single Piece Special" },
@@ -453,7 +454,7 @@ export default function ForSaleProducts() {
               >
                 <div className="relative aspect-3/4 w-full overflow-hidden rounded-xl bg-stone-100">
                   <img
-                    src={item.imageUrl}
+                    {...variantImgProps(item.imageUrl, "sm")}
                     alt={item.name}
                     loading="lazy"
                     decoding="async"

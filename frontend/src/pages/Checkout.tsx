@@ -26,6 +26,7 @@ import { useCart } from "../context/CartContext";
 import { StoreService } from "../services/supabase";
 import { products, type Product } from "../data/products";
 import { getUserSession, saveAddress, getSavedAddresses, type SavedAddress } from "../utils/userSession";
+import { variantImgProps } from "../utils/imageVariants";
 
 type CheckoutStep = "address" | "payment" | "success";
 type PaymentMethod = "cashfree" | "cod" | "upi" | "razorpay" | "phonepe";
@@ -1018,7 +1019,7 @@ function Checkout() {
                       <div className="flex items-center gap-2.5 min-w-0">
                         {item.image && (
                           <img
-                            src={item.image}
+                            {...variantImgProps(item.image, "sm")}
                             alt=""
                             className="h-10 w-8 rounded object-cover bg-[#F4E7E4] border border-black/5 shrink-0"
                           />
@@ -1324,7 +1325,7 @@ function Checkout() {
                       className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0"
                     >
                       <img
-                        src={item.product.images[0]}
+                        {...variantImgProps(item.product.images[0], "sm")}
                         alt={item.product.name}
                         className="h-11 w-9 rounded-lg object-cover bg-[#EFEAE2] border border-black/5"
                       />
@@ -1958,7 +1959,7 @@ function Checkout() {
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <img
-                          src={item.product.images[0]}
+                          {...variantImgProps(item.product.images[0], "sm")}
                           alt={item.product.name}
                           className="h-12 w-10 shrink-0 rounded-lg object-cover bg-[#EFEAE2] border border-black/5"
                         />

@@ -26,6 +26,7 @@ import {
   isSupportedImageFile,
   fileToVisibleDataUrl,
 } from "../utils/imageConverter";
+import { variantImgProps } from "../utils/imageVariants";
 
 export interface TrendingItem {
   id: string;
@@ -379,7 +380,7 @@ export default function TrendingManager({ inventory }: TrendingManagerProps) {
                   <div className="flex flex-col items-center gap-3 shrink-0">
                     <div className="relative h-44 w-36 overflow-hidden rounded-2xl bg-stone-100 border border-stone-200 shadow-inner group">
                       <img
-                        src={primaryImage}
+                        {...variantImgProps(primaryImage, "sm")}
                         alt={item.name}
                         className="h-full w-full object-cover"
                       />
@@ -669,7 +670,7 @@ export default function TrendingManager({ inventory }: TrendingManagerProps) {
                     <div className="flex items-center gap-3 min-w-0">
                       {prod.imageUrl ? (
                         <img
-                          src={prod.imageUrl}
+                          {...variantImgProps(prod.imageUrl, "sm")}
                           alt={prod.name}
                           className="h-12 w-12 rounded-xl object-cover border border-stone-200 shrink-0"
                         />

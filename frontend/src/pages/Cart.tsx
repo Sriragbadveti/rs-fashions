@@ -16,6 +16,7 @@ import {
 import { Sparkles } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
+import { variantImgProps } from "../utils/imageVariants";
 
 function Cart() {
   const navigate = useNavigate();
@@ -172,7 +173,7 @@ function Cart() {
                         {/* SAREE VISUAL CONTAINER */}
                         <div className="relative aspect-[3/4] w-24 sm:w-32 shrink-0 overflow-hidden rounded-2xl bg-[#E9C9C3]/55">
                           <img
-                            src={item.product.images?.[0]}
+                            {...variantImgProps(item.product.images?.[0], "sm")}
                             alt={item.product.name}
                             className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
                           />

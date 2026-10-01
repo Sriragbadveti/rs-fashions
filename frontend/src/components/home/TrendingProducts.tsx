@@ -6,6 +6,7 @@ import { Sparkles, Package, StarIcon } from "lucide-react";
 import { API_BASE } from "../../config/api";
 import type { Product } from "../../types/inventory";
 import { handleSareeImageError } from "../../utils/imageConverter";
+import { getImageVariantUrl, fallbackToOriginalImage } from "../../utils/imageVariants";
 
 const DUMMY_PRODUCT_IDS = new Set([
   "emerald-sico-gadwal",
@@ -216,11 +217,11 @@ export default function TrendingProducts() {
                     {/* Primary Image */}
                     {primaryImage ? (
                       <img
-                        src={primaryImage}
+                        src={getImageVariantUrl(primaryImage, "sm")}
                         alt={item.name}
                         loading="lazy"
                         decoding="async"
-                        onError={(e) => handleSareeImageError(e, primaryImage)}
+                        onError={(e) => { if (!fallbackToOriginalImage(e, primaryImage)) handleSareeImageError(e, primaryImage); }}
                         className="h-full w-full object-cover object-center transition-transform duration-500 ease-out group-hover:scale-105 will-change-transform"
                       />
                     ) : (
@@ -232,11 +233,11 @@ export default function TrendingProducts() {
                     {/* Alternate Hover Image */}
                     {hoverImage && hoverImage !== primaryImage && (
                       <img
-                        src={hoverImage}
+                        src={getImageVariantUrl(hoverImage, "sm")}
                         alt={`${item.name} alternate view`}
                         loading="lazy"
                         decoding="async"
-                        onError={(e) => handleSareeImageError(e, hoverImage)}
+                        onError={(e) => { if (!fallbackToOriginalImage(e, hoverImage)) handleSareeImageError(e, hoverImage); }}
                         className="absolute inset-0 h-full w-full object-cover object-center opacity-0 transition-opacity duration-500 ease-out group-hover:opacity-100 group-hover:scale-105 will-change-transform"
                       />
                     )}

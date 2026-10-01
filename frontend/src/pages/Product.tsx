@@ -9,6 +9,7 @@ import { StoreService } from "../services/supabase";
 import SEO from "../components/common/SEO";
 import { getUserSession } from "../utils/userSession";
 import { getDesignDescription, isAutoDescription } from "../types/designDescriptions";
+import { variantImgProps } from "../utils/imageVariants";
 
 interface ColorVariantItem {
   name: string;
@@ -383,7 +384,7 @@ export default function Product() {
               {/* Saree Mini Card Preview */}
               <div className="my-3.5 flex items-center gap-3 rounded-xl border border-stone-200 bg-white p-2.5">
                 <img
-                  src={enrichedImages[0]}
+                  {...variantImgProps(enrichedImages[0], "sm")}
                   alt={product.name}
                   className="h-12 w-10 rounded-lg object-cover shrink-0"
                 />
@@ -544,7 +545,7 @@ export default function Product() {
                         : "border-transparent opacity-70 hover:opacity-100"
                     }`}
                   >
-                    <img src={img} alt={`View ${idx + 1}`} className="h-full w-full object-cover" />
+                    <img {...variantImgProps(img, "sm")} alt={`View ${idx + 1}`} className="h-full w-full object-cover" />
                   </button>
                 ))}
               </div>
@@ -552,7 +553,7 @@ export default function Product() {
               {/* Big Stage Image */}
               <div className="relative aspect-3/4 w-full overflow-hidden rounded-3xl bg-[#E9C9C3]/55 shadow-sm">
                 <img
-                  src={enrichedImages[selectedImage] || enrichedImages[0]}
+                  {...variantImgProps(enrichedImages[selectedImage] || enrichedImages[0], "md")}
                   alt={product.name}
                   className="h-full w-full object-cover transition-transform duration-500 hover:scale-105"
                 />
@@ -597,7 +598,7 @@ export default function Product() {
               >
                 {enrichedImages.map((img: string, idx: number) => (
                   <div key={idx} className="relative aspect-3/4 w-full shrink-0 snap-center bg-[#E9C9C3]/55">
-                    <img src={img} alt={`View ${idx + 1}`} className="h-full w-full object-cover" />
+                    <img {...variantImgProps(img, "md")} alt={`View ${idx + 1}`} className="h-full w-full object-cover" />
                   </div>
                 ))}
               </div>
@@ -707,7 +708,7 @@ export default function Product() {
                       >
                         {variant.image ? (
                           <img
-                            src={variant.image}
+                            {...variantImgProps(variant.image, "sm")}
                             alt={variant.name}
                             className="h-8 w-8 rounded-lg object-cover shrink-0 border border-stone-200"
                           />
@@ -943,7 +944,7 @@ export default function Product() {
               >
                 <div className="relative aspect-3/4 w-full overflow-hidden rounded-2xl bg-stone-100">
                   <img
-                    src={rel.images[0]}
+                    {...variantImgProps(rel.images[0], "sm")}
                     alt={rel.name}
                     className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                   />
@@ -990,7 +991,7 @@ export default function Product() {
               >
                 <div className="relative aspect-3/4 w-full overflow-hidden rounded-2xl bg-stone-100">
                   <img
-                    src={rel.images[0]}
+                    {...variantImgProps(rel.images[0], "sm")}
                     alt={rel.name}
                     className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                   />

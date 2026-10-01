@@ -10,6 +10,7 @@ import {
 import { useNavigate } from "react-router-dom";
 
 import { useCart } from "../../context/CartContext";
+import { variantImgProps } from "../../utils/imageVariants";
 
 interface CartDrawerProps {
   open: boolean;
@@ -152,7 +153,7 @@ function CartDrawer({ open, onClose }: CartDrawerProps) {
                         className="h-24 w-18.5 shrink-0 overflow-hidden rounded-xl bg-[#E9C9C3]/55 border border-black/5"
                       >
                         <img
-                          src={item.product.images[0]}
+                          {...variantImgProps(item.product.images[0], "sm")}
                           alt={item.product.name}
                           className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
                         />
