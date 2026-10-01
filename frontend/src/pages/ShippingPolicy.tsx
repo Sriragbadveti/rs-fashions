@@ -192,10 +192,10 @@ export default function ShippingPolicy() {
                   href="https://api.whatsapp.com/send?phone=917842070881&text=Hi%20RS%20Fashions,%20I%20need%20an%20update%20on%20my%20saree%20shipment"
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-2 rounded-xl bg-[#345C38] text-white px-4 py-2.5 text-xs font-semibold tracking-wide hover:bg-[#28492C] transition-colors"
+                  className="inline-flex items-center gap-2 rounded-xl bg-green-600 text-white px-4 py-2.5 text-xs font-semibold tracking-wide hover:bg-[#28492C] transition-colors"
                 >
                   <FaWhatsapp size={15} />
-                  <span>WhatsApp Support (+91 78420 70881)</span>
+                  <span>WhatsApp Support</span>
                 </a>
 
                 <a
