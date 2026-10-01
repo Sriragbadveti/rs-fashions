@@ -89,7 +89,7 @@ function ProductCard({ product }: { product: CardProduct }) {
   const cleanMaterial = (product.material || "SiCo").replace(/silk[\s-]*cotton/gi, "SiCo");
 
   return (
-    <article className="group relative flex h-full flex-col font-sans select-none overflow-hidden rounded-2xl sm:rounded-3xl border border-white/60 bg-white p-2 sm:p-3 shadow-xs transition-shadow duration-200 hover:shadow-md">
+    <article className="group relative flex h-full flex-col font-sans select-none overflow-hidden rounded-2xl sm:rounded-3xl border border-white/60 bg-white p-2 sm:p-3 shadow-xs transition-all duration-300 hover:shadow-lg hover:-translate-y-1 transform-gpu">
       <div className="relative aspect-[3/4.2] w-full overflow-hidden rounded-xl sm:rounded-2xl bg-[#E9C9C3]/55">
         <Link to={`/product/${product.id}`} state={{ product }} className="block h-full w-full">
           <img
@@ -98,16 +98,15 @@ function ProductCard({ product }: { product: CardProduct }) {
             loading="lazy"
             decoding="async"
             onError={(e) => handleSareeImageError(e, primaryImage)}
-            className="h-full w-full object-cover object-center"
+            className="h-full w-full object-cover object-center transition-transform duration-500 ease-out group-hover:scale-105 will-change-transform"
           />
           {hasSecondaryImage && (
             <img
               src={hoverImage}
               alt={`${product.name} alternate view`}
-              loading="lazy"
               decoding="async"
               onError={(e) => handleSareeImageError(e, hoverImage)}
-              className="absolute inset-0 h-full w-full object-cover object-center opacity-0 transition-opacity duration-300 ease-out group-hover:opacity-100"
+              className="absolute inset-0 h-full w-full object-cover object-center opacity-0 transition-all duration-500 ease-out group-hover:opacity-100 group-hover:scale-105 will-change-transform"
             />
           )}
         </Link>
@@ -166,7 +165,7 @@ function HorizontalProductCard({ product, isOffer, offerBadgeText }: { product: 
   const cleanMaterial = (product.material || "SiCo").replace(/silk[\s-]*cotton/gi, "SiCo");
 
   return (
-    <article className="group relative flex w-full overflow-hidden rounded-2xl border border-white/60 bg-white p-2.5 shadow-xs font-sans select-none items-stretch">
+    <article className="group relative flex w-full overflow-hidden rounded-2xl border border-white/60 bg-white p-2.5 shadow-xs font-sans select-none items-stretch transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 transform-gpu">
       {/* Image — stretched to fill the full card height */}
       <Link to={`/product/${product.id}`} state={{ product }} className="relative w-32 shrink-0 overflow-hidden rounded-xl bg-[#E9C9C3]/55 min-h-30">
         <img
@@ -175,16 +174,15 @@ function HorizontalProductCard({ product, isOffer, offerBadgeText }: { product: 
           loading="lazy"
           decoding="async"
           onError={(e) => handleSareeImageError(e, primaryImage)}
-          className="absolute inset-0 h-full w-full object-cover object-center"
+          className="absolute inset-0 h-full w-full object-cover object-center transition-transform duration-500 ease-out group-hover:scale-105 will-change-transform"
         />
         {hasSecondaryImage && (
           <img
             src={hoverImage}
             alt={`${product.name} alternate view`}
-            loading="lazy"
             decoding="async"
             onError={(e) => handleSareeImageError(e, hoverImage)}
-            className="absolute inset-0 h-full w-full object-cover object-center opacity-0 transition-opacity duration-300 ease-out group-hover:opacity-100"
+            className="absolute inset-0 h-full w-full object-cover object-center opacity-0 transition-all duration-500 ease-out group-hover:opacity-100 group-hover:scale-105 will-change-transform"
           />
         )}
         {isOffer && (
