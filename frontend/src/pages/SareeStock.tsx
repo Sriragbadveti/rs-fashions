@@ -71,6 +71,11 @@ import {
   hasHeicMagicBytes,
 } from "../utils/imageConverter";
 
+function cleanPriceInput(val: string): string {
+  if (!val) return "";
+  return val.replace(/^0+(?=\d)/, "");
+}
+
 
 interface CatalogProps {
   inventory: Product[];
@@ -1843,8 +1848,9 @@ export default function Catalog({
   }
 
   function handlePrimaryStockChange(val: string) {
-    setPrimaryStock(val);
-    const parsed = val.trim() === "" ? 0 : Math.max(0, Number(val));
+    const cleaned = cleanPriceInput(val);
+    setPrimaryStock(cleaned);
+    const parsed = cleaned.trim() === "" ? 0 : Math.max(0, Number(cleaned));
 
     setFormVariants((prev) =>
       prev.length > 0
@@ -1893,8 +1899,8 @@ export default function Catalog({
     setEditingProductId(product.id);
     setFormName(product.name || "");
     setFormCategory(sicoCategoryId);
-    setFormPurchasePrice(String(product.purchasePrice ?? 0));
-    setFormSalePrice(String(product.salePrice ?? 0));
+    setFormPurchasePrice(product.purchasePrice ? String(product.purchasePrice) : "");
+    setFormSalePrice(product.salePrice ? String(product.salePrice) : "");
     setFormTags((product.tags || []).join(", "));
     const loadedVariants = (product.variants || []).map((v) => ({ ...v }));
     setFormVariants(
@@ -2436,7 +2442,7 @@ export default function Catalog({
                   <input
                     type="number"
                     min="0"
-                    placeholder="0"
+                    placeholder="e.g. 1"
                     value={primaryStock}
                     onChange={(e) => handlePrimaryStockChange(e.target.value)}
                     className="h-11 w-full rounded-2xl border border-stone-200/80 bg-white/90 px-3.5 text-xs font-semibold outline-none transition-all focus:border-[#D4A373] focus:ring-2 focus:ring-[#D4A373]/10"
@@ -2471,9 +2477,9 @@ export default function Catalog({
                     type="number"
                     min="0"
                     required
-                    placeholder="0"
+                    placeholder="e.g. 1445"
                     value={formPurchasePrice}
-                    onChange={(e) => setFormPurchasePrice(e.target.value)}
+                    onChange={(e) => setFormPurchasePrice(cleanPriceInput(e.target.value))}
                     className="h-11 w-full rounded-2xl border border-stone-200/80 bg-white/90 px-3.5 text-xs font-semibold outline-none transition-all focus:border-[#D4A373] focus:ring-2 focus:ring-[#D4A373]/10"
                   />
                 </div>
@@ -2486,9 +2492,9 @@ export default function Catalog({
                     type="number"
                     min="0"
                     required
-                    placeholder="0"
+                    placeholder="e.g. 1850"
                     value={formSalePrice}
-                    onChange={(e) => setFormSalePrice(e.target.value)}
+                    onChange={(e) => setFormSalePrice(cleanPriceInput(e.target.value))}
                     className="h-11 w-full rounded-2xl border border-stone-200/80 bg-white/90 px-3.5 text-xs font-semibold outline-none transition-all focus:border-[#D4A373] focus:ring-2 focus:ring-[#D4A373]/10"
                   />
                 </div>

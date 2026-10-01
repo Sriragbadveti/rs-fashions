@@ -79,6 +79,11 @@ interface ExtraImage {
   error?: string;
 }
 
+function cleanPriceInput(val: string): string {
+  if (!val) return "";
+  return val.replace(/^0+(?=\d)/, "");
+}
+
 type DropdownOption = {
   value: string;
   label: string;
@@ -493,8 +498,8 @@ export default function BulkStock({
     MOCK_DESIGNS[0]?.slug || ""
   );
 
-  const [purchasePrice, setPurchasePrice] = useState<number>();
-  const [salePrice, setSalePrice] = useState<number>();
+  const [purchasePrice, setPurchasePrice] = useState<string>("");
+  const [salePrice, setSalePrice] = useState<string>("");
 
   const [bulkRows, setBulkRows] = useState<BulkRow[]>([
     {
@@ -975,8 +980,8 @@ export default function BulkStock({
         name: designObj.name,
         categoryId: "cat_sico_gadwal",
         category: categoryName,
-        purchasePrice: purchasePrice ?? 0,
-        salePrice: salePrice ?? 0,
+        purchasePrice: purchasePrice ? Number(purchasePrice) : 0,
+        salePrice: salePrice ? Number(salePrice) : 0,
         tags: [
           "bulk-restock",
           orderMode === "dual" ? "dual-tone" : "single-tone",
@@ -1199,9 +1204,9 @@ export default function BulkStock({
               <input
                 type="number"
                 min={0}
-                placeholder="0"
-                value={purchasePrice ?? ""}
-                onChange={(e) => setPurchasePrice(Number(e.target.value))}
+                placeholder="e.g. 1445"
+                value={purchasePrice}
+                onChange={(e) => setPurchasePrice(cleanPriceInput(e.target.value))}
                 className="h-11 w-full rounded-2xl border border-stone-200/80 bg-white/90 pl-8 pr-3 text-xs font-semibold text-stone-900 outline-none transition-all focus:border-[#D4A373] focus:ring-2 focus:ring-[#D4A373]/10"
               />
             </div>
@@ -1218,9 +1223,9 @@ export default function BulkStock({
               <input
                 type="number"
                 min={0}
-                placeholder="0"
-                value={salePrice ?? ""}
-                onChange={(e) => setSalePrice(Number(e.target.value))}
+                placeholder="e.g. 1850"
+                value={salePrice}
+                onChange={(e) => setSalePrice(cleanPriceInput(e.target.value))}
                 className="h-11 w-full rounded-2xl border border-stone-200/80 bg-white/90 pl-8 pr-3 text-xs font-semibold text-stone-900 outline-none transition-all focus:border-[#D4A373] focus:ring-2 focus:ring-[#D4A373]/10"
               />
             </div>
@@ -1721,7 +1726,7 @@ export default function BulkStock({
                 </span>
               </div>
               <p className="mt-1 text-xl font-serif font-bold text-stone-900">
-                ₹{((salePrice || 0) * totalPieces).toLocaleString("en-IN")}
+                ₹{((Number(salePrice) || 0) * totalPieces).toLocaleString("en-IN")}
               </p>
             </div>
           </div>
