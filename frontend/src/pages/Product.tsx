@@ -10,6 +10,8 @@ import SEO from "../components/common/SEO";
 import { getUserSession } from "../utils/userSession";
 import { getDesignDescription, isAutoDescription } from "../types/designDescriptions";
 import { variantImgProps } from "../utils/imageVariants";
+import ProductCard from "../components/product/ProductCard";
+import RelatedProducts from "../components/product/RelatedProducts";
 
 interface ColorVariantItem {
   name: string;
@@ -929,90 +931,30 @@ export default function Product() {
             </div>
             <Link
               to={`/shop?border=${encodeURIComponent(effectiveBorderColor)}`}
-              className="text-xs font-semibold text-[#8E3D51] hover:underline"
+              className="group inline-flex items-center gap-1.5 text-xs font-semibold text-[#8E3D51] hover:underline"
             >
-              View All {effectiveBorderColor} &rarr;
+              <span>View All {effectiveBorderColor}</span>
+              <ArrowRight size={14} className="transition-transform duration-200 group-hover:translate-x-0.5" />
             </Link>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-5 sm:grid-cols-4">
             {sameBorderProducts.slice(0, 4).map((rel) => (
-              <Link
-                key={rel.id}
-                to={`/product/${rel.id}`}
-                className="group flex flex-col"
-              >
-                <div className="relative aspect-3/4 w-full overflow-hidden rounded-2xl bg-stone-100">
-                  <img
-                    {...variantImgProps(rel.images[0], "sm")}
-                    alt={rel.name}
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  />
-                  {rel.borderColor && (
-                    <span className="absolute bottom-2.5 left-2.5 rounded-lg bg-white/90 px-2.5 py-1 text-[9.5px] font-bold text-[#8E3D51] shadow-xs backdrop-blur-md">
-                      Border: {rel.borderColor}
-                    </span>
-                  )}
-                </div>
-                <div className="mt-2">
-                  <span className="text-[10px] uppercase tracking-wider text-stone-500">{rel.material || "SiCo"}</span>
-                  <h3 className="font-serif text-sm text-stone-900 group-hover:text-[#8E3D51] transition-colors truncate">
-                    {rel.name}
-                  </h3>
-                  <p className="text-xs font-bold text-stone-900 mt-0.5">₹{rel.price.toLocaleString("en-IN")}</p>
-                </div>
-              </Link>
+              <ProductCard key={rel.id} product={rel} showBorderBadge={false} />
             ))}
           </div>
         </section>
       )}
 
-      {/* RELATED PRODUCTS */}
-      {relatedProducts.length > 0 && (
-        <section className="mx-auto max-w-375 px-4 sm:px-6 lg:px-10 mt-16 sm:mt-24">
-          <div className="flex items-end justify-between border-b border-stone-200 pb-4 mb-6">
-            <div>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-[#8E3D51]">More In Store</span>
-              <h2 className="mt-1 font-serif text-2xl sm:text-3xl font-normal text-stone-900">
-                You May Also Like
-              </h2>
-            </div>
-            <Link to="/shop" className="text-xs font-semibold text-[#8E3D51] hover:underline">
-              View All Sarees &rarr;
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {relatedProducts.map((rel) => (
-              <Link
-                key={rel.id}
-                to={`/product/${rel.id}`}
-                className="group flex flex-col"
-              >
-                <div className="relative aspect-3/4 w-full overflow-hidden rounded-2xl bg-stone-100">
-                  <img
-                    {...variantImgProps(rel.images[0], "sm")}
-                    alt={rel.name}
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  />
-                  {rel.borderColor && (
-                    <span className="absolute bottom-2.5 left-2.5 rounded-lg bg-white/90 px-2.5 py-1 text-[9.5px] font-bold text-[#8E3D51] shadow-xs backdrop-blur-md">
-                      Border: {rel.borderColor}
-                    </span>
-                  )}
-                </div>
-                <div className="mt-2">
-                  <span className="text-[10px] uppercase tracking-wider text-stone-500">{rel.material || "SiCo"}</span>
-                  <h3 className="font-serif text-sm text-stone-900 group-hover:text-[#8E3D51] transition-colors truncate">
-                    {rel.name}
-                  </h3>
-                  <p className="text-xs font-bold text-stone-900 mt-0.5">₹{rel.price.toLocaleString("en-IN")}</p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
+      {/* RELATED PRODUCTS (MORE IN STORE) */}
+      <RelatedProducts
+        currentProduct={product}
+        products={allProducts}
+        title="You May Also Like"
+        badge="More In Store"
+        viewAllLink="/shop"
+        maxItems={4}
+      />
 
       {/* PERSISTENT MOBILE FLOATING BUY BAR */}
       <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-stone-200 bg-white/95 px-4 py-3 shadow-lg backdrop-blur-md sm:hidden">
