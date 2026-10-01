@@ -399,7 +399,7 @@ function Navbar() {
 
                     <div className="no-scrollbar mt-3 flex items-center gap-2 overflow-x-auto pb-1">
                       <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wider text-stone-400">Trending:</span>
-                      {["Vintage Checks", "Gatti Borders", "Ma Inti Bangaram", "Big Kanchi"].map((tag) => (
+                      {["Checks", "Gatti Borders", "Ma Inti Bangaram", "Big Kanchi"].map((tag) => (
                         <button
                           key={tag}
                           type="button"
