@@ -275,7 +275,7 @@ export function restoreStockForOrderItems(items, { referenceNumber = "CANCEL", p
 export async function deductStockForItem({
   item,
   referenceNumber = `ORD-${Date.now().toString().slice(-6)}`,
-  paymentMethod = "cod",
+  paymentMethod = "online",
   performedBy = "Online Storefront",
   notePrefix = "Order",
 }) {
@@ -366,6 +366,12 @@ export async function deductStockForItem({
     productVariants = JSON.parse(JSON.stringify(productVariants));
   }
 
+  // History must compare like with like: previous = sum of shade stocks BEFORE this sale (the
+  // products.stock column can lag behind the shade-level numbers), new = the sum after.
+  const previousTotalStock = productVariants.length > 0
+    ? productVariants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0)
+    : previousStock;
+
   // 3. Deduct stock from the matching variant
   let targetVariant = null;
   let targetIdx = -1;
@@ -451,7 +457,7 @@ export async function deductStockForItem({
 
   if (supabase) {
     try {
-      await supabase.from("stock_movements").insert([{
+      const { error: movErr } = await supabase.from("stock_movements").insert([{
         id: `mov-${Date.now()}-${colorSlug}-${Math.random().toString(36).slice(2, 6)}`,
         date: new Date().toLocaleDateString("en-IN", {
           day: "2-digit",
@@ -466,12 +472,13 @@ export async function deductStockForItem({
         color_slug: colorSlug,
         type: "SALE",
         quantity: -qtyToDeduct,
-        previous_stock: previousStock,
+        previous_stock: previousTotalStock,
         new_stock: newTotalStock,
         reference_number: referenceNumber,
         performed_by: performedBy,
-        note: `${notePrefix} #${referenceNumber} (${(paymentMethod || "COD").toUpperCase()})`,
+        note: `${notePrefix} #${referenceNumber} (${String(paymentMethod || "online").toUpperCase()})`,
       }]);
+      if (movErr) console.error(`[InventoryService] Stock history NOT recorded for ${deductedSku} (${referenceNumber}):`, movErr.message);
     } catch (movErr) {
       console.warn("[InventoryService] Failed to insert stock movement:", movErr.message);
     }

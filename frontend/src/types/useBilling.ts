@@ -181,7 +181,7 @@ export const getSavedCrmCustomers = (): CustomerProfile[] => {
         map.set(id, {
           id,
           name: u.name || "Online Patron",
-          phone: u.phone || "9999999999",
+          phone: u.phone || "",
           email: u.email || "",
           city: u.city || "Hyderabad",
           address: u.address || (u.city ? `${u.city}, Telangana` : "Hyderabad, Telangana"),

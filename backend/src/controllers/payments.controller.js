@@ -68,7 +68,7 @@ export async function createCashfreeOrder(req, res) {
     amount,
     currency = "INR",
     customerName = "Valued Customer",
-    customerPhone = "9999999999",
+    customerPhone = "",
     customerEmail = "customer@rsfashions.in",
     customerId,
     orderNumber,
@@ -536,7 +536,7 @@ export async function createCashfreePaymentLink(req, res) {
   const {
     amount,
     customerName = "Valued Customer",
-    customerPhone = "9999999999",
+    customerPhone = "",
     customerEmail = "customer@rsfashions.in",
     invoiceNumber = `RSF-POS-${Date.now().toString().slice(-6)}`,
     items = [],
