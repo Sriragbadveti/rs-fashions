@@ -1,3 +1,4 @@
+import { maxQuantityFor } from "../context/CartContext";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   FiArrowLeft,
@@ -266,7 +267,9 @@ function Cart() {
                                   )
                                 }
                                 aria-label="Increase quantity"
-                                className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-stone-700 shadow-2xs transition-transform active:scale-90"
+                                disabled={item.quantity >= maxQuantityFor(item.product)}
+                                title={item.quantity >= maxQuantityFor(item.product) ? `Only ${maxQuantityFor(item.product)} in stock` : undefined}
+                                className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-stone-700 shadow-2xs transition-transform active:scale-90 disabled:opacity-30 disabled:active:scale-100"
                               >
                                 <FiPlus size={11} />
                               </button>

@@ -3,7 +3,7 @@ import { successResponse, errorResponse } from "../utils/response.js";
 import { invalidateCatalogCache } from "./catalog.controller.js";
 import { invalidateBootstrapCache } from "./bootstrap.controller.js";
 import { saveOrderToStore, getNextSequentialInvoiceNumberFromStore } from "../database/localStore.js";
-import { deductStockForOrderItems } from "../services/inventory.service.js";
+import { deductStockForOrderItems, findStockShortages } from "../services/inventory.service.js";
 
 /**
  * Controller: POS Billing, Counter Invoicing & Coupons
@@ -43,6 +43,21 @@ async function resolveSequentialInvoiceNumber(providedInvoice, providedOrder) {
   }
 
   return String(maxNumber + 1).padStart(3, "0");
+}
+
+
+function stockShortageResponse(res, shortages) {
+  const lines = shortages.map((s) =>
+    s.available <= 0
+      ? `"${s.name}" is out of stock`
+      : `"${s.name}": only ${s.available} available (you asked for ${s.requested})`
+  );
+  return res.status(409).json({
+    success: false,
+    code: "INSUFFICIENT_STOCK",
+    message: `Not enough stock: ${lines.join("; ")}.`,
+    shortages,
+  });
 }
 
 // 1. ATOMIC CHECKOUT
@@ -98,6 +113,11 @@ export async function handleCheckout(req, res) {
           alreadyRecorded: true,
         }, "Sale already recorded in database.");
       }
+
+      // Reject orders for more pieces than are in stock (checked after the idempotency check so
+      // retrying an already-recorded order isn't blocked by its own deduction).
+      const shortages = await findStockShortages(items);
+      if (shortages.length > 0) return stockShortageResponse(res, shortages);
 
       // 1. Record order in orders table
       const { data: orderData, error: orderErr } = await supabase.from("orders").insert([{
@@ -184,6 +204,9 @@ export async function handleCheckout(req, res) {
         invoiceNumber: finalInvoiceNumber,
       }, "Sale recorded and inventory synced successfully", 201);
     }
+
+    const localShortages = await findStockShortages(items);
+    if (localShortages.length > 0) return stockShortageResponse(res, localShortages);
 
     const localSaved = saveOrderToStore({
       id: saleId,
@@ -276,6 +299,17 @@ export async function validateCoupon(req, res) {
     }
 
     return successResponse(res, { valid: false, message: "Coupons unavailable in offline mode" });
+  } catch (err) {
+    return errorResponse(res, err.message, 500);
+  }
+}
+
+// 3. STOCK CHECK (used by checkout BEFORE the customer pays)
+export async function checkStock(req, res) {
+  try {
+    const items = Array.isArray(req.body?.items) ? req.body.items : [];
+    const shortages = await findStockShortages(items);
+    return successResponse(res, { available: shortages.length === 0, shortages }, shortages.length === 0 ? "All items in stock" : "Some items exceed available stock");
   } catch (err) {
     return errorResponse(res, err.message, 500);
   }

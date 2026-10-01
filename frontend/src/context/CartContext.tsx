@@ -43,6 +43,12 @@ export interface TierOfferInfo {
   eligibleCount: number;
 }
 
+/** Most pieces of a saree a customer can hold: its stock (unknown stock = no cap). */
+export function maxQuantityFor(product: { stock?: number }): number {
+  const stock = Number(product?.stock);
+  return Number.isFinite(stock) && product?.stock !== undefined ? Math.max(1, Math.floor(stock)) : Infinity;
+}
+
 /* ============================================================
    CART CONTEXT TYPE
 ============================================================ */
@@ -105,7 +111,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   /* Add Item to Cart */
   const addToCart = useCallback(
     (product: Product, options: AddToCartOptions = {}) => {
-      const quantity = Math.max(1, options.quantity ?? 1);
+      const requested = Math.max(1, options.quantity ?? 1);
       const selectedColor = options.selectedColor || product.colors?.[0];
       const selectedSize = options.selectedSize || product.sizes?.[0] || "Free Size";
 
@@ -117,15 +123,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
             item.selectedSize === selectedSize
         );
 
+        const maxQty = maxQuantityFor(product);
         if (existingIndex > -1) {
           return currentItems.map((item, index) =>
             index === existingIndex
-              ? { ...item, quantity: item.quantity + quantity }
+              ? { ...item, quantity: Math.min(maxQty, item.quantity + requested) }
               : item
           );
         }
 
-        return [...currentItems, { product, quantity, selectedColor, selectedSize }];
+        return [...currentItems, { product, quantity: Math.min(maxQty, requested), selectedColor, selectedSize }];
       });
     },
     []
@@ -168,7 +175,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
             item.selectedColor === selectedColor &&
             item.selectedSize === selectedSize;
 
-          return isMatch ? { ...item, quantity } : item;
+          return isMatch ? { ...item, quantity: Math.min(quantity, maxQuantityFor(item.product)) } : item;
         })
       );
     },

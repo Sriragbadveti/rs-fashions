@@ -1,3 +1,4 @@
+import { maxQuantityFor } from "../context/CartContext";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Link, useNavigate, useParams } from "react-router-dom";
@@ -751,8 +752,8 @@ export default function Product() {
                     <span className="w-10 text-center font-medium text-sm">{quantity}</span>
                     <button
                       type="button"
-                      disabled={isSoldOut}
-                      onClick={() => setQuantity((q) => q + 1)}
+                      disabled={isSoldOut || quantity >= maxQuantityFor(product)}
+                      onClick={() => setQuantity((q) => Math.min(maxQuantityFor(product), q + 1))}
                       className="text-stone-500 hover:text-stone-900 disabled:opacity-30"
                     >
                       <Plus size={14} />

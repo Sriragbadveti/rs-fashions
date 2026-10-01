@@ -377,6 +377,26 @@ function Checkout() {
   // Validate live inventory for every item in cart before initiating or accepting payment
   const validateCartInventory = async (): Promise<boolean> => {
     try {
+      // Authoritative check on the server (totals per product/shade, bypasses stale caches).
+      const server = await StoreService.checkStock(
+        items.map((item) => ({
+          id: String(item.product.id),
+          name: item.product.name,
+          color: item.selectedColor,
+          quantity: item.quantity,
+        }))
+      );
+      if (server && !server.available && server.shortages.length > 0) {
+        const first = server.shortages[0];
+        const bad = items.find((i) => i.product.name === first.name) || items[0];
+        setStockConflict({
+          productId: bad.product.id,
+          productName: first.name,
+          availableStock: Math.max(0, first.available),
+        });
+        setIsProcessing(false);
+        return false;
+      }
       const liveProducts = await StoreService.getProducts();
       for (const item of items) {
         const matched = liveProducts.find((p) => String(p.id) === String(item.product.id));

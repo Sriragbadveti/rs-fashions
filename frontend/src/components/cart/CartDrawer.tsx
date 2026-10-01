@@ -1,3 +1,4 @@
+import { maxQuantityFor } from "../../context/CartContext";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   FiArrowRight,
@@ -230,7 +231,9 @@ function CartDrawer({ open, onClose }: CartDrawerProps) {
                                   item.selectedSize
                                 )
                               }
-                              className="flex h-7 w-7 items-center justify-center text-[#6E6359] hover:text-[#2A2421]"
+                              disabled={item.quantity >= maxQuantityFor(item.product)}
+                              title={item.quantity >= maxQuantityFor(item.product) ? `Only ${maxQuantityFor(item.product)} in stock` : undefined}
+                              className="flex h-7 w-7 items-center justify-center text-[#6E6359] hover:text-[#2A2421] disabled:opacity-30"
                             >
                               <FiPlus size={10} />
                             </button>

@@ -63,6 +63,65 @@ export async function savePersistentVariantsMap(variantsMap) {
 }
 
 /**
+ * Verifies every ordered quantity is in stock BEFORE an order is created. Demand is totalled per
+ * product/shade (the same saree on two lines counts once). Items whose product can't be located
+ * are not blocked (legacy/custom lines). Returns [] when everything is available, otherwise
+ * [{ name, color, requested, available }].
+ */
+export async function findStockShortages(items) {
+  if (!Array.isArray(items) || items.length === 0) return [];
+  const variantsMap = await getPersistentVariantsMap();
+  const localProds = supabase ? [] : getProductsFromStore();
+  const demand = new Map(); // key -> { name, color, requested, available }
+
+  for (const item of items) {
+    const prodId = item.productId || item.id || item.sku;
+    const itemSku = item.sku || null;
+    const itemColor = String(item.color || item.selectedColor || "").trim().toLowerCase();
+    const qty = Math.max(1, Number(item.qty || item.quantity) || 1);
+
+    let prod = null;
+    if (supabase) {
+      for (const id of [prodId, itemSku]) {
+        if (!id || prod) continue;
+        const { data } = await supabase.from("products").select("id, name, stock, colors").eq("id", id).maybeSingle();
+        if (data) prod = data;
+      }
+    } else {
+      prod = localProds.find((p) => p.id === prodId || p.id === itemSku) || null;
+    }
+    if (!prod) continue;
+
+    const variants = Array.isArray(variantsMap[prod.id]) && variantsMap[prod.id].length > 0
+      ? variantsMap[prod.id]
+      : Array.isArray(prod.variants) ? prod.variants : [];
+
+    let key = `p:${prod.id}`;
+    let available = Number(prod.stock) || 0;
+    let color = "";
+    if (variants.length > 0) {
+      const v =
+        variants.find((x) => itemSku && x.sku && x.sku.toLowerCase() === String(itemSku).toLowerCase()) ||
+        variants.find((x) => prodId && x.sku && x.sku.toLowerCase() === String(prodId).toLowerCase()) ||
+        variants.find((x) => itemColor && x.color && x.color.trim().toLowerCase() === itemColor);
+      if (v) {
+        key = `v:${prod.id}:${v.sku || v.color}`;
+        available = Number(v.stock) || 0;
+        color = v.color || "";
+      } else {
+        available = variants.reduce((sum, x) => sum + (Number(x.stock) || 0), 0);
+      }
+    }
+
+    const entry = demand.get(key) || { name: item.name || prod.name, color, requested: 0, available };
+    entry.requested += qty;
+    demand.set(key, entry);
+  }
+
+  return [...demand.values()].filter((d) => d.requested > d.available);
+}
+
+/**
  * Deducts stock for a purchased item both at the variant level and product level.
  * Updates:
  * 1. Supabase products table (stock column)

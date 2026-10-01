@@ -314,6 +314,28 @@ test("bulk intake: too many photos for one product is rejected for that row only
 // ------------------------------------------------------------------------------------------
 // Bulk intake with multiple photos per product
 // ------------------------------------------------------------------------------------------
+test("checkout refuses to sell more sarees than are in stock", async () => {
+  const created = (await api("POST", "/catalog", product({ variants: [{ color: "Red", colorSlug: "RED", stock: 1, sku: "" }] }))).body.product;
+  const line = (qty) => ({ id: created.id, productId: created.id, name: "Test Saree", color: "Red", quantity: qty, qty, price: 1000 });
+  const order = (qty) => api("POST", "/billing/checkout", { customerPhone: "9876543210", items: [line(qty)], total: 1000 * qty }, { auth: false });
+
+  const check = await api("POST", "/billing/check-stock", { items: [line(25)] }, { auth: false });
+  assert.equal(check.body.available, false);
+  assert.equal(check.body.shortages[0].available, 1);
+  assert.equal((await api("POST", "/billing/check-stock", { items: [line(1)] }, { auth: false })).body.available, true);
+
+  const tooMany = await order(25);
+  assert.equal(tooMany.status, 409, JSON.stringify(tooMany.body));
+  assert.equal(tooMany.body.code, "INSUFFICIENT_STOCK");
+  assert.match(tooMany.body.message, /only 1 available/);
+
+  const ok = await order(1);
+  assert.equal(ok.status, 201, JSON.stringify(ok.body));
+  const soldOut = await order(1);
+  assert.equal(soldOut.status, 409, "the last piece cannot be sold twice");
+  assert.match(soldOut.body.message, /out of stock/);
+});
+
 // ------------------------------------------------------------------------------------------
 // Exhaustion (must run last: it consumes the top of the range)
 // ------------------------------------------------------------------------------------------

@@ -1418,10 +1418,18 @@ export const StoreService = {
         }),
       });
 
+      if (res.status === 409) {
+        // Not enough stock: this is a real rejection, never retried via the direct-insert fallback.
+        const body = await res.json().catch(() => ({}));
+        const err = new Error(body.message || "Some items are no longer available in the requested quantity.");
+        (err as Error & { code?: string }).code = "INSUFFICIENT_STOCK";
+        throw err;
+      }
       if (!res.ok) {
         throw new Error(`Backend order sync returned status ${res.status}`);
       }
     } catch (apiErr) {
+      if ((apiErr as { code?: string })?.code === "INSUFFICIENT_STOCK") throw apiErr;
       console.warn("Backend order sync error, using direct Supabase fallback:", apiErr);
       if (supabase) {
         try {
@@ -1772,6 +1780,25 @@ export const StoreService = {
       return true;
     } catch {
       return true;
+    }
+  },
+
+  /** Authoritative server-side stock check; null when the server can't be reached. */
+  async checkStock(
+    items: { id: string; name?: string; color?: string; quantity: number }[]
+  ): Promise<{ available: boolean; shortages: { name: string; color: string; requested: number; available: number }[] } | null> {
+    try {
+      const res = await fetch(`${API_BASE}/billing/check-stock`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items }),
+      });
+      if (!res.ok) return null;
+      const json = await res.json();
+      const d = json.data || json;
+      return { available: Boolean(d.available), shortages: Array.isArray(d.shortages) ? d.shortages : [] };
+    } catch {
+      return null;
     }
   },
 
