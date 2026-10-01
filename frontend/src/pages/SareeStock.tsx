@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import { StoreService } from "../services/storeService";
 import { isSpecialOfferProduct } from "../utils/specialOffer";
+import { getDesignDescription } from "../types/designDescriptions";
 import {
   CANONICAL_SAREE_CATEGORIES,
   type Product,
@@ -1925,6 +1926,8 @@ export default function Catalog({
       // Empty for a new product: the backend assigns the SKU and returns it.
       id: editingProductId || "",
       name,
+      // New sarees get their design pattern's description; edits keep the saved one.
+      description: existingProduct?.description || getDesignDescription(name) || undefined,
       categoryId: finalCategory,
       category: finalCategoryName,
       purchasePrice: Number(formPurchasePrice) || 0,

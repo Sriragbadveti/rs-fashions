@@ -456,6 +456,11 @@ export interface Product {
    * Border color / contrast zari shade (e.g. 'Contrast Maroon Zari', 'Royal Gold Zari').
    */
   borderColor?: string;
+
+  /**
+   * Product description shown on the product page (defaults to the design pattern's description).
+   */
+  description?: string;
 }
 
 

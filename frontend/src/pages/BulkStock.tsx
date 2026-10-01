@@ -33,6 +33,8 @@ import {
   isSupportedImageFile,
   handleSareeImageError,
 } from "../utils/imageConverter";
+import { groupPhotos } from "../utils/groupPhotos";
+import { getDesignDescription } from "../types/designDescriptions";
 import type { BulkRestockResult } from "../types/bulkstock";
 import {
   BorderColorInput,
@@ -768,27 +770,40 @@ export default function BulkStock({
 
     const palette = colorPalette.length > 0 ? colorPalette : COLOR_CODES;
     const newRows: BulkRow[] = [];
-    const uploadTasks: { rowId: string; file: File }[] = [];
+    type UploadTask = { rowId: string; file: File; extraId?: string };
+    const uploadTasks: UploadTask[] = [];
+    const PHOTOS_PER_SAREE = 2;
 
-    // 1. Immediately create instant object URL previews and rows in ONE synchronous update
-    fileList.forEach((file, index) => {
-      const objUrl = URL.createObjectURL(file);
-      createdObjectUrls.current.add(objUrl);
-
+    // 1. Photos are grouped in the order selected, two per saree: photos 1+2 -> saree 1,
+    // 3+4 -> saree 2, ... A final odd photo becomes its own saree. The first photo of each
+    // pair is the primary one (changeable per saree below).
+    groupPhotos(fileList, PHOTOS_PER_SAREE).forEach((group, index) => {
       const rowId = `bulk-row-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 6)}`;
-      const newRow: BulkRow = {
+      const previews = group.map((file) => {
+        const url = URL.createObjectURL(file);
+        createdObjectUrls.current.add(url);
+        return url;
+      });
+      const extras: ExtraImage[] = group.slice(1).map((file, k) => ({
+        id: `extra-${Date.now()}-${index}-${k}-${Math.random().toString(36).slice(2, 7)}`,
+        url: previews[k + 1],
+        status: "uploading" as const,
+        file,
+      }));
+
+      newRows.push({
         id: rowId,
         color1: palette[index % palette.length]?.name || "",
         color2: palette[(index + 1) % palette.length]?.name || "",
         qty: 5,
-        imageUrl: objUrl,
+        imageUrl: previews[0],
         uploadStatus: "uploading",
         uploadProgress: 10,
-        file,
-      };
-
-      newRows.push(newRow);
-      uploadTasks.push({ rowId, file });
+        file: group[0],
+        extraImages: extras,
+      });
+      uploadTasks.push({ rowId, file: group[0] });
+      extras.forEach((x) => uploadTasks.push({ rowId, file: x.file!, extraId: x.id }));
     });
 
     // Single non-blocking state update: all rows appear instantly
@@ -806,25 +821,24 @@ export default function BulkStock({
     const runWorker = async () => {
       while (taskIdx < uploadTasks.length) {
         const current = uploadTasks[taskIdx++];
+        if (current.extraId) {
+          await uploadExtraImage(current.rowId, { id: current.extraId, url: "", status: "uploading", file: current.file });
+          continue;
+        }
         try {
           updateRow(current.rowId, "uploadProgress", 25);
-          const uploadRes = await StoreService.uploadImageBinary(current.file, undefined, (pct) => {
+          let uploadRes = await StoreService.uploadImageBinary(current.file, undefined, (pct) => {
             updateRow(current.rowId, "uploadProgress", pct);
           });
+          if (!(uploadRes.success && uploadRes.url)) {
+            uploadRes = await StoreService.uploadImageBinary(current.file); // one retry
+          }
           if (uploadRes.success && uploadRes.url) {
             updateRow(current.rowId, "imageUrl", uploadRes.url);
             updateRow(current.rowId, "uploadStatus", "done");
             updateRow(current.rowId, "uploadProgress", 100);
           } else {
-            // Attempt 1 retry
-            const retryRes = await StoreService.uploadImageBinary(current.file);
-            if (retryRes.success && retryRes.url) {
-              updateRow(current.rowId, "imageUrl", retryRes.url);
-              updateRow(current.rowId, "uploadStatus", "done");
-              updateRow(current.rowId, "uploadProgress", 100);
-            } else {
-              updateRow(current.rowId, "uploadStatus", "error");
-            }
+            updateRow(current.rowId, "uploadStatus", "error");
           }
         } catch {
           updateRow(current.rowId, "uploadStatus", "error");
@@ -920,6 +934,7 @@ export default function BulkStock({
           ...(row.specialOffer ? ["special_offer"] : []),
         ],
         isSpecialOffer: Boolean(row.specialOffer),
+        description: getDesignDescription(selectedDesignSlug) || undefined,
         imageUrl: allImages[0],
         images: allImages.length > 0 ? allImages : undefined,
         ...(borderColor ? { borderColor } : {}),
@@ -1197,7 +1212,7 @@ export default function BulkStock({
                 Drop Multiple Drape Photos to Auto-Index
               </h3>
               <p className="mt-1 text-xs leading-relaxed text-stone-500 font-light">
-                Drag and drop 5 to 50 saree photographs (JPG, PNG, WebP, or HEIC) here at once. Each image automatically creates an individual variant entry ready for instant SKU assignment.
+                Drop your saree photographs (JPG, PNG, WebP, or HEIC) here in order. Every 2 photos become one saree (photos 1+2, 3+4, ...); an odd last photo becomes its own saree. You can add more photos or change the primary photo per saree below.
               </p>
               <div className="mt-3.5 inline-flex items-center gap-1.5 rounded-full bg-[#2A0E20] px-4 py-1.5 text-[9.5px] font-bold uppercase tracking-wider text-amber-100 shadow-xs">
                 <Upload size={12} className="text-amber-300" />

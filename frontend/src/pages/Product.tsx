@@ -6,6 +6,7 @@ import { type Product as ProductType } from "../data/products";
 import { useCart } from "../context/CartContext";
 import { StoreService } from "../services/supabase";
 import SEO from "../components/common/SEO";
+import { getDesignDescription, isAutoDescription } from "../types/designDescriptions";
 
 interface ColorVariantItem {
   name: string;
@@ -124,6 +125,18 @@ export default function Product() {
     return [{ name: "Standard", hex: "#8E3D51", image: product.images?.[0], inStock: true }];
   }, [product]);
 
+  // Pattern description (Checks, Equal Borders, ...) unless the admin wrote a custom description.
+  const displayDescription = useMemo(() => {
+    if (!product) return "";
+    const own = String(product.description || "").trim();
+    if (own && !isAutoDescription(own, product.name)) return own;
+    return (
+      getDesignDescription(product.name) ||
+      own ||
+      "Authentic handwoven SiCo Gadwal drape crafted with heritage interlocked contrast zari border and pure silk warp."
+    );
+  }, [product]);
+
   const enrichedImages = useMemo(() => {
     if (!product) return [];
     if (Array.isArray(product.images) && product.images.length > 0) {
@@ -237,7 +250,7 @@ export default function Product() {
       <SEO
         title={`${product.name}${product.borderColor ? ` (${product.borderColor} Border)` : ""} — ${product.category || "Handloom Saree"}`}
         description={
-          product.description ||
+          displayDescription.replace(/\s+/g, " ").slice(0, 300) ||
           `Buy ${product.name} online at RS Fashions. Authentic ${product.material || "SiCo Gadwal"} handloom saree${
             product.borderColor ? ` featuring a ${product.borderColor} border` : ""
           } for ₹${product.price.toLocaleString("en-IN")}.`
@@ -267,7 +280,7 @@ export default function Product() {
             name: product.name,
             image: enrichedImages,
             description:
-              product.description ||
+              displayDescription ||
               `Authentic ${product.material || "SiCo Gadwal"} handloom saree crafted by master weavers at RS Fashions.`,
             sku: product.id,
             mpn: product.id,
@@ -645,9 +658,16 @@ export default function Product() {
 
               <p className="mt-1 text-xs text-stone-500">&middot; Free express delivery</p>
 
-              <p className="mt-4 text-xs sm:text-sm text-stone-600 font-light leading-relaxed border-t border-stone-200/80 pt-4">
-                {product.description || "Authentic handwoven SiCo Gadwal drape crafted with heritage interlocked contrast zari border and pure silk warp."}
-              </p>
+              <div className="mt-4 space-y-3 border-t border-stone-200/80 pt-4" data-testid="product-description">
+                {displayDescription.split(/\n{2,}/).map((para, i) => (
+                  <p
+                    key={i}
+                    className={`text-xs sm:text-sm leading-relaxed text-stone-600 font-light ${i === 0 ? "first-letter:font-serif first-letter:text-lg first-letter:text-[#8E3D51]" : ""}`}
+                  >
+                    {para}
+                  </p>
+                ))}
+              </div>
 
               {/* COLOR VARIANTS */}
               <div className="mt-6 border-t border-stone-200/80 pt-5">
