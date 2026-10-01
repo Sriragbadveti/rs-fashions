@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { FiArrowLeft, FiLock, FiTruck, FiClock, FiShield } from "react-icons/fi";
+import { FiArrowLeft, FiTruck, FiClock, FiShield } from "react-icons/fi";
 import { FaWhatsapp } from "react-icons/fa";
 
 export default function ShippingPolicy() {
@@ -207,12 +207,6 @@ export default function ShippingPolicy() {
               </div>
             </section>
           </div>
-
-          {/* Card Footer */}
-          <footer className="mt-9 border-t border-[#8E3D51]/10 pt-4 flex items-center gap-2 text-stone-500 text-xs">
-            <FiLock size={13} className="text-[#8E3D51]" />
-            <span>Reliable pan-India delivery &middot; Direct handloom dispatches from Telangana.</span>
-          </footer>
         </article>
 
         {/* Sub-Footer Policy Navigation */}

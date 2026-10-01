@@ -31,8 +31,6 @@ export default function NotFound() {
           className="inline-flex items-center gap-2 rounded-full border border-[#D4A373]/50 bg-white/80 px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.28em] text-[#8E3D51] shadow-sm mb-6"
         >
           <span>Error 404</span>
-          <span className="text-[#D4A373]">✦</span>
-          <span>Weave Not Found</span>
         </motion.div>
 
         {/* Large Editorial Heading */}
@@ -51,7 +49,7 @@ export default function NotFound() {
           transition={{ duration: 0.5, delay: 0.2 }}
           className="mt-4 text-xs sm:text-sm font-light text-[#6E6359] max-w-md mx-auto leading-relaxed"
         >
-          The saree design or page you are seeking has been archived or moved to another vault. Allow us to guide you back to our curated showroom collections.
+          The saree design or page you are seeking has been moved, <br />Allow us to guide you back to our store collections.
         </motion.p>
 
         {/* Search Bar */}
@@ -68,7 +66,7 @@ export default function NotFound() {
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search by weave, color, or motif..."
+              placeholder="Search..."
               className="w-full bg-transparent px-3 text-xs text-[#2A2421] placeholder-[#A89C8F] outline-none"
             />
             <button
@@ -99,7 +97,7 @@ export default function NotFound() {
               <span className="text-xs font-semibold text-[#2A2421]">Explore Shop</span>
             </div>
             <p className="text-[11px] text-[#8C7A6B] leading-relaxed">
-              Browse our store of authentic handloom Gadwal sarees.
+              Browse our store full of authentic Gadwal sarees.
             </p>
           </Link>
 
@@ -114,7 +112,7 @@ export default function NotFound() {
               <span className="text-xs font-semibold text-[#2A2421]">Store Home</span>
             </div>
             <p className="text-[11px] text-[#8C7A6B] leading-relaxed">
-              Return to the flagship landing page and curated editorial highlights.
+              Return to the website.
             </p>
           </Link>
 
@@ -129,7 +127,7 @@ export default function NotFound() {
               <span className="text-xs font-semibold text-[#2A2421]">Privilege Offers</span>
             </div>
             <p className="text-[11px] text-[#8C7A6B] leading-relaxed">
-              Discover celebratory discounts and festive sale drapes available right now.
+              Discover sarees available right now.
             </p>
           </Link>
         </motion.div>

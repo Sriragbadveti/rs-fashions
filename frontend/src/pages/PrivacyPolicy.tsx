@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { FiArrowLeft, FiLock } from "react-icons/fi";
+import { FiArrowLeft } from "react-icons/fi";
 
 export default function PrivacyPolicy() {
   return (
@@ -158,12 +158,6 @@ export default function PrivacyPolicy() {
               </div>
             </section>
           </div>
-
-          {/* Card Footer Badge */}
-          <footer className="mt-9 border-t border-[#8E3D51]/10 pt-4 flex items-center gap-2 text-stone-500 text-xs">
-            <FiLock size={13} className="text-[#8E3D51]" />
-            <span>Secure checkout &middot; 100% verified authentic handloom purchases.</span>
-          </footer>
         </article>
 
         {/* Sub-Footer Policy Navigation (Centered Under Card) */}
