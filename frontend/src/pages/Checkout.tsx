@@ -22,6 +22,7 @@ import {
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { useCart } from "../context/CartContext";
+import { ModalProvider, useModal } from "../context/ModalContext";
 import { StoreService } from "../services/supabase";
 import { products, type Product } from "../data/products";
 import { getUserSession, saveAddress, getSavedAddresses, type SavedAddress } from "../utils/userSession";
@@ -118,7 +119,8 @@ const loadCashfreeScript = (): Promise<boolean> => {
   });
 };
 
-function Checkout() {
+function CheckoutInner() {
+  const { toast } = useModal();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { items, subtotal, offerDiscount, tierOffer, finalSubtotal, clearCart, addToCart, removeFromCart } = useCart();
@@ -795,9 +797,9 @@ function Checkout() {
             console.warn("Cashfree checkout error:", result.error);
             isSubmittingRef.current = false;
             setIsProcessing(false);
-            if (result.error.message) {
-              alert(`Payment Notice: ${result.error.message}`);
-            }
+            // Closed/declined/failed: the order was never paid, so it is not recorded anywhere.
+            toast("Payment failed", "Your payment was not completed and you have not been charged.", "error");
+            StoreService.abandonPendingOrder(orderNum);
             return;
           }
           if (result.redirect) {
@@ -811,7 +813,7 @@ function Checkout() {
               if (verifyRes.paid) {
                 await completeCashfreeSuccess(cfRes.orderId!, verifyRes.paymentId);
               } else {
-                alert("Payment status pending or incomplete. Please check your bank transaction.");
+                toast("Payment failed", "We could not confirm your payment. If money was debited it is refunded automatically.", "error");
               }
             } catch (vErr) {
               console.warn("Verification error:", vErr);
@@ -2201,6 +2203,15 @@ function LuxuryReceiptPrinter({
         }
       `}</style>
     </div>
+  );
+}
+
+// The storefront has no global toast host, so the checkout page brings its own.
+function Checkout() {
+  return (
+    <ModalProvider>
+      <CheckoutInner />
+    </ModalProvider>
   );
 }
 

@@ -403,6 +403,8 @@ test("online payment: pending order, webhook finalises once, duplicates and late
   const orderNumber = pending.body.orderNumber;
   assert.match(orderNumber, /^\d{3,}$/);
   assert.equal(await stockOf(), 2, "stock is only deducted once payment is confirmed");
+  const listed = async () => ((await api("GET", "/sales/customer-orders?phone=9876543210", undefined, { auth: false })).body.orders || []).some((o) => (o.orderNumber || o.invoiceNumber || o.order_number) === orderNumber);
+  assert.equal(await listed(), false, "an unpaid (pending) order is not in the customer's order history");
 
   const event = (status, id) => ({ type: "PAYMENT_SUCCESS_WEBHOOK", data: { order: { order_id: `RSF_${orderNumber}_A1`, order_tags: { orderNumber } }, payment: { cf_payment_id: id, payment_status: status } } });
   const hook = (body) => api("POST", "/payments/cashfree/webhook", body, { auth: false });
@@ -416,6 +418,7 @@ test("online payment: pending order, webhook finalises once, duplicates and late
   await hook(event("SUCCESS", "pay-2"));
   assert.equal(await stockOf(), 1, "second success event for an already-paid order is a no-op");
 
+  assert.equal(await listed(), true, "once paid, the order appears in the customer's history");
   await hook(event("FAILED", "pay-3"));
   const orders = (await api("GET", "/sales/customer-orders?phone=9876543210", undefined, { auth: false })).body.orders || [];
   assert.ok(orders.length >= 0);

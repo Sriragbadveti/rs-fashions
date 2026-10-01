@@ -1,3 +1,4 @@
+import { VISIBLE_ORDERS_FILTER, isVisibleOrder } from "../services/orderVisibility.js";
 import { supabase } from "../config/supabase.js";
 import { successResponse, errorResponse } from "../utils/response.js";
 import {
@@ -56,7 +57,7 @@ export async function getBootstrapData(req, res) {
       supabase.from("categories").select("*").order("name", { ascending: true }),
       supabase.from("products").select("*").order("created_at", { ascending: false }),
       supabase.from("stock_movements").select("*").order("created_at", { ascending: false }).limit(200),
-      supabase.from("orders").select("*").order("created_at", { ascending: false }).limit(200),
+      supabase.from("orders").select("*").or(VISIBLE_ORDERS_FILTER).order("created_at", { ascending: false }).limit(200),
       supabase.from("customers").select("*").order("created_at", { ascending: false }),
       supabase.from("tracked_orders").select("*").order("created_at", { ascending: false }),
       supabase.from("coupons").select("*").order("created_at", { ascending: false }),
@@ -152,7 +153,7 @@ export async function getBootstrapData(req, res) {
       note: m.note || "",
     }));
 
-    const sales = (ordersRes.data || []).map((o) => {
+    const sales = (ordersRes.data || []).filter(isVisibleOrder).map((o) => {
       const normalizedItems = (Array.isArray(o.items) ? o.items : []).map((item, idx) => ({
         ...item,
         cartId: item.cartId || `item-${o.id}-${idx}`,

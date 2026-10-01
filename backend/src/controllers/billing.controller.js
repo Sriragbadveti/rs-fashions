@@ -323,3 +323,10 @@ export async function createPendingOrderHandler(req, res) {
     return errorResponse(res, "Could not create the order. Please try again.", 500);
   }
 }
+
+/** POST /billing/pending-order/abandon — customer closed the payment window: free their reservation. */
+export async function abandonPendingOrderHandler(req, res) {
+  const sessionId = req.body?.sessionId || req.body?.session_id;
+  if (sessionId) releaseHolds(String(sessionId));
+  return res.json({ success: true });
+}

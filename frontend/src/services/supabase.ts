@@ -1815,6 +1815,17 @@ export const StoreService = {
     }
   },
 
+  /** Customer closed/failed the payment: free the saree reservation. Fire-and-forget. */
+  abandonPendingOrder(orderNumber: string): void {
+    try {
+      fetch(`${API_BASE}/billing/pending-order/abandon`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderNumber, sessionId: this.getSessionId() }),
+      }).catch(() => {});
+    } catch {}
+  },
+
   /** Asks the server to confirm payment with Cashfree and finalise the order. null = unreachable. */
   async finalizeCashfreeOrder(payload: { orderNumber: string; cfOrderId?: string }): Promise<{ paid: boolean; found: boolean } | null> {
     try {

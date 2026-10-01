@@ -1,3 +1,4 @@
+import { VISIBLE_ORDERS_FILTER, isVisibleOrder } from "../services/orderVisibility.js";
 import { supabase } from "../config/supabase.js";
 import { successResponse, errorResponse } from "../utils/response.js";
 import {
@@ -46,12 +47,13 @@ export async function getTransactions(req, res) {
     const { data, error } = await supabase
       .from("orders")
       .select("*")
+      .or(VISIBLE_ORDERS_FILTER)
       .order("created_at", { ascending: false })
       .limit(300);
 
     if (error) throw error;
 
-    const sales = (data || []).map((o) => ({
+    const sales = (data || []).filter(isVisibleOrder).map((o) => ({
       id: o.id,
       invoiceNumber: o.invoice_number || o.order_number || o.id,
       date: new Date(o.created_at).toLocaleDateString("en-IN", {
@@ -119,12 +121,12 @@ export async function getCustomerOrders(req, res) {
       return errorResponse(res, "User phone or email is required to retrieve orders", 400);
     }
 
-    const localOrders = getOrdersFromStore(rawPhone, rawEmail) || [];
+    const localOrders = (getOrdersFromStore(rawPhone, rawEmail) || []).filter(isVisibleOrder);
 
     let sbOrders = [];
     if (supabase) {
       try {
-        let query = supabase.from("orders").select("*");
+        let query = supabase.from("orders").select("*").or(VISIBLE_ORDERS_FILTER);
         if (rawPhone && rawEmail) {
           query = query.or(`phone.ilike.%${rawPhone}%,email.ilike.${rawEmail}`);
         } else if (rawPhone) {
@@ -135,7 +137,8 @@ export async function getCustomerOrders(req, res) {
 
         const { data: ordersData, error: ordersErr } = await query.order("created_at", { ascending: false });
         if (!ordersErr && ordersData) {
-          const invoiceNumbers = ordersData.map((o) => o.invoice_number || o.order_number || o.id).filter(Boolean);
+          const visibleOrders = ordersData.filter(isVisibleOrder);
+          const invoiceNumbers = visibleOrders.map((o) => o.invoice_number || o.order_number || o.id).filter(Boolean);
           let trackedMap = {};
 
           if (invoiceNumbers.length > 0) {
@@ -155,7 +158,7 @@ export async function getCustomerOrders(req, res) {
             }
           }
 
-          sbOrders = ordersData.map((o) => {
+          sbOrders = visibleOrders.map((o) => {
             const invNum = o.invoice_number || o.order_number || o.id;
             const tracked = trackedMap[invNum];
             const localFulfillment = getFulfillmentFromStore(invNum) || {};
@@ -320,7 +323,7 @@ export async function getAnalyticsSummary(req, res) {
     }
 
     const [ordersRes, prodsRes] = await Promise.all([
-      supabase.from("orders").select("total, cgst, sgst, items, created_at"),
+      supabase.from("orders").select("total, cgst, sgst, items, created_at").or(VISIBLE_ORDERS_FILTER),
       supabase.from("products").select("id, name, price, stock, category"),
     ]);
 
