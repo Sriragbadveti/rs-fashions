@@ -1,12 +1,16 @@
+import { lazy, Suspense } from "react";
 import { motion } from "framer-motion";
 
 import SEO from "../components/common/SEO";
 import Hero from "../components/home/Hero";
 import MaterialCollections from "../components/home/MaterialCollections";
-import ForSaleProducts from "../components/home/ForSaleProducts";
-import TrendingProducts from "../components/home/TrendingProducts";
-import ProductShowcase from "../components/home/ProductShowcase";
-import CinematicReel from "../components/home/CinematicReel";
+import LazySection from "../components/common/LazySection";
+
+// Below-the-fold sections load their code and data only when scrolled near.
+const ForSaleProducts = lazy(() => import("../components/home/ForSaleProducts"));
+const TrendingProducts = lazy(() => import("../components/home/TrendingProducts"));
+const ProductShowcase = lazy(() => import("../components/home/ProductShowcase"));
+const CinematicReel = lazy(() => import("../components/home/CinematicReel"));
 
 function Home() {
   return (
@@ -38,16 +42,16 @@ function Home() {
 
       <MaterialCollections />
 
-      <ForSaleProducts />
+      <LazySection minHeight={420}><Suspense fallback={null}><ForSaleProducts /></Suspense></LazySection>
 
       {/* Trending Section: Exclusively displays sarees marked as Special Offer */}
-      <TrendingProducts />
+      <LazySection minHeight={520}><Suspense fallback={null}><TrendingProducts /></Suspense></LazySection>
 
       {/* Full-Screen Curved Lookbook Showcase */}
-      <ProductShowcase />
+      <LazySection minHeight={600}><Suspense fallback={null}><ProductShowcase /></Suspense></LazySection>
 
       {/* Netflix Cinematic View & Infinite Artisan Marquee Reel */}
-      <CinematicReel />
+      <LazySection minHeight={600}><Suspense fallback={null}><CinematicReel /></Suspense></LazySection>
     </motion.div>
   );
 }

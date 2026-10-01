@@ -148,12 +148,27 @@ export async function getProducts(req, res) {
       return filtered;
     };
 
+    // Lightweight listing options so pages don't download the whole catalogue with every photo:
+    //   ?view=card    -> only the first 2 photos per saree (listings / hover images)
+    //   ?id=RS0036    -> just that product (full detail)
+    //   ?limit=&page= -> pagination (adds total/page/pages)
+    const view = String(req.query.view || "");
+    const idFilter = req.query.id ? String(req.query.id) : "";
+    const limit = Math.min(200, Math.max(0, parseInt(req.query.limit, 10) || 0));
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const shape = (list) => {
+      let out = applyCatalogFilters(list);
+      if (idFilter) out = out.filter((p) => p.id === idFilter);
+      const total = out.length;
+      if (limit) out = out.slice((page - 1) * limit, page * limit);
+      if (view === "card") out = out.map((p) => ({ ...p, images: (p.images || []).slice(0, 2) }));
+      return { products: out, ...(limit ? { total, page, pages: Math.ceil(total / limit) } : {}) };
+    };
+    // Browsers/CDN may reuse the answer briefly; stock changes still show within a minute.
+    res.set("Cache-Control", "public, max-age=15, stale-while-revalidate=45");
+
     if (cachedProducts && Date.now() - lastProductsFetch < CACHE_TTL_MS) {
-      return successResponse(
-        res,
-        { products: applyCatalogFilters(cachedProducts) },
-        "Products retrieved successfully (cached)"
-      );
+      return successResponse(res, shape(cachedProducts), "Products retrieved successfully (cached)");
     }
 
     if (!inFlightProductsPromise) {
@@ -263,14 +278,14 @@ export async function getProducts(req, res) {
     const products = await inFlightProductsPromise;
     return successResponse(
       res,
-      { products: applyCatalogFilters(products) },
+      shape(products),
       "Products retrieved successfully"
     );
   } catch (err) {
     if (cachedProducts && cachedProducts.length > 0) {
       return successResponse(
         res,
-        { products: applyCatalogFilters(cachedProducts) },
+        shape(cachedProducts),
         "Products retrieved successfully (stale cache recovery)"
       );
     }

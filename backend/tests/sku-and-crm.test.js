@@ -375,6 +375,22 @@ test("an abandoned reservation frees the saree for the next customer", async () 
   }
 });
 
+test("catalog listing supports card view, single product and pagination", async () => {
+  await api("POST", "/catalog", product({ images: ["https://cdn.test/1.jpg", "https://cdn.test/2.jpg", "https://cdn.test/3.jpg", "https://cdn.test/4.jpg"] }));
+  const full = (await api("GET", "/catalog/products")).body;
+  const card = (await api("GET", "/catalog/products?view=card")).body.products;
+  assert.ok(full.products.some((p) => p.images.length > 2));
+  assert.ok(card.every((p) => p.images.length <= 2), "card view sends at most 2 photos per saree");
+  const target = full.products.find((p) => p.images.length > 2);
+  const one = (await api("GET", `/catalog/products?id=${target.id}`)).body.products;
+  assert.deepEqual(one.map((p) => p.id), [target.id]);
+  assert.equal(one[0].images.length, target.images.length, "single-product fetch keeps every photo");
+  const paged = (await api("GET", "/catalog/products?limit=2&page=1")).body;
+  assert.equal(paged.products.length, 2);
+  assert.equal(paged.total, full.products.length);
+  assert.equal(paged.pages, Math.ceil(full.products.length / 2));
+});
+
 // ------------------------------------------------------------------------------------------
 // Exhaustion (must run last: it consumes the top of the range)
 // ------------------------------------------------------------------------------------------

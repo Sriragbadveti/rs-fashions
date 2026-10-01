@@ -124,7 +124,12 @@ export const StoreService = {
   },
 
   // 1. PRODUCTS (Storefront & Admin)
-  async getProducts(): Promise<Product[]> {
+  /**
+   * `view: "card"` fetches the lightweight listing (2 photos per saree); `id` fetches one product
+   * with all its photos. Partial results never overwrite the full local cache.
+   */
+  async getProducts(opts: { view?: "card"; id?: string } = {}): Promise<Product[]> {
+    const isPartial = Boolean(opts.view || opts.id);
     const cleanAndHealProducts = async (list: Product[]): Promise<Product[]> => {
       const filtered = (list || []).filter(
         (p) => p && p.id && !DUMMY_PRODUCT_IDS.has(String(p.id))
@@ -146,7 +151,10 @@ export const StoreService = {
     };
 
     try {
-      const res = await fetch(`${API_BASE}/catalog/products`);
+      const qs = new URLSearchParams();
+      if (opts.view) qs.set("view", opts.view);
+      if (opts.id) qs.set("id", opts.id);
+      const res = await fetch(`${API_BASE}/catalog/products${qs.toString() ? `?${qs}` : ""}`);
       const json = await res.json();
       const productList = (json.products || json.data?.products || []).filter(
         (d: any) => d && d.id && !DUMMY_PRODUCT_IDS.has(String(d.id))
@@ -181,7 +189,7 @@ export const StoreService = {
           }))
         );
         try {
-          localStorage.setItem(LOCAL_STORAGE_PRODUCTS, JSON.stringify(mapped));
+          if (!isPartial) localStorage.setItem(LOCAL_STORAGE_PRODUCTS, JSON.stringify(mapped));
         } catch {
           // ignore
         }
@@ -222,7 +230,7 @@ export const StoreService = {
           }))
         );
         try {
-          localStorage.setItem(LOCAL_STORAGE_PRODUCTS, JSON.stringify(mapped));
+          if (!isPartial) localStorage.setItem(LOCAL_STORAGE_PRODUCTS, JSON.stringify(mapped));
         } catch {}
         return mapped;
       }
@@ -337,10 +345,8 @@ export const StoreService = {
   },
 
   async getProductById(id: string): Promise<Product | null> {
-    const all = await this.getProducts();
-    const found = all.find((p) => p.id === id);
-    if (found) return found;
-    return null;
+    const all = await this.getProducts({ id });
+    return all.find((p) => p.id === id) || null;
   },
 
   async addProduct(product: Omit<Product, "id"> & { id?: string }): Promise<Product> {

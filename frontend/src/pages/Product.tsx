@@ -46,9 +46,9 @@ export default function Product() {
     async function loadProduct() {
       if (!id) return;
       try {
-        const prods = await StoreService.getProducts();
-        if (isMounted && prods.length > 0) setAllProducts(prods);
-        const found = prods.find((p) => p.id === id) || (await StoreService.getProductById(id));
+        // Fetch only this saree (full photos) so the page renders fast; the rest of the
+        // catalogue (card-sized, for related/same-border suggestions) loads afterwards.
+        const found = await StoreService.getProductById(id);
         if (isMounted && found) {
           setProduct(found);
           setSelectedImage(0);
@@ -56,6 +56,9 @@ export default function Product() {
             setSelectedColor(found.colors[0]);
           }
         }
+        if (isMounted) setLoading(false);
+        const prods = await StoreService.getProducts({ view: "card" });
+        if (isMounted && prods.length > 0) setAllProducts(prods);
       } catch (err) {
         console.warn("Could not fetch product dynamically:", err);
       } finally {
@@ -629,6 +632,12 @@ export default function Product() {
               <h1 className="mt-2 font-serif text-3xl sm:text-4xl font-normal leading-snug text-[#2A2421]">
                 {product.name}
               </h1>
+
+              {isSoldOut && (
+                <div role="status" className="mt-3 inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-rose-700" data-testid="sold-out-banner">
+                  Sold Out — this saree is no longer available
+                </div>
+              )}
 
               <p className="mt-1.5 text-xs font-semibold uppercase tracking-wider text-[#756A60]">
                 SKU: <span className="font-mono text-[#2A2421]" data-testid="product-sku">{product.id}</span>

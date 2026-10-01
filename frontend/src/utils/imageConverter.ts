@@ -1,5 +1,3 @@
-import { heicTo } from "heic-to";
-import heic2any from "heic2any";
 import { API_BASE } from "../config/api";
 
 /**
@@ -227,6 +225,7 @@ export async function convertHeicBlobToJpegDataUrl(inputBlob: Blob): Promise<str
 
   // 1. Primary modern libheif 1.18+ decoder via `heic-to` (supports iOS 16/17/18 iPhone HEICs)
   try {
+    const { heicTo } = await import("heic-to");
     const jpegBlob = await heicTo({
       blob: heicBlob,
       type: "image/jpeg",
@@ -241,6 +240,7 @@ export async function convertHeicBlobToJpegDataUrl(inputBlob: Blob): Promise<str
 
   // 2. Secondary client-side conversion via `heic2any`
   try {
+    const { default: heic2any } = await import("heic2any");
     const converted = await heic2any({
       blob: heicBlob,
       toType: "image/jpeg",
@@ -458,6 +458,7 @@ export async function prepareImageForUpload(file: File): Promise<PreparedUpload>
   if (isHeic) {
     // Decode straight to pixels (single JPEG encode below). The package's overload typings
     // resolve to Blob here, but "bitmap" returns an ImageBitmap at runtime.
+    const { heicTo } = await import("heic-to");
     const bitmap = (await heicTo({ blob: file, type: "bitmap" } as never)) as unknown as ImageBitmap;
     try {
       const { blob, width, height } = await encodeBitmapAsJpeg(bitmap);

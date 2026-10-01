@@ -51,7 +51,7 @@ export default function TrendingProducts() {
 
     async function fetchTrendingProducts() {
       try {
-        const res = await fetch(`${API_BASE}/catalog/products?trending=true`);
+        const res = await fetch(`${API_BASE}/catalog/products?trending=true&view=card`);
         if (res.ok) {
           const data = await res.json();
           const list: Product[] = Array.isArray(data)

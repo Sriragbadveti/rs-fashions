@@ -22,7 +22,7 @@ function RelatedProducts({
   useEffect(() => {
     async function load() {
       try {
-        const prods = await StoreService.getProducts();
+        const prods = await StoreService.getProducts({ view: "card" });
         if (prods.length > 0) setAllProducts(prods);
       } catch {
         // ignore

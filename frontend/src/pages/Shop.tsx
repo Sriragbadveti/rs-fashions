@@ -104,12 +104,21 @@ function ProductCard({ product }: { product: CardProduct }) {
             <img
               src={hoverImage}
               alt={`${product.name} alternate view`}
+              loading="lazy"
               decoding="async"
               onError={(e) => handleSareeImageError(e, hoverImage)}
               className="absolute inset-0 h-full w-full object-cover object-center opacity-0 transition-all duration-500 ease-out group-hover:opacity-100 group-hover:scale-105 will-change-transform"
             />
           )}
         </Link>
+
+        {product.stock !== undefined && product.stock <= 0 && (
+          <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-white/55 backdrop-blur-[1px]">
+            <span className="rounded-full bg-[#2A2421] px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-white shadow-md">
+              Sold Out
+            </span>
+          </div>
+        )}
 
         {/* Special Offer Badge */}
         {(product.isOfferEligible || (product as any).isSpecialOffer || (product as any).isSpecialEdition || ((product as any).tags || []).some((t: string) => ["special_offer", "special_edition", "limited_edition"].includes(t))) && (
@@ -121,7 +130,7 @@ function ProductCard({ product }: { product: CardProduct }) {
         )}
 
         <div className="absolute bottom-2.5 inset-x-2.5 transition-all duration-200 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 hidden sm:block">
-          <button type="button" onClick={handleQuickAdd} className={`w-full h-9 rounded-xl text-xs font-semibold uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md transition-all ${inCart ? "bg-emerald-600 text-white cursor-default scale-95" : "bg-[#2A2421]/90 text-[#F7EBEC] hover:bg-[#8E3D51] active:scale-95 cursor-pointer"}`}>
+          <button type="button" disabled={product.stock !== undefined && product.stock <= 0} onClick={handleQuickAdd} className={`disabled:opacity-40 disabled:cursor-not-allowed w-full h-9 rounded-xl text-xs font-semibold uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md transition-all ${inCart ? "bg-emerald-600 text-white cursor-default scale-95" : "bg-[#2A2421]/90 text-[#F7EBEC] hover:bg-[#8E3D51] active:scale-95 cursor-pointer"}`}>
             {inCart ? (<><FiCheck size={13} className="stroke-[2.5]" /><span>Added</span></>) : (<><FiShoppingBag size={13} /><span>Quick Add</span></>)}
           </button>
         </div>
@@ -359,7 +368,7 @@ export default function Shop() {
     let isMounted = true;
     async function loadProducts() {
       try {
-        const data = await StoreService.getProducts();
+        const data = await StoreService.getProducts({ view: "card" });
         if (isMounted && Array.isArray(data)) {
           setAllProducts(data);
         }

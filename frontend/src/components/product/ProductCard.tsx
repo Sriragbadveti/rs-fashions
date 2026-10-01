@@ -56,6 +56,14 @@ function ProductCard({ product }: ProductCardProps) {
           <div className="absolute inset-0 bg-linear-to-t from-black/50 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
         </Link>
 
+        {product.stock !== undefined && product.stock <= 0 && (
+          <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-white/55">
+            <span className="rounded-full bg-[#2A2421] px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-white">
+              Sold Out
+            </span>
+          </div>
+        )}
+
         {/* Top Badges */}
         <div className="pointer-events-none absolute inset-x-3 top-3 flex items-center justify-between">
           <div className="flex flex-col gap-1.5">
