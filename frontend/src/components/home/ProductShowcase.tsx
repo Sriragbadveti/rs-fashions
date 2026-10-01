@@ -841,9 +841,7 @@ export default function ProductShowcase() {
           >
             {activeItem.name}
           </h2>
-
-          {activeItem.desc && <p className="psc-desc">{activeItem.desc}</p>}
-
+          
           <button
             type="button"
             className="psc-cta-btn"
