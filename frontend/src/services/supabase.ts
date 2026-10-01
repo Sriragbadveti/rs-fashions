@@ -1786,12 +1786,12 @@ export const StoreService = {
   /** Authoritative server-side stock check; null when the server can't be reached. */
   async checkStock(
     items: { id: string; name?: string; color?: string; quantity: number }[]
-  ): Promise<{ available: boolean; shortages: { name: string; color: string; requested: number; available: number }[] } | null> {
+  ): Promise<{ available: boolean; shortages: { name: string; color: string; requested: number; available: number; heldByOthers?: boolean }[] } | null> {
     try {
       const res = await fetch(`${API_BASE}/billing/check-stock`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items }),
+        body: JSON.stringify({ items, sessionId: this.getSessionId() }),
       });
       if (!res.ok) return null;
       const json = await res.json();

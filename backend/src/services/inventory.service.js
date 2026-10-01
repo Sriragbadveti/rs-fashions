@@ -68,8 +68,75 @@ export async function savePersistentVariantsMap(variantsMap) {
  * are not blocked (legacy/custom lines). Returns [] when everything is available, otherwise
  * [{ name, color, requested, available }].
  */
-export async function findStockShortages(items) {
-  if (!Array.isArray(items) || items.length === 0) return [];
+const HOLD_TTL_MS = 10 * 60 * 1000;
+const stockHolds = new Map(); // demand key -> Map(sessionId -> { qty, expiresAt })
+
+function heldByOthers(key, sessionId) {
+  const holders = stockHolds.get(key);
+  if (!holders) return 0;
+  const now = Date.now();
+  let total = 0;
+  for (const [sid, h] of holders) {
+    if (h.expiresAt <= now) holders.delete(sid);
+    else if (sid !== sessionId) total += h.qty;
+  }
+  if (holders.size === 0) stockHolds.delete(key);
+  return total;
+}
+
+/** Releases every hold the session has (after the order is placed, or when it gives up). */
+export function releaseHolds(sessionId) {
+  if (!sessionId) return;
+  for (const [key, holders] of stockHolds) {
+    holders.delete(sessionId);
+    if (holders.size === 0) stockHolds.delete(key);
+  }
+}
+
+// One lock for check-then-deduct, so two customers can't both pass the stock check for the last
+// piece. (In-process: if the API ever runs on several instances this must move into the database.)
+let stockChain = Promise.resolve();
+export function withStockLock(fn) {
+  const run = stockChain.then(fn, fn);
+  stockChain = run.catch(() => {});
+  return run;
+}
+
+/**
+ * Reserves the cart's pieces for `sessionId` for 10 minutes. Pieces other customers have
+ * reserved (and not yet bought) don't count as available. Returns the shortages ([] = reserved).
+ */
+export function holdStock(items, sessionId) {
+  return withStockLock(async () => {
+    const { demand } = await computeStockDemand(items);
+    const shortages = [];
+    for (const [key, d] of demand) {
+      const free = d.available - heldByOthers(key, sessionId);
+      if (d.requested > free) shortages.push({ name: d.name, color: d.color, requested: d.requested, available: Math.max(0, free), heldByOthers: free < d.available });
+    }
+    if (shortages.length > 0) return shortages;
+    releaseHolds(sessionId);
+    for (const [key, d] of demand) {
+      const holders = stockHolds.get(key) || new Map();
+      holders.set(sessionId, { qty: d.requested, expiresAt: Date.now() + HOLD_TTL_MS });
+      stockHolds.set(key, holders);
+    }
+    return [];
+  });
+}
+
+export async function findStockShortages(items, { sessionId } = {}) {
+  const { demand } = await computeStockDemand(items);
+  const shortages = [];
+  for (const [key, d] of demand) {
+    const free = d.available - heldByOthers(key, sessionId);
+    if (d.requested > free) shortages.push({ name: d.name, color: d.color, requested: d.requested, available: Math.max(0, free), heldByOthers: free < d.available });
+  }
+  return shortages;
+}
+
+async function computeStockDemand(items) {
+  if (!Array.isArray(items) || items.length === 0) return { demand: new Map() };
   const variantsMap = await getPersistentVariantsMap();
   const localProds = supabase ? [] : getProductsFromStore();
   const demand = new Map(); // key -> { name, color, requested, available }
@@ -118,7 +185,7 @@ export async function findStockShortages(items) {
     demand.set(key, entry);
   }
 
-  return [...demand.values()].filter((d) => d.requested > d.available);
+  return { demand };
 }
 
 /**

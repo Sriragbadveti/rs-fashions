@@ -336,6 +336,45 @@ test("checkout refuses to sell more sarees than are in stock", async () => {
   assert.match(soldOut.body.message, /out of stock/);
 });
 
+test("two customers racing for the last saree: only one wins, and the hold expires by being released", async () => {
+  const created = (await api("POST", "/catalog", product({ variants: [{ color: "Red", colorSlug: "RED", stock: 1, sku: "" }] }))).body.product;
+  const line = { id: created.id, productId: created.id, name: "Test Saree", color: "Red", quantity: 1, qty: 1, price: 1000 };
+  const hold = (sessionId) => api("POST", "/billing/check-stock", { items: [line], sessionId }, { auth: false });
+  const buy = (sessionId) => api("POST", "/billing/checkout", { customerPhone: "9876543210", items: [line], total: 1000, session_id: sessionId }, { auth: false });
+
+  // Both press "pay" at the same moment: exactly one gets the reservation.
+  const [a, b] = await Promise.all([hold("sess-A"), hold("sess-B")]);
+  const winners = [a, b].filter((r) => r.body.available);
+  assert.equal(winners.length, 1, "exactly one customer reserves the last piece");
+  const loser = [a, b].find((r) => !r.body.available);
+  assert.equal(loser.body.shortages[0].heldByOthers, true, "the loser is told it is held by another customer");
+
+  const winnerSession = a.body.available ? "sess-A" : "sess-B";
+  const loserSession = winnerSession === "sess-A" ? "sess-B" : "sess-A";
+
+  // The loser cannot buy it while the winner's hold is active, even by calling checkout directly.
+  assert.equal((await buy(loserSession)).status, 409);
+  // The winner can.
+  assert.equal((await buy(winnerSession)).status, 201);
+  // Now it is genuinely sold out.
+  assert.equal((await hold(loserSession)).body.available, false);
+});
+
+test("an abandoned reservation frees the saree for the next customer", async () => {
+  const inv = await import("../src/services/inventory.service.js");
+  const created = (await api("POST", "/catalog", product({ variants: [{ color: "Red", colorSlug: "RED", stock: 1, sku: "" }] }))).body.product;
+  const items = [{ id: created.id, productId: created.id, color: "Red", quantity: 1 }];
+  assert.deepEqual(await inv.holdStock(items, "sess-X"), []);
+  assert.equal((await inv.holdStock(items, "sess-Y")).length, 1, "held for X, so unavailable to Y");
+  const realNow = Date.now;
+  Date.now = () => realNow() + 11 * 60 * 1000; // 11 minutes later: X never paid
+  try {
+    assert.deepEqual(await inv.holdStock(items, "sess-Y"), [], "hold timed out, Y can reserve it");
+  } finally {
+    Date.now = realNow;
+  }
+});
+
 // ------------------------------------------------------------------------------------------
 // Exhaustion (must run last: it consumes the top of the range)
 // ------------------------------------------------------------------------------------------

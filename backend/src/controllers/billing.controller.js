@@ -3,7 +3,7 @@ import { successResponse, errorResponse } from "../utils/response.js";
 import { invalidateCatalogCache } from "./catalog.controller.js";
 import { invalidateBootstrapCache } from "./bootstrap.controller.js";
 import { saveOrderToStore, getNextSequentialInvoiceNumberFromStore } from "../database/localStore.js";
-import { deductStockForOrderItems, findStockShortages } from "../services/inventory.service.js";
+import { deductStockForOrderItems, findStockShortages, holdStock, releaseHolds, withStockLock } from "../services/inventory.service.js";
 
 /**
  * Controller: POS Billing, Counter Invoicing & Coupons
@@ -46,6 +46,16 @@ async function resolveSequentialInvoiceNumber(providedInvoice, providedOrder) {
 }
 
 
+// The stock check and the deduction must run one-at-a-time, so two customers racing for the last
+// saree can't both succeed. The winner's session holds are released once the order is saved.
+export function handleCheckout(req, res) {
+  const sessionId = req.body?.session_id || req.body?.sessionId;
+  return withStockLock(async () => {
+    await handleCheckoutUnlocked(req, res);
+    if (res.statusCode < 300) releaseHolds(sessionId);
+  });
+}
+
 function stockShortageResponse(res, shortages) {
   const lines = shortages.map((s) =>
     s.available <= 0
@@ -61,7 +71,7 @@ function stockShortageResponse(res, shortages) {
 }
 
 // 1. ATOMIC CHECKOUT
-export async function handleCheckout(req, res) {
+async function handleCheckoutUnlocked(req, res) {
   try {
     const {
       invoiceNumber,
@@ -116,7 +126,7 @@ export async function handleCheckout(req, res) {
 
       // Reject orders for more pieces than are in stock (checked after the idempotency check so
       // retrying an already-recorded order isn't blocked by its own deduction).
-      const shortages = await findStockShortages(items);
+      const shortages = await findStockShortages(items, { sessionId: req.body.session_id || req.body.sessionId });
       if (shortages.length > 0) return stockShortageResponse(res, shortages);
 
       // 1. Record order in orders table
@@ -205,7 +215,7 @@ export async function handleCheckout(req, res) {
       }, "Sale recorded and inventory synced successfully", 201);
     }
 
-    const localShortages = await findStockShortages(items);
+    const localShortages = await findStockShortages(items, { sessionId: req.body.session_id || req.body.sessionId });
     if (localShortages.length > 0) return stockShortageResponse(res, localShortages);
 
     const localSaved = saveOrderToStore({
@@ -308,8 +318,14 @@ export async function validateCoupon(req, res) {
 export async function checkStock(req, res) {
   try {
     const items = Array.isArray(req.body?.items) ? req.body.items : [];
-    const shortages = await findStockShortages(items);
-    return successResponse(res, { available: shortages.length === 0, shortages }, shortages.length === 0 ? "All items in stock" : "Some items exceed available stock");
+    const sessionId = req.body?.sessionId;
+    // With a sessionId the pieces are also reserved for this customer for 10 minutes.
+    const shortages = sessionId ? await holdStock(items, String(sessionId)) : await findStockShortages(items);
+    return successResponse(
+      res,
+      { available: shortages.length === 0, reserved: Boolean(sessionId) && shortages.length === 0, holdMinutes: 10, shortages },
+      shortages.length === 0 ? "All items in stock" : "Some items exceed available stock"
+    );
   } catch (err) {
     return errorResponse(res, err.message, 500);
   }
