@@ -7,7 +7,6 @@ import {
   FiLock,
   FiMapPin,
   FiShoppingBag,
-  FiShield,
   FiChevronDown,
   FiPrinter,
   FiAlertCircle,
@@ -1122,7 +1121,7 @@ function CheckoutInner() {
 
           <div>
             <span className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#8C7A6B]">
-              RS Fashions Private Studio
+              RS Fashions
             </span>
             <h1 className="mt-1 font-serif text-2xl font-light text-[#2A2421]">
               Login Required to Purchase
@@ -1168,7 +1167,7 @@ function CheckoutInner() {
           </h1>
 
           <p className="mt-2 max-w-sm text-[11px] sm:text-xs font-light leading-relaxed text-[#756A60]">
-            Please select an artisan drape from our collection before proceeding to checkout.
+            Please select an Saree from our collection before proceeding to checkout.
           </p>
 
           <Link
@@ -1770,7 +1769,7 @@ function CheckoutInner() {
                   <p className="mt-1.5 text-[11px] sm:text-xs font-light text-[#756A60]">
                     {existingOrderNumber
                       ? `Your order details are confirmed. Please select your payment method to complete order #${existingOrderNumber}.`
-                      : "Select your preferred transaction channel."}
+                      : "Select your preferred payment method."}
                   </p>
                 </div>
 
@@ -1850,11 +1849,11 @@ function CheckoutInner() {
                             </span>
                           </div>
                           <span className="rounded-full bg-[#8E3D51]/10 px-2 py-0.5 text-[8.5px] sm:text-[9px] font-semibold uppercase tracking-wider text-[#8E3D51]">
-                            UPI / Cards / EMI
+                            UPI / Cards
                           </span>
                         </div>
                         <p className="mt-0.5 text-[10px] sm:text-xs font-light text-[#756A60]">
-                          Google Pay, PhonePe, Paytm, Cards (Visa, Mastercard, RuPay), Net Banking & EMI.
+                          Google Pay, PhonePe, Paytm, Debit Cards (Visa, Mastercard, RuPay) & Net Banking.
                         </p>
                       </div>
 
@@ -1869,14 +1868,6 @@ function CheckoutInner() {
                       </div>
                     </div>
                   </button>
-
-                  {/* Quality Seal Note */}
-                  <div className="rounded-xl sm:rounded-2xl border border-[#D4AF37]/30 bg-[#FAF4ED] p-3.5 flex items-start gap-2.5">
-                    <FiShield size={15} className="text-[#8E3D51] shrink-0 mt-0.5" />
-                    <p className="text-[10px] sm:text-[11px] font-light leading-relaxed text-[#756A60]">
-                      Protected by 256-Bit TLS encryption & PCI-DSS Compliant Cashfree Payment Infrastructure.
-                    </p>
-                  </div>
 
                   {/* Place Order CTA */}
                   <button

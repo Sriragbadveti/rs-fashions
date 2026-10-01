@@ -404,6 +404,12 @@ export default function ProductShowcase() {
           user-select: none;
         }
 
+        @media (max-width: 640px) {
+          .psc-card-backdrop {
+            filter: blur(14px) opacity(0.25);
+          }
+        }
+
         /* Foreground image: fully displayed, never clipped (object-fit: contain) */
         .psc-card-main-img {
           position: relative;

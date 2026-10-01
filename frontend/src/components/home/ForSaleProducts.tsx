@@ -459,7 +459,7 @@ export default function ForSaleProducts() {
                     loading="lazy"
                     decoding="async"
                     draggable={false}
-                    className="h-full w-full object-cover object-center saturate-[1.08] transition-transform duration-500 ease-out group-hover:scale-105 pointer-events-none will-change-transform"
+                    className="h-full w-full object-cover object-center saturate-[1.08] transition-transform duration-500 ease-out group-hover:scale-105 pointer-events-none"
                   />
                   <div className="pointer-events-none absolute inset-0 bg-black/35 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
                   <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-0 transition-all duration-300 group-hover:pointer-events-auto group-hover:opacity-100">

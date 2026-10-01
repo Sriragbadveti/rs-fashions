@@ -99,7 +99,7 @@ function ProductCard({ product }: { product: CardProduct }) {
             loading="lazy"
             decoding="async"
             onError={(e) => { if (!fallbackToOriginalImage(e, primaryImage)) handleSareeImageError(e, primaryImage); }}
-            className="h-full w-full object-cover object-center transition-transform duration-500 ease-out group-hover:scale-105 will-change-transform"
+            className="h-full w-full object-cover object-center transition-transform duration-500 ease-out group-hover:scale-105"
           />
           {hasSecondaryImage && (
             <img
@@ -107,7 +107,7 @@ function ProductCard({ product }: { product: CardProduct }) {
               alt={`${product.name} alternate view`}
               decoding="async"
               onError={(e) => { if (!fallbackToOriginalImage(e, hoverImage)) handleSareeImageError(e, hoverImage); }}
-              className="absolute inset-0 h-full w-full object-cover object-center opacity-0 transition-all duration-500 ease-out group-hover:opacity-100 group-hover:scale-105 will-change-transform"
+              className="absolute inset-0 h-full w-full object-cover object-center opacity-0 transition-all duration-500 ease-out group-hover:opacity-100 group-hover:scale-105"
             />
           )}
         </Link>
@@ -174,7 +174,7 @@ function HorizontalProductCard({ product, isOffer, offerBadgeText }: { product: 
   const cleanMaterial = (product.material || "SiCo").replace(/silk[\s-]*cotton/gi, "SiCo");
 
   return (
-    <article className="group relative flex w-full overflow-hidden rounded-2xl border border-white/60 bg-white p-2.5 shadow-xs font-sans select-none items-stretch transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 transform-gpu">
+    <article className="group relative flex w-full overflow-hidden rounded-2xl border border-white/60 bg-white p-2.5 shadow-xs font-sans select-none items-stretch transition-all duration-300 hover:shadow-md hover:-translate-y-0.5">
       {/* Image — stretched to fill the full card height */}
       <Link to={`/product/${product.id}`} state={{ product }} className="relative w-32 shrink-0 overflow-hidden rounded-xl bg-[#E9C9C3]/55 min-h-30">
         <img
@@ -183,7 +183,7 @@ function HorizontalProductCard({ product, isOffer, offerBadgeText }: { product: 
           loading="lazy"
           decoding="async"
           onError={(e) => { if (!fallbackToOriginalImage(e, primaryImage)) handleSareeImageError(e, primaryImage); }}
-          className="absolute inset-0 h-full w-full object-cover object-center transition-transform duration-500 ease-out group-hover:scale-105 will-change-transform"
+          className="absolute inset-0 h-full w-full object-cover object-center transition-transform duration-500 ease-out group-hover:scale-105"
         />
         {hasSecondaryImage && (
           <img
@@ -191,7 +191,7 @@ function HorizontalProductCard({ product, isOffer, offerBadgeText }: { product: 
             alt={`${product.name} alternate view`}
             decoding="async"
             onError={(e) => { if (!fallbackToOriginalImage(e, hoverImage)) handleSareeImageError(e, hoverImage); }}
-            className="absolute inset-0 h-full w-full object-cover object-center opacity-0 transition-all duration-500 ease-out group-hover:opacity-100 group-hover:scale-105 will-change-transform"
+            className="absolute inset-0 h-full w-full object-cover object-center opacity-0 transition-all duration-500 ease-out group-hover:opacity-100 group-hover:scale-105"
           />
         )}
         {isOffer && (
@@ -240,7 +240,7 @@ function EmptyState({ onReset, isInitialEmpty = false, className = "" }: { onRes
       </h2>
       <p className="mt-2 max-w-sm text-xs leading-relaxed text-stone-500">
         {isInitialEmpty
-          ? "Our artisan weavers are crafting fresh authentic handloom drapes. Check back soon for the latest dispatches."
+          ? "Check back soon for the latest dispatches."
           : "Try clearing your search keyword or relaxing your filter parameters."}
       </p>
       {!isInitialEmpty && (
@@ -635,7 +635,7 @@ export default function Shop() {
           <div className="flex items-center rounded-2xl border border-stone-200 bg-white p-1.5 shadow-sm transition-all focus-within:border-[#8E3D51]/50">
             <div className="relative flex flex-1 items-center pl-3 sm:pl-4">
               <FiSearch size={18} className="shrink-0 text-stone-400" />
-              <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by weave pattern, shade, zari border..." className="h-10 sm:h-11 w-full bg-transparent pl-2.5 sm:pl-3 pr-8 text-xs sm:text-sm font-light tracking-wide text-[#2A2421] placeholder-stone-400 outline-none" />
+              <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search..." className="h-10 sm:h-11 w-full bg-transparent pl-2.5 sm:pl-3 pr-8 text-xs sm:text-sm font-light tracking-wide text-[#2A2421] placeholder-stone-400 outline-none" />
               {search && (
                 <button type="button" onClick={() => { setSearch(""); setSearchParams({}); }} className="absolute right-2 flex h-6 w-6 items-center justify-center rounded-full bg-black/5 text-stone-500 hover:bg-black/10 transition-colors">
                   <FiX size={13} />
@@ -645,26 +645,56 @@ export default function Shop() {
 
             <div className="flex items-center gap-1.5 border-l border-stone-200 pl-2">
               <div className="relative">
-                <button type="button" data-filter-trigger="true" onClick={() => { setShowFilters((prev) => !prev); setShowSort(false); }} className={`flex h-10 items-center gap-2 rounded-xl px-3 sm:px-4 text-[11px] font-medium uppercase tracking-[0.14em] transition-all active:scale-95 ${activeFilterCount > 0 ? "bg-[#8E3D51] text-white shadow-xs" : "border border-stone-200 bg-stone-50 text-[#2A2421] hover:bg-stone-100"}`}>
+                <button
+                  type="button"
+                  data-filter-trigger="true"
+                  onClick={() => {
+                    setShowFilters((prev) => !prev);
+                    setShowSort(false);
+                  }}
+                  className={`flex h-10 items-center gap-2 rounded-xl px-3 sm:px-4 text-[11px] font-medium uppercase tracking-[0.14em] transition-all cursor-pointer active:scale-[0.98] ${
+                    activeFilterCount > 0
+                      ? "bg-[#8E3D51] text-white shadow-xs"
+                      : "border border-stone-200 bg-stone-50 text-[#2A2421] hover:bg-stone-100"
+                  }`}
+                >
                   <FiFilter size={13} />
                   <span className="hidden sm:inline">Filters</span>
                   {activeFilterCount > 0 && (
-                    <span className="flex h-4 w-4 items-center justify-center rounded-full bg-white text-[9px] font-bold text-[#8E3D51]">{activeFilterCount}</span>
+                    <span className="flex h-4 w-4 items-center justify-center rounded-full bg-white text-[9px] font-bold text-[#8E3D51]">
+                      {activeFilterCount}
+                    </span>
                   )}
                 </button>
 
                 <AnimatePresence>
                   {showFilters && (
-                    <FilterSheet filters={filters} onChange={setFilters} onClose={() => setShowFilters(false)} />
+                    <FilterSheet
+                      filters={filters}
+                      onChange={setFilters}
+                      onClose={() => setShowFilters(false)}
+                    />
                   )}
                 </AnimatePresence>
               </div>
 
               <div className="relative">
-                <button type="button" onClick={() => { setShowSort((prev) => !prev); setShowFilters(false); }} className="flex h-10 items-center gap-1.5 rounded-xl border border-stone-200 bg-stone-50 px-3 sm:px-4 text-[11px] font-medium uppercase tracking-[0.14em] text-[#2A2421] transition-all hover:bg-stone-100 active:scale-95">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowSort((prev) => !prev);
+                    setShowFilters(false);
+                  }}
+                  className="flex h-10 items-center gap-1.5 rounded-xl border border-stone-200 bg-stone-50 px-3 sm:px-4 text-[11px] font-medium uppercase tracking-[0.14em] text-[#2A2421] transition-all hover:bg-stone-100 cursor-pointer active:scale-[0.98]"
+                >
                   <FiSliders size={13} />
                   <span className="hidden md:inline">{sort}</span>
-                  <FiChevronDown size={13} className={`transition-transform duration-200 ${showSort ? "rotate-180" : ""}`} />
+                  <FiChevronDown
+                    size={13}
+                    className={`transition-transform duration-200 ${
+                      showSort ? "rotate-180" : ""
+                    }`}
+                  />
                 </button>
 
                 <AnimatePresence>
@@ -748,7 +778,7 @@ export default function Shop() {
         <div className="mb-3.5 flex items-center justify-between border-b border-black/5 pb-2 text-xs text-stone-500">
           {(() => {
             const available = filteredProducts.filter((p) => p.stock === undefined || p.stock > 0).length;
-            return <p>Showing <strong className="font-medium text-[#2A2421]">{available}</strong> {available === 1 ? "artisan drape" : "artisan drapes"}</p>;
+            return <p>Showing <strong className="font-medium text-[#2A2421]">{available}</strong> sarees</p>;
           })()}
           <p className="font-serif italic text-[13px]">{sort}</p>
         </div>

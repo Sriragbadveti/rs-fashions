@@ -15,10 +15,15 @@
 }
 
 html {
-  scroll-behavior: smooth;
   background: #F7EBEC;
   -ms-overflow-style: none; /* IE and Edge */
   scrollbar-width: none; /* Firefox */
+}
+
+@media (min-width: 769px) {
+  html {
+    scroll-behavior: smooth;
+  }
 }
 
 body {
@@ -29,9 +34,15 @@ body {
     radial-gradient(at 15% 15%, rgba(203, 192, 211, 0.35) 0px, transparent 50%),
     radial-gradient(at 85% 25%, rgba(233, 201, 195, 0.4) 0px, transparent 50%),
     radial-gradient(at 50% 80%, rgba(244, 231, 228, 0.75) 0px, transparent 60%);
-  background-attachment: fixed;
+  background-attachment: scroll;
   -ms-overflow-style: none; /* IE and Edge */
   scrollbar-width: none; /* Firefox */
+}
+
+@media (min-width: 769px) {
+  body {
+    background-attachment: fixed;
+  }
 }
 
 /* Hide browser scrollbar on right side for Chrome, Safari, Edge, Opera */
@@ -120,6 +131,19 @@ select {
 .glass-card:hover {
   background: rgba(255, 255, 255, 0.85);
   border-color: rgba(212, 163, 115, 0.45);
+}
+
+@media (max-width: 768px) {
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .glass-card {
+    background: rgba(255, 255, 255, 0.82);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+  }
 }
 
 .input-fluent {

@@ -4,7 +4,7 @@ import { ArrowUpRight } from "lucide-react";
 // Guaranteed verified local high-resolution saree assets
 import sicoGreenKuttu from "../../assets/images/Home.jpg";
 import roseKanchiZari from "../../assets/images/Home1.jpg";
-import tealRoyalChecks from "../../assets/images/Home_laptop_1.png";
+import tealRoyalChecks from "../../assets/images/Vintage checks.jpg";
 import pitLoomCrimson from "../../assets/images/home_banner.jpeg";
 
 interface ReelItem {
@@ -138,7 +138,7 @@ export default function CinematicReel(): React.JSX.Element {
         .cinematic-track-left {
           display: flex;
           width: max-content;
-          animation: cinematicStreamLeft 75s linear infinite;
+          animation: cinematicStreamLeft 55s linear infinite;
           will-change: transform;
           transform: translate3d(0, 0, 0);
           backface-visibility: hidden;
@@ -147,7 +147,7 @@ export default function CinematicReel(): React.JSX.Element {
         .cinematic-track-right {
           display: flex;
           width: max-content;
-          animation: cinematicStreamRight 80s linear infinite;
+          animation: cinematicStreamRight 60s linear infinite;
           will-change: transform;
           transform: translate3d(0, 0, 0);
           backface-visibility: hidden;
@@ -166,10 +166,10 @@ export default function CinematicReel(): React.JSX.Element {
 
         @media (max-width: 640px) {
           .cinematic-track-left {
-            animation-duration: 70s;
+            animation-duration: 52s;
           }
           .cinematic-track-right {
-            animation-duration: 75s;
+            animation-duration: 56s;
           }
         }
 

@@ -222,7 +222,7 @@ export default function TrendingProducts() {
                         loading="lazy"
                         decoding="async"
                         onError={(e) => { if (!fallbackToOriginalImage(e, primaryImage)) handleSareeImageError(e, primaryImage); }}
-                        className="h-full w-full object-cover object-center transition-transform duration-500 ease-out group-hover:scale-105 will-change-transform"
+                        className="h-full w-full object-cover object-center transition-transform duration-500 ease-out group-hover:scale-105"
                       />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center bg-stone-100">
@@ -238,7 +238,7 @@ export default function TrendingProducts() {
                         loading="lazy"
                         decoding="async"
                         onError={(e) => { if (!fallbackToOriginalImage(e, hoverImage)) handleSareeImageError(e, hoverImage); }}
-                        className="absolute inset-0 h-full w-full object-cover object-center opacity-0 transition-opacity duration-500 ease-out group-hover:opacity-100 group-hover:scale-105 will-change-transform"
+                        className="absolute inset-0 h-full w-full object-cover object-center opacity-0 transition-opacity duration-500 ease-out group-hover:opacity-100 group-hover:scale-105"
                       />
                     )}
 

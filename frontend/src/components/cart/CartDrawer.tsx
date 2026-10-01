@@ -4,6 +4,7 @@ import {
   FiArrowRight,
   FiMinus,
   FiPlus,
+  FiShoppingBag,
   FiTrash2,
   FiX,
 } from "react-icons/fi";
@@ -85,15 +86,13 @@ function CartDrawer({ open, onClose }: CartDrawerProps) {
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ duration: 0.38, ease }}
-            className="cart-drawer-gpu absolute right-0 top-0 flex h-full w-full max-w-[420px] flex-col bg-[#F7EBEC] shadow-[-20px_0_60px_rgba(30,20,15,0.12)]"
+            className="cart-drawer-gpu absolute right-0 top-0 flex h-full w-full max-w-105 flex-col bg-[#F7EBEC] shadow-[-20px_0_60px_rgba(30,20,15,0.12)]"
           >
             {/* Header */}
-            <div className="flex shrink-0 items-center justify-between border-b border-black/[0.05] px-5 py-4 sm:px-6 pt-[max(1.2rem,env(safe-area-inset-top))]">
-              <div>
-                <p className="text-[9px] font-semibold uppercase tracking-[0.24em] text-[#8E3D51]">
-                  Curated Selection
-                </p>
-                <h2 className="mt-0.5 font-serif text-xl sm:text-2xl text-[#2A2421]">
+            <div className="flex shrink-0 items-center justify-between border-b border-black/5 px-5 py-4 sm:px-6 pt-[max(1.2rem,env(safe-area-inset-top))]">
+              <div className="flex items-center gap-2">
+                <FiShoppingBag size={18} className="shrink-0 text-[#8E3D51]" />
+                <h2 className="font-serif text-xl text-[#2A2421] sm:text-2xl">
                   Your Bag
                 </h2>
               </div>
@@ -102,7 +101,7 @@ function CartDrawer({ open, onClose }: CartDrawerProps) {
                 type="button"
                 onClick={onClose}
                 aria-label="Close cart"
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-black/[0.04] text-[#2A2421] transition-transform hover:bg-black/[0.08] active:scale-90"
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-black/4 text-[#2A2421] transition-transform hover:bg-red-600 hover:text-white active:scale-90"
               >
                 <FiX size={18} strokeWidth={1.6} />
               </button>
@@ -112,17 +111,12 @@ function CartDrawer({ open, onClose }: CartDrawerProps) {
             <div className="cart-scroll min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6">
               {items.length === 0 ? (
                 <div className="flex h-full flex-col items-center justify-center px-4 text-center">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white border border-black/10 shadow-sm">
-                    <span className="font-serif text-xl text-[#8E3D51]">✦</span>
-                  </div>
-
                   <h3 className="mt-4 font-serif text-2xl font-light text-[#2A2421]">
                     Your bag is empty.
                   </h3>
 
-                  <p className="mt-1.5 max-w-[240px] text-xs font-light text-[#756A60] leading-relaxed">
-                    Select an artisan weave from our curated saree edits.
-                  </p>
+                  <p className="mt-1.5 max-w-60 text-xs font-light text-[#756A60] leading-relaxed">
+                    Select a saree from our collection</p>
 
                   <button
                     type="button"
@@ -130,7 +124,7 @@ function CartDrawer({ open, onClose }: CartDrawerProps) {
                       onClose();
                       navigate("/shop");
                     }}
-                    className="mt-6 rounded-full bg-[#2A2421] px-6 py-3 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-[#F7EBEC] transition-transform active:scale-95"
+                    className="mt-6 rounded-full bg-[#8E3D51] hover:bg-[#2A2421] px-6 py-3 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-[#F7EBEC] transition-transform active:scale-95"
                   >
                     Explore Collection
                   </button>
@@ -141,7 +135,7 @@ function CartDrawer({ open, onClose }: CartDrawerProps) {
                     <motion.div
                       layout
                       key={`${item.product.id}-${item.selectedColor}-${item.selectedSize}`}
-                      className="flex gap-3.5 border-b border-black/[0.04] pb-4 last:border-b-0"
+                      className="flex gap-3.5 border-b border-black/4 pb-4 last:border-b-0"
                     >
                       {/* Product Thumbnail */}
                       <button

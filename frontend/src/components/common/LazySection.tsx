@@ -23,5 +23,19 @@ export default function LazySection({ children, minHeight = 320, rootMargin = "6
     return () => io.disconnect();
   }, [visible, rootMargin]);
 
-  return <div ref={ref} style={visible ? undefined : { minHeight }}>{visible ? children : null}</div>;
+  return (
+    <div
+      ref={ref}
+      style={
+        visible
+          ? {
+              contentVisibility: "auto",
+              containIntrinsicSize: `auto none auto ${minHeight}px`,
+            }
+          : { minHeight }
+      }
+    >
+      {visible ? children : null}
+    </div>
+  );
 }

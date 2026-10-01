@@ -37,6 +37,14 @@ function Navbar() {
     top: 0, left: null, right: null,
   });
 
+  const [isDesktop, setIsDesktop] = useState(() => (typeof window !== "undefined" ? window.innerWidth >= 640 : true));
+
+  useEffect(() => {
+    const handleResize = () => setIsDesktop(window.innerWidth >= 640);
+    window.addEventListener("resize", handleResize, { passive: true });
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   /* ---------------------------------------------------------
      SCROLL
   --------------------------------------------------------- */
@@ -48,9 +56,10 @@ function Navbar() {
   const navRadius = useTransform(scrollY, [0, 120], [0, 26]);
 
   useEffect(() => {
-    return scrollY.onChange((latest) => {
+    const unsubscribe = scrollY.on("change", (latest) => {
       setIsScrolled(latest > 20);
     });
+    return () => unsubscribe();
   }, [scrollY]);
 
   /* ---------------------------------------------------------
@@ -217,13 +226,15 @@ function Navbar() {
         </motion.div>
 
         <motion.nav
-          layout
-          style={{ width: navWidth, marginTop: navMarginTop, borderRadius: navRadius }}
-          transition={{ layout: { duration: 0.4, ease: [0.22, 1, 0.36, 1] } }}
-          className={`mx-auto overflow-hidden border transition-[background-color,border-color,box-shadow] duration-300 ease-out ${
+          style={{
+            width: isDesktop ? navWidth : "100%",
+            marginTop: isDesktop ? navMarginTop : 0,
+            borderRadius: isDesktop ? navRadius : 0,
+          }}
+          className={`mx-auto overflow-hidden border transition-[background-color,border-color,box-shadow] duration-200 ease-out ${
             isScrolled || isOurStory
-              ? "border-[#CBC0D3]/60 bg-[#F7EBEC]/95 shadow-[0_12px_40px_rgba(42,36,33,0.12)] backdrop-blur-xl"
-              : "border-[#CBC0D3]/50 bg-[#F7EBEC]/85 backdrop-blur-md sm:border-transparent sm:bg-transparent sm:backdrop-blur-none"
+              ? "border-[#CBC0D3]/60 bg-[#F7EBEC]/95 shadow-[0_4px_24px_rgba(42,36,33,0.08)] backdrop-blur-md"
+              : "border-[#CBC0D3]/50 bg-[#F7EBEC]/90 sm:border-transparent sm:bg-transparent backdrop-blur-none"
           }`}
         >
           <div className="grid w-full grid-cols-[auto_1fr_auto] items-center gap-0.5 px-2 py-2 sm:grid-cols-[1fr_auto_1fr] sm:gap-4 sm:px-4 sm:py-2.5 md:px-5 lg:px-7">
@@ -337,7 +348,7 @@ function Navbar() {
                       )}
                   </div>
                 ) : (
-                  <Link to="/login" aria-label="User Login" className="flex h-8 shrink-0 items-center justify-center gap-0.5 rounded-full px-1.5 text-[#2A2421] transition hover:bg-[#EFEAE2] active:scale-95 sm:h-10 sm:gap-1.5 sm:px-3">
+                  <Link to="/login" aria-label="User Login" className="flex h-8 w-8 shrink-0 items-center justify-center gap-0 rounded-full px-0 text-[#2A2421] transition hover:bg-[#EFEAE2] active:scale-95 sm:h-10 sm:w-auto sm:gap-1.5 sm:px-3">
                     <FiUser size={16} strokeWidth={1.75} />
                     <span className="hidden text-xs font-medium sm:inline">Sign In</span>
                   </Link>
@@ -383,7 +394,7 @@ function Navbar() {
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         autoFocus
-                        placeholder="Search SiCo Gadwal sarees..."
+                        placeholder="Search..."
                         className="min-w-0 w-full bg-transparent text-xs text-[#2C2420] outline-none placeholder-stone-400 sm:text-sm"
                       />
                       {searchQuery && (

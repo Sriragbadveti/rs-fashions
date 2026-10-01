@@ -1,4 +1,6 @@
-import { motion } from "framer-motion";
+import { useEffect } from "react";
+import { createPortal } from "react-dom";
+import { motion, usePresence } from "framer-motion";
 import { FiCheck, FiX, FiRotateCcw } from "react-icons/fi";
 
 import type {
@@ -12,7 +14,9 @@ export interface FilterState {
   priceRange: "All" | "Under 2000" | "2000-4000" | "Above 4000";
 }
 
-interface FilterSheetProps {
+export interface FilterSheetProps {
+  isOpen?: boolean;
+  open?: boolean;
   filters: FilterState;
   onChange: (filters: FilterState) => void;
   onClose: () => void;
@@ -68,10 +72,15 @@ function FilterOption({
 }
 
 export default function FilterSheet({
+  isOpen = true,
+  open,
   filters,
   onChange,
   onClose,
 }: FilterSheetProps) {
+  const [isPresent, safeToRemove] = usePresence();
+  const visible = (open !== undefined ? open : isOpen) && isPresent;
+
   const handleReset = () => {
     onChange({
       category: "All",
@@ -85,33 +94,65 @@ export default function FilterSheet({
     filters.material !== "All" ||
     filters.priceRange !== "All";
 
-  return (
-    <div className="fixed inset-0 z-[120] flex items-end justify-center font-sans sm:items-center sm:p-4">
+  // Close on Escape key
+  useEffect(() => {
+    if (!visible) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [visible, onClose]);
+
+  // Lock background scroll when filter sheet is open
+  useEffect(() => {
+    if (!visible) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [visible]);
+
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-200 flex items-end justify-center font-sans sm:items-center p-0 sm:p-4 select-none"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       {/* Zero-Blur Pure Hardware Alpha Backdrop */}
       <motion.div
         aria-hidden="true"
         onClick={onClose}
         initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
+        animate={{ opacity: visible ? 1 : 0 }}
         transition={{ duration: 0.2, ease: "linear" }}
         className="fixed inset-0 bg-stone-950/60 will-change-[opacity]"
       />
 
       {/* Hardware-Accelerated Sliding Window */}
       <motion.div
-        initial={{ y: "100%" }}
-        animate={{ y: 0 }}
-        exit={{ y: "100%" }}
+        initial={{ y: "100%", opacity: 0.8 }}
+        animate={{ y: visible ? 0 : "100%", opacity: visible ? 1 : 0.8 }}
         transition={{
           duration: 0.28,
           ease: [0.22, 1, 0.36, 1],
         }}
+        onAnimationComplete={() => {
+          if (!isPresent && safeToRemove) {
+            safeToRemove();
+          }
+        }}
         style={{ transform: "translateZ(0)" }}
-        className="relative z-10 flex max-h-[85vh] w-full flex-col overflow-hidden rounded-t-[28px] border border-stone-200 bg-[#FAF7F2] shadow-2xl will-change-transform sm:max-w-md sm:rounded-3xl"
+        className="relative z-10 flex max-h-[85vh] sm:max-h-[82vh] w-full flex-col overflow-hidden rounded-t-[28px] border border-stone-200 bg-[#FAF7F2] shadow-2xl will-change-transform sm:max-w-md sm:rounded-3xl"
       >
         {/* Header */}
-        <div className="flex shrink-0 items-center justify-between border-b border-stone-200/80 bg-[#FAF7F2] px-6 py-4">
+        <div className="flex shrink-0 items-center justify-between border-b border-stone-200/80 bg-[#FAF7F2] px-5 sm:px-6 py-4">
           <div className="flex flex-col">
             <span className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#8E3D51]">
               Refine Collection
@@ -126,7 +167,7 @@ export default function FilterSheet({
               <button
                 type="button"
                 onClick={handleReset}
-                className="flex items-center gap-1.5 rounded-full border border-[#8E3D51]/30 bg-white px-3 py-1 text-[11px] font-medium text-[#8E3D51] transition-colors hover:bg-rose-50 active:scale-95"
+                className="flex items-center gap-1.5 rounded-full border border-[#8E3D51]/30 bg-white px-3 py-1.5 text-[11px] font-medium text-[#8E3D51] transition-colors hover:bg-rose-50 cursor-pointer active:scale-95"
               >
                 <FiRotateCcw size={11} />
                 <span>Reset</span>
@@ -137,9 +178,9 @@ export default function FilterSheet({
               type="button"
               aria-label="Close filters"
               onClick={onClose}
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-stone-200 bg-white text-[#4A4039] shadow-2xs transition-colors hover:bg-stone-100 active:scale-90"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-stone-200 bg-white text-[#4A4039] shadow-xs transition-colors hover:bg-stone-100 hover:text-stone-900 cursor-pointer active:scale-95"
             >
-              <FiX size={17} />
+              <FiX size={18} />
             </button>
           </div>
         </div>
@@ -222,16 +263,17 @@ export default function FilterSheet({
         </div>
 
         {/* Action Footer */}
-        <div className="shrink-0 border-t border-stone-200/80 bg-[#FAF7F2] p-4.5">
+        <div className="shrink-0 border-t border-stone-200/80 bg-[#FAF7F2] p-4 sm:p-4.5">
           <button
             type="button"
             onClick={onClose}
-            className="flex h-11 w-full items-center justify-center rounded-2xl bg-[#8E3D51] text-xs font-bold uppercase tracking-[0.16em] text-white shadow-xs transition-colors hover:bg-[#783344] active:scale-[0.98]"
+            className="flex h-11 w-full items-center justify-center rounded-2xl bg-[#8E3D51] text-xs font-bold uppercase tracking-[0.16em] text-white shadow-xs transition-colors hover:bg-[#783344] cursor-pointer active:scale-[0.98]"
           >
             Show Results
           </button>
         </div>
       </motion.div>
-    </div>
+    </div>,
+    document.body
   );
 }
