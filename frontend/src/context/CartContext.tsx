@@ -186,58 +186,90 @@ export function CartProvider({ children }: { children: ReactNode }) {
     [items]
   );
 
-  /* Tiered Offer Calculation (Buy 1 get 5%, Buy 2 get 10%, Buy 3+ get 15%) */
+  // Subtotal and count of eligible Special Edition items only
+  const specialEditionItems = useMemo(
+    () =>
+      items.filter((item) => {
+        const p = item.product as any;
+        const tags = Array.isArray(p.tags)
+          ? p.tags.map((t: string) => String(t).toLowerCase())
+          : [];
+        return (
+          p.isSpecialEdition === true ||
+          p.isLimitedEdition === true ||
+          tags.includes("special_edition") ||
+          tags.includes("limited_edition")
+        );
+      }),
+    [items]
+  );
+
+  const specialEditionCount = useMemo(
+    () => specialEditionItems.reduce((total, item) => total + item.quantity, 0),
+    [specialEditionItems]
+  );
+
+  const specialEditionSubtotal = useMemo(
+    () =>
+      specialEditionItems.reduce(
+        (total, item) => total + item.product.price * item.quantity,
+        0
+      ),
+    [specialEditionItems]
+  );
+
+  /* Tiered Offer Calculation (Buy 1 get 5%, Buy 2 get 10%, Buy 3+ get 15% exclusively for Special Edition) */
   const tierOffer: TierOfferInfo = useMemo(() => {
-    if (itemCount === 0) {
+    if (specialEditionCount === 0) {
       return {
         tier: 0,
         percent: 0,
         discountAmount: 0,
-        label: "Buy 1 Get 5% Off • Buy 2 Get 10% Off • Buy 3+ Get 15% Off",
+        label: "Buy 1 Get 5% Off • Buy 2 Get 10% Off • Buy 3+ Get 15% Off (Special Edition)",
         nextTierNeeded: 1,
         nextTierPercent: 5,
         isMaxTier: false,
       };
     }
 
-    if (itemCount === 1) {
-      const discount = Math.round(subtotal * 0.05);
+    if (specialEditionCount === 1) {
+      const discount = Math.round(specialEditionSubtotal * 0.05);
       return {
         tier: 1,
         percent: 5,
         discountAmount: discount,
-        label: "Tier 1 Unlocked: 5% Special Offer Discount",
+        label: "Tier 1 Unlocked: 5% Special Edition Offer",
         nextTierNeeded: 1,
         nextTierPercent: 10,
         isMaxTier: false,
       };
     }
 
-    if (itemCount === 2) {
-      const discount = Math.round(subtotal * 0.10);
+    if (specialEditionCount === 2) {
+      const discount = Math.round(specialEditionSubtotal * 0.10);
       return {
         tier: 2,
         percent: 10,
         discountAmount: discount,
-        label: "Tier 2 Unlocked: 10% Bundle Offer Discount",
+        label: "Tier 2 Unlocked: 10% Special Edition Bundle Offer",
         nextTierNeeded: 1,
         nextTierPercent: 15,
         isMaxTier: false,
       };
     }
 
-    // 3 or more sarees
-    const discount = Math.round(subtotal * 0.15);
+    // 3 or more Special Edition sarees
+    const discount = Math.round(specialEditionSubtotal * 0.15);
     return {
       tier: 3,
       percent: 15,
       discountAmount: discount,
-      label: "VIP Tier 3 Unlocked: 15% Mega Special Offer Discount",
+      label: "VIP Tier 3 Unlocked: 15% Special Edition Mega Offer",
       nextTierNeeded: 0,
       nextTierPercent: 15,
       isMaxTier: true,
     };
-  }, [itemCount, subtotal]);
+  }, [specialEditionCount, specialEditionSubtotal]);
 
   const offerDiscount = tierOffer.discountAmount;
   const finalSubtotal = Math.max(0, subtotal - offerDiscount);

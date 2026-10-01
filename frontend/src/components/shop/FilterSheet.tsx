@@ -20,6 +20,11 @@ interface FilterSheetProps {
 
 const categories: FilterState["category"][] = [
   "All",
+  "Checks",
+  "Equal Borders",
+  "Kanchi Big Borders",
+  "Gap Border",
+  "Maa Inti Bangaram",
   "SiCo Gadwal Sarees",
 ];
 

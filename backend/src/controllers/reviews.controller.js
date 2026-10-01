@@ -23,10 +23,17 @@ export function invalidateReviewsCache() {
 // 1. GET REVIEWS
 export async function getReviews(req, res) {
   try {
-    const { productId } = req.query;
+    const { productId, approved } = req.query;
+
+    const filterApproved = (list) => {
+      if (approved === "true") {
+        return list.filter((r) => r.approved !== false);
+      }
+      return list;
+    };
 
     if (!productId && cachedReviews && Date.now() - lastReviewsFetch < REVIEWS_CACHE_TTL_MS) {
-      return successResponse(res, { reviews: cachedReviews }, "Reviews retrieved successfully (cached)");
+      return successResponse(res, { reviews: filterApproved(cachedReviews) }, "Reviews retrieved successfully (cached)");
     }
 
     if (!productId && !inFlightReviewsPromise) {
@@ -45,6 +52,7 @@ export async function getReviews(req, res) {
                 title: r.title,
                 content: r.content,
                 verifiedBuyer: r.verified_buyer !== false,
+                approved: r.approved !== false,
                 date: r.date || new Date(r.created_at).toLocaleDateString("en-IN", {
                   day: "2-digit",
                   month: "short",
@@ -71,7 +79,7 @@ export async function getReviews(req, res) {
 
     if (!productId && inFlightReviewsPromise) {
       const reviews = await inFlightReviewsPromise;
-      return successResponse(res, { reviews }, "Reviews retrieved successfully");
+      return successResponse(res, { reviews: filterApproved(reviews) }, "Reviews retrieved successfully");
     }
 
     if (supabase) {
@@ -92,6 +100,7 @@ export async function getReviews(req, res) {
             title: r.title,
             content: r.content,
             verifiedBuyer: r.verified_buyer !== false,
+            approved: r.approved !== false,
             date: r.date || new Date(r.created_at).toLocaleDateString("en-IN", {
               day: "2-digit",
               month: "short",
@@ -99,18 +108,18 @@ export async function getReviews(req, res) {
             }),
             createdAt: r.created_at,
           }));
-          return successResponse(res, { reviews: formatted }, "Reviews retrieved successfully");
+          return successResponse(res, { reviews: filterApproved(formatted) }, "Reviews retrieved successfully");
         }
       } catch (err) {
         console.warn("Reviews fetch error:", err.message);
       }
     }
 
-    const localReviews = getReviewsFromStore(productId);
+    const localReviews = getReviewsFromStore(productId, approved === "true");
     return successResponse(res, { reviews: localReviews }, "Reviews retrieved from store");
   } catch (err) {
     if (cachedReviews) {
-      return successResponse(res, { reviews: cachedReviews }, "Reviews retrieved successfully (fallback)");
+      return successResponse(res, { reviews: filterApproved(cachedReviews) }, "Reviews retrieved successfully (fallback)");
     }
     return errorResponse(res, err.message, 500);
   }
@@ -128,6 +137,7 @@ export async function createReview(req, res) {
       title,
       content,
       verifiedBuyer = true,
+      approved = true,
       date,
     } = req.body;
 
@@ -146,6 +156,7 @@ export async function createReview(req, res) {
       title: title ? String(title).trim() : "Generational Masterpiece",
       content: String(content).trim(),
       verifiedBuyer: Boolean(verifiedBuyer),
+      approved: Boolean(approved),
       date: date || new Date().toLocaleDateString("en-IN", {
         day: "2-digit",
         month: "short",
@@ -177,6 +188,7 @@ export async function createReview(req, res) {
       }
     }
 
+    invalidateReviewsCache();
     return successResponse(res, { review: reviewData }, "Review published successfully", 201);
   } catch (err) {
     console.error("createReview error:", err);
@@ -194,7 +206,10 @@ export async function updateReview(req, res) {
       return errorResponse(res, "Review ID is required", 400);
     }
 
-    const updated = saveReviewToStore({ ...updates, id });
+    const existingReviews = getReviewsFromStore();
+    const existing = existingReviews.find((r) => r.id === id) || {};
+    const updated = saveReviewToStore({ ...existing, ...updates, id });
+    invalidateReviewsCache();
 
     if (supabase) {
       try {
@@ -230,6 +245,7 @@ export async function deleteReview(req, res) {
     }
 
     deleteReviewFromStore(id);
+    invalidateReviewsCache();
 
     if (supabase) {
       try {

@@ -29,6 +29,7 @@ export interface ProductReview {
   title: string;
   content: string;
   verifiedBuyer: boolean;
+  approved?: boolean;
   date: string;
   createdAt?: string;
 }
@@ -67,6 +68,7 @@ export default function ReviewsManager({ inventory }: ReviewsManagerProps) {
     title: "",
     content: "",
     verifiedBuyer: true,
+    approved: true,
     date: new Date().toLocaleDateString("en-IN", {
       day: "2-digit",
       month: "short",
@@ -118,6 +120,7 @@ export default function ReviewsManager({ inventory }: ReviewsManagerProps) {
       title: "",
       content: "",
       verifiedBuyer: true,
+      approved: true,
       date: new Date().toLocaleDateString("en-IN", {
         day: "2-digit",
         month: "short",
@@ -139,6 +142,7 @@ export default function ReviewsManager({ inventory }: ReviewsManagerProps) {
       title: rev.title,
       content: rev.content,
       verifiedBuyer: rev.verifiedBuyer,
+      approved: rev.approved !== false,
       date: rev.date,
     });
     setIsModalOpen(true);
@@ -164,6 +168,7 @@ export default function ReviewsManager({ inventory }: ReviewsManagerProps) {
         title: formData.title.trim() || "Exquisite Handloom Weave",
         content: formData.content.trim(),
         verifiedBuyer: formData.verifiedBuyer,
+        approved: formData.approved !== false,
         date: formData.date,
       };
 
@@ -187,6 +192,7 @@ export default function ReviewsManager({ inventory }: ReviewsManagerProps) {
         title: formData.title.trim() || "Exquisite Handloom Weave",
         content: formData.content.trim(),
         verifiedBuyer: formData.verifiedBuyer,
+        approved: formData.approved !== false,
         date: formData.date,
         createdAt: new Date().toISOString(),
       };
@@ -213,6 +219,21 @@ export default function ReviewsManager({ inventory }: ReviewsManagerProps) {
     fetch(`${API_BASE}/reviews/${id}`, {
       method: "DELETE",
     }).catch((err) => console.warn("Review delete API notice:", err));
+  };
+
+  // Toggle Review Approval
+  const handleToggleApproval = (id: string) => {
+    const target = reviews.find((r) => r.id === id);
+    if (!target) return;
+    const newApproved = !(target.approved !== false);
+    const updated = reviews.map((r) => (r.id === id ? { ...r, approved: newApproved } : r));
+    persistReviews(updated);
+
+    fetch(`${API_BASE}/reviews/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ approved: newApproved }),
+    }).catch((err) => console.warn("Review approval toggle notice:", err));
   };
 
   // Filtered reviews
@@ -440,8 +461,19 @@ export default function ReviewsManager({ inventory }: ReviewsManagerProps) {
                   </div>
                 </div>
 
-                {/* Edit & Delete Buttons */}
-                <div className="flex items-center gap-1">
+                {/* Approval & Edit/Delete Buttons */}
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => handleToggleApproval(rev.id)}
+                    className={`px-2 py-1 text-[10px] font-semibold rounded-lg border transition-all ${
+                      rev.approved !== false
+                        ? "bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100"
+                        : "bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100"
+                    }`}
+                    title={rev.approved !== false ? "Click to hide from store" : "Click to approve and show on storefront"}
+                  >
+                    {rev.approved !== false ? "Approved" : "Hidden"}
+                  </button>
                   <button
                     onClick={() => handleOpenEditModal(rev)}
                     className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-lg transition-colors"

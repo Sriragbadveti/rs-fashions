@@ -72,7 +72,7 @@ export interface StoreOrder {
   paymentStatus: string;
   transactionId?: string;
   paymentDetails?: any;
-  orderStatus: "new" | "processing" | "shipped" | "delivered" | "cancelled";
+  orderStatus: "ordered" | "packaging" | "shipped" | "delivered" | "refused_by_user" | "cancelled" | "new" | "processing";
   createdAt: string;
 }
 
@@ -172,6 +172,12 @@ export const StoreService = {
             longDescription: d.longDescription || d.description || "",
             featured: Boolean(d.featured),
             borderColor: d.borderColor || d.border_color || undefined,
+            sku: d.sku || d.sku_code || (d.variants && d.variants[0]?.sku) || undefined,
+            isSpecialEdition: Boolean(d.isSpecialEdition || d.is_special_edition || (Array.isArray(d.tags) && (d.tags.includes("special_edition") || d.tags.includes("limited_edition")))),
+            isSpecialOffer: Boolean(d.isSpecialOffer || d.is_special_offer || (Array.isArray(d.tags) && d.tags.includes("special_offer"))),
+            isOfferEligible: Boolean(d.isOfferEligible || d.is_offer_eligible || d.isSpecialOffer || (Array.isArray(d.tags) && d.tags.includes("special_offer"))),
+            tags: Array.isArray(d.tags) ? d.tags : [],
+            variants: d.variants || [],
           }))
         );
         try {
@@ -207,6 +213,12 @@ export const StoreService = {
             longDescription: d.long_description || d.description || "",
             featured: Boolean(d.featured),
             borderColor: d.border_color || d.borderColor || undefined,
+            sku: d.sku || d.sku_code || undefined,
+            isSpecialEdition: Boolean(d.is_special_edition || d.isSpecialEdition || (Array.isArray(d.tags) && (d.tags.includes("special_edition") || d.tags.includes("limited_edition")))),
+            isSpecialOffer: Boolean(d.is_special_offer || d.isSpecialOffer || (Array.isArray(d.tags) && d.tags.includes("special_offer"))),
+            isOfferEligible: Boolean(d.is_offer_eligible || d.isOfferEligible || d.is_special_offer || (Array.isArray(d.tags) && d.tags.includes("special_offer"))),
+            tags: Array.isArray(d.tags) ? d.tags : [],
+            variants: d.variants || [],
           }))
         );
         try {
@@ -275,6 +287,12 @@ export const StoreService = {
               longDescription: d.longDescription || d.description || "Handcrafted pure heirloom SiCo Gadwal drape with certified zari and rich pallu motifs.",
               featured: Boolean(d.featured ?? true),
               borderColor: d.borderColor || d.border_color || undefined,
+              sku: d.sku || d.sku_code || (variants[0]?.sku) || undefined,
+              isSpecialEdition: Boolean(d.isSpecialEdition || d.is_special_edition || (Array.isArray(d.tags) && (d.tags.includes("special_edition") || d.tags.includes("limited_edition")))),
+              isSpecialOffer: Boolean(d.isSpecialOffer || d.is_special_offer || (Array.isArray(d.tags) && d.tags.includes("special_offer"))),
+              isOfferEligible: Boolean(d.isOfferEligible || d.is_offer_eligible || d.isSpecialOffer || (Array.isArray(d.tags) && d.tags.includes("special_offer"))),
+              tags: Array.isArray(d.tags) ? d.tags : [],
+              variants,
             };
           });
         }
@@ -1359,7 +1377,7 @@ export const StoreService = {
       ...orderData,
       id: `ord-${Date.now().toString(36)}`,
       orderNumber,
-      orderStatus: "new",
+      orderStatus: "ordered",
       createdAt: new Date().toISOString(),
     };
 
@@ -1390,6 +1408,8 @@ export const StoreService = {
           payment_method: newOrder.paymentMethod,
           paymentStatus: newOrder.paymentStatus,
           payment_status: newOrder.paymentStatus,
+          orderStatus: newOrder.orderStatus,
+          order_status: newOrder.orderStatus,
           transactionId: newOrder.transactionId,
           transaction_id: newOrder.transactionId,
           paymentDetails: newOrder.paymentDetails,
@@ -1979,14 +1999,10 @@ export const StoreService = {
         }
       }
 
-      let orderStatus = o.orderStatus || "processing";
+      let rawStatus = o.orderStatus || o.order_status || "ordered";
+      let orderStatus = rawStatus === "new" ? "ordered" : rawStatus;
       if (f?.status) {
-        orderStatus =
-          f.status === "delivered"
-            ? "delivered"
-            : f.status === "shipped"
-            ? "shipped"
-            : "processing";
+        orderStatus = f.status === "new" ? "ordered" : f.status;
       }
 
       const currentStage = f?.status || o.currentStage || orderStatus;

@@ -33,15 +33,11 @@ const sortOptions = [
 ];
 
 const sareeSubcategories = [
-  { label: "Vintage Checks", path: "/shop?search=Vintage+Checks" },
-  { label: "Gatti borders", path: "/shop?search=Gatti+borders" },
-  { label: "Ma inti Bangaram 3 inch borders", path: "/shop?search=Ma+inti+Bangaram" },
-  { label: "Big Kanchi borders", path: "/shop?search=Big+Kanchi" },
-  { label: "Equal Kanchi borders", path: "/shop?search=Equal+Kanchi" },
-  { label: "Chakra border", path: "/shop?search=Chakra+border" },
-  { label: "Gap borders", path: "/shop?search=Gap+borders" },
-  { label: "Gap Border Checks", path: "/shop?search=Gap+checks" },
-  { label: "Box Gadwal Checks", path: "/shop?search=Box+Gadwal+Checks" },
+  { label: "Checks", path: "/shop?category=Checks" },
+  { label: "Equal Borders", path: "/shop?category=Equal+Borders" },
+  { label: "Kanchi Big Borders", path: "/shop?category=Kanchi+Big+Borders" },
+  { label: "Gap Border", path: "/shop?category=Gap+Border" },
+  { label: "Maa Inti Bangaram", path: "/shop?category=Maa+Inti+Bangaram" },
 ];
 
 const secondaryLinks = [

@@ -1,22 +1,28 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
 import { API_BASE } from "../config/api";
 
-// The four canonical stages an order can be in.
-export type OrderStatus = "new" | "packaging" | "shipped" | "delivered";
+// The canonical stages an order can be in.
+export type OrderStatus = "ordered" | "new" | "packaging" | "shipped" | "delivered" | "refused_by_user" | "cancelled";
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
-  new: "New Order",
+  ordered: "Ordered",
+  new: "Ordered",
   packaging: "Packaging",
   shipped: "Shipped",
   delivered: "Delivered",
+  refused_by_user: "Refused by User",
+  cancelled: "Cancelled",
 };
 
 // Badge/dropdown colors per status — shared so TrackOrder and TransactionHistory render identically.
 export const ORDER_STATUS_STYLES: Record<OrderStatus, string> = {
+  ordered: "bg-purple-50 text-purple-700 border-purple-200",
   new: "bg-purple-50 text-purple-700 border-purple-200",
   packaging: "bg-amber-50 text-amber-700 border-amber-200",
   shipped: "bg-blue-50 text-blue-700 border-blue-200",
   delivered: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  refused_by_user: "bg-rose-50 text-rose-700 border-rose-200",
+  cancelled: "bg-stone-100 text-stone-600 border-stone-300",
 };
 
 export const LOCAL_STORAGE_FULFILLMENTS = "rs_order_fulfillments";
@@ -30,7 +36,7 @@ export interface OrderFulfillment {
 }
 
 const DEFAULT_FULFILLMENT: OrderFulfillment = {
-  status: "new",
+  status: "ordered",
   trackingNumber: "",
   carrierPartner: "",
 };
@@ -151,7 +157,11 @@ export function OrderFulfillmentProvider({
                     ? "shipped"
                     : fulfillment.status === "packaging"
                     ? "packaging"
-                    : "new";
+                    : fulfillment.status === "refused_by_user"
+                    ? "refused_by_user"
+                    : fulfillment.status === "cancelled"
+                    ? "cancelled"
+                    : "ordered";
                 return {
                   ...o,
                   orderStatus: statusMapped,
@@ -253,18 +263,28 @@ export function OrderFulfillmentProvider({
     }
   };
 
-  const updateStatus = (invoiceNumber: string, status: OrderStatus) => {
-    setFulfillments((prev) => {
-      const updated = { ...(prev[invoiceNumber] ?? DEFAULT_FULFILLMENT), status };
-      persistFulfillmentLocally(invoiceNumber, updated);
-      return { ...prev, [invoiceNumber]: updated };
-    });
-
-    fetch(`${API_BASE}/sales/${encodeURIComponent(invoiceNumber)}/fulfillment`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    }).catch((err) => console.warn("Fulfillment status sync error:", err));
+  const updateStatus = async (invoiceNumber: string, status: OrderStatus): Promise<boolean> => {
+    try {
+      const res = await fetch(`${API_BASE}/sales/${encodeURIComponent(invoiceNumber)}/fulfillment`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        alert(data?.message || "Could not update order status.");
+        return false;
+      }
+      setFulfillments((prev) => {
+        const updated = { ...(prev[invoiceNumber] ?? DEFAULT_FULFILLMENT), status };
+        persistFulfillmentLocally(invoiceNumber, updated);
+        return { ...prev, [invoiceNumber]: updated };
+      });
+      return true;
+    } catch (err: any) {
+      console.warn("Fulfillment status sync error:", err);
+      return false;
+    }
   };
 
   const updateTrackingNumber = (invoiceNumber: string, trackingNumber: string) => {

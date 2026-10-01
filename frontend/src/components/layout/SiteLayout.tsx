@@ -1,6 +1,7 @@
 import { Outlet } from "react-router-dom";
 import Navbar from "./Navbar";
 import HomeFooter from "../home/HomeFooter";
+import TestimonialsMarquee from "../common/TestimonialsMarquee";
 import CookieConsent from "../common/CookieConsent";
 
 function SiteLayout() {
@@ -11,6 +12,9 @@ function SiteLayout() {
       <main className="pt-22 sm:pt-25 grow">
         <Outlet />
       </main>
+
+      {/* Customer Testimonials Marquee */}
+      <TestimonialsMarquee />
 
       {/* Global Storefront Footer with Policies & Attribution */}
       <HomeFooter />

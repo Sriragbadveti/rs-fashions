@@ -22,6 +22,8 @@ import {
   loadSettings,
   saveSettingsToStorage,
   exportDatabaseBackup,
+  exportCategoryPdf,
+  type PdfReportCategory,
 } from "../types/settings";
 import type { ShowroomSettings } from "../types/settings";
 import { useModal } from "../context/ModalContext";
@@ -255,10 +257,19 @@ export default function SettingsView({
     });
   }
 
-  function handleExportData(format: "json" | "csv" | "xml" | "pdf") {
+  function handleExportData(format: "json" | "csv" | "xml") {
     const result = exportDatabaseBackup(format, inventory, salesHistory, stockHistory, devices);
     if (result.success) {
       toast("Export Complete", result.message, "success");
+    } else {
+      toast("Export Error", result.message, "error");
+    }
+  }
+
+  function handleExportCategoryPdf(category: PdfReportCategory) {
+    const result = exportCategoryPdf(category, inventory, salesHistory, stockHistory);
+    if (result.success) {
+      toast("PDF Export Complete", result.message, "success");
     } else {
       toast("Export Error", result.message, "error");
     }
@@ -467,45 +478,96 @@ export default function SettingsView({
                 icon={<Database size={20} />}
               />
 
+              {/* PDF EXPORT SUITE - STRICTLY 4 CANONICAL CATEGORIES */}
+              <div className="pt-3 border-t border-stone-200/70 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-stone-900 uppercase tracking-wider">
+                    Showroom PDF Reports (Stock &bull; Sales &bull; Customers &bull; Transactions)
+                  </h4>
+                  <span className="text-[10px] text-stone-400 font-mono">Zero Admin URLs</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => handleExportCategoryPdf("stock")}
+                    className="flex flex-col items-start gap-1 p-3.5 rounded-2xl border border-stone-200/80 bg-white hover:border-[#8E3D51] text-xs font-semibold text-stone-800 transition-all shadow-xs hover:shadow-sm active:scale-95 text-left"
+                  >
+                    <div className="flex items-center gap-1.5 text-[#8E3D51]">
+                      <FileText size={15} />
+                      <span className="font-bold">Stock PDF</span>
+                    </div>
+                    <span className="text-[10.5px] font-normal text-stone-500">Inventory counts, valuations &amp; variants</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleExportCategoryPdf("sales")}
+                    className="flex flex-col items-start gap-1 p-3.5 rounded-2xl border border-stone-200/80 bg-white hover:border-emerald-600 text-xs font-semibold text-stone-800 transition-all shadow-xs hover:shadow-sm active:scale-95 text-left"
+                  >
+                    <div className="flex items-center gap-1.5 text-emerald-700">
+                      <FileCheck size={15} />
+                      <span className="font-bold">Sales PDF</span>
+                    </div>
+                    <span className="text-[10.5px] font-normal text-stone-500">Invoices, gross turnover &amp; revenue</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleExportCategoryPdf("customers")}
+                    className="flex flex-col items-start gap-1 p-3.5 rounded-2xl border border-stone-200/80 bg-white hover:border-blue-600 text-xs font-semibold text-stone-800 transition-all shadow-xs hover:shadow-sm active:scale-95 text-left"
+                  >
+                    <div className="flex items-center gap-1.5 text-blue-700">
+                      <FileSpreadsheet size={15} />
+                      <span className="font-bold">Customers PDF</span>
+                    </div>
+                    <span className="text-[10.5px] font-normal text-stone-500">Patron directory, spend &amp; orders</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleExportCategoryPdf("transactions")}
+                    className="flex flex-col items-start gap-1 p-3.5 rounded-2xl border border-stone-200/80 bg-white hover:border-purple-600 text-xs font-semibold text-stone-800 transition-all shadow-xs hover:shadow-sm active:scale-95 text-left"
+                  >
+                    <div className="flex items-center gap-1.5 text-purple-700">
+                      <FileCode size={15} />
+                      <span className="font-bold">Transactions PDF</span>
+                    </div>
+                    <span className="text-[10.5px] font-normal text-stone-500">Payment channels, modes &amp; audit</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* RAW DATA BACKUPS */}
               <div className="pt-3 border-t border-stone-200/70 space-y-3">
                 <h4 className="text-xs font-bold text-stone-900 uppercase tracking-wider">
-                  Export Showroom Data (Includes Sales &amp; Stock Ledgers)
+                  Raw Data Backups (JSON / CSV / XML)
                 </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                   <button
                     type="button"
                     onClick={() => handleExportData("json")}
-                    className="flex items-center justify-center gap-2 p-3 rounded-2xl border border-stone-200/80 bg-white hover:border-brand-gold text-xs font-semibold text-stone-800 transition-all shadow-sm active:scale-95"
+                    className="flex items-center justify-center gap-2 p-3 rounded-2xl border border-stone-200/80 bg-white hover:border-brand-gold text-xs font-semibold text-stone-800 transition-all shadow-xs active:scale-95"
                   >
                     <FileCode size={15} className="text-brand-gold" />
-                    <span>Export Full JSON Backup</span>
+                    <span>Full JSON Backup</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => handleExportData("csv")}
-                    className="flex items-center justify-center gap-2 p-3 rounded-2xl border border-stone-200/80 bg-white hover:border-brand-gold text-xs font-semibold text-stone-800 transition-all shadow-sm active:scale-95"
+                    className="flex items-center justify-center gap-2 p-3 rounded-2xl border border-stone-200/80 bg-white hover:border-brand-gold text-xs font-semibold text-stone-800 transition-all shadow-xs active:scale-95"
                   >
                     <FileSpreadsheet size={15} className="text-emerald-600" />
-                    <span>Export CSV (Inventory + Sales)</span>
+                    <span>CSV Spreadsheet</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => handleExportData("xml")}
-                    className="flex items-center justify-center gap-2 p-3 rounded-2xl border border-stone-200/80 bg-white hover:border-brand-gold text-xs font-semibold text-stone-800 transition-all shadow-sm active:scale-95"
+                    className="flex items-center justify-center gap-2 p-3 rounded-2xl border border-stone-200/80 bg-white hover:border-brand-gold text-xs font-semibold text-stone-800 transition-all shadow-xs active:scale-95"
                   >
                     <FileText size={15} className="text-blue-600" />
-                    <span>Export XML Ledger</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleExportData("pdf")}
-                    className="flex items-center justify-center gap-2 p-3 rounded-2xl border border-stone-200/80 bg-white hover:border-brand-gold text-xs font-semibold text-stone-800 transition-all shadow-sm active:scale-95"
-                  >
-                    <FileCheck size={15} className="text-rose-600" />
-                    <span>Export Transactions as PDF</span>
+                    <span>XML Ledger</span>
                   </button>
                 </div>
               </div>

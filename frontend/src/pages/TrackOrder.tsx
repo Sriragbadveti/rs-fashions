@@ -268,10 +268,12 @@ export default function TrackOrder({ salesHistory }: TrackOrderProps) {
           {(
             [
               { id: "ALL" as const, label: "All Orders" },
-              { id: "new" as const, label: ORDER_STATUS_LABELS.new },
+              { id: "ordered" as const, label: ORDER_STATUS_LABELS.ordered },
               { id: "packaging" as const, label: ORDER_STATUS_LABELS.packaging },
               { id: "shipped" as const, label: ORDER_STATUS_LABELS.shipped },
               { id: "delivered" as const, label: ORDER_STATUS_LABELS.delivered },
+              { id: "refused_by_user" as const, label: ORDER_STATUS_LABELS.refused_by_user },
+              { id: "cancelled" as const, label: ORDER_STATUS_LABELS.cancelled },
             ]
           ).map((tab) => (
             <button
@@ -697,17 +699,30 @@ export default function TrackOrder({ salesHistory }: TrackOrderProps) {
                       </label>
                       <select
                         value={fulfillment.status}
-                        onChange={(e) => {
+                        onChange={async (e) => {
                           sound.playClick();
-                          updateStatus(selectedOrder.invoiceNumber, e.target.value as OrderStatus);
+                          const targetStatus = e.target.value as OrderStatus;
+                          const isCod = (selectedOrder.paymentMethod || "").toLowerCase() === "cod";
+                          if (targetStatus === "refused_by_user" && !isCod) {
+                            alert("Refused by User is only valid for Cash on Delivery (COD) orders.");
+                            return;
+                          }
+                          await updateStatus(selectedOrder.invoiceNumber, targetStatus);
                         }}
-                        className={`w-full h-9 px-3 rounded-xl border text-xs font-semibold outline-none cursor-pointer transition-colors ${ORDER_STATUS_STYLES[fulfillment.status]}`}
+                        className={`w-full h-9 px-3 rounded-xl border text-xs font-semibold outline-none cursor-pointer transition-colors ${ORDER_STATUS_STYLES[fulfillment.status] || ""}`}
                       >
-                        {(Object.keys(ORDER_STATUS_LABELS) as OrderStatus[]).map((status) => (
-                          <option key={status} value={status}>
-                            {ORDER_STATUS_LABELS[status]}
-                          </option>
-                        ))}
+                        {(Object.keys(ORDER_STATUS_LABELS) as OrderStatus[])
+                          .filter((status) => {
+                            if (status === "new") return false;
+                            const isCod = (selectedOrder.paymentMethod || "").toLowerCase() === "cod";
+                            if (status === "refused_by_user" && !isCod) return false;
+                            return true;
+                          })
+                          .map((status) => (
+                            <option key={status} value={status}>
+                              {ORDER_STATUS_LABELS[status]}
+                            </option>
+                          ))}
                       </select>
                     </div>
                   </div>

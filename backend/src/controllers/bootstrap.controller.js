@@ -212,7 +212,7 @@ export async function getBootstrapData(req, res) {
         total: Number(o.total) || 0,
         paymentMethod: o.payment_method || "upi",
         paymentStatus: o.payment_status || "completed",
-        orderStatus: o.order_status || "completed",
+        orderStatus: o.order_status === "new" ? "ordered" : (o.order_status || "ordered"),
         billType: o.billing_type || "gst",
       };
     });

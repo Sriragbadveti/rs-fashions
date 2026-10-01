@@ -414,7 +414,12 @@ export interface Product {
   isSpecialOffer?: boolean;
 
   /**
-   * Limited edition flag (Admin marked for Limited Edition saree showcase).
+   * Special edition flag (Admin marked for Special Edition saree showcase and Buy 1/2/3 offers).
+   */
+  isSpecialEdition?: boolean;
+
+  /**
+   * Legacy Limited edition flag (mapped to Special Edition).
    */
   isLimitedEdition?: boolean;
 

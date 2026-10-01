@@ -472,7 +472,11 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
                       ? "shipped"
                       : st === "packaging" || st === "processing"
                         ? "packaging"
-                        : "new",
+                        : st === "refused_by_user" || st === "refused"
+                          ? "refused_by_user"
+                          : st === "cancelled"
+                            ? "cancelled"
+                            : "ordered",
                 trackingNumber: "",
                 carrierPartner: "",
               };
@@ -1235,20 +1239,6 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
                 <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.15)]" />
                 <span>Cloud Connected</span>
               </div>
-
-              <button
-                type="button"
-                onClick={triggerRefresh}
-                title="Synchronize store records (Ctrl + R)"
-                className="group flex h-10 items-center justify-center gap-2 rounded-xl border border-stone-200/80 bg-white/80 px-3.5 text-xs font-bold text-stone-700 shadow-xs transition-all hover:border-[#D4A373] hover:bg-white hover:text-stone-900 active:scale-95"
-              >
-                <RotateCw
-                  size={14}
-                  className={`text-[#D4A373] transition-transform duration-500 ${isRefreshing ? "animate-spin" : "group-hover:rotate-180"
-                    }`}
-                />
-                <span className="hidden md:inline">Sync</span>
-              </button>
 
               {/* Bell Icon: Dot displays ONLY when hasUnreadNotifications is true */}
               <button

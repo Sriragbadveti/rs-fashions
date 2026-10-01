@@ -1014,7 +1014,7 @@ export function useBilling({
 
     const lines = completedSale.items.map(
       (item) =>
-        `• ${item.name} (${item.color})\n  Qty: ${item.qty} × ${currency(
+        `• ${item.name} (SKU: ${item.sku || "RS0001"})\n  Shade: ${item.color} | Qty: ${item.qty} × ${currency(
           item.unitPrice
         )} = ${currency(item.unitPrice * item.qty)}`
     );

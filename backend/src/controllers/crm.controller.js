@@ -23,23 +23,26 @@ export async function getCustomers(req, res) {
 
     if (error) throw error;
 
-    const customers = (data || []).map((c) => ({
-      id: c.id,
-      name: c.name,
-      phone: c.phone,
-      email: c.email || undefined,
-      city: c.city || "Hyderabad",
-      address: c.address || (c.city ? `${c.city}, Telangana` : "Hyderabad, Telangana"),
-      totalSpent: Number(c.total_spent) || 0,
-      ordersCount: Number(c.orders_count) || 0,
-      birthday: c.birthday || undefined,
-      anniversary: c.anniversary || undefined,
-      preferredWeave: c.preferred_weave || undefined,
-      notes: c.notes || undefined,
-      gstin: c.gstin || undefined,
-      authProvider: (c.notes && c.notes.toLowerCase().includes("google")) ? "google" : "email",
-      joinedAt: c.created_at || c.updated_at || new Date().toISOString(),
-    }));
+    const customers = (data || []).map((c) => {
+      const isFakePhone = c.phone && (c.phone.startsWith("G-") || c.phone.startsWith("C-"));
+      return {
+        id: c.id,
+        name: c.name,
+        phone: isFakePhone ? undefined : c.phone,
+        email: c.email || undefined,
+        city: c.city || "Hyderabad",
+        address: c.address || (c.city ? `${c.city}, Telangana` : "Hyderabad, Telangana"),
+        totalSpent: Number(c.total_spent) || 0,
+        ordersCount: Number(c.orders_count) || 0,
+        birthday: c.birthday || undefined,
+        anniversary: c.anniversary || undefined,
+        preferredWeave: c.preferred_weave || undefined,
+        notes: c.notes || undefined,
+        gstin: c.gstin || undefined,
+        authProvider: (c.notes && c.notes.toLowerCase().includes("google")) ? "google" : "email",
+        joinedAt: c.created_at || c.updated_at || new Date().toISOString(),
+      };
+    });
 
     return successResponse(res, { customers }, "Customers retrieved successfully");
   } catch (err) {
@@ -128,6 +131,15 @@ function validateAndFormatDOB(val) {
   return validateCelebrationDate(val, "Date of Birth");
 }
 
+export function sanitizeCustomerPhone(phone) {
+  if (!phone || typeof phone !== "string") return null;
+  const p = phone.trim();
+  if (p.startsWith("G-") || p.startsWith("C-")) return null;
+  const digits = p.replace(/\D/g, "");
+  if (digits.length >= 10) return digits.slice(-10);
+  return p || null;
+}
+
 // 2. CREATE / SYNC CUSTOMER (Email or Google Signup)
 export async function createCustomer(req, res) {
   try {
@@ -164,10 +176,8 @@ export async function createCustomer(req, res) {
     const customerName = (name || (email ? email.split("@")[0] : "Valued Patron")).trim();
     const customerEmail = email ? email.trim().toLowerCase() : null;
     
-    // Generate phone fallback if user registered with Google without phone number
-    const customerPhone = phone && phone.trim() 
-      ? phone.trim() 
-      : (customerEmail ? `G-${customerEmail.replace(/[^a-z0-9]/g, "").slice(0, 15)}` : `C-${Date.now()}`);
+    // Do not generate fake G- or C- placeholders
+    let customerPhone = sanitizeCustomerPhone(phone);
 
     const customerNotes = notes || (authProvider === "google" ? "Registered via Google Auth" : "Registered via Web Admin Account");
     const customerId = id || `cust-${Date.now().toString(36)}`;
@@ -181,7 +191,7 @@ export async function createCustomer(req, res) {
       if (customerEmail) {
         const { data } = await supabase
           .from("customers")
-          .select("id, name, email, phone, total_spent, orders_count, notes")
+          .select("id, name, email, phone, total_spent, orders_count, notes, birthday, anniversary")
           .ilike("email", customerEmail)
           .maybeSingle();
         if (data) {
@@ -195,7 +205,7 @@ export async function createCustomer(req, res) {
         if (cleanDigits.length === 10) {
           const { data } = await supabase
             .from("customers")
-            .select("id, name, email, phone, total_spent, orders_count, notes")
+            .select("id, name, email, phone, total_spent, orders_count, notes, birthday, anniversary")
             .ilike("phone", `%${cleanDigits}%`)
             .maybeSingle();
           if (data) {
@@ -216,9 +226,16 @@ export async function createCustomer(req, res) {
         }
       }
 
+      // Preserve existing valid phone if new one was not provided
+      if (!customerPhone && existingCust?.phone && !existingCust.phone.startsWith("G-") && !existingCust.phone.startsWith("C-")) {
+        customerPhone = existingCust.phone;
+      }
+
       const finalId = existingCust?.id || customerId;
       const finalSpent = existingCust ? Number(existingCust.total_spent) : Number(totalSpent);
       const finalOrders = existingCust ? Number(existingCust.orders_count) : Number(ordersCount);
+      const finalBirthday = cleanBirthday || existingCust?.birthday || null;
+      const finalAnniversary = cleanAnniversary || existingCust?.anniversary || null;
 
       const { data, error, warnings } = await writeWithOptionalColumns("customers", {
         id: finalId,
@@ -229,8 +246,8 @@ export async function createCustomer(req, res) {
         address: address ? address.trim() : (city ? `${city.trim()}, Telangana` : "Hyderabad, Telangana"),
         total_spent: finalSpent || 0,
         orders_count: finalOrders || 0,
-        birthday: cleanBirthday,
-        anniversary: cleanAnniversary,
+        birthday: finalBirthday,
+        anniversary: finalAnniversary,
         preferred_weave: preferredWeave || null,
         notes: customerNotes,
         gstin: gstin ? gstin.trim() : null,

@@ -757,8 +757,10 @@ export default function TransactionHistory({
                     className={`h-[31px] w-full min-w-0 rounded-lg border bg-white px-2 text-[9px] font-semibold outline-none cursor-pointer ${ORDER_STATUS_STYLES[currentStatus]}`}
                   >
                     {(
-                      Object.keys(
-                        ORDER_STATUS_LABELS
+                      (
+                        String(sale.paymentMethod || "").toLowerCase() === "cod"
+                          ? ["ordered", "packaging", "shipped", "delivered", "refused_by_user", "cancelled"]
+                          : ["ordered", "packaging", "shipped", "delivered", "cancelled"]
                       ) as OrderStatus[]
                     ).map((status) => (
                       <option key={status} value={status}>
@@ -1086,8 +1088,10 @@ export default function TransactionHistory({
                       className={`cursor-pointer rounded-lg border px-2 py-1.5 text-[10px] font-semibold outline-none transition-colors ${ORDER_STATUS_STYLES[currentStatus]}`}
                     >
                       {(
-                        Object.keys(
-                          ORDER_STATUS_LABELS
+                        (
+                          String(sale.paymentMethod || "").toLowerCase() === "cod"
+                            ? ["ordered", "packaging", "shipped", "delivered", "refused_by_user", "cancelled"]
+                            : ["ordered", "packaging", "shipped", "delivered", "cancelled"]
                         ) as OrderStatus[]
                       ).map((status) => (
                         <option key={status} value={status}>

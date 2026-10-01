@@ -15,6 +15,15 @@ let cachedSales = null;
 let lastSalesFetch = 0;
 const CACHE_TTL_MS = 60 * 1000;
 
+export const CANONICAL_ORDER_STATUSES = new Set([
+  "ordered",
+  "packaging",
+  "shipped",
+  "delivered",
+  "refused_by_user",
+  "cancelled",
+]);
+
 export function invalidateSalesCache() {
   cachedSales = null;
   lastSalesFetch = 0;
@@ -56,7 +65,7 @@ export async function getTransactions(req, res) {
       total: Number(o.total) || 0,
       paymentMethod: o.payment_method,
       billType: o.billing_type || "gst",
-      orderStatus: o.order_status || "completed",
+      orderStatus: o.order_status === "new" ? "ordered" : (o.order_status || "ordered"),
     }));
 
     cachedSales = sales;
@@ -160,7 +169,8 @@ export async function getCustomerOrders(req, res) {
               }
             }
 
-            const effectiveStatus = localFulfillment.status || o.order_status || "new";
+            const rawStatus = localFulfillment.status || o.order_status || "ordered";
+            const effectiveStatus = rawStatus === "new" ? "ordered" : rawStatus;
             const trackingUrl = awb ? getCourierTrackingUrl(carrier, awb) : null;
 
             return {
@@ -341,32 +351,89 @@ export async function updateFulfillment(req, res) {
       return errorResponse(res, "Invoice number is required", 400);
     }
 
-    if (supabase) {
-      // 1. Fetch existing order to preserve notes / tracking if partial update
-      let existingCarrier = null;
-      let existingAwb = null;
+    let targetStatus = undefined;
+    if (status !== undefined) {
+      const s = String(status).toLowerCase().trim();
+      targetStatus = s === "new" ? "ordered" : (s === "refused" ? "refused_by_user" : s);
+      const validStatuses = ["ordered", "packaging", "shipped", "delivered", "refused_by_user", "cancelled"];
+      if (!validStatuses.includes(targetStatus)) {
+        return errorResponse(res, `Invalid order status "${status}". Allowed values: ${validStatuses.join(", ")}`, 400);
+      }
+    }
 
+    // Fetch existing order to inspect payment method and current status
+    let existingOrder = null;
+    let existingCarrier = null;
+    let existingAwb = null;
+
+    if (supabase) {
       try {
-        const { data: existingOrder } = await supabase
+        const { data: ord } = await supabase
           .from("orders")
-          .select("order_status, notes, customer_name, phone")
+          .select("order_status, notes, customer_name, phone, payment_method")
           .or(`invoice_number.eq.${invoiceNumber},order_number.eq.${invoiceNumber},id.eq.${invoiceNumber}`)
           .maybeSingle();
-
-        if (existingOrder?.notes && existingOrder.notes.includes("AWB:")) {
-          const match = existingOrder.notes.match(/\[(.*?)\]\s*AWB:\s*([^\s,]+)/i);
-          if (match) {
-            existingCarrier = match[1];
-            existingAwb = match[2] !== "Pending" ? match[2] : null;
-          }
-        }
+        existingOrder = ord;
       } catch {}
+    }
 
-      const effectiveCarrier = carrierPartner !== undefined ? carrierPartner : (existingCarrier || "RS Fashions Express");
-      const effectiveAwb = trackingNumber !== undefined ? trackingNumber : (existingAwb || "");
+    if (!existingOrder) {
+      const localOrders = getOrdersFromStore();
+      existingOrder = localOrders.find((o) => (o.invoiceNumber || o.invoice_number || o.id) === invoiceNumber) || null;
+    }
 
+    if (existingOrder?.notes && existingOrder.notes.includes("AWB:")) {
+      const match = existingOrder.notes.match(/\[(.*?)\]\s*AWB:\s*([^\s,]+)/i);
+      if (match) {
+        existingCarrier = match[1];
+        existingAwb = match[2] !== "Pending" ? match[2] : null;
+      }
+    }
+
+    const currentStatus = existingOrder?.order_status === "new" ? "ordered" : (existingOrder?.order_status || "ordered");
+    const paymentMethod = String(existingOrder?.payment_method || existingOrder?.paymentMethod || "").toLowerCase().trim();
+
+    // Enforce COD restriction for "refused_by_user"
+    if (targetStatus === "refused_by_user") {
+      if (paymentMethod !== "cod") {
+        return errorResponse(
+          res,
+          "Refused by User status can only be assigned to Cash on Delivery (COD) orders",
+          400
+        );
+      }
+      if (currentStatus === "delivered" || currentStatus === "cancelled") {
+        return errorResponse(
+          res,
+          `Cannot change status to Refused by User from ${currentStatus}`,
+          400
+        );
+      }
+    }
+
+    // Enforce invalid transition rules
+    if (currentStatus === "delivered" && targetStatus && targetStatus !== "delivered") {
+      return errorResponse(res, "Cannot change order status once delivered", 400);
+    }
+    if (currentStatus === "cancelled" && targetStatus && targetStatus !== "cancelled") {
+      return errorResponse(res, "Cannot change order status once cancelled", 400);
+    }
+    if (currentStatus === "refused_by_user" && (targetStatus === "packaging" || targetStatus === "shipped")) {
+      return errorResponse(
+        res,
+        `Cannot change order status from Refused by User back to ${targetStatus}`,
+        400
+      );
+    }
+
+    const effectiveCarrier = carrierPartner !== undefined ? carrierPartner : (existingCarrier || "RS Fashions Express");
+    const effectiveAwb = trackingNumber !== undefined ? trackingNumber : (existingAwb || "");
+
+    const finalStatus = targetStatus !== undefined ? targetStatus : currentStatus;
+
+    if (supabase) {
       const updates = { updated_at: new Date().toISOString() };
-      if (status) updates.order_status = status;
+      if (targetStatus) updates.order_status = targetStatus;
       if (effectiveAwb || effectiveCarrier) {
         updates.notes = `Fulfillment: [${effectiveCarrier || 'Standard'}] AWB: ${effectiveAwb || 'Pending'}`;
       }
@@ -388,11 +455,11 @@ export async function updateFulfillment(req, res) {
           tracking_number: effectiveAwb || "Pending",
           direction: "outward",
           title: `Customer Order #${invoiceNumber}`,
-          party_name: data?.[0]?.customer_name || "Customer",
-          party_contact: data?.[0]?.phone || "9999999999",
-          location: "Hub / In Transit",
+          party_name: data?.[0]?.customer_name || existingOrder?.customer_name || "Customer",
+          party_contact: data?.[0]?.phone || existingOrder?.phone || "9999999999",
+          location: finalStatus === "refused_by_user" ? "Returned / Refused" : (finalStatus === "delivered" ? "Delivered" : "Hub / In Transit"),
           courier_or_loom_partner: effectiveCarrier || "Express Delivery",
-          current_stage: status || "shipped",
+          current_stage: finalStatus,
           last_update: new Date().toLocaleString("en-IN"),
         });
       } catch (tErr) {
@@ -400,7 +467,7 @@ export async function updateFulfillment(req, res) {
       }
 
       const updatedFulfillment = saveFulfillmentToStore(invoiceNumber, {
-        status: status !== undefined ? status : (data?.[0]?.order_status || "new"),
+        status: finalStatus,
         trackingNumber: effectiveAwb,
         carrierPartner: effectiveCarrier,
         trackingUrl: getCourierTrackingUrl(effectiveCarrier, effectiveAwb),
@@ -417,10 +484,10 @@ export async function updateFulfillment(req, res) {
     }
 
     const localFulfillment = saveFulfillmentToStore(invoiceNumber, {
-      status: status !== undefined ? status : "new",
-      trackingNumber: trackingNumber || "",
-      carrierPartner: carrierPartner || "RS Fashions Express",
-      trackingUrl: getCourierTrackingUrl(carrierPartner || "RS Fashions Express", trackingNumber || ""),
+      status: finalStatus,
+      trackingNumber: effectiveAwb,
+      carrierPartner: effectiveCarrier,
+      trackingUrl: getCourierTrackingUrl(effectiveCarrier, effectiveAwb),
     });
 
     return successResponse(

@@ -203,38 +203,255 @@ export function exportDatabaseBackup(
       downloadFile(xml, `RSFashions_Export_${timestamp}.xml`, "application/xml;charset=utf-8");
       return { success: true, message: "XML structured ledger exported successfully." };
     } else if (format === "pdf") {
-      const salesRows = salesHistory
-        .map(
-          (s) => `
+      return exportCategoryPdf("transactions", inventory, salesHistory, stockHistory);
+    }
+  } catch (err: any) {
+    return { success: false, message: err.message || "Failed to export data snapshot." };
+  }
+
+  return { success: false, message: "Unsupported export format" };
+}
+
+export type PdfReportCategory = "stock" | "sales" | "customers" | "transactions";
+
+export function stripAdminUrls(str: string): string {
+  if (!str) return "";
+  return String(str)
+    .replace(/https?:\/\/[^\s/]+(\/[a-z0-9_-]*admin[a-z0-9_-]*[^\s]*)/gi, "")
+    .replace(/\/admin[a-z0-9/_-]*/gi, "")
+    .replace(/[a-z0-9/_-]*control-center[a-z0-9/_-]*/gi, "")
+    .replace(/[a-z0-9/_-]*secret-vault[a-z0-9/_-]*/gi, "")
+    .replace(/https?:\/\/[^\s]+/gi, (url) => (url.toLowerCase().includes("admin") ? "" : url));
+}
+
+export function exportCategoryPdf(
+  category: PdfReportCategory,
+  inventory: Product[] = [],
+  salesHistory: CompletedSale[] = [],
+  stockHistory: StockMovement[] = [],
+  customersList: any[] = []
+): { success: boolean; message: string } {
+  const timestamp = new Date().toISOString().slice(0, 10);
+  const settings = loadSettings();
+  const storeName = stripAdminUrls(settings.storeName || "RS Fashions");
+  const storePhone = stripAdminUrls(settings.storePhone || "");
+  const gstin = stripAdminUrls(settings.gstin || "");
+
+  try {
+    let title = "";
+    let summaryHtml = "";
+    let tableHeadersHtml = "";
+    let tableRowsHtml = "";
+
+    if (category === "stock") {
+      title = `${storeName} • Showroom Stock & Inventory Ledger`;
+      const totalUnits = (inventory as any[]).reduce((sum: number, p: any) => {
+        const vStock = p.variants?.reduce((s: number, v: any) => s + (v.stock || 0), 0) ?? 0;
+        return sum + (p.stock ?? vStock);
+      }, 0);
+      const totalAssetValue = (inventory as any[]).reduce((sum: number, p: any) => {
+        const vStock = p.variants?.reduce((s: number, v: any) => s + (v.stock || 0), 0) ?? 0;
+        const count = p.stock ?? vStock;
+        return sum + (count * (p.salePrice || p.price || 0));
+      }, 0);
+
+      summaryHtml = `
+        <div><strong>Catalog Styles:</strong> ${inventory.length}</div>
+        <div><strong>Total Stock Pieces:</strong> ${totalUnits.toLocaleString("en-IN")} pcs</div>
+        <div><strong>Total Inventory Value:</strong> ₹${totalAssetValue.toLocaleString("en-IN")}</div>
+        <div><strong>Category:</strong> Saree Stock Audit</div>
+      `;
+
+      tableHeadersHtml = `
+        <tr>
+          <th>SKU</th>
+          <th>Saree Design / Name</th>
+          <th>Category</th>
+          <th style="text-align: right;">Sale Price</th>
+          <th style="text-align: right;">Stock Count</th>
+          <th>Colors / Shades</th>
+          <th>Status</th>
+        </tr>
+      `;
+
+      tableRowsHtml = (inventory as any[])
+        .map((p: any) => {
+          const vStock = p.variants?.reduce((s: number, v: any) => s + (v.stock || 0), 0) ?? (p.stock || 0);
+          const shades = p.variants && p.variants.length > 0
+            ? p.variants.map((v: any) => v.color).filter(Boolean).join(", ")
+            : (Array.isArray(p.colors) ? p.colors.join(", ") : "Standard");
+          const status = vStock === 0 ? "Out of Stock" : vStock <= 2 ? "Low Stock" : "In Stock";
+          return `
+            <tr>
+              <td><strong>${stripAdminUrls(p.sku || p.id)}</strong></td>
+              <td>${stripAdminUrls(p.name)}</td>
+              <td>${stripAdminUrls(p.category || p.categoryId || "SiCo Gadwal Sarees")}</td>
+              <td style="text-align: right;">₹${(p.salePrice || p.price || 0).toLocaleString("en-IN")}</td>
+              <td style="text-align: right; font-weight: bold;">${vStock}</td>
+              <td style="font-size: 10px;">${stripAdminUrls(shades)}</td>
+              <td>${status}</td>
+            </tr>
+          `;
+        })
+        .join("");
+    } else if (category === "sales") {
+      title = `${storeName} • Official Sales & Revenue Ledger`;
+      const totalRevenue = salesHistory.reduce((sum, s) => sum + (s.total || 0), 0);
+      const avgOrder = salesHistory.length > 0 ? Math.round(totalRevenue / salesHistory.length) : 0;
+
+      summaryHtml = `
+        <div><strong>Total Completed Invoices:</strong> ${salesHistory.length}</div>
+        <div><strong>Gross Sales Turnover:</strong> ₹${totalRevenue.toLocaleString("en-IN")}</div>
+        <div><strong>Average Order Value:</strong> ₹${avgOrder.toLocaleString("en-IN")}</div>
+        <div><strong>Report Type:</strong> Statutory Sales Audit</div>
+      `;
+
+      tableHeadersHtml = `
+        <tr>
+          <th>Invoice #</th>
+          <th>Date</th>
+          <th>Customer Name</th>
+          <th>Phone</th>
+          <th>Billing Mode</th>
+          <th>Payment Mode</th>
+          <th style="text-align: right;">Total Amount</th>
+        </tr>
+      `;
+
+      tableRowsHtml = salesHistory
+        .map((s) => `
           <tr>
-            <td>${s.invoiceNumber || "-"}</td>
+            <td><strong>${stripAdminUrls(s.invoiceNumber || "-")}</strong></td>
             <td>${s.date ? new Date(s.date).toLocaleDateString("en-IN") : "-"}</td>
-            <td>${s.customerName || "Counter Patron"}</td>
+            <td>${stripAdminUrls(s.customerName || "Showroom Walk-in")}</td>
+            <td>${stripAdminUrls(s.customerPhone || "-")}</td>
             <td>${((s.billingType || (s as any).billing_type) ?? "retail").toUpperCase()}</td>
-            <td>${(s.paymentMethod || "").toUpperCase()}</td>
+            <td>${stripAdminUrls((s.paymentMethod || "").toUpperCase())}</td>
             <td style="text-align: right; font-weight: bold;">₹${(s.total || 0).toLocaleString("en-IN")}</td>
           </tr>
-        `
-        )
-        .join("");
+        `)
+        .join("") + `
+          <tr class="total-row">
+            <td colspan="6" style="text-align: right;">GRAND TOTAL TURNOVER:</td>
+            <td style="text-align: right; color: #2A0E20;">₹${totalRevenue.toLocaleString("en-IN")}</td>
+          </tr>
+        `;
+    } else if (category === "customers") {
+      title = `${storeName} • Customer CRM Patron Directory`;
 
+      // Build customer aggregation if customersList is empty
+      let effectiveCustomers = customersList;
+      if (!Array.isArray(effectiveCustomers) || effectiveCustomers.length === 0) {
+        const cMap = new Map<string, any>();
+        salesHistory.forEach((s) => {
+          const phone = (s.customerPhone || "").trim();
+          const name = (s.customerName || "").trim() || "Valued Patron";
+          const key = phone || name;
+          if (!key) return;
+          if (!cMap.has(key)) {
+            cMap.set(key, {
+              name,
+              phone: phone || "Not Provided",
+              ordersCount: 0,
+              totalSpend: 0,
+              lastOrderDate: s.date,
+            });
+          }
+          const c = cMap.get(key);
+          c.ordersCount += 1;
+          c.totalSpend += (s.total || 0);
+        });
+        effectiveCustomers = Array.from(cMap.values());
+      }
+
+      const totalPatrons = effectiveCustomers.length;
+      const totalSpendAll = effectiveCustomers.reduce((sum, c) => sum + (Number(c.totalSpend || c.total_spend) || 0), 0);
+
+      summaryHtml = `
+        <div><strong>Registered Patrons:</strong> ${totalPatrons}</div>
+        <div><strong>Cumulative Customer Spend:</strong> ₹${totalSpendAll.toLocaleString("en-IN")}</div>
+        <div><strong>Report Type:</strong> Customer Relationship Ledger</div>
+      `;
+
+      tableHeadersHtml = `
+        <tr>
+          <th>Customer Name</th>
+          <th>Phone Number</th>
+          <th>Email / Notes</th>
+          <th style="text-align: center;">Total Orders</th>
+          <th style="text-align: right;">Lifetime Value</th>
+          <th>Last Transaction</th>
+        </tr>
+      `;
+
+      tableRowsHtml = effectiveCustomers
+        .map((c) => `
+          <tr>
+            <td><strong>${stripAdminUrls(c.name || c.customer_name || "Customer")}</strong></td>
+            <td>${stripAdminUrls(c.phone || c.customer_phone || "-")}</td>
+            <td>${stripAdminUrls(c.email || c.notes || "-")}</td>
+            <td style="text-align: center;">${c.ordersCount || c.order_count || c.total_orders || 1}</td>
+            <td style="text-align: right; font-weight: bold;">₹${(Number(c.totalSpend || c.total_spend) || 0).toLocaleString("en-IN")}</td>
+            <td>${c.lastOrderDate ? new Date(c.lastOrderDate).toLocaleDateString("en-IN") : "-"}</td>
+          </tr>
+        `)
+        .join("");
+    } else {
+      // category === "transactions"
+      title = `${storeName} • Payment & Settlement Ledger`;
       const totalRevenue = salesHistory.reduce((sum, s) => sum + (s.total || 0), 0);
 
-      const pdfHtml = `<!DOCTYPE html>
+      summaryHtml = `
+        <div><strong>Total Invoices:</strong> ${salesHistory.length}</div>
+        <div><strong>Recorded Payment Inflow:</strong> ₹${totalRevenue.toLocaleString("en-IN")}</div>
+        <div><strong>Report Type:</strong> Payment Settlements &amp; Transactions</div>
+      `;
+
+      tableHeadersHtml = `
+        <tr>
+          <th>Invoice #</th>
+          <th>Date</th>
+          <th>Customer</th>
+          <th>Billing Mode</th>
+          <th>Payment Mode</th>
+          <th style="text-align: right;">Amount (INR)</th>
+        </tr>
+      `;
+
+      tableRowsHtml = salesHistory
+        .map((s) => `
+          <tr>
+            <td><strong>${stripAdminUrls(s.invoiceNumber || "-")}</strong></td>
+            <td>${s.date ? new Date(s.date).toLocaleDateString("en-IN") : "-"}</td>
+            <td>${stripAdminUrls(s.customerName || "Counter Patron")}</td>
+            <td>${((s.billingType || (s as any).billing_type) ?? "retail").toUpperCase()}</td>
+            <td>${stripAdminUrls((s.paymentMethod || "").toUpperCase())}</td>
+            <td style="text-align: right; font-weight: bold;">₹${(s.total || 0).toLocaleString("en-IN")}</td>
+          </tr>
+        `)
+        .join("") + `
+          <tr class="total-row">
+            <td colspan="5" style="text-align: right;">TOTAL SETTLED VOLUME:</td>
+            <td style="text-align: right; color: #2A0E20;">₹${totalRevenue.toLocaleString("en-IN")}</td>
+          </tr>
+        `;
+    }
+
+    const pdfHtml = `<!DOCTYPE html>
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>RS_Fashions_Transaction_Ledger_${timestamp}</title>
+    <title>${category.toUpperCase()}_REPORT_${timestamp}</title>
     <style>
-      @page { size: A4 landscape; margin: 15mm; }
-      body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; padding: 24px; color: #1c1917; background: #FFF; }
-      .header { border-bottom: 2px solid #2A0E20; padding-bottom: 12px; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: flex-end; }
-      h1 { font-size: 22px; color: #2A0E20; margin: 0; font-family: serif; }
+      @page { size: A4 landscape; margin: 12mm; }
+      body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; padding: 20px; color: #1c1917; background: #FFF; line-height: 1.4; }
+      .header { border-bottom: 2px solid #2A0E20; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-end; }
+      h1 { font-size: 20px; color: #2A0E20; margin: 0; font-family: Georgia, serif; font-weight: normal; }
       .subtitle { font-size: 11px; color: #78716c; margin-top: 4px; }
-      .summary-box { background: #fafaf9; border: 1px solid #e7e5e4; border-radius: 8px; padding: 12px 16px; margin-bottom: 18px; font-size: 12px; display: flex; gap: 24px; }
+      .summary-box { background: #fafaf9; border: 1px solid #e7e5e4; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; font-size: 12px; display: flex; flex-wrap: wrap; gap: 24px; }
       table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11px; }
-      th, td { border: 1px solid #e7e5e4; padding: 8px 10px; text-align: left; }
-      th { background: #2A0E20; color: #FFF; font-weight: 600; text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em; }
+      th, td { border: 1px solid #e7e5e4; padding: 7px 9px; text-align: left; }
+      th { background: #2A0E20; color: #FFF; font-weight: 600; text-transform: uppercase; font-size: 9.5px; letter-spacing: 0.05em; }
       tr:nth-child(even) { background: #fdfbf7; }
       .total-row { background: #f5f5f4 !important; font-weight: bold; }
       .footer { margin-top: 24px; font-size: 10px; color: #a8a29e; text-align: center; border-top: 1px solid #e7e5e4; padding-top: 10px; }
@@ -247,43 +464,30 @@ export function exportDatabaseBackup(
   <body>
     <div class="header">
       <div>
-        <h1>${settings.storeName || "RS Fashions"} &bull; Official Sales Ledger</h1>
-        <div class="subtitle">GSTIN: ${settings.gstin || "Unregistered"} | Phone: ${settings.storePhone || "Not Configured"}</div>
+        <h1>${title}</h1>
+        <div class="subtitle">GSTIN: ${gstin || "Unregistered"} | Phone: ${storePhone || "Not Configured"}</div>
       </div>
       <div style="text-align: right; font-size: 11px; color: #57534e;">
         <strong>Export Date:</strong> ${new Date().toLocaleDateString("en-IN")}<br/>
-        <strong>Total Invoices:</strong> ${salesHistory.length}
+        <strong>Category:</strong> ${category.toUpperCase()} REPORT
       </div>
     </div>
 
     <div class="summary-box">
-      <div><strong>Total Turnover:</strong> ₹${totalRevenue.toLocaleString("en-IN")}</div>
-      <div><strong>Active Catalog Styles:</strong> ${inventory.length}</div>
-      <div><strong>Snapshot Mode:</strong> Statutory Audit Ledger</div>
+      ${summaryHtml}
     </div>
 
     <table>
       <thead>
-        <tr>
-          <th>Invoice #</th>
-          <th>Date</th>
-          <th>Customer</th>
-          <th>Billing Mode</th>
-          <th>Payment Mode</th>
-          <th style="text-align: right;">Amount (INR)</th>
-        </tr>
+        ${tableHeadersHtml}
       </thead>
       <tbody>
-        ${salesRows || '<tr><td colspan="6" style="text-align:center; padding: 20px;">No sales transactions recorded yet</td></tr>'}
-        <tr class="total-row">
-          <td colspan="5" style="text-align: right;">GRAND TOTAL TURNOVER:</td>
-          <td style="text-align: right; color: #2A0E20;">₹${totalRevenue.toLocaleString("en-IN")}</td>
-        </tr>
+        ${tableRowsHtml || '<tr><td colspan="7" style="text-align:center; padding: 20px;">No records available for this category</td></tr>'}
       </tbody>
     </table>
 
     <div class="footer">
-      Generated automatically by RS Fashions Showroom Core &bull; Authentic Gadwal Handlooms &bull; Confidential Business Record
+      Generated automatically by ${storeName} Showroom Core &bull; Authentic Gadwal Handlooms &bull; Confidential Business Record
     </div>
 
     <script>
@@ -296,23 +500,19 @@ export function exportDatabaseBackup(
   </body>
 </html>`;
 
-      const printWin = window.open("", "_blank", "width=960,height=720");
-      if (printWin) {
-        printWin.document.open();
-        printWin.document.write(pdfHtml);
-        printWin.document.close();
-        return { success: true, message: "PDF print preview launched. Save as PDF from your browser dialog." };
-      } else {
-        // Direct download of print-ready HTML document when popup blocker is active
-        downloadFile(pdfHtml, `RSFashions_Transaction_Ledger_${timestamp}.html`, "text/html;charset=utf-8");
-        return { success: true, message: "Ledger HTML document downloaded. Open and press Print / Save as PDF." };
-      }
+    const printWin = window.open("", "_blank", "width=960,height=720");
+    if (printWin) {
+      printWin.document.open();
+      printWin.document.write(pdfHtml);
+      printWin.document.close();
+      return { success: true, message: `${category.toUpperCase()} PDF preview launched. Save as PDF from print dialog.` };
+    } else {
+      downloadFile(pdfHtml, `RSFashions_${category}_Report_${timestamp}.html`, "text/html;charset=utf-8");
+      return { success: true, message: `${category.toUpperCase()} report HTML downloaded. Open and press Print / Save as PDF.` };
     }
   } catch (err: any) {
-    return { success: false, message: err.message || "Failed to export data snapshot." };
+    return { success: false, message: err.message || `Failed to export ${category} report.` };
   }
-
-  return { success: false, message: "Unsupported export format" };
 }
 
 function downloadFile(content: string, filename: string, mimeType: string) {

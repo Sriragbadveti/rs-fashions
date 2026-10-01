@@ -535,16 +535,22 @@ function Checkout() {
         month: "short",
         year: "numeric",
       }),
-      items: items.map((item) => ({
-        id: item.product.id,
-        name: item.product.name,
-        material: item.product.material,
-        color: item.selectedColor || "Standard",
-        size: item.selectedSize || "Standard Drape (5.5m + 0.8m Blouse)",
-        quantity: item.quantity,
-        price: item.product.price,
-        image: item.product.images[0] || "",
-      })),
+      items: items.map((item) => {
+        const matchingVariant = ((item.product as any).variants || []).find(
+          (v: any) => v.color?.toLowerCase() === item.selectedColor?.toLowerCase()
+        );
+        return {
+          id: item.product.id,
+          sku: matchingVariant?.sku || (item.product as any).sku || item.product.id || "RS0001",
+          name: item.product.name,
+          material: item.product.material,
+          color: item.selectedColor || "Standard",
+          size: item.selectedSize || "Standard Drape (5.5m + 0.8m Blouse)",
+          quantity: item.quantity,
+          price: item.product.price,
+          image: item.product.images[0] || "",
+        };
+      }),
       subtotal,
       shipping,
       total,
@@ -745,7 +751,7 @@ function Checkout() {
 
 
     // Save snapshot of order before clearing state
-    const effectiveOrderId = existingOrderNumber || `BEC-${Date.now().toString().slice(-8)}`;
+    const effectiveOrderId = existingOrderNumber || `RSF-${Date.now().toString().slice(-8)}`;
     const snapshot: OrderSnapshot = {
       orderId: effectiveOrderId,
       date: new Date().toLocaleDateString("en-IN", {
@@ -932,7 +938,10 @@ function Checkout() {
                             {item.name}
                           </p>
                           <p className="text-[9px] text-[#8C7A6B]">
-                            {item.color} · Qty {item.quantity}
+                            <span className="font-mono font-semibold bg-stone-100 text-[#2A2421] px-1 py-0.5 rounded mr-1">
+                              SKU: {(item as any).sku || (item as any).id || "RS0001"}
+                            </span>
+                            · {item.color} · Qty {item.quantity}
                           </p>
                         </div>
                       </div>

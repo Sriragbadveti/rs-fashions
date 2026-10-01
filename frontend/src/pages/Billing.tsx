@@ -1915,9 +1915,9 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({
                   {sale.billingType === "gst" ? "Tax Invoice (GST)" : "Retail Receipt"}
                 </span>
                 <p className="text-[11px] text-stone-500">Method: <strong>{sale.paymentMethod.toUpperCase()}</strong></p>
-                {modalActiveLink && (
+                {modalActiveLink && !modalActiveLink.includes("admin") && !modalActiveLink.includes("vault") && (
                   <p className="font-mono text-[10px] text-purple-700 font-semibold truncate max-w-60 ml-auto">
-                    Link: {modalActiveLink}
+                    Payment Link: {modalActiveLink}
                   </p>
                 )}
               </div>
@@ -1943,9 +1943,12 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({
                         {it.name}
                       </p>
 
-                      <span className="text-[10px] text-stone-500">
-                        Shade: {it.color}
-                      </span>
+                      <div className="flex items-center gap-2 text-[10px] text-stone-500 mt-0.5">
+                        <span className="font-mono font-semibold bg-stone-100 px-1.5 py-0.5 rounded text-stone-700">
+                          SKU: {it.sku || "RS0001"}
+                        </span>
+                        <span>Shade: {it.color}</span>
+                      </div>
                     </td>
 
                     <td className="px-3 py-2.5 text-center font-mono font-semibold">
@@ -1998,7 +2001,7 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({
                 </div>
               )}
 
-              {modalActiveLink && !isCommitted && !paymentCompletedInfo && (
+              {modalActiveLink && !modalActiveLink.includes("admin") && !modalActiveLink.includes("vault") && !isCommitted && !paymentCompletedInfo && (
                 <div className="mt-2 rounded-lg bg-purple-50 border border-purple-200 p-2 text-center text-[10px] font-mono text-purple-800 break-all">
                   <span>Payment Link: </span>
                   <a href={modalActiveLink} target="_blank" rel="noreferrer" className="underline font-semibold">{modalActiveLink}</a>

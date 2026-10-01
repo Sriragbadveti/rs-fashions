@@ -7,6 +7,7 @@ import FilterSheet, { type FilterState } from "../components/shop/FilterSheet";
 import { StoreService } from "../services/supabase";
 import { useCart } from "../context/CartContext";
 import { handleSareeImageError } from "../utils/imageConverter";
+import { API_BASE } from "../config/api";
 
 const DUMMY_PRODUCT_IDS = new Set([
   "emerald-sico-gadwal",
@@ -112,11 +113,13 @@ function ProductCard({ product }: { product: CardProduct }) {
         </Link>
 
         {/* Special Offer Badge */}
-        <div className="pointer-events-none absolute left-2 top-2 z-10 flex flex-col gap-1">
-          <span className="rounded-full bg-[#8E3D51] px-2 py-0.5 text-[8px] font-bold uppercase tracking-wider text-white shadow-xs backdrop-blur-xs">
-            Special Offer
-          </span>
-        </div>
+        {(product.isOfferEligible || (product as any).isSpecialOffer || (product as any).isSpecialEdition || ((product as any).tags || []).some((t: string) => ["special_offer", "special_edition", "limited_edition"].includes(t))) && (
+          <div className="pointer-events-none absolute left-2 top-2 z-10 flex flex-col gap-1">
+            <span className="rounded-full bg-[#8E3D51] px-2 py-0.5 text-[8px] font-bold uppercase tracking-wider text-white shadow-xs backdrop-blur-xs">
+              {product.offerTag || ((product as any).isSpecialEdition ? "Special Edition" : "Special Offer")}
+            </span>
+          </div>
+        )}
 
         <div className="absolute bottom-2.5 inset-x-2.5 transition-all duration-200 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 hidden sm:block">
           <button type="button" onClick={handleQuickAdd} className={`w-full h-9 rounded-xl text-xs font-semibold uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md transition-all ${inCart ? "bg-emerald-600 text-white cursor-default scale-95" : "bg-[#2A2421]/90 text-[#F7EBEC] hover:bg-[#8E3D51] active:scale-95 cursor-pointer"}`}>
@@ -265,7 +268,15 @@ function ProductShelf({ products, offerProductIds }: { products: CardProduct[]; 
 type SortOption = "Featured" | "Price: Low to High" | "Price: High to Low" | "Most Popular";
 
 const sortOptionsList: SortOption[] = ["Featured", "Price: Low to High", "Price: High to Low", "Most Popular"];
-const initialCategoryPills = ["All", "SiCo Gadwal Sarees"];
+const initialCategoryPills = [
+  "All",
+  "Checks",
+  "Equal Borders",
+  "Kanchi Big Borders",
+  "Gap Border",
+  "Maa Inti Bangaram",
+  "SiCo Gadwal Sarees",
+];
 const initialFilters: FilterState = { category: "All", material: "All", priceRange: "All" };
 
 const HORIZONTAL_CHUNK_SIZE = 3;
@@ -380,7 +391,7 @@ export default function Shop() {
     let isMounted = true;
     async function loadSaleConfig() {
       try {
-        const res = await fetch("/api/settings/sale");
+        const res = await fetch(`${API_BASE}/settings/sale`);
         if (!res.ok) return;
         const json = await res.json();
         const conf = json?.data?.saleConfig || json?.saleConfig;
@@ -439,16 +450,25 @@ export default function Shop() {
       else if (urlSort === "price_desc") setSort("Price: High to Low");
       else if (urlSort === "bestseller") setSort("Most Popular");
     }
+    if (searchParams.get("offers") === "true" || searchParams.get("special_offers") === "true") {
+      setShowOnlyOffers(true);
+    }
   }, [searchParams]);
 
   const filteredProducts = useMemo(() => {
     let result = [...allProducts];
 
     if (debouncedSearch.trim()) {
-      const query = debouncedSearch.toLowerCase();
-      result = result.filter((product: Product) =>
-        [
+      const query = debouncedSearch.toLowerCase().trim();
+      result = result.filter((product: Product) => {
+        const variantSkus = Array.isArray((product as any).variants)
+          ? (product as any).variants.map((v: any) => v.sku || "").join(" ")
+          : "";
+        return [
           product.name,
+          product.sku || "",
+          product.id,
+          variantSkus,
           product.category,
           product.material,
           product.description,
@@ -458,15 +478,41 @@ export default function Shop() {
         ]
           .join(" ")
           .toLowerCase()
-          .includes(query)
-      );
+          .includes(query);
+      });
     }
 
     if (filters.category !== "All") {
       const catFilter = filters.category.toLowerCase().trim();
       result = result.filter((product: Product) => {
         const prodCat = (product.category || "").toLowerCase().trim();
-        return prodCat === catFilter || prodCat.includes(catFilter) || catFilter.includes(prodCat);
+        const prodName = (product.name || "").toLowerCase().trim();
+        const prodDesc = (product.description || "").toLowerCase().trim();
+        const prodPattern = ((product as any).pattern || "").toLowerCase().trim();
+        const prodBorder = ((product as any).borderColor || (product as any).border || "").toLowerCase().trim();
+        const tags = Array.isArray((product as any).tags) ? (product as any).tags.map((t: string) => String(t).toLowerCase()) : [];
+
+        if (prodCat === catFilter || prodCat.includes(catFilter) || catFilter.includes(prodCat)) {
+          return true;
+        }
+
+        if (catFilter === "checks") {
+          return prodName.includes("check") || prodDesc.includes("check") || prodPattern.includes("check") || tags.some((t: string) => t.includes("check"));
+        }
+        if (catFilter.includes("equal")) {
+          return prodName.includes("equal") || prodDesc.includes("equal") || prodPattern.includes("equal") || prodBorder.includes("equal") || tags.some((t: string) => t.includes("equal"));
+        }
+        if (catFilter.includes("kanchi") || catFilter.includes("big border")) {
+          return (prodName.includes("kanchi") && prodName.includes("big")) || prodName.includes("big kanchi") || prodDesc.includes("kanchi") || prodPattern.includes("kanchi") || tags.some((t: string) => t.includes("kanchi"));
+        }
+        if (catFilter.includes("gap")) {
+          return prodName.includes("gap") || prodDesc.includes("gap") || prodPattern.includes("gap") || prodBorder.includes("gap") || tags.some((t: string) => t.includes("gap"));
+        }
+        if (catFilter.includes("bangaram") || catFilter.includes("maa inti") || catFilter.includes("ma inti")) {
+          return prodName.includes("bangaram") || prodName.includes("ma inti") || prodName.includes("maa inti") || prodDesc.includes("bangaram") || tags.some((t: string) => t.includes("bangaram"));
+        }
+
+        return false;
       });
     }
 
@@ -490,7 +536,17 @@ export default function Shop() {
     }
 
     if (showOnlyOffers) {
-      result = result.filter((product: Product) => offerProductIds.has(String(product.id)) || Boolean((product as any).isOfferEligible));
+      result = result.filter((product: Product) => {
+        const sId = String(product.id);
+        const tags = (product as any).tags || [];
+        return (
+          offerProductIds.has(sId) ||
+          Boolean((product as any).isOfferEligible) ||
+          Boolean((product as any).isSpecialOffer) ||
+          Boolean((product as any).isSpecialEdition) ||
+          tags.some((t: string) => ["special_offer", "special_edition", "limited_edition"].includes(t))
+        );
+      });
     }
 
     switch (sort) {
@@ -508,8 +564,21 @@ export default function Shop() {
         break;
     }
 
-    return result;
-  }, [allProducts, debouncedSearch, filters, customPriceRange, sort, showOnlyOffers, offerProductIds]);
+    return result.map((p) => {
+      const sId = String(p.id);
+      const isEligible =
+        offerProductIds.has(sId) ||
+        Boolean((p as any).isOfferEligible) ||
+        Boolean((p as any).isSpecialOffer) ||
+        Boolean((p as any).isSpecialEdition) ||
+        (((p as any).tags || []).some((t: string) => ["special_offer", "special_edition", "limited_edition"].includes(t)));
+      return {
+        ...p,
+        isOfferEligible: isEligible,
+        offerTag: offerBadgesMap[sId] || ((p as any).isSpecialEdition ? "Special Edition" : "Special Offer"),
+      };
+    });
+  }, [allProducts, debouncedSearch, filters, customPriceRange, sort, showOnlyOffers, offerProductIds, offerBadgesMap]);
 
   const mobileFeedSections = useMemo<MobileFeedSection[]>(() => {
     const sections: MobileFeedSection[] = [];

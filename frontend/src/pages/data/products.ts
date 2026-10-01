@@ -15,6 +15,12 @@ export interface Product {
   sizes: string[];
   featured?: boolean;
   borderColor?: string;
+  sku?: string;
+  isSpecialEdition?: boolean;
+  isSpecialOffer?: boolean;
+  isOfferEligible?: boolean;
+  tags?: string[];
+  variants?: any[];
 }
 
 export const products: Product[] = [];

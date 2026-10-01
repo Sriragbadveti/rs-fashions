@@ -64,7 +64,7 @@ export async function handleCheckout(req, res) {
       total = 0,
       paymentMethod = "cash",
       paymentStatus = "completed",
-      orderStatus = "completed",
+      orderStatus = req.body.orderStatus || req.body.order_status || "ordered",
       billingType = req.body.billingType || req.body.billType || "gst",
       notes,
     } = req.body;
@@ -118,7 +118,7 @@ export async function handleCheckout(req, res) {
         total: Number(total) || 0,
         payment_method: paymentMethod,
         payment_status: paymentStatus,
-        order_status: orderStatus,
+        order_status: orderStatus === "new" ? "ordered" : (orderStatus || "ordered"),
         billing_type: billingType,
         notes: notes || null,
       }]).select().single();

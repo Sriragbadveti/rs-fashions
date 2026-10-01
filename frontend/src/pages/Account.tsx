@@ -25,6 +25,8 @@ import {
   Home,
   Briefcase,
   X,
+  MessageCircle,
+  AlertCircle,
 } from "lucide-react";
 import {
   getUserSession,
@@ -42,6 +44,7 @@ import {
   type SavedPayment,
 } from "../utils/userSession";
 import { API_BASE } from "../config/api";
+import { STORE_WHATSAPP_NUMBER } from "../config/routes";
 import { StoreService } from "../services/supabase";
 import {
   ORDER_FULFILLED_EVENT,
@@ -49,6 +52,35 @@ import {
 } from "../context/OrderFulfillmentContext";
 import { useCart } from "../context/CartContext";
 import logo from "../assets/logo/logo1.png";
+
+const getWhatsAppTrackingUrl = (order: any) => {
+  const rawNumber = STORE_WHATSAPP_NUMBER || "919876543210";
+  const cleanPhone = rawNumber.replace(/\D/g, "");
+  const formattedPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+  const status = (order.orderStatus || "ordered").toLowerCase();
+  const invoice = order.invoiceNumber || order.id || "Order";
+
+  let statusMsg = "";
+  if (status === "ordered" || status === "new") {
+    statusMsg = `Hi, I placed order *${invoice}*. Could you please confirm if it is received and when it will be dispatched?`;
+  } else if (status === "packaging") {
+    statusMsg = `Hi, my order *${invoice}* is currently being packaged. Could you please share an estimated dispatch date?`;
+  } else if (status === "shipped") {
+    const awb = order.awbNumber ? ` (Carrier: ${order.carrierPartner || "Courier"}, AWB: ${order.awbNumber})` : "";
+    statusMsg = `Hi, my order *${invoice}* has been shipped${awb}. Could you please help me track the latest delivery update?`;
+  } else if (status === "delivered") {
+    statusMsg = `Hi, my order *${invoice}* shows as delivered. Thank you! I have an inquiry regarding this delivery.`;
+  } else if (status === "refused_by_user") {
+    statusMsg = `Hi, my order *${invoice}* is marked as 'Refused by User'. I would like to clarify regarding this COD delivery.`;
+  } else if (status === "cancelled") {
+    statusMsg = `Hi, regarding my cancelled order *${invoice}*, could you please provide more details?`;
+  } else {
+    statusMsg = `Hi, I would like to check the current delivery tracking status of my order *${invoice}*.`;
+  }
+
+  const message = `Namaste RS Fashions Support,\n\n${statusMsg}\n\n*Invoice Ref:* ${invoice}`;
+  return `https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`;
+};
 
 type AccountTab = "orders" | "payments" | "addresses" | "cards" | "profile";
 
@@ -401,6 +433,14 @@ export default function Account() {
   const [profileDob, setProfileDob] = useState<string>(
     () => currentUser?.birthday || ""
   );
+  const [profilePhone, setProfilePhone] = useState<string>(
+    () =>
+      currentUser?.phone &&
+      !currentUser.phone.startsWith("G-") &&
+      !currentUser.phone.startsWith("C-")
+        ? currentUser.phone.replace(/\D/g, "").slice(-10)
+        : ""
+  );
   const [profileSuccess, setProfileSuccess] = useState<string | null>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
 
@@ -411,6 +451,13 @@ export default function Account() {
     } else {
       setCurrentUser(session);
       if (session.birthday) setProfileDob(session.birthday);
+      if (
+        session.phone &&
+        !session.phone.startsWith("G-") &&
+        !session.phone.startsWith("C-")
+      ) {
+        setProfilePhone(session.phone.replace(/\D/g, "").slice(-10));
+      }
       setAddresses(getSavedAddresses(session.phone, session.email, session.id));
       setPayments(getSavedPayments(session.phone));
     }
@@ -421,6 +468,17 @@ export default function Account() {
     if (!currentUser) return;
     setProfileError(null);
     setProfileSuccess(null);
+
+    let cleanPhone = currentUser.phone;
+    if (profilePhone && profilePhone.trim()) {
+      const digits = profilePhone.replace(/\D/g, "");
+      if (digits.length !== 10) {
+        setProfileError("Please enter a valid 10-digit mobile number.");
+        return;
+      }
+      cleanPhone = `+91 ${digits}`;
+    }
+
     if (profileDob) {
       const birthDate = new Date(profileDob);
       const today = new Date();
@@ -432,6 +490,7 @@ export default function Account() {
 
     const updatedSession = setUserSession({
       ...currentUser,
+      phone: cleanPhone,
       birthday: profileDob || undefined,
     });
     setCurrentUser(updatedSession);
@@ -444,7 +503,7 @@ export default function Account() {
           id: updatedSession.id,
           name: updatedSession.name,
           email: updatedSession.email,
-          phone: updatedSession.phone,
+          phone: cleanPhone,
           birthday: profileDob || undefined,
         }),
       });
@@ -674,6 +733,7 @@ export default function Account() {
 
   const getOrderStepProgress = (status: string, stage?: string) => {
     const s = (stage || status || "").toLowerCase();
+    if (s.includes("refused") || s.includes("cancel")) return -1;
     if (s.includes("delivered")) return 4;
     if (
       s.includes("shipped") ||
@@ -797,6 +857,34 @@ export default function Account() {
           </div>
         )}
 
+        {/* Profile Completion Prompt if DOB or phone missing */}
+        {(!currentUser.birthday ||
+          !currentUser.phone ||
+          currentUser.phone.startsWith("G-") ||
+          currentUser.phone.startsWith("C-")) && (
+          <div className="rounded-2xl bg-amber-50/90 border border-amber-200/90 p-3.5 sm:p-4 text-amber-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-200/60 text-amber-900 flex items-center justify-center shrink-0">
+                <Sparkles size={18} />
+              </div>
+              <div>
+                <p className="font-serif font-bold text-xs sm:text-sm">
+                  Complete Your Heritage Profile
+                </p>
+                <p className="text-[11px] text-amber-800/90 mt-0.5">
+                  Provide your Date of Birth for exclusive birthday anniversary blessings and enter your phone number for live WhatsApp dispatch tracking.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => handleTabChange("profile")}
+              className="px-3.5 py-1.5 rounded-xl bg-[#38152B] text-white text-xs font-semibold hover:bg-[#2A0E20] transition-all shrink-0 active:scale-95"
+            >
+              Update Profile &rarr;
+            </button>
+          </div>
+        )}
+
         {/* Tabs Bar */}
         <nav
           aria-label="Account Tabs"
@@ -873,8 +961,13 @@ export default function Account() {
                   order.orderStatus,
                   order.currentStage
                 );
-                const isDelivered = step === 4;
-                const isCancelled = order.orderStatus === "cancelled";
+                const isRefused =
+                  (order.orderStatus || "").toLowerCase() === "refused_by_user" ||
+                  (order.currentStage || "").toLowerCase().includes("refused");
+                const isCancelled =
+                  order.orderStatus === "cancelled" ||
+                  (order.currentStage || "").toLowerCase().includes("cancel");
+                const isDelivered = step === 4 && !isRefused && !isCancelled;
 
                 return (
                   <article
@@ -913,6 +1006,17 @@ export default function Account() {
                       </div>
 
                       <div className="flex items-center gap-2 sm:gap-3 ml-auto">
+                        <a
+                          href={getWhatsAppTrackingUrl(order)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] sm:text-xs font-semibold transition-all shadow-xs active:scale-95"
+                          title="Track delivery updates on WhatsApp"
+                        >
+                          <MessageCircle size={13} />
+                          <span>Track WhatsApp</span>
+                        </a>
+
                         <button
                           onClick={() => setSelectedInvoice(order)}
                           className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-stone-300 text-[11px] sm:text-xs font-medium text-stone-700 hover:bg-stone-100 transition-colors active:scale-95"
@@ -925,19 +1029,38 @@ export default function Account() {
                           className={`px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-semibold capitalize ${
                             isDelivered
                               ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                              : isRefused
+                              ? "bg-rose-100 text-rose-800 border border-rose-200"
                               : isCancelled
                               ? "bg-red-100 text-red-800 border border-red-200"
                               : "bg-amber-100 text-amber-800 border border-amber-200"
                           }`}
                         >
-                          {order.orderStatus || "Processing"}
+                          {order.orderStatus === "refused_by_user"
+                            ? "Refused by User"
+                            : order.orderStatus === "ordered"
+                            ? "Ordered"
+                            : order.orderStatus || "Processing"}
                         </span>
                       </div>
                     </div>
 
                     <div className="p-4 sm:p-6 space-y-5">
+                      {/* Refused by User notice */}
+                      {isRefused && (
+                        <div className="p-3.5 sm:p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2.5">
+                          <AlertCircle size={16} className="text-rose-600 shrink-0" />
+                          <div>
+                            <p className="font-bold">Consignment Refused by Recipient</p>
+                            <p className="text-[11px] text-rose-700 mt-0.5">
+                              This Cash-on-Delivery (COD) consignment was recorded as refused by recipient. Please reach out to our WhatsApp concierge above if you need assistance.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
                       {/* Step Progress Bar */}
-                      {!isCancelled && (
+                      {!isCancelled && !isRefused && (
                         <div className="p-3.5 sm:p-5 rounded-2xl bg-[#FAF8F5] border border-stone-200/80">
                           <div className="flex items-center justify-between mb-4">
                             <span className="text-[11px] uppercase tracking-wider font-bold text-stone-600 flex items-center gap-1.5">
@@ -1097,6 +1220,9 @@ export default function Account() {
                                   {item.name}
                                 </h5>
                                 <p className="text-[11px] text-stone-500 mt-0.5 truncate">
+                                  <span className="font-mono font-semibold text-stone-700 bg-stone-100 px-1.5 py-0.5 rounded text-[10px] mr-1.5">
+                                    SKU: {item.sku || item.id || "RS0001"}
+                                  </span>
                                   Color: {item.color || "Standard"} • Qty:{" "}
                                   {item.quantity || item.qty || 1}
                                 </p>
@@ -1430,14 +1556,20 @@ export default function Account() {
                 </div>
                 <div>
                   <label className="text-[11px] font-semibold text-stone-600 uppercase block mb-1">
-                    Mobile
+                    Mobile Number
                   </label>
                   <input
-                    type="text"
-                    readOnly
-                    value={currentUser.phone}
-                    className="w-full px-3.5 py-2 rounded-xl border border-stone-200 bg-stone-50 font-mono text-stone-800 text-xs"
+                    type="tel"
+                    placeholder="Enter 10-digit mobile"
+                    value={profilePhone}
+                    onChange={(e) =>
+                      setProfilePhone(e.target.value.replace(/\D/g, "").slice(0, 10))
+                    }
+                    className="w-full px-3.5 py-2 rounded-xl border border-stone-200 bg-white font-mono text-stone-800 text-xs focus:border-[#38152B] outline-hidden"
                   />
+                  <span className="text-[10px] text-stone-400 mt-1 block">
+                    Used for SMS and WhatsApp order tracking updates
+                  </span>
                 </div>
               </div>
 
@@ -1937,9 +2069,12 @@ export default function Account() {
                       <tr key={idx}>
                         <td className="p-2">
                           <p className="font-bold text-stone-800">{it.name}</p>
-                          <span className="text-[10px] text-stone-400">
-                            Color: {it.color || "Standard"}
-                          </span>
+                          <div className="flex items-center gap-2 text-[10px] text-stone-500 mt-0.5">
+                            <span className="font-mono font-semibold bg-stone-100 px-1 py-0.5 rounded text-stone-700">
+                              SKU: {it.sku || it.id || "RS0001"}
+                            </span>
+                            <span>Color: {it.color || "Standard"}</span>
+                          </div>
                         </td>
                         <td className="p-2 text-center font-mono">
                           {it.quantity || it.qty || 1}

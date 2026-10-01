@@ -1375,13 +1375,13 @@ function ProductCard({
           </span>
         )}
 
-        {(product.isLimitedEdition || (product.tags || []).includes("limited_edition")) && (
+        {(product.isSpecialEdition || product.isLimitedEdition || (product.tags || []).includes("special_edition") || (product.tags || []).includes("limited_edition")) && (
           <span className="absolute right-3 bottom-3 z-10 flex items-center gap-1 rounded-full bg-linear-to-r from-purple-950 via-purple-900 to-amber-700 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-200 shadow-sm backdrop-blur-xs border border-amber-400/30">
-            <Sparkles size={10} className="text-amber-300" /> Limited Edition
+            <Sparkles size={10} className="text-amber-300" /> Special Edition
           </span>
         )}
 
-        {!(product.isLimitedEdition || (product.tags || []).includes("limited_edition")) && (product.isSpecialOffer || (product.tags || []).includes("special_offer")) && (
+        {!(product.isSpecialEdition || product.isLimitedEdition || (product.tags || []).includes("special_edition") || (product.tags || []).includes("limited_edition")) && (product.isSpecialOffer || (product.tags || []).includes("special_offer")) && (
           <span className="absolute right-3 bottom-3 z-10 flex items-center gap-1 rounded-full bg-linear-to-r from-amber-600 to-amber-500 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white shadow-sm backdrop-blur-xs">
             <Sparkles size={10} /> Special Offer
           </span>
@@ -1645,7 +1645,7 @@ export default function Catalog({
   const [primaryStock, setPrimaryStock] = useState("");
   const [formImages, setFormImages] = useState<string[]>([]);
   const [formIsSpecialOffer, setFormIsSpecialOffer] = useState(false);
-  const [formIsLimitedEdition, setFormIsLimitedEdition] = useState(false);
+  const [formIsSpecialEdition, setFormIsSpecialEdition] = useState(false);
   const [formBorderColor, setFormBorderColor] = useState("");
   const [isGalleryUploading, setIsGalleryUploading] = useState(false);
   const [galleryFailedCount, setGalleryFailedCount] = useState(0);
@@ -1822,7 +1822,7 @@ export default function Catalog({
     setPrimaryStock("");
     setFormImages([]);
     setFormIsSpecialOffer(false);
-    setFormIsLimitedEdition(false);
+    setFormIsSpecialEdition(false);
     setFormBorderColor("");
     setIsModalOpen(true);
   }
@@ -1844,7 +1844,7 @@ export default function Catalog({
       : [];
     setFormImages(initialImgs);
     setFormIsSpecialOffer(Boolean(product.isSpecialOffer || (product.tags || []).includes("special_offer")));
-    setFormIsLimitedEdition(Boolean(product.isLimitedEdition || (product.tags || []).includes("limited_edition")));
+    setFormIsSpecialEdition(Boolean(product.isSpecialEdition || (product.tags || []).includes("special_edition") || product.isLimitedEdition || (product.tags || []).includes("limited_edition")));
     setFormBorderColor(product.borderColor || "");
     setIsModalOpen(true);
   }
@@ -1893,10 +1893,10 @@ export default function Catalog({
     } else {
       finalTags = finalTags.filter((t) => t !== "special_offer");
     }
-    if (formIsLimitedEdition) {
-      if (!finalTags.includes("limited_edition")) finalTags.push("limited_edition");
+    if (formIsSpecialEdition) {
+      if (!finalTags.includes("special_edition")) finalTags.push("special_edition");
     } else {
-      finalTags = finalTags.filter((t) => t !== "limited_edition");
+      finalTags = finalTags.filter((t) => t !== "special_edition" && t !== "limited_edition");
     }
     finalTags = Array.from(new Set(finalTags));
 
@@ -1919,7 +1919,8 @@ export default function Catalog({
       purchasePrice: Number(formPurchasePrice) || 0,
       salePrice: Number(formSalePrice) || 0,
       isSpecialOffer: formIsSpecialOffer,
-      isLimitedEdition: formIsLimitedEdition,
+      isSpecialEdition: formIsSpecialEdition,
+      isLimitedEdition: formIsSpecialEdition,
       tags: finalTags,
       variants: finalVariants,
       // Always sent (empty string = cleared) so the backend stores exactly what the form shows.
@@ -2442,28 +2443,28 @@ export default function Catalog({
 
               {/* Limited Edition & Special Offer Toggles */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* Limited Edition Toggle */}
+                {/* Special Edition Toggle */}
                 <div className="flex items-center justify-between rounded-2xl border border-purple-200/80 bg-purple-50/40 p-4 transition-all">
                   <div className="space-y-0.5 pr-3">
                     <div className="flex items-center gap-1.5">
                       <Sparkles size={14} className="text-purple-600" />
                       <label
-                        htmlFor="saree-limited-edition"
+                        htmlFor="saree-special-edition"
                         className="cursor-pointer text-xs font-bold text-stone-900"
                       >
-                        Limited Edition
+                        Special Edition
                       </label>
                     </div>
                     <p className="text-[11px] text-stone-500">
-                      Showcase in Landing Page Trending &amp; Limited Edition.
+                      Qualifies for Buy 1/Buy 2/Buy 3 offers and showcases in Special Edition.
                     </p>
                   </div>
                   <label className="relative inline-flex cursor-pointer items-center shrink-0">
                     <input
-                      id="saree-limited-edition"
+                      id="saree-special-edition"
                       type="checkbox"
-                      checked={formIsLimitedEdition}
-                      onChange={(e) => setFormIsLimitedEdition(e.target.checked)}
+                      checked={formIsSpecialEdition}
+                      onChange={(e) => setFormIsSpecialEdition(e.target.checked)}
                       className="peer sr-only"
                     />
                     <div className="peer h-6 w-11 rounded-full bg-stone-300 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-stone-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-[#5E1E43] peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none"></div>

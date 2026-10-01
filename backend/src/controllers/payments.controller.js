@@ -497,7 +497,7 @@ async function autoRecordPosSale(orderId, paymentId, paymentData = {}) {
         total: Number(pending.total) || 0,
         payment_method: "cashfree",
         payment_status: "paid",
-        order_status: "completed",
+        order_status: "ordered",
         billing_type: pending.billingType || "gst",
         notes: `Paid via Cashfree Payment Link (${paymentId})`,
       }]);

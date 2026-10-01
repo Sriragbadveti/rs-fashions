@@ -4,7 +4,15 @@ export type ProductMaterial =
   | "Gadwal Zari Silk"
   | "Organic Cotton";
 
-export type ProductCategory = "SiCo Gadwal Sarees";
+export type ProductCategory =
+  | "All"
+  | "Checks"
+  | "Equal Borders"
+  | "Kanchi Big Borders"
+  | "Gap Border"
+  | "Maa Inti Bangaram"
+  | "SiCo Gadwal Sarees"
+  | string;
 
 export interface Product {
   id: number;

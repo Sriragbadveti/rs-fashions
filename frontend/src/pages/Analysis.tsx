@@ -1272,10 +1272,10 @@ export default function Analysis({
         )}
       </section>
 
-      {/* COLOR CONCENTRATION & WEAVER PROCUREMENT (12 COLUMNS) */}
+      {/* COLOR CONCENTRATION (12 COLUMNS) */}
       <section className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {/* Color Swatch Concentration (6 Columns) */}
-        <div className="lg:col-span-6 glass-panel rounded-3xl p-5 md:p-6 space-y-4">
+        {/* Color Swatch Concentration (12 Columns) */}
+        <div className="lg:col-span-12 glass-panel rounded-3xl p-5 md:p-6 space-y-4">
           <div className="flex items-center justify-between border-b border-stone-200/60 pb-3">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-xl bg-stone-100 text-stone-700 flex items-center justify-center border border-stone-200/60 shadow-sm">
@@ -1291,7 +1291,7 @@ export default function Analysis({
             <span className="text-xs font-semibold text-brand-gold">Active Colorways</span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 pt-1">
             {colorVelocity.map((v) => (
               <div
                 key={v.color}
@@ -1316,76 +1316,6 @@ export default function Analysis({
                 </span>
               </div>
             ))}
-          </div>
-        </div>
-
-        {/* Master Weaver Procurement Advisory (6 Columns) */}
-        <div className="lg:col-span-6 glass-panel rounded-3xl p-5 md:p-6 space-y-4 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between border-b border-stone-200/60 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-900 flex items-center justify-center border border-amber-200/60 shadow-sm">
-                  <Zap size={16} />
-                </div>
-                <div>
-                  <h2 className="font-display font-medium text-lg text-stone-950">
-                    Re-Stock Suggestions
-                  </h2>
-                  <p className="text-xs text-stone-500">Live inventory intelligence from your showroom shelves.</p>
-                </div>
-              </div>
-              <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold">
-                Smart Suggestions
-              </span>
-            </div>
-
-            <div className="space-y-3 pt-3 text-xs">
-              {lowStockItems.length > 0 ? (
-                <div className="p-3.5 rounded-2xl bg-amber-50/60 border border-amber-200/60 flex items-start gap-3">
-                  <ArrowUpRight size={16} className="text-amber-800 mt-0.5 shrink-0" />
-                  <div>
-                    <p className="font-bold text-amber-950">
-                      Loom Restock Priority ({lowStockItems.length} styles running low)
-                    </p>
-                    <p className="text-[11px] text-amber-900 mt-1 leading-relaxed">
-                      {lowStockItems.map((it) => `${it.name} (${it.stock} pcs left)`).join(", ")}. Book replenishment orders with master weavers in Gadwal before stockouts occur.
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="p-3.5 rounded-2xl bg-emerald-50/60 border border-emerald-200/60 flex items-start gap-3">
-                  <CheckCircle2 size={16} className="text-emerald-800 mt-0.5 shrink-0" />
-                  <div>
-                    <p className="font-bold text-emerald-950">
-                      Showroom Stock Adequately Buffered
-                    </p>
-                    <p className="text-[11px] text-emerald-800 mt-1 leading-relaxed">
-                      All {inventory.length} Gadwal saree designs currently maintain healthy stock levels above minimum buffer thresholds.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200/60 flex items-start gap-3">
-                <Clock size={16} className="text-stone-700 mt-0.5 shrink-0" />
-                <div>
-                  <p className="font-bold text-stone-950">
-                    Real-Time Counter Synchronization
-                  </p>
-                  <p className="text-[11px] text-stone-600 mt-1 leading-relaxed">
-                    Every billing sale and stock adjustment instantly reflects across these charts, margins, and procurement projections without delay.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-2 text-[10px] text-stone-400 flex items-center justify-between border-t border-stone-100">
-            <span>RS Fashions Showroom Operations &bull; Authentic Gadwal Handlooms</span>
-            <span className="flex items-center gap-1.5 text-emerald-700 font-semibold">
-              <Activity size={12} className="text-emerald-500 animate-pulse" />
-              Live &amp; Connected to Counter
-            </span>
           </div>
         </div>
       </section>

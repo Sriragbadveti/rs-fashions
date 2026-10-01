@@ -100,14 +100,14 @@ export function getOrdersFromStore(phone, email) {
     const f = fulfillments[inv] || {};
     return {
       ...o,
-      orderStatus: f.status || o.orderStatus || o.order_status || "new",
-      order_status: f.status || o.order_status || o.orderStatus || "new",
+      orderStatus: f.status || o.orderStatus || o.order_status || "ordered",
+      order_status: f.status || o.order_status || o.orderStatus || "ordered",
       awbNumber: f.trackingNumber !== undefined ? f.trackingNumber : (o.awbNumber || o.tracking_number || null),
       tracking_number: f.trackingNumber !== undefined ? f.trackingNumber : (o.tracking_number || o.awbNumber || null),
       carrierPartner: f.carrierPartner || o.carrierPartner || o.carrier_partner || "RS Fashions Express",
       carrier_partner: f.carrierPartner || o.carrier_partner || o.carrierPartner || "RS Fashions Express",
       trackingUrl: f.trackingUrl || o.trackingUrl || null,
-      currentStage: f.status || o.currentStage || o.current_stage || "new",
+      currentStage: f.status || o.currentStage || o.current_stage || "ordered",
     };
   });
 }
@@ -133,8 +133,8 @@ export function saveFulfillmentToStore(invoiceNumber, fulfillment) {
     (o) => (o.invoiceNumber || o.invoice_number || o.id) === invoiceNumber
   );
   if (ordIdx >= 0) {
-    orders[ordIdx].orderStatus = updated.status || orders[ordIdx].orderStatus || "new";
-    orders[ordIdx].order_status = updated.status || orders[ordIdx].order_status || "new";
+    orders[ordIdx].orderStatus = updated.status || orders[ordIdx].orderStatus || "ordered";
+    orders[ordIdx].order_status = updated.status || orders[ordIdx].order_status || "ordered";
     orders[ordIdx].awbNumber = updated.trackingNumber || orders[ordIdx].awbNumber || null;
     orders[ordIdx].carrierPartner = updated.carrierPartner || orders[ordIdx].carrierPartner || "RS Fashions Express";
     orders[ordIdx].trackingUrl = updated.trackingUrl || orders[ordIdx].trackingUrl || null;
@@ -153,17 +153,21 @@ export function getFulfillmentFromStore(invoiceNumber) {
 // ==========================================
 // REVIEWS
 // ==========================================
-export function getReviewsFromStore(productId) {
+export function getReviewsFromStore(productId, approvedOnly = false) {
   const reviews = readJson("reviews.json", []);
+  let filtered = reviews;
 
   if (productId) {
-    return reviews.filter((r) => String(r.productId) === String(productId));
+    filtered = filtered.filter((r) => String(r.productId) === String(productId));
   }
-  return reviews;
+  if (approvedOnly) {
+    filtered = filtered.filter((r) => r.approved !== false);
+  }
+  return filtered;
 }
 
 export function saveReviewToStore(review) {
-  const reviews = getReviewsFromStore();
+  const reviews = readJson("reviews.json", []);
   const newReview = {
     ...review,
     id: review.id || `rev-${Date.now().toString(36)}`,
@@ -174,6 +178,7 @@ export function saveReviewToStore(review) {
       year: "numeric"
     }),
     verifiedBuyer: review.verifiedBuyer !== false,
+    approved: review.approved !== false,
   };
 
   const existingIdx = reviews.findIndex((r) => r.id === newReview.id);

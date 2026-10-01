@@ -96,27 +96,62 @@ export async function getProducts(req, res) {
     const isTrendingOnly =
       req.query.trending === "true" ||
       req.query.special_offer === "true" ||
+      req.query.special_edition === "true" ||
       req.query.limited_edition === "true";
+    const skuQuery = (req.query.sku || "").trim().toLowerCase();
+    const searchQuery = (req.query.search || req.query.q || "").trim().toLowerCase();
 
-    const filterTrending = (list) => {
-      if (!isTrendingOnly) return list;
-      return list.filter(
-        (p) =>
-          Boolean(p.isLimitedEdition) ||
-          Boolean(p.isSpecialOffer) ||
-          (Array.isArray(p.tags) &&
-            p.tags.some((t) =>
-              ["limited_edition", "special_offer", "trending", "offers"].includes(
-                String(t).trim().toLowerCase()
-              )
-            ))
-      );
+    const applyCatalogFilters = (list) => {
+      let filtered = list;
+      if (isTrendingOnly) {
+        filtered = filtered.filter(
+          (p) =>
+            Boolean(p.isSpecialEdition) ||
+            Boolean(p.isLimitedEdition) ||
+            Boolean(p.isSpecialOffer) ||
+            (Array.isArray(p.tags) &&
+              p.tags.some((t) =>
+                [
+                  "special_edition",
+                  "limited_edition",
+                  "special_offer",
+                  "trending",
+                  "offers",
+                ].includes(String(t).trim().toLowerCase())
+              ))
+        );
+      }
+      if (skuQuery) {
+        filtered = filtered.filter((p) => {
+          if (p.sku && p.sku.toLowerCase().includes(skuQuery)) return true;
+          if (p.id && String(p.id).toLowerCase().includes(skuQuery)) return true;
+          if (Array.isArray(p.variants)) {
+            return p.variants.some((v) => v.sku && v.sku.toLowerCase().includes(skuQuery));
+          }
+          return false;
+        });
+      }
+      if (searchQuery) {
+        filtered = filtered.filter((p) => {
+          if (p.name && p.name.toLowerCase().includes(searchQuery)) return true;
+          if (p.sku && p.sku.toLowerCase().includes(searchQuery)) return true;
+          if (p.id && String(p.id).toLowerCase().includes(searchQuery)) return true;
+          if (p.category && p.category.toLowerCase().includes(searchQuery)) return true;
+          if (p.material && p.material.toLowerCase().includes(searchQuery)) return true;
+          if (p.description && p.description.toLowerCase().includes(searchQuery)) return true;
+          if (Array.isArray(p.variants)) {
+            return p.variants.some((v) => (v.sku && v.sku.toLowerCase().includes(searchQuery)) || (v.color && v.color.toLowerCase().includes(searchQuery)));
+          }
+          return false;
+        });
+      }
+      return filtered;
     };
 
     if (cachedProducts && Date.now() - lastProductsFetch < CACHE_TTL_MS) {
       return successResponse(
         res,
-        { products: filterTrending(cachedProducts) },
+        { products: applyCatalogFilters(cachedProducts) },
         "Products retrieved successfully (cached)"
       );
     }
@@ -179,11 +214,15 @@ export async function getProducts(req, res) {
 
           const isSpecialOffer =
             tags.includes("special_offer") ||
+            tags.includes("offers") ||
             Boolean(p.is_special_offer) ||
             Boolean(p.isSpecialOffer);
 
-          const isLimitedEdition =
+          const isSpecialEdition =
+            tags.includes("special_edition") ||
             tags.includes("limited_edition") ||
+            Boolean(p.is_special_edition) ||
+            Boolean(p.isSpecialEdition) ||
             Boolean(p.is_limited_edition) ||
             Boolean(p.isLimitedEdition);
 
@@ -204,10 +243,12 @@ export async function getProducts(req, res) {
             colors: colorList,
             tags,
             isSpecialOffer,
-            isLimitedEdition,
+            isSpecialEdition,
+            isLimitedEdition: isSpecialEdition,
             description: p.description || `${p.name} - Handcrafted Gadwal saree.`,
             featured: Boolean(p.featured),
             borderColor: resolveBorderColor(p, colorList),
+            sku: p.sku || p.sku_code || (pVariants && pVariants[0]?.sku) || undefined,
           };
         });
 
@@ -222,14 +263,14 @@ export async function getProducts(req, res) {
     const products = await inFlightProductsPromise;
     return successResponse(
       res,
-      { products: filterTrending(products) },
+      { products: applyCatalogFilters(products) },
       "Products retrieved successfully"
     );
   } catch (err) {
     if (cachedProducts && cachedProducts.length > 0) {
       return successResponse(
         res,
-        { products: filterTrending(cachedProducts) },
+        { products: applyCatalogFilters(cachedProducts) },
         "Products retrieved successfully (stale cache recovery)"
       );
     }
