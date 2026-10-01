@@ -108,8 +108,9 @@ export async function createPendingOrder(body = {}) {
     }
     // Housekeeping: online orders never paid within 2 hours are closed.
     const cutoff = new Date(Date.now() - STALE_PENDING_MS).toISOString();
-    await supabase.from("orders").update({ payment_status: "failed", order_status: "cancelled" })
+    const { data: stale } = await supabase.from("orders").select("order_number")
       .eq("payment_status", "pending").eq("payment_method", "cashfree").lt("updated_at", cutoff);
+    for (const o of stale || []) await voidUnpaidOrder(o.order_number);
   } else if (existing) {
     saveOrderToStore({ id: existing.id || `ord-${Date.now().toString(36)}`, ...row, paymentStatus: "pending", orderStatus: "ordered", orderNumber, invoiceNumber: orderNumber });
   } else {
@@ -200,13 +201,24 @@ export function finalizePaidOrder(orderNumber, payment = {}) {
   });
 }
 
+// A failed order is not an invoice: moving it off its number lets the next order reuse it (no gaps).
+const voidedNumbers = (orderNumber) => {
+  const v = `VOID-${orderNumber}-${Date.now().toString(36)}`;
+  return { order_number: v, invoice_number: v };
+};
+async function voidUnpaidOrder(orderNumber) {
+  await supabase.from("orders")
+    .update({ payment_status: "failed", order_status: "cancelled", updated_at: new Date().toISOString(), ...voidedNumbers(orderNumber) })
+    .eq("order_number", orderNumber).eq("payment_status", "pending");
+}
+
 /** A payment failed/was cancelled/expired: close the pending order, free the hold, tell the admin. */
 export async function markOrderPaymentFailed(orderNumber, reason = "FAILED", amount) {
   let sid = null;
   if (supabase) {
     const { data } = await supabase
       .from("orders")
-      .update({ payment_status: "failed", order_status: "cancelled", updated_at: new Date().toISOString() })
+      .update({ payment_status: "failed", order_status: "cancelled", updated_at: new Date().toISOString(), ...voidedNumbers(orderNumber) })
       .eq("order_number", orderNumber)
       .eq("payment_status", "pending")
       .select("notes, total")

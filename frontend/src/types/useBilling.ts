@@ -45,9 +45,6 @@ export const STORE_ADDRESS = loadSettings().storeAddress || "Gadwal, Telangana 5
 export const STORE_WHATSAPP_NUMBER = (loadSettings().storePhone || "7842070881").replace(/\D/g, "").slice(-10);
 export const INDIA_COUNTRY_CODE = "91";
 
-// localStorage key used to persist the "last invoice number" so it
-// keeps incrementing across page reloads / sessions.
-const INVOICE_COUNTER_KEY = "rsf_last_invoice_number";
 
 // -----------------------------------------------------------------
 // HELPER FUNCTIONS
@@ -65,50 +62,30 @@ export const formatInvoiceNumber = (inv: string | number | null | undefined): st
   return s;
 };
 
-// Reads the last invoice number from storage, adds 1, saves it back,
-// and returns the formatted sequential number starting from "001" (001, 002, 003...).
+// Next invoice number = highest numeric invoice already recorded + 1, padded ("001", "002"...).
+// Nothing is stored here: a bill that is opened but never saved must not use up a number,
+// otherwise the sequence develops gaps (004, 008...).
 export const getNextInvoiceNumber = (existingSales?: Array<{ invoiceNumber?: string; invoice_number?: string }>): string => {
-  let maxNumber = parseInt(
-    localStorage.getItem(INVOICE_COUNTER_KEY) || "0",
-    10
-  );
-  if (isNaN(maxNumber)) maxNumber = 0;
-
-  // Cross-reference existing sales to prevent duplicates across page refreshes
-  if (Array.isArray(existingSales) && existingSales.length > 0) {
-    for (const s of existingSales) {
-      const inv = s.invoiceNumber || s.invoice_number;
+  let maxNumber = 0;
+  const scan = (sales: unknown) => {
+    if (!Array.isArray(sales)) return;
+    for (const s of sales) {
+      const inv = s?.invoiceNumber || s?.invoice_number;
       if (inv && /^\d+$/.test(String(inv).trim())) {
         const num = parseInt(String(inv).trim(), 10);
-        if (!isNaN(num) && num > maxNumber) {
-          maxNumber = num;
-        }
+        if (!isNaN(num) && num > maxNumber) maxNumber = num;
       }
     }
+  };
+  if (Array.isArray(existingSales) && existingSales.length > 0) {
+    scan(existingSales);
   } else {
     try {
       const stored = localStorage.getItem("rs_admin_sales_history");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
-          for (const s of parsed) {
-            const inv = s.invoiceNumber || s.invoice_number;
-            if (inv && /^\d+$/.test(String(inv).trim())) {
-              const num = parseInt(String(inv).trim(), 10);
-              if (!isNaN(num) && num > maxNumber) {
-                maxNumber = num;
-              }
-            }
-          }
-        }
-      }
+      if (stored) scan(JSON.parse(stored));
     } catch {}
   }
-
-  const nextNumber = maxNumber + 1;
-  localStorage.setItem(INVOICE_COUNTER_KEY, String(nextNumber));
-
-  return String(nextNumber).padStart(3, "0");
+  return String(maxNumber + 1).padStart(3, "0");
 };
 
 
