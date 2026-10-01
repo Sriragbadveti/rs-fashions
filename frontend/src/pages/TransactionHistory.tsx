@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Search,
   Calendar,
@@ -123,27 +123,73 @@ const PaymentIcon = ({
 };
 
 /** Tiny photo + SKU for each saree on an order, so the admin can spot what was bought at a glance. */
-const SaleItemThumbs = ({ items }: { items: any[] }) => (
-  <div className="space-y-1">
-    {(items || []).slice(0, 4).map((item: any, idx: number) => {
-      const src = item.image || item.imageUrl || item.images?.[0];
-      return (
-        <div key={item.cartId || idx} className="flex min-w-0 items-center gap-2">
-          {src ? (
-            <img src={src} alt="" loading="lazy" className="h-8 w-8 shrink-0 rounded-md border border-stone-200 object-cover" />
-          ) : (
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-amber-50 text-amber-700"><Package size={12} /></div>
-          )}
-          <div className="min-w-0">
-            <p className="truncate text-[10px] font-semibold text-stone-700">{item.name || "Saree"}</p>
-            <p className="font-mono text-[9px] font-bold text-[#8E3D51]">{item.sku || "N/A"}</p>
+const SaleItemThumbs = ({ items }: { items: any[] }) => {
+  const [zoom, setZoom] = useState<{ src: string; name: string; sku: string } | null>(null);
+
+  useEffect(() => {
+    if (!zoom) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setZoom(null);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [zoom]);
+
+  return (
+    <div className="space-y-1">
+      {(items || []).slice(0, 4).map((item: any, idx: number) => {
+        const src = item.image || item.imageUrl || item.images?.[0];
+        return (
+          <div key={item.cartId || idx} className="flex min-w-0 items-center gap-2">
+            {src ? (
+              <button
+                type="button"
+                title="View larger"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setZoom({ src, name: item.name || "Saree", sku: item.sku || "N/A" });
+                }}
+                className="shrink-0 cursor-zoom-in"
+              >
+                <img src={src} alt="" loading="lazy" className="h-8 w-8 rounded-md border border-stone-200 object-cover" />
+              </button>
+            ) : (
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-amber-50 text-amber-700"><Package size={12} /></div>
+            )}
+            <div className="min-w-0">
+              <p className="truncate text-[10px] font-semibold text-stone-700">{item.name || "Saree"}</p>
+              <p className="font-mono text-[9px] font-bold text-[#8E3D51]">{item.sku || "N/A"}</p>
+            </div>
           </div>
+        );
+      })}
+      {(items || []).length > 4 && <p className="text-[9px] text-stone-400">+{items.length - 4} more</p>}
+
+      {zoom && (
+        <div
+          className="fixed inset-0 z-[300] flex cursor-zoom-out items-center justify-center bg-black/80 p-4"
+          onClick={(e) => {
+            e.stopPropagation();
+            setZoom(null);
+          }}
+        >
+          <figure className="max-h-full max-w-full text-center" onClick={(e) => e.stopPropagation()}>
+            <img src={zoom.src} alt={zoom.name} className="max-h-[80vh] max-w-full rounded-xl object-contain shadow-2xl" />
+            <figcaption className="mt-2 text-xs font-semibold text-white">
+              {zoom.name} • <span className="font-mono">{zoom.sku}</span>
+            </figcaption>
+          </figure>
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={() => setZoom(null)}
+            className="absolute right-4 top-4 rounded-full bg-white/15 px-3 py-1.5 text-sm font-bold text-white hover:bg-white/25"
+          >
+            ✕
+          </button>
         </div>
-      );
-    })}
-    {(items || []).length > 4 && <p className="text-[9px] text-stone-400">+{items.length - 4} more</p>}
-  </div>
-);
+      )}
+    </div>
+  );
+};
 
 const PaymentBadge = ({ method }: { method: string }) => {
   const normalized = (method || "").toLowerCase();
