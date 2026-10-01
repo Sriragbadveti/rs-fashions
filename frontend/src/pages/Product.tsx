@@ -858,23 +858,9 @@ export default function Product() {
                   <span>Chat with us</span>
                 </a>
 
-                {/* Real-time Status Badge */}
                 <div className="flex items-center justify-center gap-1.5 text-[10.5px] text-stone-500">
-                  <span className="relative flex h-2 w-2">
-                    {isSpecialistOnline ? (
-                      <>
-                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                        <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-                      </>
-                    ) : (
-                      <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500" />
-                    )}
-                  </span>
-                  <span>
-                    {isSpecialistOnline
-                      ? "Loom specialist online · Instant reply"
-                      : "Replies within 24 hours"}
-                  </span>
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500" />
+                  <span>Replies within 24 hours</span>
                 </div>
               </div>
 
