@@ -52,6 +52,7 @@ import {
 } from "../context/OrderFulfillmentContext";
 import { useCart } from "../context/CartContext";
 import logo from "../assets/logo/logo1.png";
+import { FaWhatsapp } from "react-icons/fa";
 
 const getWhatsAppTrackingUrl = (order: any) => {
   const rawNumber = STORE_WHATSAPP_NUMBER || "919876543210";
@@ -869,7 +870,7 @@ export default function Account() {
               </div>
               <div>
                 <p className="font-serif font-bold text-xs sm:text-sm">
-                  Complete Your Heritage Profile
+                  Complete Your Profile
                 </p>
                 <p className="text-[11px] text-amber-800/90 mt-0.5">
                   Provide your Date of Birth for exclusive birthday anniversary blessings and enter your phone number for live WhatsApp dispatch tracking.
@@ -1013,7 +1014,7 @@ export default function Account() {
                           className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] sm:text-xs font-semibold transition-all shadow-xs active:scale-95"
                           title="Track delivery updates on WhatsApp"
                         >
-                          <MessageCircle size={13} />
+                          <FaWhatsapp size={13} />
                           <span>Track WhatsApp</span>
                         </a>
 
