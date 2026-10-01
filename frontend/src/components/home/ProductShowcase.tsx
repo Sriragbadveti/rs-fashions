@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { handleSareeImageError } from "../../utils/imageConverter";
-import tempImg1 from "../../assets/images/Home.jpg";
-import tempImg2 from "../../assets/images/Home1.jpg";
-import tempImg3 from "../../assets/images/Home_laptop_1.png";
-import tempImg4 from "../../assets/images/Home.jpg";
-import tempImg5 from "../../assets/images/Home.jpg";
-import tempImg6 from "../../assets/images/Home.jpg";
-import { getImageVariantUrl, fallbackToOriginalImage } from "../../utils/imageVariants";
+import tempImg1 from "../../assets/images/all.jpg";
+import tempImg2 from "../../assets/images/Kanchi borders.jpg";
+import tempImg3 from "../../assets/images/Vintage checks.jpg";
+import tempImg4 from "../../assets/images/Gatti border.jpg";
+import tempImg5 from "../../assets/images/Gap border.jpg";
+import tempImg6 from "../../assets/images/Ma inti bangaram.jpg";
 
 const localAssets = import.meta.glob<string>("../../assets/**/*", {
   eager: true,
@@ -38,7 +37,6 @@ function resolveAssetSrc(src: string): string {
 export interface ShowcaseItem {
   id: string;
   name: string;
-  desc: string;
   image: string;
   bgColor: string;
   pattern: string;
@@ -50,7 +48,6 @@ export const FALLBACK_SHOWCASE_ITEMS: ShowcaseItem[] = [
   {
     id: "showcase-emerald-gadwal",
     name: "SiCo GADWAL Sarees",
-    desc: "Handwoven SiCo Gadwal saree with traditional borders and gold zari crafted for timeless celebrations.",
     image: tempImg1,
     bgColor: "#d8b98a",
     pattern: "All",
@@ -60,7 +57,6 @@ export const FALLBACK_SHOWCASE_ITEMS: ShowcaseItem[] = [
   {
     id: "showcase-rose-gadwal",
     name: "KANCHI BORDER",
-    desc: "A romantic rose-pink handloom drape featuring rich antique zari peacock motifs along a contrasting maroon Kanchi border.",
     image: tempImg2,
     bgColor: "#e8a3ab",
     pattern: "Kanchi Borders",
@@ -70,7 +66,6 @@ export const FALLBACK_SHOWCASE_ITEMS: ShowcaseItem[] = [
   {
     id: "showcase-teal-checks",
     name: "Vintage Checks",
-    desc: "Box Gadwal Checks SiCo weave adorned with classic golden checks and a deep purple zari border for an authentic royal aura.",
     image: tempImg3,
     bgColor: "#7a1332",
     pattern: "Vintage Checks",
@@ -80,7 +75,6 @@ export const FALLBACK_SHOWCASE_ITEMS: ShowcaseItem[] = [
   {
     id: "showcase-mustard-gatti",
     name: "GATTI BORDER Gadwal",
-    desc: "A classic mustard-yellow handloom weave highlighted by dense interlocking gatti borders and rich ceremonial pallu craftsmanship.",
     image: tempImg4,
     bgColor: "#d99b26",
     pattern: "Gatti Border",
@@ -90,7 +84,6 @@ export const FALLBACK_SHOWCASE_ITEMS: ShowcaseItem[] = [
   {
     id: "showcase-peacock-vintage",
     name: "Gap Border",
-    desc: "A stunning gap border drape woven in untarnished vintage gold zari threads.",
     image: tempImg5,
     bgColor: "#0e7490",
     pattern: "Gap Border",
@@ -100,7 +93,6 @@ export const FALLBACK_SHOWCASE_ITEMS: ShowcaseItem[] = [
   {
     id: "showcase-ruby-heritage",
     name: "MAA INTI BANGARAM",
-    desc: "An heirloom crimson drape designed with traditional kumbha border architecture, carrying legacy craftsmanship across generations.",
     image: tempImg6,
     bgColor: "#a01e2e",
     pattern: "Maa Inti Bangaram",
@@ -313,7 +305,7 @@ export default function ProductShowcase() {
           width: 100%;
           max-width: 1480px;
           display: grid;
-          grid-template-columns: 190px 1fr 380px;
+          grid-template-columns: 190px minmax(0, 1fr) 360px;
           align-items: center;
           gap: clamp(16px, 2.8vw, 40px);
         }
@@ -335,7 +327,7 @@ export default function ProductShowcase() {
           cursor: pointer;
           border: 2px solid #ffffff;
           padding: 0;
-          background: #E9C9C3;
+          background: #FAF7F5;
           box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
           transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1),
                       border-color 0.25s ease,
@@ -348,7 +340,10 @@ export default function ProductShowcase() {
           width: 100%;
           height: 100%;
           object-fit: cover;
+          object-position: center;
           display: block;
+          image-rendering: -webkit-optimize-contrast;
+          image-rendering: high-quality;
         }
 
         .psc-thumb-btn:hover {
@@ -375,45 +370,83 @@ export default function ProductShowcase() {
         .psc-visual-card {
           position: relative;
           width: 100%;
-          max-width: 520px;
-          height: clamp(380px, 66vh, 620px);
+          max-width: 680px;
+          height: clamp(380px, 60vh, 560px);
           border-radius: 24px;
           overflow: hidden;
-          box-shadow: 0 20px 42px rgba(28, 14, 18, 0.18);
+          box-shadow: 0 20px 42px rgba(28, 14, 18, 0.14);
           cursor: pointer;
+          background: #FAF7F5;
+          border: 1px solid rgba(255, 255, 255, 0.85);
+          display: flex;
+          align-items: center;
+          justify-content: center;
           transition: transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1),
-                      opacity 0.3s ease;
-          will-change: transform, opacity;
+                      opacity 0.3s ease,
+                      box-shadow 0.32s ease;
         }
 
-        .psc-visual-card img {
+        .psc-visual-card:hover {
+          box-shadow: 0 24px 48px rgba(122, 19, 50, 0.2);
+        }
+
+        /* Ambient blurred aura of saree tones to gracefully fill container without any black/colored bars */
+        .psc-card-backdrop {
+          position: absolute;
+          inset: -12%;
+          width: 124%;
+          height: 124%;
+          object-fit: cover;
+          object-position: center;
+          filter: blur(32px) opacity(0.3) saturate(1.25);
+          transform: scale(1.08);
+          pointer-events: none;
+          user-select: none;
+        }
+
+        /* Foreground image: fully displayed, never clipped (object-fit: contain) */
+        .psc-card-main-img {
+          position: relative;
+          z-index: 2;
           width: 100%;
           height: 100%;
-          object-fit: cover;
-          object-position: top center;
+          max-height: 100%;
+          object-fit: contain;
+          object-position: center;
           display: block;
-          transition: transform 0.4s ease;
+          padding: clamp(8px, 1.8vw, 18px);
+          box-sizing: border-box;
+          filter: drop-shadow(0 10px 22px rgba(28, 14, 18, 0.12));
+          transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+          image-rendering: -webkit-optimize-contrast;
+          image-rendering: high-quality;
+          backface-visibility: hidden;
+          transform: translateZ(0);
         }
 
-        .psc-visual-card:hover img {
-          transform: scale(1.04);
+        .psc-visual-card:hover .psc-card-main-img {
+          transform: scale(1.02);
         }
 
         .psc-visual-card.slide-out-left {
           transform: translateX(-40px) scale(0.96);
           opacity: 0;
+          will-change: transform, opacity;
         }
         .psc-visual-card.slide-out-right {
           transform: translateX(40px) scale(0.96);
           opacity: 0;
+          will-change: transform, opacity;
         }
         .psc-visual-card.slide-in-from-right {
           transform: translateX(40px) scale(0.96);
           opacity: 0;
+          will-change: transform, opacity;
         }
         .psc-visual-card.slide-in-from-left {
           transform: translateX(-40px) scale(0.96);
           opacity: 0;
+          will-change: transform, opacity;
         }
         .psc-visual-card.slide-settled {
           transform: translateX(0) scale(1);
@@ -739,11 +772,11 @@ export default function ProductShowcase() {
                 }}
               >
                 <img
-                  src={getImageVariantUrl(thumbSrc, "sm")}
+                  src={thumbSrc}
                   alt={item.name}
                   loading="lazy"
                   decoding="async"
-                  onError={(e) => { if (!fallbackToOriginalImage(e, thumbSrc)) handleSareeImageError(e, thumbSrc); }}
+                  onError={(e) => handleSareeImageError(e, thumbSrc)}
                 />
               </button>
             );
@@ -767,15 +800,25 @@ export default function ProductShowcase() {
 
           <div
             className={`psc-visual-card ${slideState}`}
-            style={{ backgroundColor: activeItem.bgColor }}
             onClick={() => handleShopRedirect(activeItem.name)}
             title={`View ${activeItem.name} in shop`}
           >
+            {/* Ambient diffused backdrop so any letterboxing has natural saree aura */}
             <img
-              src={getImageVariantUrl(resolvedActiveImg, "md")}
-              alt={activeItem.name}
+              src={resolvedActiveImg}
+              alt=""
+              aria-hidden="true"
+              className="psc-card-backdrop"
               decoding="async"
-              onError={(e) => { if (!fallbackToOriginalImage(e, resolvedActiveImg)) handleSareeImageError(e, resolvedActiveImg); }}
+            />
+
+            {/* Main fully-displayed showcase image (contain mode: zero clipping) */}
+            <img
+              src={resolvedActiveImg}
+              alt={activeItem.name}
+              className="psc-card-main-img"
+              decoding="async"
+              onError={(e) => handleSareeImageError(e, resolvedActiveImg)}
             />
           </div>
 
@@ -798,9 +841,7 @@ export default function ProductShowcase() {
           >
             {activeItem.name}
           </h2>
-
-          <p className="psc-desc">{activeItem.desc}</p>
-
+          
           <button
             type="button"
             className="psc-cta-btn"
