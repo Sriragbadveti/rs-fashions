@@ -35,7 +35,12 @@ import {
   ArrowUpDown,
 } from "lucide-react";
 import { StoreService } from "../services/storeService";
-import type { Product, Category, ColorVariant } from "../types/inventory";
+import {
+  CANONICAL_SAREE_CATEGORIES,
+  type Product,
+  type Category,
+  type ColorVariant,
+} from "../types/inventory";
 import {
   LOW_STOCK_THRESHOLD,
   COLOR_OPTIONS,
@@ -1625,18 +1630,23 @@ export default function Catalog({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
 
-  const sicoCategoryId = useMemo(() => {
-    const found = categories.find(
-      (c) =>
-        c.name.toLowerCase().includes("gadwal") ||
-        c.name.toLowerCase().includes("sico")
-    );
-    return found?.id || categories[0]?.id || "cat_sico_gadwal";
+  const availableCategories = useMemo<Category[]>(() => {
+    const combined = [...CANONICAL_SAREE_CATEGORIES];
+    (categories || []).forEach((c) => {
+      if (!combined.some((x) => x.name.toLowerCase() === c.name.toLowerCase())) {
+        combined.push(c);
+      }
+    });
+    return combined;
   }, [categories]);
+
+  const defaultCategoryId = useMemo(() => {
+    return availableCategories[0]?.id || "cat_checks";
+  }, [availableCategories]);
 
   // Form State
   const [formName, setFormName] = useState("");
-  const [formCategory, setFormCategory] = useState(sicoCategoryId);
+  const [formCategory, setFormCategory] = useState(defaultCategoryId);
   const [formPurchasePrice, setFormPurchasePrice] = useState("");
   const [formSalePrice, setFormSalePrice] = useState("");
   const [formTags, setFormTags] = useState("");
@@ -1813,10 +1823,10 @@ export default function Catalog({
   function openCreateModal() {
     setEditingProductId(null);
     setFormName("");
-    setFormCategory(sicoCategoryId);
+    setFormCategory(defaultCategoryId);
     setFormPurchasePrice("");
     setFormSalePrice("");
-    setFormTags("handloom, sico gadwal, zari");
+    setFormTags("handloom, zari");
     setFormVariants([]);
     setPrimaryColor("");
     setPrimaryStock("");
@@ -1830,7 +1840,12 @@ export default function Catalog({
   function openEditModal(product: Product) {
     setEditingProductId(product.id);
     setFormName(product.name || "");
-    setFormCategory(product.categoryId || sicoCategoryId);
+    const matchingCat = availableCategories.find(
+      (c) =>
+        c.id === product.categoryId ||
+        c.name.toLowerCase() === (product.category || "").toLowerCase()
+    );
+    setFormCategory(matchingCat?.id || product.categoryId || defaultCategoryId);
     setFormPurchasePrice(String(product.purchasePrice ?? 0));
     setFormSalePrice(String(product.salePrice ?? 0));
     setFormTags((product.tags || []).join(", "));
@@ -1875,7 +1890,9 @@ export default function Catalog({
     // allocates an RS SKU for them.
     const finalVariants = formVariants.map((v) => ({ ...v, sku: v.sku || "" }));
 
-    const finalCategory = formCategory || sicoCategoryId;
+    const selectedCategoryObj = availableCategories.find((c) => c.id === formCategory) || availableCategories[0];
+    const finalCategory = selectedCategoryObj?.id || formCategory || defaultCategoryId;
+    const finalCategoryName = selectedCategoryObj?.name || "Checks";
     // The gallery is the source of truth; the first photo is the primary image.
     const effectiveImages = formImages.length > 0
       ? formImages
@@ -1910,12 +1927,13 @@ export default function Catalog({
       ? inventory.find((p) => p.id === editingProductId)
       : undefined;
 
-    const payload: Product = {
+    const payload: Product & { category?: string } = {
       ...(existingProduct || {}),
       // Empty for a new product: the backend assigns the SKU and returns it.
       id: editingProductId || "",
       name,
       categoryId: finalCategory,
+      category: finalCategoryName,
       purchasePrice: Number(formPurchasePrice) || 0,
       salePrice: Number(formSalePrice) || 0,
       isSpecialOffer: formIsSpecialOffer,
@@ -1942,8 +1960,6 @@ export default function Catalog({
       setIsSavingProduct(false);
     }
   }
-
-  const lockedCategoryName = "SiCo Gadwal Sarees";
 
   return (
     <div className="mx-auto w-full max-w-[1600px] space-y-7 pb-24 select-none">
@@ -2300,11 +2316,19 @@ export default function Catalog({
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="min-w-0">
                   <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-stone-400">
-                    Weave Classification
+                    Saree Vertical / Category
                   </label>
-                  <div className="flex h-11 items-center overflow-hidden rounded-2xl border border-stone-200/80 bg-stone-50 px-3.5 font-semibold text-stone-800 text-xs">
-                    <span className="truncate">{lockedCategoryName}</span>
-                  </div>
+                  <select
+                    value={formCategory}
+                    onChange={(e) => setFormCategory(e.target.value)}
+                    className="h-11 w-full rounded-2xl border border-stone-200/80 bg-white px-3.5 text-xs font-semibold text-stone-800 outline-none transition-all focus:border-[#D4A373] focus:ring-2 focus:ring-[#D4A373]/10"
+                  >
+                    {availableCategories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="min-w-0">

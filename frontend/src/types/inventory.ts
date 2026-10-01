@@ -379,6 +379,11 @@ export interface Product {
   categoryId: string;
 
   /**
+   * Weave Category Name (e.g. Checks, Equal Borders, etc.)
+   */
+  category?: string;
+
+  /**
    * Purchase price.
    */
   purchasePrice: number;
@@ -555,7 +560,15 @@ export const MOCK_CUSTOMERS: CustomerProfile[] = [];
    MOCK CATEGORIES (Empty by default - sourced from backend)
 ========================================================= */
 
-export const MOCK_CATEGORIES: Category[] = [];
+export const CANONICAL_SAREE_CATEGORIES: Category[] = [
+  { id: "cat_checks", name: "Checks", slug: "CHECKS", hsn: "5208", nextSequence: 1 },
+  { id: "cat_equal_borders", name: "Equal Borders", slug: "EQUAL-BORDERS", hsn: "5208", nextSequence: 1 },
+  { id: "cat_kanchi_big_borders", name: "Kanchi Big Borders", slug: "KANCHI-BIG-BORDERS", hsn: "5208", nextSequence: 1 },
+  { id: "cat_gap_border", name: "Gap Border", slug: "GAP-BORDER", hsn: "5208", nextSequence: 1 },
+  { id: "cat_maa_inti_bangaram", name: "Maa Inti Bangaram", slug: "MAA-INTI-BANGARAM", hsn: "5208", nextSequence: 1 },
+];
+
+export const MOCK_CATEGORIES: Category[] = [...CANONICAL_SAREE_CATEGORIES];
 
 /* =========================================================
    MOCK INVENTORY (Empty by default - sourced from backend)

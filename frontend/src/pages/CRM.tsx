@@ -62,20 +62,20 @@ const MESSAGE_TEMPLATES: {
   },
   {
     id: "anniversary",
-    label: "Anniversary Honor",
+    label: "Anniversary Wishes",
     shortLabel: "Anniversary",
     icon: Heart,
   },
   {
     id: "festive_offer",
-    label: "VIP Loom Drop",
+    label: "Loom Drop Showcase",
     shortLabel: "Loom Drop",
     icon: Sparkles,
   },
   {
     id: "reactivation",
-    label: "30-Day Welcome Back",
-    shortLabel: "Welcome Back (>30d)",
+    label: "Customer Greeting",
+    shortLabel: "Greeting",
     icon: Sparkles,
   },
 ];
@@ -561,13 +561,6 @@ export default function CRM({
   const [templateType, setTemplateType] =
     useState<MessageTemplateType>("birthday");
 
-  const [customDiscountCode, setCustomDiscountCode] =
-    useState("ROYAL15");
-
-  const [customOfferText, setCustomOfferText] = useState(
-    "exclusive 15% VIP privilege gift"
-  );
-
   const [sendStatus, setSendStatus] = useState<{ ok: boolean; text: string } | null>(null);
 
   const [generatedMessage, setGeneratedMessage] =
@@ -696,9 +689,7 @@ export default function CRM({
   const buildMessage = useCallback(
     (
       client: CustomerProfile,
-      type: MessageTemplateType,
-      discountCode: string,
-      offerText: string
+      type: MessageTemplateType
     ) => {
       const storeName = showroom.storeName || "RS Fashions";
       const showroomLocation = showroom.storeAddress || "Road No. 36, Jubilee Hills, Hyderabad";
@@ -707,9 +698,8 @@ export default function CRM({
         return (
           `✨ *Namaste ${client.name} Ji!* ✨\n\n` +
           `Wishing you a very Happy Birthday from all of us at *${storeName}*! 💐\n\n` +
-          `May your year ahead be blessed with good health, grace, and timeless happiness.\n\n` +
-          `As a token of our appreciation for being our valued Customer, we are delighted to offer you an *${offerText}* (Use code: *${discountCode}*) valid on our curated SiCo Gadwal & Heritage Handloom collections.\n\n` +
-          `We look forward to welcoming you at our showroom.\n\n` +
+          `May your special day and the year ahead be blessed with good health, joy, grace, and timeless happiness.\n\n` +
+          `We are truly grateful to have you as a cherished part of our family.\n\n` +
           `Warm regards,\n*${storeName}*`
         );
       }
@@ -717,8 +707,7 @@ export default function CRM({
       if (type === "anniversary") {
         return (
           `✨ *Warmest Wedding Anniversary Greetings to ${client.name} Ji & Family!* 💍\n\n` +
-          `May your bond of love and togetherness grow more radiant with every passing year, woven with grace just like our finest heritage silks.\n\n` +
-          `To celebrate your milestone, enjoy an *${offerText}* on our Bridal & Gadwal collections using privilege code: *${discountCode}*.\n\n` +
+          `Wishing you a very Happy Wedding Anniversary! May your bond of love, togetherness, and happiness continue to blossom with every passing year.\n\n` +
           `Showroom: *${showroomLocation}*\n\n` +
           `With sincere wishes,\n*${storeName}*`
         );
@@ -726,25 +715,24 @@ export default function CRM({
 
       if (type === "reactivation") {
         return (
-          `✨ *Namaste ${client.name} Ji! We Miss You at ${storeName}* ✨\n\n` +
-          `It has been a little while since your last visit to our boutique. We have recently arrived with a breathtaking new festive collection of authentic SiCo Gadwal handloom drapes woven by master artisans.\n\n` +
-          `As our esteemed Customer, we would love to welcome you back with an exclusive welcome-back privilege: *${offerText}* (Code: *${discountCode}*).\n\n` +
-          `Explore our latest online gallery: https://rsfashions.in/shop\n` +
-          `Or visit our flagship showroom: *${showroomLocation}*\n\n` +
+          `✨ *Namaste ${client.name} Ji! Warm Greetings from ${storeName}* ✨\n\n` +
+          `It has been a little while since your last visit. We wanted to extend our warmest wishes and let you know that our new handloom drapes have arrived.\n\n` +
+          `We would be delighted to welcome you back at our showroom or online store.\n\n` +
+          `📍 *${storeName} — ${showroomLocation}*\n` +
+          `Explore our gallery: https://www.rsfashions25.com/shop\n\n` +
           `With sincere regards,\n*${storeName} Team*`
         );
       }
 
       return (
-        `✨ *Exclusive Handloom Showcase for ${client.name} Ji* ✨\n\n` +
-        `We have just unveiled our fresh weaver consignments directly from the artisan looms of Gadwal.\n\n` +
-        `As our valued Customer, we cordially invite you for a private viewing of our newest *${
-          client.preferredWeave ||
-          "Pure Gadwal Silk & Zari"
-        }* designs.\n\n` +
-        `Enjoy an exclusive privilege offer (*${discountCode}*) on your next drape selection.\n\n` +
+        `✨ *Namaste ${client.name} Ji!* ✨\n\n` +
+        `We have just unveiled our fresh artisan consignments directly from the looms of Gadwal.\n\n` +
+        `As our valued patron, we cordially invite you to explore our newest *${
+          client.preferredWeave || "Handloom & Silk Saree"
+        }* collection.\n\n` +
         `📍 *${storeName} — ${showroomLocation}*\n` +
-        `Reserve a private preview: Reply to this message.`
+        `Explore our gallery: https://www.rsfashions25.com/shop\n\n` +
+        `Warm regards,\n*${storeName}*`
       );
     },
     [showroom]
@@ -792,9 +780,7 @@ export default function CRM({
       setGeneratedMessage(
         buildMessage(
           client,
-          resolvedType,
-          customDiscountCode,
-          customOfferText
+          resolvedType
         )
       );
 
@@ -808,8 +794,6 @@ export default function CRM({
     },
     [
       buildMessage,
-      customDiscountCode,
-      customOfferText,
     ]
   );
 
@@ -1146,15 +1130,11 @@ export default function CRM({
     setGeneratedMessage(
       buildMessage(
         selectedClientForMessage,
-        templateType,
-        customDiscountCode,
-        customOfferText
+        templateType
       )
     );
   }, [
     buildMessage,
-    customDiscountCode,
-    customOfferText,
     selectedClientForMessage,
     templateType,
   ]);
@@ -1825,49 +1805,7 @@ export default function CRM({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
-                <div>
-                  <label
-                    htmlFor="crm-discount-code"
-                    className="block text-[10px] uppercase font-bold tracking-wider text-stone-400 mb-1.5"
-                  >
-                    Privilege Voucher Code
-                  </label>
 
-                  <input
-                    id="crm-discount-code"
-                    type="text"
-                    value={customDiscountCode}
-                    onChange={(event) =>
-                      setCustomDiscountCode(
-                        event.target.value.toUpperCase()
-                      )
-                    }
-                    className="w-full text-xs font-mono py-2.5 px-3 border border-stone-200 rounded-xl uppercase font-bold bg-white focus:outline-none focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/10 transition-all duration-200"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="crm-offer-text"
-                    className="block text-[10px] uppercase font-bold tracking-wider text-stone-400 mb-1.5"
-                  >
-                    Gift / Offer Description
-                  </label>
-
-                  <input
-                    id="crm-offer-text"
-                    type="text"
-                    value={customOfferText}
-                    onChange={(event) =>
-                      setCustomOfferText(
-                        event.target.value
-                      )
-                    }
-                    className="w-full text-xs py-2.5 px-3 border border-stone-200 rounded-xl bg-white focus:outline-none focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/10 transition-all duration-200"
-                  />
-                </div>
-              </div>
 
               <div className="mt-4">
                 <div className="flex items-center justify-between mb-1.5">

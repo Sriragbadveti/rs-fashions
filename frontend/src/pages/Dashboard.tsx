@@ -55,6 +55,7 @@ import {
   MOCK_INVENTORY,
   MOCK_STOCK_HISTORY,
   MOCK_CUSTOMERS,
+  CANONICAL_SAREE_CATEGORIES,
 } from "../types/inventory";
 import { syncColorsToRuntime } from "../types/catalog";
 import { getSavedCrmCustomers } from "../types/useBilling";
@@ -150,10 +151,18 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       const saved = localStorage.getItem("rs_admin_categories");
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const merged = [...parsed];
+          CANONICAL_SAREE_CATEGORIES.forEach((can) => {
+            if (!merged.some((c) => c.name.toLowerCase() === can.name.toLowerCase())) {
+              merged.push(can);
+            }
+          });
+          return merged;
+        }
       }
     } catch { }
-    return [];
+    return [...CANONICAL_SAREE_CATEGORIES];
   });
 
   // Automatic cache buster: purge any legacy deleted stock from localStorage on initial load
@@ -409,8 +418,14 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       const d = json?.data || json;
       if (d) {
         if (Array.isArray(d.categories)) {
-          setCategories(d.categories);
-          safeStorageSet("rs_admin_categories", d.categories);
+          const merged = [...d.categories];
+          CANONICAL_SAREE_CATEGORIES.forEach((can) => {
+            if (!merged.some((c) => c.name.toLowerCase() === can.name.toLowerCase())) {
+              merged.push(can);
+            }
+          });
+          setCategories(merged);
+          safeStorageSet("rs_admin_categories", merged);
         }
         if (Array.isArray(d.colors)) {
           syncColorsToRuntime(d.colors);
