@@ -746,7 +746,10 @@ export default function Shop() {
 
         {/* Results Counter */}
         <div className="mb-3.5 flex items-center justify-between border-b border-black/5 pb-2 text-xs text-stone-500">
-          <p>Showing <strong className="font-medium text-[#2A2421]">{filteredProducts.length}</strong> {filteredProducts.length === 1 ? "artisan drape" : "artisan drapes"}</p>
+          {(() => {
+            const available = filteredProducts.filter((p) => p.stock === undefined || p.stock > 0).length;
+            return <p>Showing <strong className="font-medium text-[#2A2421]">{available}</strong> {available === 1 ? "artisan drape" : "artisan drapes"}</p>;
+          })()}
           <p className="font-serif italic text-[13px]">{sort}</p>
         </div>
 

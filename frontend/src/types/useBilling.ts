@@ -35,14 +35,14 @@ import { loadSettings } from "./settings";
 // -----------------------------------------------------------------
 export const getStoreLegalName = () => loadSettings().storeName || "RS Fashions";
 export const getStoreGstin = () => loadSettings().gstin || "36AAAAA0000A1Z5";
-export const getStoreAddress = () => loadSettings().storeAddress || "Plot No. 42, Jubilee Hills Road No. 36, Hyderabad, Telangana 500033";
-export const getStorePhone = () => loadSettings().storePhone || "+91 98765 43210";
+export const getStoreAddress = () => loadSettings().storeAddress || "Gadwal, Telangana 509125";
+export const getStorePhone = () => loadSettings().storePhone || "7842070881";
 export const getStoreEmail = () => loadSettings().storeEmail || "concierge@rsfashions.in";
 
 export const STORE_GSTIN = loadSettings().gstin || "36AAAAA0000A1Z5";
 export const STORE_LEGAL_NAME = loadSettings().storeName || "RS Fashions";
-export const STORE_ADDRESS = loadSettings().storeAddress || "Plot No. 42, Jubilee Hills Road No. 36, Hyderabad, Telangana 500033";
-export const STORE_WHATSAPP_NUMBER = (loadSettings().storePhone || "9876543210").replace(/\D/g, "").slice(-10);
+export const STORE_ADDRESS = loadSettings().storeAddress || "Gadwal, Telangana 509125";
+export const STORE_WHATSAPP_NUMBER = (loadSettings().storePhone || "7842070881").replace(/\D/g, "").slice(-10);
 export const INDIA_COUNTRY_CODE = "91";
 
 // localStorage key used to persist the "last invoice number" so it
@@ -998,7 +998,7 @@ export function useBilling({
     const settings = loadSettings();
     const liveStoreName = settings.storeName || "RS Fashions";
     const liveStoreGstin = settings.gstin || "36AAAAA0000A1Z5";
-    const livePhone = (settings.storePhone || "9876543210").replace(/\D/g, "").slice(-10);
+    const livePhone = (settings.storePhone || "7842070881").replace(/\D/g, "").slice(-10);
 
     const lines = completedSale.items.map(
       (item) =>

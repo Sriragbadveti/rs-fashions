@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { API_BASE } from "../config/api";
+import { adminFetch } from "../utils/adminSession";
 import { Device, Product, CompletedSale, StockMovement } from "../types/inventory";
 
 export type AppTheme = "light-luxury" | "dark-midnight" | "peach-blush" | "emerald-jade" | "royal-sapphire";
@@ -32,8 +34,8 @@ export interface ShowroomSettings {
 export const DEFAULT_SETTINGS: ShowroomSettings = {
   storeName: "Fashions",
   gstin: "36AAAAA0000A1Z5",
-  storeAddress: "Hyderabad, Telangana 500033",
-  storePhone: "+91 98765 43210",
+  storeAddress: "Gadwal, Telangana 509125",
+  storePhone: "7842070881",
   storeEmail: "concierge@rsfashions.in",
   invoicePrefix: "RSF/",
   financialYear: "2026-27",
@@ -55,13 +57,22 @@ export const DEFAULT_SETTINGS: ShowroomSettings = {
   theme: "light-luxury",
 };
 
+const LEGACY_PLACEHOLDERS = {
+  address: ["Hyderabad, Telangana 500033", "Plot No. 42, Jubilee Hills Road No. 36, Hyderabad, Telangana 500033"],
+  phone: ["+91 98765 43210", "9876543210"],
+};
+
 const SETTINGS_STORAGE_KEY = "rs_fashions_showroom_settings";
 
 export function loadSettings(): ShowroomSettings {
   try {
     const saved = localStorage.getItem(SETTINGS_STORAGE_KEY);
     if (saved) {
-      return { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
+      const merged = { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
+      // Values that were only the old placeholder defaults are replaced by the current ones.
+      if (LEGACY_PLACEHOLDERS.address.includes(merged.storeAddress)) merged.storeAddress = DEFAULT_SETTINGS.storeAddress;
+      if (LEGACY_PLACEHOLDERS.phone.includes(merged.storePhone)) merged.storePhone = DEFAULT_SETTINGS.storePhone;
+      return merged;
     }
   } catch (e) {
     console.error("Failed to load settings", e);
@@ -81,10 +92,35 @@ export function saveSettingsToStorage(settings: ShowroomSettings) {
   }
 }
 
+/**
+ * Pulls the admin's saved showroom details (Settings > Systems & Storage) from the server so every
+ * invoice on every device shows the latest ones. Invoices read these live, so past and future
+ * invoices update together. Silent when not signed in as admin or offline.
+ */
+let lastSettingsSync = 0;
+export async function syncSettingsFromServer(force = false) {
+  if (typeof window === "undefined") return;
+  if (!force && Date.now() - lastSettingsSync < 30_000) return;
+  lastSettingsSync = Date.now();
+  try {
+    const res = await adminFetch(`${API_BASE}/settings`);
+    if (!res.ok) return;
+    const server = (await res.json())?.settings;
+    if (!server || typeof server !== "object") return;
+    const current = loadSettings();
+    const next: ShowroomSettings = { ...current };
+    for (const key of Object.keys(DEFAULT_SETTINGS) as Array<keyof ShowroomSettings>) {
+      if (server[key] !== undefined && server[key] !== null && server[key] !== "") (next as any)[key] = server[key];
+    }
+    if (JSON.stringify(next) !== JSON.stringify(current)) saveSettingsToStorage(next);
+  } catch {}
+}
+
 export function useShowroomSettings() {
   const [settings, setSettings] = useState<ShowroomSettings>(loadSettings);
 
   useEffect(() => {
+    syncSettingsFromServer();
     const handleUpdate = () => {
       setSettings(loadSettings());
     };
