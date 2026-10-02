@@ -77,6 +77,10 @@ const formatDateParts = (date: string) => {
   };
 };
 
+// Orders loaded from the server carry the exact placement time in createdAt; `date` there is only
+// the day ("02 Oct 2026"), which would show as 12:00 AM for everything.
+const saleWhen = (sale: { createdAt?: string; date: string }) => sale.createdAt || sale.date;
+
 const formatDate = (date: string) => {
   const parts = formatDateParts(date);
   return parts.time ? `${parts.date}, ${parts.time}` : parts.date;
@@ -433,7 +437,7 @@ export default function TransactionHistory({
       "RS FASHIONS - ORDER & CUSTOMER DETAILS",
       "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
       `Invoice / Order #: ${formatInvoiceNumber(sale.invoiceNumber)}`,
-      `Date: ${formatDate(sale.date)}`,
+      `Date: ${formatDate(saleWhen(sale))}`,
       `Payment Method: ${getPaymentLabel(sale.paymentMethod)}`,
       `Order Status: ${statusLabel}`,
       "",
@@ -594,7 +598,7 @@ export default function TransactionHistory({
       "━━━━━━━━━━━━━━━━━━",
       "*RETAIL SALES RECEIPT*",
       `*Receipt #:* ${formatInvoiceNumber(sale.invoiceNumber)}`,
-      `*Date:* ${formatDate(sale.date)}`,
+      `*Date:* ${formatDate(saleWhen(sale))}`,
       `*Customer:* ${getCustomerName(sale)} (${
         customerPhone || ""
       })`,
@@ -788,7 +792,7 @@ export default function TransactionHistory({
     return (
       <div className="space-y-3 p-3 sm:hidden">
         {sales.map((sale) => {
-          const dateParts = formatDateParts(sale.date);
+          const dateParts = formatDateParts(saleWhen(sale));
           const totalQty = getSaleQty(sale);
           const trueNetPayable = getNetPayable(sale);
           const currentStatus =
@@ -1004,7 +1008,7 @@ export default function TransactionHistory({
 
           <tbody className="divide-y divide-stone-100/80 bg-white/35 text-xs">
             {sales.map((sale) => {
-              const dateParts = formatDateParts(sale.date);
+              const dateParts = formatDateParts(saleWhen(sale));
               const totalQty = getSaleQty(sale);
               const trueNetPayable = getNetPayable(sale);
               const currentStatus =
@@ -1702,7 +1706,7 @@ export default function TransactionHistory({
                   </div>
 
                   <p className="mt-1 text-[10px] text-stone-400">
-                    {formatDate(inspectInvoice.date)}
+                    {formatDate(saleWhen(inspectInvoice))}
                   </p>
                 </div>
 

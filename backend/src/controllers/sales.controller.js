@@ -60,6 +60,7 @@ export async function getTransactions(req, res) {
         month: "short",
         year: "numeric",
       }),
+      createdAt: o.created_at,
       customerName: o.customer_name,
       customerPhone: o.phone,
       items: Array.isArray(o.items) ? o.items : [],

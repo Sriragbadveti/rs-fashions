@@ -96,6 +96,8 @@ export interface CartItem {
 export interface CompletedSale {
   /* Existing transaction fields */
   invoiceNumber: string;
+  /** Exact placement time (ISO) for orders loaded from the server. */
+  createdAt?: string;
   date: string;
   customerName: string;
   customerPhone: string;
