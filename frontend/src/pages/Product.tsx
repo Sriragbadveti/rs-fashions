@@ -155,6 +155,7 @@ export default function Product() {
 
   const handleColorSelect = (variant: ColorVariantItem) => {
     setSelectedColor(variant.name);
+    setQuantity((q) => Math.max(1, Math.min(q, maxQuantityFor(product!, variant.name))));
     if (variant.image) {
       const foundIdx = enrichedImages.findIndex((img) => img === variant.image);
       if (foundIdx !== -1) {
@@ -767,8 +768,8 @@ export default function Product() {
                     <span className="w-10 text-center font-medium text-sm">{quantity}</span>
                     <button
                       type="button"
-                      disabled={isSoldOut || quantity >= maxQuantityFor(product)}
-                      onClick={() => setQuantity((q) => Math.min(maxQuantityFor(product), q + 1))}
+                      disabled={isSoldOut || quantity >= maxQuantityFor(product, selectedColor)}
+                      onClick={() => setQuantity((q) => Math.min(maxQuantityFor(product, selectedColor), q + 1))}
                       className="text-stone-500 hover:text-stone-900 disabled:opacity-30"
                     >
                       <Plus size={14} />

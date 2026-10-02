@@ -271,7 +271,7 @@ export const StoreService = {
 
             const totalStock = variants.length > 0
               ? variants.reduce((sum: number, v: any) => sum + (Number(v.stock) || 0), 0)
-              : (Number(d.stock) || 10);
+              : (Number(d.stock) || 0);
 
             const price = Number(d.salePrice ?? d.price) || 0;
             const originalPrice = d.originalPrice ? Number(d.originalPrice) : (price > 0 ? Math.round(price * 1.25) : 0);

@@ -226,8 +226,8 @@ function CartDrawer({ open, onClose }: CartDrawerProps) {
                                   item.selectedSize
                                 )
                               }
-                              disabled={item.quantity >= maxQuantityFor(item.product)}
-                              title={item.quantity >= maxQuantityFor(item.product) ? `Only ${maxQuantityFor(item.product)} in stock` : undefined}
+                              disabled={item.quantity >= maxQuantityFor(item.product, item.selectedColor)}
+                              title={item.quantity >= maxQuantityFor(item.product, item.selectedColor) ? `Only ${maxQuantityFor(item.product, item.selectedColor)} in stock` : undefined}
                               className="flex h-7 w-7 items-center justify-center text-[#6E6359] hover:text-[#2A2421] disabled:opacity-30"
                             >
                               <FiPlus size={10} />

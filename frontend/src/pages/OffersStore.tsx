@@ -110,7 +110,6 @@ export default function OffersStore() {
       material: "SiCo",
       price: salePrice,
       originalPrice: item.originalPrice || Math.round(salePrice * 1.3),
-      stock: 10,
       rating: 4.9,
       reviewCount: 42,
       description: item.customOfferText || "Exclusive festive bundle offer drape.",
