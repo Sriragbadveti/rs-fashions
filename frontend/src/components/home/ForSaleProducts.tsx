@@ -317,7 +317,6 @@ export default function ForSaleProducts() {
       material: "SiCo",
       price: salePrice,
       originalPrice: item.originalPrice || Math.round(salePrice * 1.3),
-      stock: 5,
       rating: 4.9,
       reviewCount: 38,
       description: item.customOfferText || "Festive celebration special drape.",

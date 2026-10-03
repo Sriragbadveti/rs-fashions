@@ -529,7 +529,6 @@ export default function Account() {
         category: "SiCo Gadwal Sarees",
         material: "SiCo",
         price: Number(item.price || item.unitPrice) || 0,
-        stock: 10,
         rating: 4.8,
         reviewCount: 15,
         images: [

@@ -310,7 +310,6 @@ function CheckoutInner() {
                 images: [item.image || "/saree.png"],
                 colors: [item.color || "Standard"],
                 sizes: ["Standard Drape (5.5m + 0.8m Blouse)"],
-                stock: 10,
                 rating: 4.9,
                 reviewCount: 24,
               };
@@ -404,7 +403,7 @@ function CheckoutInner() {
       for (const item of items) {
         const matched = liveProducts.find((p) => String(p.id) === String(item.product.id));
         if (matched) {
-          const currentStock = Number(matched.stock ?? 10);
+          const currentStock = Number(matched.stock ?? item.quantity);
           if (currentStock <= 0 || currentStock < item.quantity) {
             setStockConflict({
               productId: item.product.id,

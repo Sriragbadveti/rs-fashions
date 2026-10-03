@@ -43,10 +43,23 @@ export interface TierOfferInfo {
   eligibleCount: number;
 }
 
-/** Most pieces of a saree a customer can hold: its stock (unknown stock = no cap). */
-export function maxQuantityFor(product: { stock?: number }): number {
-  const stock = Number(product?.stock);
-  return Number.isFinite(stock) && product?.stock !== undefined ? Math.max(1, Math.floor(stock)) : Infinity;
+/**
+ * Most pieces of a saree a customer can hold: the stock of the chosen shade when the saree has
+ * per-shade stock, otherwise its total stock (unknown stock = no cap; the server still enforces).
+ */
+export function maxQuantityFor(
+  product: { stock?: number; variants?: Array<{ color?: string; stock?: number }> },
+  color?: string
+): number {
+  let stock: number | undefined = product?.stock;
+  const wanted = String(color || "").trim().toLowerCase();
+  if (wanted && Array.isArray(product?.variants)) {
+    const variant = product.variants.find((v) => String(v?.color || "").trim().toLowerCase() === wanted);
+    if (variant && variant.stock !== undefined && variant.stock !== null) stock = Number(variant.stock);
+  }
+  const n = Number(stock);
+  if (stock === undefined || stock === null || !Number.isFinite(n)) return Infinity;
+  return Math.max(0, Math.floor(n));
 }
 
 /* ============================================================
@@ -123,7 +136,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
             item.selectedSize === selectedSize
         );
 
-        const maxQty = maxQuantityFor(product);
+        const maxQty = maxQuantityFor(product, selectedColor);
+        if (maxQty <= 0) return currentItems; // sold out (this shade): nothing to add
         if (existingIndex > -1) {
           return currentItems.map((item, index) =>
             index === existingIndex
@@ -175,7 +189,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
             item.selectedColor === selectedColor &&
             item.selectedSize === selectedSize;
 
-          return isMatch ? { ...item, quantity: Math.min(quantity, maxQuantityFor(item.product)) } : item;
+          return isMatch ? { ...item, quantity: Math.min(quantity, Math.max(1, maxQuantityFor(item.product, item.selectedColor))) } : item;
         })
       );
     },

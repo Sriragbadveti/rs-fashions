@@ -268,8 +268,8 @@ function Cart() {
                                   )
                                 }
                                 aria-label="Increase quantity"
-                                disabled={item.quantity >= maxQuantityFor(item.product)}
-                                title={item.quantity >= maxQuantityFor(item.product) ? `Only ${maxQuantityFor(item.product)} in stock` : undefined}
+                                disabled={item.quantity >= maxQuantityFor(item.product, item.selectedColor)}
+                                title={item.quantity >= maxQuantityFor(item.product, item.selectedColor) ? `Only ${maxQuantityFor(item.product, item.selectedColor)} in stock` : undefined}
                                 className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-stone-700 shadow-2xs transition-transform active:scale-90 disabled:opacity-30 disabled:active:scale-100"
                               >
                                 <FiPlus size={11} />
