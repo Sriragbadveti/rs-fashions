@@ -3,7 +3,8 @@
   "buildCommand": "npm --prefix frontend run build",
   "outputDirectory": "frontend/dist",
   "env": {
-    "VITE_API_BASE_URL": "https://rs-fashions.onrender.com"
+    "VITE_API_BASE_URL": "https://rs-fashions.onrender.com",
+    "VITE_IMAGE_CDN_URL": "https://img.rsfashions25.com"
   },
   "redirects": [
     {

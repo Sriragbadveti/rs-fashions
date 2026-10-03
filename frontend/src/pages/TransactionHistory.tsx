@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { variantImgProps } from "../utils/imageVariants";
 import {
   Search,
   Calendar,
@@ -153,7 +154,7 @@ const SaleItemThumbs = ({ items }: { items: any[] }) => {
                 }}
                 className="shrink-0 cursor-zoom-in"
               >
-                <img src={src} alt="" loading="lazy" className="h-8 w-8 rounded-md border border-stone-200 object-cover" />
+                <img {...variantImgProps(src, "sm")} alt="" loading="lazy" decoding="async" className="h-8 w-8 rounded-md border border-stone-200 object-cover" />
               </button>
             ) : (
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-amber-50 text-amber-700"><Package size={12} /></div>
@@ -176,7 +177,7 @@ const SaleItemThumbs = ({ items }: { items: any[] }) => {
           }}
         >
           <figure className="max-h-full max-w-full text-center" onClick={(e) => e.stopPropagation()}>
-            <img src={zoom.src} alt={zoom.name} className="max-h-[80vh] max-w-full rounded-xl object-contain shadow-2xl" />
+            <img {...variantImgProps(zoom.src, "md")} alt={zoom.name} className="max-h-[80vh] max-w-full rounded-xl object-contain shadow-2xl" />
             <figcaption className="mt-2 text-xs font-semibold text-white">
               {zoom.name} • <span className="font-mono">{zoom.sku}</span>
             </figcaption>
