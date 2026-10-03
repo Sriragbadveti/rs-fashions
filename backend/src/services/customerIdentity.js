@@ -58,7 +58,7 @@ async function loadOrderStats() {
   try {
     const { data, error } = await supabase
       .from("orders")
-      .select("phone, email, total, subtotal, discount_amount, shipping_fee, order_status, payment_status, payment_method")
+      .select("phone, email, total, subtotal, discount_amount, cgst, sgst, order_status, payment_status, payment_method")
       .limit(5000);
     if (error) return null;
     return data || [];

@@ -13,13 +13,12 @@ export const isVisibleOrder = (o) => {
 };
 
 /**
- * What the customer actually paid: subtotal - discount + shipping (the "Net Payable" on the receipt).
- * Counter bills store a `total` with GST added on top (2999 -> 3359) that the customer is never
- * charged, so `total` must not be used as the amount paid. Falls back to `total` for old rows
- * that have no subtotal.
+ * What the customer actually paid, nothing added. Online orders: the stored total IS the amount
+ * Cashfree charged (the payment is validated against it). Counter bills: the stored total has GST
+ * added on top (2999 -> 3359) which the customer is never charged, so the tax is taken back off.
  */
 export const amountPaid = (o) => {
-  const subtotal = Number(o?.subtotal) || 0;
-  if (subtotal <= 0) return Number(o?.total) || 0;
-  return Math.max(0, subtotal - (Number(o?.discount_amount) || 0) + (Number(o?.shipping_fee) || 0));
+  const total = Number(o?.total) || 0;
+  if (total > 0) return Math.max(0, total - (Number(o?.cgst) || 0) - (Number(o?.sgst) || 0));
+  return Math.max(0, (Number(o?.subtotal) || 0) - (Number(o?.discount_amount) || 0));
 };

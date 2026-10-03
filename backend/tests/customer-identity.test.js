@@ -28,7 +28,7 @@ test("cards for one person (email-only + phone-only) merge, and spend comes from
     { phone: "9876543210", total: 700, order_status: "ordered", payment_status: "pending", payment_method: "cashfree" },
     { phone: "9000000001", total: 50, order_status: "completed", payment_status: "completed", payment_method: "cash" },
     // Counter bill: the stored total has GST added on top, but the customer paid subtotal - discount.
-    { phone: "9000000001", subtotal: 2999, discount_amount: 0, shipping_fee: 0, total: 3359, order_status: "completed", payment_status: "completed", payment_method: "cashfree" },
+    { phone: "9000000001", subtotal: 2999, discount_amount: 0, cgst: 180, sgst: 180, total: 3359, order_status: "completed", payment_status: "completed", payment_method: "cashfree" },
   ];
   const out = await buildCustomerProfiles(rows, orders);
   assert.equal(out.length, 2, "three cards of the same person become one");

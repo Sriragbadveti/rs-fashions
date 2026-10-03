@@ -704,12 +704,8 @@ export default function Account() {
   };
 
   const totalSpent = useMemo(() => {
-    // Amount actually paid (net payable); counter bills store a GST-inflated `total`.
-    return orders.reduce((sum, o: any) => {
-      const sub = Number(o.subtotal) || 0;
-      const paid = sub > 0 ? Math.max(0, sub - (Number(o.discount) || 0) + (Number(o.shippingFee) || 0)) : Number(o.total) || 0;
-      return sum + paid;
-    }, 0);
+    // Amount actually paid: the stored total minus any GST that counter bills add on top.
+    return orders.reduce((sum, o: any) => sum + Math.max(0, (Number(o.total) || 0) - (Number(o.cgst) || 0) - (Number(o.sgst) || 0)), 0);
   }, [orders]);
 
   if (!currentUser) return null;

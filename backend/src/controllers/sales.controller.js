@@ -324,7 +324,7 @@ export async function getAnalyticsSummary(req, res) {
     }
 
     const [ordersRes, prodsRes] = await Promise.all([
-      supabase.from("orders").select("total, subtotal, discount_amount, shipping_fee, cgst, sgst, items, created_at, payment_status, payment_method"),
+      supabase.from("orders").select("total, subtotal, discount_amount, cgst, sgst, items, created_at, payment_status, payment_method"),
       supabase.from("products").select("id, name, price, stock, category"),
     ]);
 
