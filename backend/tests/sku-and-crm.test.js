@@ -494,6 +494,19 @@ test("a delivered order cannot be cancelled", async () => {
   assert.match(r.body.message, /delivered/i);
 });
 
+test("Order Confirmed is accepted and the customer sees the same status", async () => {
+  const created = (await api("POST", "/catalog", product({ variants: [{ color: "Red", colorSlug: "RED", stock: 2, sku: "" }] }))).body.product;
+  const line = { id: created.id, productId: created.id, name: "Test Saree", color: "Red", quantity: 1, qty: 1, price: 1000 };
+  const sale = await api("POST", "/billing/checkout", { customerPhone: "9123456780", items: [line], total: 1000, paymentMethod: "cash", invoiceNumber: `CNF-${Date.now()}` }, { auth: false });
+  const inv = sale.body.invoiceNumber;
+  const ok = await api("PUT", `/sales/${inv}/fulfillment`, { status: "confirmed" });
+  assert.equal(ok.status, 200, JSON.stringify(ok.body));
+  const mine = (await api("GET", "/sales/customer-orders?phone=9123456780", undefined, { auth: false })).body.orders || [];
+  assert.equal(mine.find((o) => (o.invoiceNumber || o.orderNumber) === inv)?.orderStatus, "confirmed");
+  const bad = await api("PUT", `/sales/${inv}/fulfillment`, { status: "nonsense" });
+  assert.equal(bad.status, 400);
+});
+
 // ------------------------------------------------------------------------------------------
 // Exhaustion (must run last: it consumes the top of the range)
 // ------------------------------------------------------------------------------------------

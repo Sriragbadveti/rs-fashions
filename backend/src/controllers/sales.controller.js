@@ -20,8 +20,10 @@ let cachedSales = null;
 let lastSalesFetch = 0;
 const CACHE_TTL_MS = 60 * 1000;
 
+// Keep in sync with frontend/src/types/orderStatus.ts (a test checks they match).
 export const CANONICAL_ORDER_STATUSES = new Set([
   "ordered",
+  "confirmed",
   "packaging",
   "shipped",
   "delivered",
@@ -450,7 +452,7 @@ export async function updateFulfillment(req, res) {
     if (status !== undefined) {
       const s = String(status).toLowerCase().trim();
       targetStatus = s === "new" ? "ordered" : (s === "refused" ? "refused_by_user" : s);
-      const validStatuses = ["ordered", "packaging", "shipped", "delivered", "refused_by_user", "cancelled"];
+      const validStatuses = [...CANONICAL_ORDER_STATUSES];
       if (!validStatuses.includes(targetStatus)) {
         return errorResponse(res, `Invalid order status "${status}". Allowed values: ${validStatuses.join(", ")}`, 400);
       }

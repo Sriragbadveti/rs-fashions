@@ -23,6 +23,7 @@ import {
   ORDER_STATUS_STYLES,
 } from "../context/OrderFulfillmentContext";
 import type { OrderStatus } from "../context/OrderFulfillmentContext";
+import { statusOptionsFor } from "../types/orderStatus";
 import { sound } from "../types/soundEngine";
 import { useShowroomSettings } from "../types/settings";
 import { variantImgProps } from "../utils/imageVariants";
@@ -270,11 +271,11 @@ export default function TrackOrder({ salesHistory }: TrackOrderProps) {
             [
               { id: "ALL" as const, label: "All Orders" },
               { id: "ordered" as const, label: ORDER_STATUS_LABELS.ordered },
+              { id: "confirmed" as const, label: ORDER_STATUS_LABELS.confirmed },
               { id: "packaging" as const, label: ORDER_STATUS_LABELS.packaging },
               { id: "shipped" as const, label: ORDER_STATUS_LABELS.shipped },
               { id: "delivered" as const, label: ORDER_STATUS_LABELS.delivered },
               { id: "refused_by_user" as const, label: ORDER_STATUS_LABELS.refused_by_user },
-              { id: "cancelled" as const, label: ORDER_STATUS_LABELS.cancelled },
             ]
           ).map((tab) => (
             <button
@@ -712,13 +713,7 @@ export default function TrackOrder({ salesHistory }: TrackOrderProps) {
                         }}
                         className={`w-full h-9 px-3 rounded-xl border text-xs font-semibold outline-none cursor-pointer transition-colors ${ORDER_STATUS_STYLES[fulfillment.status] || ""}`}
                       >
-                        {(Object.keys(ORDER_STATUS_LABELS) as OrderStatus[])
-                          .filter((status) => {
-                            if (status === "new") return false;
-                            const isCod = (selectedOrder.paymentMethod || "").toLowerCase() === "cod";
-                            if (status === "refused_by_user" && !isCod) return false;
-                            return true;
-                          })
+                        {statusOptionsFor(fulfillment.status, selectedOrder.paymentMethod)
                           .map((status) => (
                             <option key={status} value={status}>
                               {ORDER_STATUS_LABELS[status]}

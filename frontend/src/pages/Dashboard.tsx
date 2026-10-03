@@ -1,3 +1,4 @@
+import { normalizeOrderStatus } from "../types/orderStatus";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   LayoutDashboard,
@@ -485,18 +486,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
             if (s.invoiceNumber) {
               const st = (s.orderStatus || s.order_status || "").toLowerCase();
               fulfillMap[s.invoiceNumber] = {
-                status:
-                  st === "delivered"
-                    ? "delivered"
-                    : st === "shipped"
-                      ? "shipped"
-                      : st === "packaging" || st === "processing"
-                        ? "packaging"
-                        : st === "refused_by_user" || st === "refused"
-                          ? "refused_by_user"
-                          : st === "cancelled"
-                            ? "cancelled"
-                            : "ordered",
+                status: normalizeOrderStatus(st),
                 trackingNumber: "",
                 carrierPartner: "",
               };

@@ -32,6 +32,7 @@ import {
   ORDER_STATUS_STYLES,
 } from "../context/OrderFulfillmentContext";
 import type { OrderStatus } from "../context/OrderFulfillmentContext";
+import { statusOptionsFor } from "../types/orderStatus";
 import { useShowroomSettings } from "../types/settings";
 import { STORE_ADDRESS, STORE_WHATSAPP_NUMBER, formatInvoiceNumber } from "../types/useBilling";
 import { API_BASE } from "../config/api";
@@ -889,10 +890,6 @@ export default function TransactionHistory({
                     onClick={(e) => e.stopPropagation()}
                     onChange={(e) => {
                       e.stopPropagation();
-                      if (e.target.value === "cancelled") {
-                        handleCancelOrder(sale);
-                        return;
-                      }
                       updateStatus(
                         sale.invoiceNumber,
                         e.target.value as OrderStatus
@@ -900,13 +897,7 @@ export default function TransactionHistory({
                     }}
                     className={`h-[31px] w-full min-w-0 rounded-lg border bg-white px-2 text-[9px] font-semibold outline-none cursor-pointer ${ORDER_STATUS_STYLES[currentStatus]}`}
                   >
-                    {(
-                      (
-                        String(sale.paymentMethod || "").toLowerCase() === "cod"
-                          ? ["ordered", "packaging", "shipped", "delivered", "refused_by_user", "cancelled"]
-                          : ["ordered", "packaging", "shipped", "delivered", "cancelled"]
-                      ) as OrderStatus[]
-                    ).map((status) => (
+                    {statusOptionsFor(currentStatus, sale.paymentMethod).map((status) => (
                       <option key={status} value={status}>
                         {ORDER_STATUS_LABELS[status]}
                       </option>
@@ -1232,10 +1223,6 @@ export default function TransactionHistory({
                       onClick={(e) => e.stopPropagation()}
                       onChange={(e) => {
                         e.stopPropagation();
-                        if (e.target.value === "cancelled") {
-                          handleCancelOrder(sale);
-                          return;
-                        }
                         updateStatus(
                           sale.invoiceNumber,
                           e.target.value as OrderStatus
@@ -1243,13 +1230,7 @@ export default function TransactionHistory({
                       }}
                       className={`cursor-pointer rounded-lg border px-2 py-1.5 text-[10px] font-semibold outline-none transition-colors ${ORDER_STATUS_STYLES[currentStatus]}`}
                     >
-                      {(
-                        (
-                          String(sale.paymentMethod || "").toLowerCase() === "cod"
-                            ? ["ordered", "packaging", "shipped", "delivered", "refused_by_user", "cancelled"]
-                            : ["ordered", "packaging", "shipped", "delivered", "cancelled"]
-                        ) as OrderStatus[]
-                      ).map((status) => (
+                      {statusOptionsFor(currentStatus, sale.paymentMethod).map((status) => (
                         <option key={status} value={status}>
                           {ORDER_STATUS_LABELS[status]}
                         </option>

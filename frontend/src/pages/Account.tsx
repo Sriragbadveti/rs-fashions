@@ -1,3 +1,4 @@
+import { ORDER_STATUS_LABELS, normalizeOrderStatus } from "../types/orderStatus";
 import React, { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -21,6 +22,8 @@ const getWhatsAppTrackingUrl = (order: any) => {
   let statusMsg = "";
   if (status === "ordered" || status === "new") {
     statusMsg = `Hi, I placed order *${invoice}*. Could you please confirm if it is received and when it will be dispatched?`;
+  } else if (status === "confirmed") {
+    statusMsg = `Hi, my order *${invoice}* is confirmed. Could you please share when it will be packed and dispatched?`;
   } else if (status === "packaging") {
     statusMsg = `Hi, my order *${invoice}* is currently being packaged. Could you please share an estimated dispatch date?`;
   } else if (status === "shipped") {
@@ -691,15 +694,16 @@ export default function Account() {
   const getOrderStepProgress = (status: string, stage?: string) => {
     const s = (stage || status || "").toLowerCase();
     if (s.includes("refused") || s.includes("cancel")) return -1;
-    if (s.includes("delivered")) return 4;
+    if (s.includes("delivered")) return 5;
     if (
       s.includes("shipped") ||
       s.includes("transit") ||
       s.includes("dispatch")
     )
-      return 3;
+      return 4;
     if (s.includes("pack") || s.includes("processing") || s.includes("loom"))
-      return 2;
+      return 3;
+    if (s.includes("confirm")) return 2;
     return 1;
   };
 
@@ -925,7 +929,7 @@ export default function Account() {
                 const isCancelled =
                   order.orderStatus === "cancelled" ||
                   (order.currentStage || "").toLowerCase().includes("cancel");
-                const isDelivered = step === 4 && !isRefused && !isCancelled;
+                const isDelivered = step === 5 && !isRefused && !isCancelled;
 
                 return (
                   <article
@@ -994,11 +998,7 @@ export default function Account() {
                               : "bg-amber-100 text-amber-800 border border-amber-200"
                           }`}
                         >
-                          {order.orderStatus === "refused_by_user"
-                            ? "Refused by User"
-                            : order.orderStatus === "ordered"
-                            ? "Ordered"
-                            : order.orderStatus || "Processing"}
+                          {ORDER_STATUS_LABELS[normalizeOrderStatus(order.orderStatus)] || "Processing"}
                         </span>
                       </div>
                     </div>
@@ -1037,16 +1037,17 @@ export default function Account() {
                               style={{
                                 width: `calc(${Math.min(
                                   100,
-                                  Math.max(0, (step - 1) * 33.33)
+                                  Math.max(0, (step - 1) * 25)
                                 )}% - 16px)`,
                               }}
                             />
 
                             {[
                               { label: "Placed", stepNum: 1 },
-                              { label: "Packaging", stepNum: 2 },
-                              { label: "Shipped", stepNum: 3 },
-                              { label: "Delivered", stepNum: 4 },
+                              { label: "Confirmed", stepNum: 2 },
+                              { label: "Packaging", stepNum: 3 },
+                              { label: "Shipped", stepNum: 4 },
+                              { label: "Delivered", stepNum: 5 },
                             ].map((s) => {
                               const isCompleted = step >= s.stepNum;
                               const isCurrent = step === s.stepNum;

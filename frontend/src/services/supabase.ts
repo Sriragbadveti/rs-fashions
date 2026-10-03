@@ -73,7 +73,7 @@ export interface StoreOrder {
   paymentStatus: string;
   transactionId?: string;
   paymentDetails?: any;
-  orderStatus: "ordered" | "packaging" | "shipped" | "delivered" | "refused_by_user" | "cancelled" | "new" | "processing";
+  orderStatus: "ordered" | "confirmed" | "packaging" | "shipped" | "delivered" | "refused_by_user" | "cancelled" | "new" | "processing";
   createdAt: string;
 }
 
