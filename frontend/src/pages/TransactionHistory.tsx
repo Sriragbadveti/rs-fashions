@@ -1542,8 +1542,7 @@ export default function TransactionHistory({
                 </h2>
 
                 <p className="mt-0.5 text-[10px] font-medium text-stone-500 sm:text-xs">
-                  SiCo Gadwal Sarees • Pure Handlooms • Heritage
-                  Silks
+                  SiCo Gadwal Sarees
                 </p>
 
                 <p className="mx-auto mt-1 max-w-full break-words text-[9px] leading-4 text-stone-600 sm:max-w-sm sm:text-[10px]">
