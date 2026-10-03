@@ -7,6 +7,9 @@ import "./index.css";
 
 import { CartProvider } from "./context/CartContext";
 import ScrollToTop from "./components/ScrollToTop";
+import { installImageCdnFallback } from "./utils/imageVariants";
+
+installImageCdnFallback();
 
 // Canonical Domain Enforcement:
 // Seamlessly forward visitors landing on legacy/default Vercel production aliases

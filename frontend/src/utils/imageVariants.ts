@@ -18,13 +18,55 @@ export const IMAGE_VARIANTS: Record<ImageVariantSize, { edge: number; quality: n
 // Matches .../storage/v1/object/public/sarees/uploads/<file> (top-level uploads only).
 const PUBLIC_UPLOAD_RE = /^(https?:\/\/[^?#]+\/storage\/v1\/object\/public\/sarees\/uploads\/)([A-Za-z0-9._%-]+)$/;
 
+/**
+ * Optional image CDN (a Cloudflare Worker that caches the Supabase "sarees" bucket), set with
+ * VITE_IMAGE_CDN_URL, e.g. https://img.rsfashions25.com. When it is empty every URL stays on
+ * Supabase exactly as before, so the switch can be turned off by clearing the variable.
+ */
+const viteEnv = ((import.meta as unknown as { env?: Record<string, string | undefined> }).env) || {};
+const IMAGE_CDN = String(viteEnv.VITE_IMAGE_CDN_URL || "").trim().replace(/\/+$/, "");
+
+// Matches .../storage/v1/object/public/sarees/<path> on any Supabase project.
+const SUPABASE_PUBLIC_SAREES_RE = /^(https?:\/\/[^?#/]+\/storage\/v1\/object\/public\/sarees\/)(uploads\/.+)$/;
+
+/** Same photo through the given CDN address; any other URL, or an empty CDN, leaves it unchanged. */
+export function rewriteToCdn(url: string, cdn: string): string {
+  if (!cdn) return url;
+  const m = SUPABASE_PUBLIC_SAREES_RE.exec(url);
+  return m ? `${cdn.replace(/\/+$/, "")}/${m[2]}` : url;
+}
+
+const viaCdn = (url: string): string => rewriteToCdn(url, IMAGE_CDN);
+
+/**
+ * Safety net for every <img> on the site: if a CDN photo fails to load (CDN or DNS trouble), switch
+ * it back to the original Supabase address once. Call once at startup.
+ */
+export function installImageCdnFallback(): void {
+  if (!IMAGE_CDN || typeof document === "undefined") return;
+  const supabaseBase = String(viteEnv.VITE_SUPABASE_URL || "").replace(/\/+$/, "");
+  if (!supabaseBase) return;
+  document.addEventListener(
+    "error",
+    (event) => {
+      const img = event.target;
+      if (!(img instanceof HTMLImageElement)) return;
+      const src = img.getAttribute("src") || "";
+      if (!src.startsWith(`${IMAGE_CDN}/`) || img.dataset.cdnFallback === "true") return;
+      img.dataset.cdnFallback = "true";
+      img.src = `${supabaseBase}/storage/v1/object/public/sarees/${src.slice(IMAGE_CDN.length + 1)}`;
+    },
+    true
+  );
+}
+
 /** URL of the smaller copy of a stored product photo; any other URL is returned unchanged. */
 export function getImageVariantUrl<T extends string | null | undefined>(url: T, size: ImageVariantSize): T | string {
   if (!url) return url;
   const match = PUBLIC_UPLOAD_RE.exec(url);
   if (!match) return url;
   const stem = match[2].replace(/\.[^.]*$/, "") || match[2];
-  return `${match[1]}${size}/${stem}.jpg`;
+  return viaCdn(`${match[1]}${size}/${stem}.jpg`);
 }
 
 /**
