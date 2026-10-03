@@ -1106,14 +1106,14 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
           <button
             type="button"
             aria-label="Close navigation menu"
-            className="fixed inset-0 z-40 bg-stone-950/40 backdrop-blur-xs transition-opacity duration-300 md:hidden"
+            className="fixed inset-0 z-40 bg-stone-950/40 backdrop-blur-xs transition-opacity duration-300 lg:hidden"
             onClick={() => setIsSidebarOpen(false)}
           />
         )}
 
         {/* SIDEBAR NAVIGATION */}
         <aside
-          className={`fixed inset-y-0 left-0 z-50 flex h-full w-72 max-w-[85vw] flex-col border-r border-white/80 bg-white/70 backdrop-blur-2xl shadow-[0_12px_40px_rgba(42,14,32,0.06)] transition-transform duration-300 ease-out md:static md:z-20 md:w-64 md:max-w-none md:translate-x-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+          className={`fixed inset-y-0 left-0 z-50 flex h-full w-72 max-w-[85vw] flex-col border-r border-white/80 bg-white/70 backdrop-blur-2xl shadow-[0_12px_40px_rgba(42,14,32,0.06)] transition-transform duration-300 ease-out lg:static lg:z-20 lg:w-64 lg:max-w-none lg:translate-x-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
             }`}
           aria-label="Admin Navigation"
         >
@@ -1140,7 +1140,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
             <button
               type="button"
               onClick={() => setIsSidebarOpen(false)}
-              className="flex h-8 w-8 items-center justify-center rounded-xl text-stone-400 hover:bg-stone-100 hover:text-stone-700 md:hidden"
+              className="flex h-8 w-8 items-center justify-center rounded-xl text-stone-400 hover:bg-stone-100 hover:text-stone-700 lg:hidden"
             >
               <X size={18} />
             </button>
@@ -1230,7 +1230,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
             <div className="flex items-center gap-3 min-w-0">
               <button
                 type="button"
-                className="flex h-10 w-10 items-center justify-center rounded-xl border border-stone-200/80 bg-white/80 text-stone-700 shadow-xs hover:bg-white md:hidden"
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-stone-200/80 bg-white/80 text-stone-700 shadow-xs hover:bg-white lg:hidden"
                 onClick={() => setIsSidebarOpen(true)}
                 aria-label="Open navigation drawer"
               >

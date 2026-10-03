@@ -2,6 +2,7 @@ import { supabase } from "../config/supabase.js";
 import { successResponse, errorResponse } from "../utils/response.js";
 import { invalidateBootstrapCache } from "./bootstrap.controller.js";
 import { writeWithOptionalColumns } from "../services/optionalColumns.js";
+import { buildCustomerProfiles, findExistingCustomer, findSamePersonRows } from "../services/customerIdentity.js";
 
 // customers.address is used by the admin CRM but was never added to schema.sql; tolerate its
 // absence until the migration runs instead of failing (and silently losing) every save.
@@ -23,7 +24,7 @@ export async function getCustomers(req, res) {
 
     if (error) throw error;
 
-    const customers = (data || []).map((c) => {
+    const customers = (await buildCustomerProfiles(data || [])).map((c) => {
       const isFakePhone = c.phone && (c.phone.startsWith("G-") || c.phone.startsWith("C-"));
       return {
         id: c.id,
@@ -193,9 +194,10 @@ export async function createCustomer(req, res) {
           .from("customers")
           .select("id, name, email, phone, total_spent, orders_count, notes, birthday, anniversary")
           .ilike("email", customerEmail)
-          .maybeSingle();
-        if (data) {
-          existingCust = data;
+          .order("created_at", { ascending: true })
+          .limit(1);
+        if (data?.[0]) {
+          existingCust = data[0];
           emailMatched = true;
         }
       }
@@ -207,9 +209,10 @@ export async function createCustomer(req, res) {
             .from("customers")
             .select("id, name, email, phone, total_spent, orders_count, notes, birthday, anniversary")
             .ilike("phone", `%${cleanDigits}%`)
-            .maybeSingle();
-          if (data) {
-            if (!existingCust) existingCust = data;
+            .order("created_at", { ascending: true })
+            .limit(1);
+          if (data?.[0]) {
+            if (!existingCust) existingCust = data[0];
             phoneMatched = true;
           }
         }
@@ -370,7 +373,11 @@ export async function deleteCustomer(req, res) {
   try {
     const { id } = req.params;
     if (supabase) {
-      const { error } = await supabase.from("customers").delete().eq("id", id);
+      // The card may be several rows merged into one person: remove all of them.
+      const { data: row } = await supabase.from("customers").select("*").eq("id", id).maybeSingle();
+      const ids = new Set([id]);
+      if (row) (await findSamePersonRows(row)).forEach((r) => ids.add(r.id));
+      const { error } = await supabase.from("customers").delete().in("id", [...ids]);
       if (error) throw error;
     }
     invalidateBootstrapCache();

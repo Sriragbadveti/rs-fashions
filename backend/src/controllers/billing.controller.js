@@ -4,6 +4,7 @@ import { invalidateCatalogCache } from "./catalog.controller.js";
 import { invalidateBootstrapCache } from "./bootstrap.controller.js";
 import { saveOrderToStore, getNextSequentialInvoiceNumberFromStore } from "../database/localStore.js";
 import { createPendingOrder } from "../services/onlineOrders.js";
+import { findExistingCustomer, phoneKey } from "../services/customerIdentity.js";
 import { peekNextOrderNumber } from "../services/orderNumber.js";
 import { deductStockForOrderItems, findStockShortages, holdStock, releaseHolds, withStockLock } from "../services/inventory.service.js";
 
@@ -147,7 +148,7 @@ async function handleCheckoutUnlocked(req, res) {
 
       // 3. Upsert Customer Profile in CRM
       try {
-        const { data: existingCust } = await supabase.from("customers").select("*").eq("phone", effectivePhone).maybeSingle();
+        const existingCust = await findExistingCustomer({ phone: effectivePhone, email: effectiveEmail });
         const saleTotal = Number(total) || 0;
 
         if (existingCust) {
@@ -155,11 +156,13 @@ async function handleCheckoutUnlocked(req, res) {
           const newOrders = (Number(existingCust.orders_count) || 0) + 1;
 
           await supabase.from("customers").update({
-            name: effectiveName || existingCust.name,
+            name: existingCust.name || effectiveName,
+            ...(!existingCust.email && effectiveEmail ? { email: String(effectiveEmail).trim().toLowerCase() } : {}),
+            ...(!phoneKey(existingCust.phone) && phoneKey(effectivePhone) ? { phone: phoneKey(effectivePhone) } : {}),
             total_spent: newSpent,
             orders_count: newOrders,
             updated_at: new Date().toISOString(),
-          }).eq("phone", effectivePhone);
+          }).eq("id", existingCust.id);
         } else {
           await supabase.from("customers").insert([{
             id: `cust-${Date.now().toString(36)}`,

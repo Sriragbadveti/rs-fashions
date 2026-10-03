@@ -773,7 +773,7 @@ export default function TransactionHistory({
   ) => {
     if (sales.length === 0) {
       return (
-        <div className="px-4 py-12 text-center sm:hidden">
+        <div className="px-4 py-12 text-center xl:hidden">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-stone-100 text-stone-400">
             <ReceiptIndianRupee size={20} />
           </div>
@@ -790,7 +790,7 @@ export default function TransactionHistory({
     }
 
     return (
-      <div className="space-y-3 p-3 sm:hidden">
+      <div className="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2 xl:hidden">
         {sales.map((sale) => {
           const dateParts = formatDateParts(saleWhen(sale));
           const totalQty = getSaleQty(sale);
@@ -987,7 +987,7 @@ export default function TransactionHistory({
     emptyMessage: string
   ) => {
     return (
-      <div className="hidden overflow-x-auto sm:block">
+      <div className="hidden overflow-x-auto xl:block">
         <table className="w-full min-w-[1020px] text-left">
           <thead className="border-b border-stone-200/80 bg-stone-50/60">
             <tr className="text-[10px] font-semibold uppercase tracking-[0.08em] text-stone-500">

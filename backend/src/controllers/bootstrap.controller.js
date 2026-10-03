@@ -1,3 +1,4 @@
+import { buildCustomerProfiles } from "../services/customerIdentity.js";
 import { isVisibleOrder } from "../services/orderVisibility.js";
 import { supabase } from "../config/supabase.js";
 import { successResponse, errorResponse } from "../utils/response.js";
@@ -231,7 +232,7 @@ export async function getBootstrapData(req, res) {
       };
     });
 
-    const customers = (custsRes.data || []).map((c) => ({
+    const customers = (await buildCustomerProfiles(custsRes.data || [])).map((c) => ({
       id: c.id,
       name: c.name,
       phone: c.phone,

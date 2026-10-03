@@ -197,6 +197,13 @@ function HorizontalProductCard({ product, isOffer, offerBadgeText }: { product: 
         {isOffer && (
           <span className="absolute left-1.5 top-1.5 rounded-full bg-[#8E3D51] px-2 py-0.5 text-[8px] font-bold uppercase tracking-wider text-white shadow-sm z-10">{offerBadgeText}</span>
         )}
+        {product.stock !== undefined && product.stock <= 0 && (
+          <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-white/55 backdrop-blur-[1px]">
+            <span className="rounded-full bg-[#2A2421] px-3 py-1 text-[9px] font-bold uppercase tracking-[0.18em] text-white shadow-md">
+              Sold Out
+            </span>
+          </div>
+        )}
       </Link>
 
       {/* Info — fills the remaining width */}
@@ -214,7 +221,7 @@ function HorizontalProductCard({ product, isOffer, offerBadgeText }: { product: 
 
         <div className="mt-2 flex items-center justify-between">
           <span className="text-base font-bold text-[#2A2421]">₹{product.price.toLocaleString("en-IN")}</span>
-          <button type="button" onClick={handleQuickAdd} className={`flex h-8 items-center gap-1.5 rounded-lg px-3 text-[10.5px] font-semibold uppercase tracking-wider transition-all active:scale-95 ${inCart ? "bg-emerald-600 text-white cursor-default scale-95" : "bg-[#2A2421] text-[#FAF7F2] hover:bg-[#8E3D51] cursor-pointer"}`}>
+          <button type="button" disabled={product.stock !== undefined && product.stock <= 0} onClick={handleQuickAdd} className={`disabled:opacity-40 disabled:cursor-not-allowed flex h-8 items-center gap-1.5 rounded-lg px-3 text-[10.5px] font-semibold uppercase tracking-wider transition-all active:scale-95 ${inCart ? "bg-emerald-600 text-white cursor-default scale-95" : "bg-[#2A2421] text-[#FAF7F2] hover:bg-[#8E3D51] cursor-pointer"}`}>
             {inCart ? (<><FiCheck size={12} className="stroke-[2.5]" /><span>Added</span></>) : (<><FiShoppingBag size={12} /><span>Add</span></>)}
           </button>
         </div>

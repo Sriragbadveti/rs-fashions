@@ -14,6 +14,7 @@ import {
   releaseHolds,
   withStockLock,
 } from "./inventory.service.js";
+import { findExistingCustomer, phoneKey } from "./customerIdentity.js";
 import { peekNextOrderNumber, withOrderNumberLock } from "./orderNumber.js";
 import { recordPaymentAlert } from "./paymentStore.js";
 import { invalidateCatalogCache } from "../controllers/catalog.controller.js";
@@ -126,18 +127,22 @@ export async function createPendingOrder(body = {}) {
 async function upsertCustomer(order) {
   if (!supabase || !order.phone) return;
   try {
-    const { data: cust } = await supabase.from("customers").select("*").eq("phone", order.phone).maybeSingle();
+    // Same person = same phone (last 10 digits) or same email, however it was typed.
+    const cust = await findExistingCustomer({ phone: order.phone, email: order.email });
     const total = Number(order.total) || 0;
     if (cust) {
-      await supabase.from("customers").update({
-        name: order.customer_name || cust.name,
+      const patch = {
         total_spent: (Number(cust.total_spent) || 0) + total,
         orders_count: (Number(cust.orders_count) || 0) + 1,
         updated_at: new Date().toISOString(),
-      }).eq("phone", order.phone);
+      };
+      if (order.customer_name && (!cust.name || /^(valued patron|customer)$/i.test(cust.name))) patch.name = order.customer_name;
+      if (!cust.email && order.email) patch.email = String(order.email).trim().toLowerCase();
+      if (!phoneKey(cust.phone) && phoneKey(order.phone)) patch.phone = phoneKey(order.phone);
+      await supabase.from("customers").update(patch).eq("id", cust.id);
     } else {
       await supabase.from("customers").insert({
-        id: `cust-${Date.now().toString(36)}`, name: order.customer_name || "Customer", phone: order.phone,
+        id: `cust-${Date.now().toString(36)}`, name: order.customer_name || "Customer", phone: phoneKey(order.phone) || order.phone,
         email: order.email || null, city: "Hyderabad", total_spent: total, orders_count: 1,
       });
     }

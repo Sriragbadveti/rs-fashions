@@ -581,7 +581,7 @@ export default function Product() {
 
                 <div className="absolute top-4 left-4 flex gap-2">
                   <span className="rounded-full bg-white/90 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-stone-900 shadow-xs backdrop-blur-md">
-                    Pure SiCo Handloom
+                    Pure SiCo
                   </span>
                 </div>
               </div>
