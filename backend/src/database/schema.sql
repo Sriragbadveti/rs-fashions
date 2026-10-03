@@ -239,7 +239,7 @@ VALUES
         4.9,
         18,
         true,
-        'Authentic temple-border SiCo Gadwal saree woven with pure SiCo and fine gold zari.'
+        'Authentic temple-border SiCo Gadwal saree woven with SiCo Gadwal and fine gold zari.'
     ),
     (
         'emerald-sico-gadwal',
@@ -287,7 +287,7 @@ VALUES
         4.8,
         22,
         false,
-        'Breathable, lightweight and effortlessly graceful SiCo Gadwal handloom weave for celebrations.'
+        'Breathable, lightweight and effortlessly graceful SiCo Gadwal weave for celebrations.'
     ),
     (
         'crimson-sico-gadwal',

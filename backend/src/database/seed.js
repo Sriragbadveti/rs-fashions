@@ -97,7 +97,7 @@ const sampleProducts = [
     rating: 4.8,
     review_count: 22,
     featured: false,
-    description: "Breathable, lightweight and effortlessly graceful SiCo Gadwal handloom weave for everyday celebration.",
+    description: "Breathable, lightweight and effortlessly graceful SiCo Gadwal weave for everyday celebration.",
   },
   {
     id: "crimson-sico-gadwal",

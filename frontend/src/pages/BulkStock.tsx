@@ -560,7 +560,7 @@ export default function BulkStock({
       value: "cat_sico_gadwal",
       label: "SiCo Gadwal",
       code: "5208",
-      description: "HSN: 5208 · Handloom Pure SiCo Gadwal Standard",
+      description: "HSN: 5208 · Handloom SiCo Gadwal Standard",
     },
   ], []);
 

@@ -275,7 +275,7 @@ export default function TrendingProducts() {
                   <div className="absolute inset-x-3 bottom-3 z-10 rounded-2xl bg-white/92 p-3.5 shadow-sm backdrop-blur-xs border border-white/70 transition-all duration-300 group-hover:bg-white group-hover:shadow-md">
                     <div className="flex items-center justify-between text-[10px] tracking-wider text-[#8C7A6B] mb-1">
                       <span className="font-semibold text-[#8E3D51] truncate">
-                        SiCo Gadwal Handloom
+                        SiCo Gadwal
                       </span>
                       {item.variants && item.variants.length > 0 && (
                         <span className="text-stone-500 font-mono text-[9.5px]">
