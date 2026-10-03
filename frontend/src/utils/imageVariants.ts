@@ -19,21 +19,32 @@ export const IMAGE_VARIANTS: Record<ImageVariantSize, { edge: number; quality: n
 const PUBLIC_UPLOAD_RE = /^(https?:\/\/[^?#]+\/storage\/v1\/object\/public\/sarees\/uploads\/)([A-Za-z0-9._%-]+)$/;
 
 /**
- * Optional image CDN (a Cloudflare Worker that caches the Supabase "sarees" bucket), set with
- * VITE_IMAGE_CDN_URL, e.g. https://img.rsfashions25.com. When it is empty every URL stays on
- * Supabase exactly as before, so the switch can be turned off by clearing the variable.
+ * Image CDN: a Cloudflare Worker (img.rsfashions25.com) that caches the Supabase "sarees" bucket.
+ * On in production builds by default; VITE_IMAGE_CDN_URL overrides it (empty string = off, every
+ * URL stays on Supabase as before).
  */
 const viteEnv = ((import.meta as unknown as { env?: Record<string, string | undefined> }).env) || {};
-const IMAGE_CDN = String(viteEnv.VITE_IMAGE_CDN_URL || "").trim().replace(/\/+$/, "");
+// Production default: the Cloudflare image Worker. Set VITE_IMAGE_CDN_URL to another address to
+// override it, or to an empty string to switch the CDN off and use Supabase directly.
+const DEFAULT_IMAGE_CDN = "https://img.rsfashions25.com";
+const configuredCdn = viteEnv.VITE_IMAGE_CDN_URL;
+const IMAGE_CDN = String(configuredCdn ?? (viteEnv.PROD ? DEFAULT_IMAGE_CDN : "")).trim().replace(/\/+$/, "");
 
 // Matches .../storage/v1/object/public/sarees/<path> on any Supabase project.
 const SUPABASE_PUBLIC_SAREES_RE = /^(https?:\/\/[^?#/]+\/storage\/v1\/object\/public\/sarees\/)(uploads\/.+)$/;
+
+// CDN address -> the exact Supabase address it replaced, so a failed CDN photo can go back to the
+// same (small) file instead of guessing.
+const cdnOrigins = new Map<string, string>();
 
 /** Same photo through the given CDN address; any other URL, or an empty CDN, leaves it unchanged. */
 export function rewriteToCdn(url: string, cdn: string): string {
   if (!cdn) return url;
   const m = SUPABASE_PUBLIC_SAREES_RE.exec(url);
-  return m ? `${cdn.replace(/\/+$/, "")}/${m[2]}` : url;
+  if (!m) return url;
+  const viaCdnUrl = `${cdn.replace(/\/+$/, "")}/${m[2]}`;
+  cdnOrigins.set(viaCdnUrl, url);
+  return viaCdnUrl;
 }
 
 const viaCdn = (url: string): string => rewriteToCdn(url, IMAGE_CDN);
@@ -45,7 +56,6 @@ const viaCdn = (url: string): string => rewriteToCdn(url, IMAGE_CDN);
 export function installImageCdnFallback(): void {
   if (!IMAGE_CDN || typeof document === "undefined") return;
   const supabaseBase = String(viteEnv.VITE_SUPABASE_URL || "").replace(/\/+$/, "");
-  if (!supabaseBase) return;
   document.addEventListener(
     "error",
     (event) => {
@@ -53,8 +63,12 @@ export function installImageCdnFallback(): void {
       if (!(img instanceof HTMLImageElement)) return;
       const src = img.getAttribute("src") || "";
       if (!src.startsWith(`${IMAGE_CDN}/`) || img.dataset.cdnFallback === "true") return;
+      const back = cdnOrigins.get(src) || (supabaseBase ? `${supabaseBase}/storage/v1/object/public/sarees/${src.slice(IMAGE_CDN.length + 1)}` : "");
+      if (!back) return;
       img.dataset.cdnFallback = "true";
-      img.src = `${supabaseBase}/storage/v1/object/public/sarees/${src.slice(IMAGE_CDN.length + 1)}`;
+      // Tells fallbackToOriginalImage that this very error is already handled.
+      img.dataset.cdnJustFell = "1";
+      img.src = back;
     },
     true
   );
@@ -78,6 +92,11 @@ export function fallbackToOriginalImage(
   originalUrl: string | null | undefined
 ): boolean {
   const img = event.currentTarget;
+  // The CDN fallback already switched this photo back to its small Supabase copy for this error.
+  if (img && img.dataset.cdnJustFell === "1") {
+    delete img.dataset.cdnJustFell;
+    return true;
+  }
   if (!img || !originalUrl || img.dataset.variantFallback === "true") return false;
   img.dataset.variantFallback = "true";
   if (img.getAttribute("src") === originalUrl) return false;

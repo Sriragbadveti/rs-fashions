@@ -103,7 +103,7 @@ function ProductCard({ product }: { product: CardProduct }) {
             className="h-full w-full object-cover object-center transition-transform duration-500 ease-out group-hover:scale-105"
           />
           {hasSecondaryImage && (
-            <img
+            <img loading="lazy"
               src={getImageVariantUrl(hoverImage, "sm")}
               alt={`${product.name} alternate view`}
               decoding="async"
@@ -187,7 +187,7 @@ function HorizontalProductCard({ product, isOffer, offerBadgeText }: { product: 
           className="absolute inset-0 h-full w-full object-cover object-center transition-transform duration-500 ease-out group-hover:scale-105"
         />
         {hasSecondaryImage && (
-          <img
+          <img loading="lazy"
             src={getImageVariantUrl(hoverImage, "sm")}
             alt={`${product.name} alternate view`}
             decoding="async"
