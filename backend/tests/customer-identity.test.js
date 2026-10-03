@@ -27,6 +27,8 @@ test("cards for one person (email-only + phone-only) merge, and spend comes from
     { phone: "9876543210", total: 500, order_status: "cancelled", payment_status: "paid", payment_method: "cashfree" },
     { phone: "9876543210", total: 700, order_status: "ordered", payment_status: "pending", payment_method: "cashfree" },
     { phone: "9000000001", total: 50, order_status: "completed", payment_status: "completed", payment_method: "cash" },
+    // Counter bill: the stored total has GST added on top, but the customer paid subtotal - discount.
+    { phone: "9000000001", subtotal: 2999, discount_amount: 0, shipping_fee: 0, total: 3359, order_status: "completed", payment_status: "completed", payment_method: "cashfree" },
   ];
   const out = await buildCustomerProfiles(rows, orders);
   assert.equal(out.length, 2, "three cards of the same person become one");
@@ -37,5 +39,5 @@ test("cards for one person (email-only + phone-only) merge, and spend comes from
   assert.equal(asha.phone, "9876543210");
   assert.equal(asha.total_spent, 1222, "paid orders only: no cancelled, no unpaid");
   assert.equal(asha.orders_count, 2);
-  assert.equal(out.find((c) => c.id === "d").total_spent, 50);
+  assert.equal(out.find((c) => c.id === "d").total_spent, 50 + 2999, "GST-inflated total is not what was paid");
 });

@@ -7,7 +7,7 @@
  * was actually paid.
  */
 import { supabase } from "../config/supabase.js";
-import { isVisibleOrder } from "./orderVisibility.js";
+import { isVisibleOrder, amountPaid } from "./orderVisibility.js";
 
 export const phoneKey = (p) => {
   const s = String(p || "");
@@ -58,7 +58,7 @@ async function loadOrderStats() {
   try {
     const { data, error } = await supabase
       .from("orders")
-      .select("phone, email, total, order_status, payment_status, payment_method")
+      .select("phone, email, total, subtotal, discount_amount, shipping_fee, order_status, payment_status, payment_method")
       .limit(5000);
     if (error) return null;
     return data || [];
@@ -105,7 +105,7 @@ export async function buildCustomerProfiles(rows, ordersOverride) {
       if (idx === undefined || idx === null || idx === false) continue;
       const g = find(idx);
       const s = stats.get(g) || { spent: 0, count: 0 };
-      s.spent += Number(o.total) || 0;
+      s.spent += amountPaid(o);
       s.count += 1;
       stats.set(g, s);
     }

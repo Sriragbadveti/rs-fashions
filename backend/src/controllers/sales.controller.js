@@ -1,4 +1,4 @@
-import { isVisibleOrder } from "../services/orderVisibility.js";
+import { isVisibleOrder, amountPaid } from "../services/orderVisibility.js";
 import { supabase } from "../config/supabase.js";
 import { successResponse, errorResponse } from "../utils/response.js";
 import {
@@ -324,14 +324,14 @@ export async function getAnalyticsSummary(req, res) {
     }
 
     const [ordersRes, prodsRes] = await Promise.all([
-      supabase.from("orders").select("total, cgst, sgst, items, created_at, payment_status, payment_method"),
+      supabase.from("orders").select("total, subtotal, discount_amount, shipping_fee, cgst, sgst, items, created_at, payment_status, payment_method"),
       supabase.from("products").select("id, name, price, stock, category"),
     ]);
 
     const orders = (ordersRes.data || []).filter(isVisibleOrder);
     const products = prodsRes.data || [];
 
-    const totalRevenue = orders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+    const totalRevenue = orders.reduce((sum, o) => sum + amountPaid(o), 0);
     const totalTaxes = orders.reduce((sum, o) => sum + (Number(o.cgst) || 0) + (Number(o.sgst) || 0), 0);
     const totalOrders = orders.length;
     const averageOrderValue = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;

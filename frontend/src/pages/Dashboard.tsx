@@ -944,7 +944,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
           if (isPhoneMatch || isNameMatch) {
             return {
               ...cust,
-              totalSpent: (cust.totalSpent || 0) + (sale.total || sale.grandTotal || 0),
+              totalSpent: (cust.totalSpent || 0) + Math.max(0, (sale.subtotal || 0) - (sale.discount || 0) + (sale.shippingFee || 0)) || (sale.total || sale.grandTotal || 0),
               ordersCount: (cust.ordersCount || 0) + 1,
             };
           }
