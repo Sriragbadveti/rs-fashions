@@ -1,3 +1,4 @@
+import { useShowMore, ShowMoreButton } from "../components/common/ShowMore";
 import { getImageVariantUrl, fallbackToOriginalImage } from "../utils/imageVariants";
 import {
   useState,
@@ -1723,6 +1724,9 @@ export default function Catalog({
     () => filterInventory(inventory, searchQuery),
     [inventory, searchQuery]
   );
+  // Show 24 sarees at a time; the rest load on demand.
+  const stockPaging = useShowMore(filteredProducts.length, 24, searchQuery);
+  const visibleProducts = filteredProducts.slice(0, stockPaging.visible);
 
   // SKUs (RS0001 format) are allocated by the backend on save; an existing product shows its own.
   const previewSku = editingProductId || PENDING_SKU_LABEL;
@@ -2201,8 +2205,9 @@ export default function Catalog({
             <p className="text-[11px] text-stone-400 font-light mt-0.5">Try refining your search keyword.</p>
           </div>
         ) : (
+          <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filteredProducts.map((p) => (
+            {visibleProducts.map((p) => (
               <ProductCard
                 key={p.id}
                 product={p}
@@ -2235,6 +2240,8 @@ export default function Catalog({
               />
             ))}
           </div>
+          <ShowMoreButton remaining={stockPaging.remaining} onClick={stockPaging.showMore} label="sarees" />
+          </>
         )}
       </div>
 

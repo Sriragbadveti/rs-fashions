@@ -53,15 +53,28 @@ const isGenericName = (row) => {
   return Boolean(e && n === e.split("@")[0]);
 };
 
+// The orders scan is the heaviest part of the admin refresh, so reuse it for a minute. It is
+// cleared (resetCustomerStatsCache) whenever an order is created or changes.
+let statsCache = null;
+let statsCacheAt = 0;
+const STATS_TTL_MS = 60 * 1000;
+export function resetCustomerStatsCache() {
+  statsCache = null;
+  statsCacheAt = 0;
+}
+
 async function loadOrderStats() {
   if (!supabase) return null;
+  if (statsCache && Date.now() - statsCacheAt < STATS_TTL_MS) return statsCache;
   try {
     const { data, error } = await supabase
       .from("orders")
       .select("phone, email, total, subtotal, discount_amount, cgst, sgst, order_status, payment_status, payment_method")
       .limit(5000);
     if (error) return null;
-    return data || [];
+    statsCache = data || [];
+    statsCacheAt = Date.now();
+    return statsCache;
   } catch {
     return null;
   }

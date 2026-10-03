@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { variantImgProps } from "../utils/imageVariants";
+import { useShowMore, ShowMoreButton } from "../components/common/ShowMore";
 import {
   Search,
   Calendar,
@@ -168,9 +170,10 @@ const SaleItemThumbs = ({ items }: { items: any[] }) => {
       })}
       {(items || []).length > 4 && <p className="text-[9px] text-stone-400">+{items.length - 4} more</p>}
 
-      {zoom && (
-        <div
-          className="fixed inset-0 z-[300] flex cursor-zoom-out items-center justify-center bg-black/80 p-4"
+      {zoom &&
+        createPortal(
+<div
+          className="fixed inset-0 z-[100000] flex cursor-zoom-out items-center justify-center bg-black/80 p-4"
           onClick={(e) => {
             e.stopPropagation();
             setZoom(null);
@@ -190,8 +193,9 @@ const SaleItemThumbs = ({ items }: { items: any[] }) => {
           >
             ✕
           </button>
-        </div>
-      )}
+        </div>,
+          document.body
+        )}
     </div>
   );
 };
@@ -564,6 +568,10 @@ export default function TransactionHistory({
       );
     });
   }, [salesHistory, paymentFilter, searchQuery]);
+
+  // Render a page at a time so a long history never mounts hundreds of rows (and photos) at once.
+  const salesPaging = useShowMore(filteredSales.length, 25, `${searchQuery}|${paymentFilter}`);
+  const visibleSales = filteredSales.slice(0, salesPaging.visible);
 
   /* ------------------------------------------------------------------------ */
   /* PRINT                                                                    */
@@ -1549,15 +1557,17 @@ export default function TransactionHistory({
 
           {/* MOBILE */}
           {renderMobileSales(
-            filteredSales,
+            visibleSales,
             "Retail invoices matching your search will appear here."
           )}
 
           {/* DESKTOP */}
           {renderDesktopSalesTable(
-            filteredSales,
+            visibleSales,
             "Retail invoices matching your search will appear here."
           )}
+
+          <ShowMoreButton remaining={salesPaging.remaining} onClick={salesPaging.showMore} label="receipts" />
         </section>
       </div>
 

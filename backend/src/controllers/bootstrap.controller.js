@@ -1,4 +1,4 @@
-import { buildCustomerProfiles } from "../services/customerIdentity.js";
+import { buildCustomerProfiles, resetCustomerStatsCache } from "../services/customerIdentity.js";
 import { isVisibleOrder } from "../services/orderVisibility.js";
 import { supabase } from "../config/supabase.js";
 import { successResponse, errorResponse } from "../utils/response.js";
@@ -11,11 +11,12 @@ import { resolveBorderColor } from "../services/productFields.js";
 
 let bootstrapCache = null;
 let bootstrapCacheTimestamp = 0;
-const BOOTSTRAP_CACHE_TTL_MS = 15 * 1000; // 15 seconds short cache for near real-time reactivity
+const BOOTSTRAP_CACHE_TTL_MS = 30 * 1000; // short cache; any order/stock change clears it immediately
 
 export function invalidateBootstrapCache() {
   bootstrapCache = null;
   bootstrapCacheTimestamp = 0;
+  resetCustomerStatsCache();
 }
 
 /**
@@ -59,8 +60,8 @@ export async function getBootstrapData(req, res) {
       supabase.from("products").select("*").order("created_at", { ascending: false }),
       supabase.from("stock_movements").select("*").order("created_at", { ascending: false }).limit(200),
       supabase.from("orders").select("*").order("created_at", { ascending: false }).limit(200),
-      supabase.from("customers").select("*").order("created_at", { ascending: false }),
-      supabase.from("tracked_orders").select("*").order("created_at", { ascending: false }),
+      supabase.from("customers").select("*").order("created_at", { ascending: false }).limit(2000),
+      supabase.from("tracked_orders").select("*").order("created_at", { ascending: false }).limit(1000),
       supabase.from("coupons").select("*").order("created_at", { ascending: false }),
       supabase.from("settings").select("*"),
     ]);

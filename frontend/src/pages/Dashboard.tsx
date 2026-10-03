@@ -593,13 +593,13 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
     };
   }, [loadLiveBootstrap]);
 
-  // Periodic automatic cross-device telemetry sync every 25 seconds
+  // Periodic automatic cross-device sync every 60 seconds (only while the tab is visible)
   useEffect(() => {
     const timer = setInterval(() => {
       if (document.visibilityState === "visible") {
         loadLiveBootstrap();
       }
-    }, 25000);
+    }, 60000);
     return () => clearInterval(timer);
   }, [loadLiveBootstrap]);
 

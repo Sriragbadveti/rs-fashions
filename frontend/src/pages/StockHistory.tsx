@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useShowMore, ShowMoreButton } from "../components/common/ShowMore";
 import {
     ArrowDownLeft,
     ArrowUpRight,
@@ -102,6 +103,9 @@ export default function StockHistory({
             return matchesType && matchesQuery;
         });
     }, [history, selectedType, searchQuery]);
+
+    const movementPaging = useShowMore(filteredMovements.length, 50, `${searchQuery}|${selectedType}`);
+    const visibleMovements = filteredMovements.slice(0, movementPaging.visible);
 
     const handleExportStatementPDF = () => {
         sound.playClick();
@@ -859,7 +863,7 @@ export default function StockHistory({
                         </thead>
 
                         <tbody className="divide-y divide-stone-100 bg-white/40">
-                            {filteredMovements.map((movement) => {
+                            {visibleMovements.map((movement) => {
                                 const movementConfig =
                                     getMovementConfig(movement.type);
 
@@ -1048,6 +1052,8 @@ export default function StockHistory({
                         </div>
                     )}
                 </div>
+
+                <ShowMoreButton remaining={movementPaging.remaining} onClick={movementPaging.showMore} label="entries" />
 
                 {filteredMovements.length > 0 && (
                     <div className="px-3.5 sm:px-5 py-3 border-t border-stone-200/70 bg-stone-50/40 flex flex-col xs:flex-row xs:items-center xs:justify-between gap-1.5">
