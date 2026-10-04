@@ -133,6 +133,7 @@ const Billing: React.FC<BillingProps> = ({
   // VALIDATION, ENCRYPTION & TOAST STATE HOOKS
   const [addressError, setAddressError] = useState(false);
   const [phoneError, setPhoneError] = useState(false);
+  const [nameError, setNameError] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // PAYMENT LINK STATES (Cashfree)
@@ -185,6 +186,14 @@ const Billing: React.FC<BillingProps> = ({
   // 1. GENERATE PAYMENT LINK (Cashfree)
   // Captures full order details, sends to backend, and initiates real-time monitoring
   const handleGeneratePaymentLink = async (provider: "cashfree" | "phonepe" | "razorpay" = "cashfree"): Promise<string | null> => {
+    if (!customer.name || !customer.name.trim()) {
+      setNameError(true);
+      setShowCustomer(true);
+      triggerToast("Please type the customer's full name first.");
+      customerNameRef.current?.focus();
+      return null;
+    }
+    setNameError(false);
     const cleanPhone = (customer.phone || "").replace(/[^0-9]/g, "");
     if (!customer.phone || cleanPhone.length !== 10) {
       setPhoneError(true);
@@ -205,7 +214,7 @@ const Billing: React.FC<BillingProps> = ({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           amount: liveNetPayable,
-          customerName: customer.name?.trim() || "Name",
+          customerName: customer.name.trim(),
           customerPhone: cleanPhone,
           customerEmail: customer.email?.trim() || "name@rsfashions.in",
           customerAddress: customer.address?.trim() || customer.city || "In-Store Showroom Counter",
@@ -314,6 +323,7 @@ const Billing: React.FC<BillingProps> = ({
             paymentLink: paymentLinkData.url,
             transactionId: payId,
             commitImmediate: true,
+            allowAnonymousCustomer: true,
           });
         }
       } catch (pollErr) {
@@ -356,6 +366,16 @@ const Billing: React.FC<BillingProps> = ({
   const handleSecureGenerateReceipt = (commitImmediate = true) => {
     let hasError = false;
 
+    // The customer's name is mandatory: it appears on the receipt and in the customer list.
+    const missingName = !customer.name || !customer.name.trim();
+    if (missingName) {
+      setNameError(true);
+      setShowCustomer(true);
+      hasError = true;
+    } else {
+      setNameError(false);
+    }
+
     const cleanPhone = (customer.phone || "").replace(/[^0-9]/g, "");
     if (!customer.phone || cleanPhone.length !== 10) {
       setPhoneError(true);
@@ -373,7 +393,12 @@ const Billing: React.FC<BillingProps> = ({
     }
 
     if (hasError) {
-      triggerToast("Please fill in mandatory address & 10-digit phone number!");
+      triggerToast(
+        missingName
+          ? "Please type the customer's full name in 'Customer Full Name' (the search box only finds saved customers)."
+          : "Please fill in mandatory address & 10-digit phone number!"
+      );
+      if (missingName) customerNameRef.current?.focus();
       return;
     }
 
@@ -642,7 +667,7 @@ const Billing: React.FC<BillingProps> = ({
                 CUSTOMER
             ================================================= */}
 
-            <section className={`overflow-hidden rounded-3xl border bg-white shadow-sm ${addressError || phoneError ? 'border-rose-400 ring-2 ring-rose-100' : 'border-stone-200/80'}`}>
+            <section className={`overflow-hidden rounded-3xl border bg-white shadow-sm ${addressError || phoneError || nameError ? 'border-rose-400 ring-2 ring-rose-100' : 'border-stone-200/80'}`}>
               <button
                 type="button"
                 onClick={() => setShowCustomer((prev) => !prev)}
@@ -656,7 +681,7 @@ const Billing: React.FC<BillingProps> = ({
                   <div>
                     <h2 className="font-display text-sm font-medium text-stone-900 flex items-center gap-2">
                       Customer Details
-                      {(addressError || phoneError) && (
+                      {(addressError || phoneError || nameError) && (
                         <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
                           <AlertCircle className="w-3 h-3" /> Mandatory fields required
                         </span>
@@ -780,9 +805,17 @@ const Billing: React.FC<BillingProps> = ({
                       required
                       icon={<User className="h-3.5 w-3.5" />}
                       value={customer.name}
-                      onChange={(value) => updateCustomer("name", value)}
+                      onChange={(value) => {
+                        updateCustomer("name", value);
+                        if (value.trim()) setNameError(false);
+                      }}
                       placeholder="e.g. Lakshmi Reddy"
                     />
+                    {nameError && (
+                      <p className="-mt-2 text-[10px] font-semibold text-rose-600 flex items-center gap-1 md:col-span-2">
+                        <AlertCircle className="w-3 h-3" /> Customer name is required for the receipt.
+                      </p>
+                    )}
 
                     <div>
                       <InputField

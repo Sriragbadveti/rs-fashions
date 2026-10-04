@@ -507,6 +507,24 @@ test("Order Confirmed is accepted and the customer sees the same status", async 
   assert.equal(bad.status, 400);
 });
 
+test("an admin can delete a sales receipt; it disappears and stock is left alone", async () => {
+  const created = (await api("POST", "/catalog", product({ variants: [{ color: "Red", colorSlug: "RED", stock: 3, sku: "" }] }))).body.product;
+  const line = { id: created.id, productId: created.id, name: "Test Saree", color: "Red", quantity: 1, qty: 1, price: 1000 };
+  const stockOf = async () => (await api("GET", "/catalog/products")).body.products.find((p) => p.id === created.id).stock;
+  const sale = await api("POST", "/billing/checkout", { customerPhone: "9123456781", items: [line], total: 1000, paymentMethod: "cash", invoiceNumber: `DEL-${Date.now()}` }, { auth: false });
+  const inv = sale.body.invoiceNumber;
+  assert.equal(await stockOf(), 2);
+  const mine = async () => ((await api("GET", "/sales/customer-orders?phone=9123456781", undefined, { auth: false })).body.orders || []).some((o) => (o.invoiceNumber || o.orderNumber) === inv);
+  assert.equal(await mine(), true);
+  const noAuth = await api("DELETE", `/sales/${inv}`, undefined, { auth: false });
+  assert.ok([401, 403].includes(noAuth.status), "deleting needs an admin login");
+  const del = await api("DELETE", `/sales/${inv}`);
+  assert.equal(del.status, 200, JSON.stringify(del.body));
+  assert.equal(await mine(), false, "the receipt is gone");
+  assert.equal(await stockOf(), 2, "deleting a receipt does not change stock");
+  assert.equal((await api("DELETE", `/sales/${inv}`)).status, 404, "deleting twice reports not found");
+});
+
 // ------------------------------------------------------------------------------------------
 // Exhaustion (must run last: it consumes the top of the range)
 // ------------------------------------------------------------------------------------------

@@ -193,7 +193,7 @@ export default function AutomatedLowstock({
               <Package size={16} />
             </div>
             <div>
-              <h2 className="text-sm font-bold">Critical Shade Variants (Threshold &le; {SAFETY_STOCK_THRESHOLD})</h2>
+              <h2 className="text-sm font-bold">Critical Shade Variants (Out of Stock{SAFETY_STOCK_THRESHOLD > 0 ? ` ≤ ${SAFETY_STOCK_THRESHOLD}` : ""})</h2>
               <p className="text-[10px] opacity-75">Select items to include in the WhatsApp weaver purchase order.</p>
             </div>
           </div>

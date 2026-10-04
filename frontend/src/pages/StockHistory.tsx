@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { useShowMore, ShowMoreButton } from "../components/common/ShowMore";
+import { LOW_STOCK_THRESHOLD } from "../types/catalog";
 import {
     ArrowDownLeft,
     ArrowUpRight,
@@ -74,7 +75,7 @@ export default function StockHistory({
         });
 
         const lowStockCount = allVariants.filter(
-            (variant) => variant.currentStock <= 2
+            (variant) => variant.currentStock <= LOW_STOCK_THRESHOLD
         ).length;
 
         return {

@@ -316,7 +316,7 @@ export function exportCategoryPdf(
           const shades = p.variants && p.variants.length > 0
             ? p.variants.map((v: any) => v.color).filter(Boolean).join(", ")
             : (Array.isArray(p.colors) ? p.colors.join(", ") : "Standard");
-          const status = vStock === 0 ? "Out of Stock" : vStock <= 2 ? "Low Stock" : "In Stock";
+          const status = vStock === 0 ? "Out of Stock" : "In Stock";
           return `
             <tr>
               <td><strong>${stripAdminUrls(p.sku || p.id)}</strong></td>

@@ -357,7 +357,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
           id: p.id,
           name: p.name,
           category: "SiCo Gadwal Sarees",
-          material: "SiCo Gadwal",
+          material: (p as any).material || "SiCo Gadwal",
           price,
           originalPrice,
           stock: totalStock,
@@ -989,6 +989,24 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       .catch((err) => console.warn("Movement sync error:", err));
   }
 
+  async function handleDeleteSale(sale: CompletedSale): Promise<boolean> {
+    try {
+      const res = await adminFetch(`${API_BASE}/sales/${encodeURIComponent(sale.invoiceNumber)}`, { method: "DELETE" });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok && res.status !== 404) throw new Error(json.message || `Server returned ${res.status}`);
+      setSalesHistory((prev) => {
+        const updated = prev.filter((s) => s.invoiceNumber !== sale.invoiceNumber);
+        safeStorageSet("rs_admin_sales_history", updated);
+        return updated;
+      });
+      await loadLiveBootstrap(true);
+      return true;
+    } catch (err) {
+      console.warn("Delete receipt error:", err);
+      return false;
+    }
+  }
+
   async function handleDeleteCustomer(customer: CustomerProfile): Promise<boolean> {
     try {
       const res = await adminFetch(`${API_BASE}/crm/customers/${encodeURIComponent(customer.id)}`, { method: "DELETE" });
@@ -1349,7 +1367,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
               )}
 
               {activeTab === "sales-ledger" && (
-                <TransactionHistory salesHistory={salesHistory} />
+                <TransactionHistory salesHistory={salesHistory} onDeleteSale={handleDeleteSale} />
               )}
 
               {activeTab === "categories" && (

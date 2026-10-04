@@ -1,3 +1,4 @@
+import { SAREE_TYPES, SAREE_TYPE_LABELS, type SareeType } from "../types/sareeType";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Package,
@@ -531,6 +532,7 @@ export default function BulkStock({
   const [applyQty, setApplyQty] = useState<number>(5);
   // Border details entered once for the whole consignment (single and dual tone alike).
   const [batchBorderColor, setBatchBorderColor] = useState("");
+  const [batchSareeType, setBatchSareeType] = useState<SareeType>("SiCo");
   const [isCommitting, setIsCommitting] = useState(false);
   const [commitError, setCommitError] = useState("");
   // Read on every render: the registry is a small localStorage list that BorderColorInput updates.
@@ -981,6 +983,7 @@ export default function BulkStock({
         name: designObj.name,
         categoryId: "cat_sico_gadwal",
         category: categoryName,
+        material: batchSareeType,
         purchasePrice: purchasePrice ? Number(purchasePrice) : 0,
         salePrice: salePrice ? Number(salePrice) : 0,
         tags: [
@@ -1230,6 +1233,22 @@ export default function BulkStock({
                 className="h-11 w-full rounded-2xl border border-stone-200/80 bg-white/90 pl-8 pr-3 text-xs font-semibold text-stone-900 outline-none transition-all focus:border-[#D4A373] focus:ring-2 focus:ring-[#D4A373]/10"
               />
             </div>
+          </div>
+
+          {/* SAREE TYPE — decides which shop section the whole consignment appears in */}
+          <div>
+            <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.14em] text-stone-500">
+              Saree Type
+            </label>
+            <select
+              value={batchSareeType}
+              onChange={(e) => setBatchSareeType(e.target.value as SareeType)}
+              className="h-11 w-full rounded-2xl border border-stone-200/80 bg-white/90 px-3 text-xs font-semibold text-stone-900 outline-none transition-all focus:border-[#D4A373] focus:ring-2 focus:ring-[#D4A373]/10"
+            >
+              {SAREE_TYPES.map((t) => (
+                <option key={t} value={t}>{SAREE_TYPE_LABELS[t]}</option>
+              ))}
+            </select>
           </div>
 
           {/* BORDER DETAILS — entered once, applied to every row (single & dual tone) */}

@@ -7,6 +7,7 @@ import {
   Calendar,
   Phone,
   Eye,
+  Trash2,
   Printer,
   QrCode,
   CreditCard,
@@ -39,6 +40,8 @@ import { STORE_ADDRESS, STORE_WHATSAPP_NUMBER, formatInvoiceNumber } from "../ty
 
 interface TransactionHistoryProps {
   salesHistory: CompletedSale[];
+  /** Permanently deletes a receipt on the server; resolves true when it is gone. */
+  onDeleteSale?: (sale: CompletedSale) => Promise<boolean>;
 }
 
 const STORE_LEGAL_NAME = "Fashions";
@@ -254,6 +257,7 @@ const PaymentBadge = ({ method }: { method: string }) => {
 
 export default function TransactionHistory({
   salesHistory,
+  onDeleteSale,
 }: TransactionHistoryProps) {
   const showroom = useShowroomSettings();
   const [searchQuery, setSearchQuery] = useState("");
@@ -284,6 +288,31 @@ export default function TransactionHistory({
     sale.customer?.address ||
     (sale as any).shippingAddress ||
     "";
+
+  const [deletingInvoice, setDeletingInvoice] = useState<string | null>(null);
+
+  /** Permanently removes a receipt after the admin confirms. Stock is not touched. */
+  const handleDeleteReceipt = async (sale: CompletedSale) => {
+    if (!onDeleteSale) return;
+    const inv = sale.invoiceNumber;
+    const name = sale.customerName || sale.customer?.name || "this customer";
+    const ok = window.confirm(
+      `Delete receipt ${inv} for ${name}?\n\n` +
+        `• The receipt is removed for good and can't be brought back.\n` +
+        `• Saree stock is NOT changed. If the saree is back on the shelf, fix the stock in Saree Stock.\n` +
+        `• Any payment is NOT refunded.\n` +
+        `• The customer's total spent and your revenue figures will drop by this amount.`
+    );
+    if (!ok) return;
+    setDeletingInvoice(inv);
+    try {
+      const done = await onDeleteSale(sale);
+      if (!done) alert("Could not delete the receipt. Please check your connection and try again.");
+      else setInspectInvoice((cur) => (cur && cur.invoiceNumber === inv ? null : cur));
+    } finally {
+      setDeletingInvoice(null);
+    }
+  };
 
   const getSaleQty = (sale: CompletedSale) =>
     (sale.items || []).reduce(
@@ -1037,6 +1066,20 @@ export default function TransactionHistory({
                   <Eye size={12} className="shrink-0" />
                   <span>View Bill</span>
                 </button>
+                {onDeleteSale && (
+                  <button
+                    type="button"
+                    disabled={deletingInvoice === sale.invoiceNumber}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteReceipt(sale);
+                    }}
+                    className="col-span-2 inline-flex min-w-0 items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-2 py-2.5 text-[10px] font-semibold text-rose-700 active:bg-rose-100 disabled:opacity-50"
+                  >
+                    <Trash2 size={12} className="shrink-0" />
+                    <span>{deletingInvoice === sale.invoiceNumber ? "Deleting..." : "Delete Receipt"}</span>
+                  </button>
+                )}
               </div>
             </article>
           );
@@ -1352,6 +1395,21 @@ export default function TransactionHistory({
                         <Eye size={11} />
                         <span>View</span>
                       </button>
+                      {onDeleteSale && (
+                        <button
+                          type="button"
+                          disabled={deletingInvoice === sale.invoiceNumber}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteReceipt(sale);
+                          }}
+                          title="Delete this receipt"
+                          className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-2 py-1.5 text-[10px] font-semibold text-rose-700 transition-all hover:bg-rose-100 disabled:opacity-50"
+                        >
+                          <Trash2 size={11} />
+                          <span>{deletingInvoice === sale.invoiceNumber ? "Deleting..." : "Delete"}</span>
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

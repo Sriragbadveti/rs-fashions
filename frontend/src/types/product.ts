@@ -1,5 +1,6 @@
 export type ProductMaterial =
   | "SiCo"
+  | "Pure Gadwal Handloom"
   | "Pure Handloom Silk"
   | "Gadwal Zari Silk"
   | "Organic Cotton";
@@ -9,6 +10,8 @@ export type ProductCategory =
   | "Checks"
   | "Equal Borders"
   | "Kanchi Big Borders"
+  | "Vintage Checks"
+  | "Gatti Border"
   | "Gap Border"
   | "Maa Inti Bangaram"
   | "SiCo Gadwal Sarees"

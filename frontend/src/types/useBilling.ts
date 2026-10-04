@@ -91,6 +91,11 @@ export const getNextInvoiceNumber = (existingSales?: Array<{ invoiceNumber?: str
 
 export interface CompleteBillOptions {
   commitImmediate?: boolean;
+  /**
+   * Only for the automatic "customer paid the Cashfree link" recording, where nobody is at the
+   * screen to type a name. Every other sale must have the customer's real name and phone.
+   */
+  allowAnonymousCustomer?: boolean;
   customMethod?: PaymentMethod;
   paymentLink?: string;
   transactionId?: string;
@@ -859,11 +864,12 @@ export function useBilling({
   // ---------------------------------------------------------------
   const completeBill = (options?: CompleteBillOptions): CompletedSale | null => {
     const isAutoCommit = Boolean(options?.commitImmediate);
-    const effectiveName = customer.name.trim() || (isAutoCommit ? "Patron" : "");
-    const effectivePhone = customer.phone.trim() || (isAutoCommit ? "9999999999" : "");
+    const allowAnonymous = Boolean(options?.allowAnonymousCustomer);
+    const effectiveName = customer.name.trim() || (allowAnonymous ? "Patron" : "");
+    const effectivePhone = customer.phone.trim() || (allowAnonymous ? "9999999999" : "");
     const effectiveAddress = customer.address?.trim() || customer.city || "In-Store Showroom Counter";
 
-    if (!validateSale(effectiveName, isAutoCommit)) return null;
+    if (!validateSale(effectiveName, allowAnonymous)) return null;
 
     if (isAutoCommit) {
       setCustomer((prev) => ({

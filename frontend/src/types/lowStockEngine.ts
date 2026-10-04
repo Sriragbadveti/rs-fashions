@@ -6,7 +6,8 @@ export interface LowStockItem {
   totalProductStock: number;
 }
 
-export const SAFETY_STOCK_THRESHOLD = 2;
+// Warnings are only raised for shades with 0 available.
+export const SAFETY_STOCK_THRESHOLD = 0;
 
 export function getLowStockVariants(inventory: Product[]): LowStockItem[] {
   const items: LowStockItem[] = [];

@@ -27,6 +27,8 @@ const categories: FilterState["category"][] = [
   "Checks",
   "Equal Borders",
   "Kanchi Big Borders",
+  "Vintage Checks",
+  "Gatti Border",
   "Gap Border",
   "Maa Inti Bangaram",
   "SiCo Gadwal Sarees",
@@ -35,6 +37,7 @@ const categories: FilterState["category"][] = [
 const materials: FilterState["material"][] = [
   "All",
   "SiCo",
+  "Pure Gadwal Handloom",
 ];
 
 const priceRanges: FilterState["priceRange"][] = [

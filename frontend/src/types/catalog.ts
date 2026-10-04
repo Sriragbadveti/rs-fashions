@@ -1,6 +1,7 @@
 import { Product, MOCK_DESIGNS, COLOR_CODES, LEGACY_COLOR_CODES, VIBGYOR_COLORS, type ColorDefinition } from "../types/inventory";
 
-export const LOW_STOCK_THRESHOLD = 2;
+// A saree only counts as a "low stock warning" when none is left (0 available).
+export const LOW_STOCK_THRESHOLD = 0;
 
 export const CUSTOM_COLORS_STORAGE_KEY = "rs_fashions_custom_colors";
 

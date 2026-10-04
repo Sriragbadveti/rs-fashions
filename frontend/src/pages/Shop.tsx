@@ -288,6 +288,8 @@ const initialCategoryPills = [
   "Checks",
   "Equal Borders",
   "Kanchi Big Borders",
+  "Vintage Checks",
+  "Gatti Border",
   "Gap Border",
   "Maa Inti Bangaram",
   "SiCo Gadwal Sarees",
@@ -523,6 +525,12 @@ export default function Shop() {
         if (catFilter.includes("gap")) {
           return prodName.includes("gap") || prodDesc.includes("gap") || prodPattern.includes("gap") || prodBorder.includes("gap") || tags.some((t: string) => t.includes("gap"));
         }
+        if (catFilter.includes("vintage")) {
+          return prodName.includes("vintage") || prodDesc.includes("vintage") || prodPattern.includes("vintage") || tags.some((t: string) => t.includes("vintage"));
+        }
+        if (catFilter.includes("gatti")) {
+          return prodName.includes("gatti") || prodDesc.includes("gatti") || prodPattern.includes("gatti") || prodBorder.includes("gatti") || tags.some((t: string) => t.includes("gatti"));
+        }
         if (catFilter.includes("bangaram") || catFilter.includes("maa inti") || catFilter.includes("ma inti")) {
           return prodName.includes("bangaram") || prodName.includes("ma inti") || prodName.includes("maa inti") || prodDesc.includes("bangaram") || tags.some((t: string) => t.includes("bangaram"));
         }
@@ -578,6 +586,11 @@ export default function Shop() {
         result.sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0));
         break;
     }
+
+    // Sold-out sarees always go to the bottom. The sort is stable, so inside each group the
+    // order chosen above (price, popularity, featured) is kept.
+    const isSoldOut = (p: { stock?: number }) => (p.stock !== undefined && p.stock <= 0 ? 1 : 0);
+    result.sort((a, b) => isSoldOut(a) - isSoldOut(b));
 
     return result.map((p) => {
       const sId = String(p.id);

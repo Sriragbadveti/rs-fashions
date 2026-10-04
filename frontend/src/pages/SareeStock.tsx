@@ -1,3 +1,4 @@
+import { SAREE_TYPES, SAREE_TYPE_LABELS, toSareeType, type SareeType } from "../types/sareeType";
 import { useShowMore, ShowMoreButton } from "../components/common/ShowMore";
 import { getImageVariantUrl, fallbackToOriginalImage } from "../utils/imageVariants";
 import {
@@ -1397,8 +1398,8 @@ function ProductCard({
           </div>
         )}
 
-        {/* Hover Action Overlay */}
-        <div className="absolute right-3 top-3 flex gap-1.5 opacity-0 translate-y-1 transition-all duration-200 group-hover:translate-y-0 group-hover:opacity-100">
+        {/* Edit / Delete: always visible (on phones and tablets there is no hover) */}
+        <div className="absolute right-3 top-3 z-10 flex gap-1.5">
           <button
             type="button"
             onClick={onEdit}
@@ -1420,7 +1421,7 @@ function ProductCard({
 
         {isLowStock && (
           <span className="absolute left-12 top-3 rounded-full bg-rose-600/90 backdrop-blur-xs px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white shadow-2xs">
-            Low Stock
+            Out of Stock
           </span>
         )}
 
@@ -1436,7 +1437,7 @@ function ProductCard({
       <div className="flex min-h-[145px] flex-1 flex-col p-4 justify-between">
         <div>
           <div className="flex items-center justify-between text-[10px] uppercase font-bold tracking-widest text-[#8E3D51]">
-            <span>SiCo Gadwal</span>
+            <span>{toSareeType(product.material) === "SiCo" ? "SiCo Gadwal" : "Pure Gadwal Handloom"}</span>
             <span className="font-mono text-stone-400 font-semibold text-[9.5px]">
               {(product.variants || []).length} Shades
             </span>
@@ -1691,6 +1692,7 @@ export default function Catalog({
   const [formImages, setFormImages] = useState<string[]>([]);
   const [formIsSpecialOffer, setFormIsSpecialOffer] = useState(false);
   const [formBorderColor, setFormBorderColor] = useState("");
+  const [formSareeType, setFormSareeType] = useState<SareeType>("SiCo");
   const [isGalleryUploading, setIsGalleryUploading] = useState(false);
   const [galleryFailedCount, setGalleryFailedCount] = useState(0);
   const [isSavingProduct, setIsSavingProduct] = useState(false);
@@ -1899,6 +1901,7 @@ export default function Catalog({
     setFormImages([]);
     setFormIsSpecialOffer(false);
     setFormBorderColor("");
+    setFormSareeType("SiCo");
     setIsModalOpen(true);
   }
 
@@ -1933,6 +1936,7 @@ export default function Catalog({
     // Legacy Special/Limited Edition products keep their intent: they become Special Offer products.
     setFormIsSpecialOffer(isSpecialOfferProduct(product));
     setFormBorderColor(product.borderColor || "");
+    setFormSareeType(toSareeType(product.material));
     setIsModalOpen(true);
   }
 
@@ -2030,6 +2034,7 @@ export default function Catalog({
       variants: finalVariants,
       // Always sent (empty string = cleared) so the backend stores exactly what the form shows.
       borderColor: formBorderColor.trim(),
+      material: formSareeType,
       imageUrl: effectiveImageUrl,
       // blob: URLs are local previews and must never be persisted.
       images: effectiveImages.filter((u) => !u.startsWith("blob:")),
@@ -2476,6 +2481,22 @@ export default function Catalog({
                   onChange={(val) => setFormBorderColor(val)}
                   placeholder="Select border shade or type new custom color (e.g. Contrast Maroon, Royal Gold)..."
                 />
+              </div>
+
+              {/* Which shop section this saree appears in */}
+              <div className="min-w-0">
+                <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-stone-400">
+                  Saree Type
+                </label>
+                <select
+                  value={formSareeType}
+                  onChange={(e) => setFormSareeType(e.target.value as SareeType)}
+                  className="h-11 w-full rounded-2xl border border-stone-200/80 bg-white/90 px-3 text-xs font-semibold text-stone-900 outline-none transition-all focus:border-[#D4A373] focus:ring-2 focus:ring-[#D4A373]/10"
+                >
+                  {SAREE_TYPES.map((t) => (
+                    <option key={t} value={t}>{SAREE_TYPE_LABELS[t]}</option>
+                  ))}
+                </select>
               </div>
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

@@ -32,12 +32,32 @@ const sortOptions = [
   },
 ];
 
-const sareeSubcategories = [
-  { label: "Checks", path: "/shop?category=Checks" },
-  { label: "Equal Borders", path: "/shop?category=Equal+Borders" },
-  { label: "Kanchi Big Borders", path: "/shop?category=Kanchi+Big+Borders" },
-  { label: "Gap Border", path: "/shop?category=Gap+Border" },
-  { label: "Maa Inti Bangaram", path: "/shop?category=Maa+Inti+Bangaram" },
+// Every pattern ("vertical") of the SiCo Gadwal range, with an "All" link on top.
+const sicoSubcategories = [
+  { label: "All SiCo Gadwal Sarees", path: "/shop?material=SiCo" },
+  { label: "Checks", path: "/shop?material=SiCo&category=Checks" },
+  { label: "Equal Borders", path: "/shop?material=SiCo&category=Equal+Borders" },
+  { label: "Kanchi Big Borders", path: "/shop?material=SiCo&category=Kanchi+Big+Borders" },
+  { label: "Vintage Checks", path: "/shop?material=SiCo&category=Vintage+Checks" },
+  { label: "Gatti Border", path: "/shop?material=SiCo&category=Gatti+Border" },
+  { label: "Gap Border", path: "/shop?material=SiCo&category=Gap+Border" },
+  { label: "Maa Inti Bangaram", path: "/shop?material=SiCo&category=Maa+Inti+Bangaram" },
+];
+
+const pureGadwalSubcategories = [
+  { label: "All Pure Gadwal Handloom Sarees", path: "/shop?material=Pure+Gadwal+Handloom" },
+  { label: "Checks", path: "/shop?material=Pure+Gadwal+Handloom&category=Checks" },
+  { label: "Equal Borders", path: "/shop?material=Pure+Gadwal+Handloom&category=Equal+Borders" },
+  { label: "Kanchi Big Borders", path: "/shop?material=Pure+Gadwal+Handloom&category=Kanchi+Big+Borders" },
+  { label: "Vintage Checks", path: "/shop?material=Pure+Gadwal+Handloom&category=Vintage+Checks" },
+  { label: "Gatti Border", path: "/shop?material=Pure+Gadwal+Handloom&category=Gatti+Border" },
+  { label: "Gap Border", path: "/shop?material=Pure+Gadwal+Handloom&category=Gap+Border" },
+  { label: "Maa Inti Bangaram", path: "/shop?material=Pure+Gadwal+Handloom&category=Maa+Inti+Bangaram" },
+];
+
+const menuSections: MenuSection[] = [
+  { title: "SiCo Gadwal Sarees", subtitle: "Interlocked Zari & Pure Silk Warp", letter: "G", items: sicoSubcategories },
+  { title: "Pure Gadwal Handloom Sarees", subtitle: "Handwoven Pure Gadwal Silk", letter: "P", items: pureGadwalSubcategories },
 ];
 
 const secondaryLinks = [
@@ -55,6 +75,95 @@ const MIN_LIMIT = 999;
 const MAX_LIMIT = 50000;
 const STEP = 500;
 
+type MenuSection = {
+  title: string;
+  subtitle: string;
+  letter: string;
+  items: { label: string; path: string }[];
+};
+
+/** One collapsible collection (SiCo Gadwal, Pure Gadwal Handloom...) in the menu. */
+function SareeAccordion({ title, subtitle, letter, items, defaultOpen, onNavigate }: MenuSection & { defaultOpen: boolean; onNavigate: () => void }) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+  return (
+      <div
+        className={`overflow-hidden rounded-2xl border transition-all duration-300 ${
+          isOpen
+            ? "border-[#8E3D51]/30 bg-white shadow-md ring-1 ring-[#8E3D51]/10"
+            : "border-black/[0.07] bg-white/90 shadow-xs hover:border-black/15"
+        }`}
+      >
+        {/* Accordion Toggle Header */}
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          className="group flex w-full items-center justify-between px-4 py-3.5 text-left transition-colors"
+        >
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#8E3D51]/10 text-[#8E3D51] transition-transform duration-300 group-hover:scale-105">
+              <span className="font-serif text-sm font-semibold">{letter}</span>
+            </div>
+            <div>
+              <h3 className="font-serif text-[15px] font-normal tracking-tight text-[#2A2421] transition-colors group-hover:text-[#8E3D51]">
+                {title}
+              </h3>
+              <p className="text-[10px] font-light tracking-wide text-[#8C7A6B]">
+                {subtitle}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-black/3 text-[#8E3D51] transition-colors group-hover:bg-[#8E3D51]/10">
+              <FiChevronDown
+                size={14}
+                className={`transition-transform duration-300 ${
+                  isOpen ? "rotate-180 text-[#8E3D51]" : "text-stone-400"
+                }`}
+              />
+            </div>
+          </div>
+        </button>
+
+        {/* Accordion Content with CSS Grid Height Transition */}
+        <div
+          className={`grid transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+            isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+          }`}
+        >
+          <div className="overflow-hidden">
+            <div className="space-y-1 border-t border-black/5 bg-[#F4E7E4]/80 p-2">
+              {items.map((item, index) => (
+                <Link
+                  key={item.label}
+                  to={item.path}
+                  onClick={onNavigate}
+                  style={{
+                    transitionDelay: isOpen ? `${index * 25}ms` : "0ms",
+                  }}
+                  className={`group flex items-center justify-between rounded-xl px-3 py-2.5 transition-all duration-200 hover:bg-white hover:shadow-xs active:scale-[0.99] ${
+                    isOpen ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-1"
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#8E3D51]/30 transition-all duration-200 group-hover:w-3 group-hover:bg-[#8E3D51]" />
+                    <span className="truncate text-xs font-medium text-[#4A3F35] transition-colors group-hover:text-[#8E3D51]">
+                      {item.label}
+                    </span>
+                  </div>
+
+                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-black/2 text-[#8C7A6B] opacity-40 transition-all duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:bg-[#8E3D51]/10 group-hover:text-[#8E3D51] group-hover:opacity-100">
+                    <FiArrowUpRight size={12} strokeWidth={2} />
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+  );
+}
+
 function MobileMenu({ onClose }: MobileMenuProps) {
   const navigate = useNavigate();
 
@@ -63,7 +172,6 @@ function MobileMenu({ onClose }: MobileMenuProps) {
   const [maxPrice, setMaxPrice] = useState(35000);
   const [activeSort, setActiveSort] = useState<string | null>(null);
   const [isClosing, setIsClosing] = useState(false);
-  const [isSareeDropdownOpen, setIsSareeDropdownOpen] = useState(true);
 
   const handleDismiss = () => {
     if (isClosing) return;
@@ -379,82 +487,9 @@ function MobileMenu({ onClose }: MobileMenuProps) {
                 </span>
               </div>
 
-              {/* Saree Accordion Card */}
-              <div
-                className={`overflow-hidden rounded-2xl border transition-all duration-300 ${
-                  isSareeDropdownOpen
-                    ? "border-[#8E3D51]/30 bg-white shadow-md ring-1 ring-[#8E3D51]/10"
-                    : "border-black/[0.07] bg-white/90 shadow-xs hover:border-black/15"
-                }`}
-              >
-                {/* Accordion Toggle Header */}
-                <button
-                  type="button"
-                  onClick={() => setIsSareeDropdownOpen(!isSareeDropdownOpen)}
-                  className="group flex w-full items-center justify-between px-4 py-3.5 text-left transition-colors"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#8E3D51]/10 text-[#8E3D51] transition-transform duration-300 group-hover:scale-105">
-                      <span className="font-serif text-sm font-semibold">G</span>
-                    </div>
-                    <div>
-                      <h3 className="font-serif text-[15px] font-normal tracking-tight text-[#2A2421] transition-colors group-hover:text-[#8E3D51]">
-                        SiCo Gadwal Sarees
-                      </h3>
-                      <p className="text-[10px] font-light tracking-wide text-[#8C7A6B]">
-                        Interlocked Zari & Pure Silk Warp
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-black/3 text-[#8E3D51] transition-colors group-hover:bg-[#8E3D51]/10">
-                      <FiChevronDown
-                        size={14}
-                        className={`transition-transform duration-300 ${
-                          isSareeDropdownOpen ? "rotate-180 text-[#8E3D51]" : "text-stone-400"
-                        }`}
-                      />
-                    </div>
-                  </div>
-                </button>
-
-                {/* Accordion Content with CSS Grid Height Transition */}
-                <div
-                  className={`grid transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                    isSareeDropdownOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
-                  }`}
-                >
-                  <div className="overflow-hidden">
-                    <div className="space-y-1 border-t border-black/5 bg-[#F4E7E4]/80 p-2">
-                      {sareeSubcategories.map((item, index) => (
-                        <Link
-                          key={item.label}
-                          to={item.path}
-                          onClick={handleDismiss}
-                          style={{
-                            transitionDelay: isSareeDropdownOpen ? `${index * 25}ms` : "0ms",
-                          }}
-                          className={`group flex items-center justify-between rounded-xl px-3 py-2.5 transition-all duration-200 hover:bg-white hover:shadow-xs active:scale-[0.99] ${
-                            isSareeDropdownOpen ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-1"
-                          }`}
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#8E3D51]/30 transition-all duration-200 group-hover:w-3 group-hover:bg-[#8E3D51]" />
-                            <span className="truncate text-xs font-medium text-[#4A3F35] transition-colors group-hover:text-[#8E3D51]">
-                              {item.label}
-                            </span>
-                          </div>
-
-                          <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-black/2 text-[#8C7A6B] opacity-40 transition-all duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:bg-[#8E3D51]/10 group-hover:text-[#8E3D51] group-hover:opacity-100">
-                            <FiArrowUpRight size={12} strokeWidth={2} />
-                          </div>
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
+              {menuSections.map((section, i) => (
+                <SareeAccordion key={section.title} {...section} defaultOpen={i === 0} onNavigate={handleDismiss} />
+              ))}
             </div>
 
             {/* Section 2: Explore */}

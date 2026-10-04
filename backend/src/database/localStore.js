@@ -115,6 +115,29 @@ export function getOrdersFromStore(phone, email) {
 // ==========================================
 // FULFILLMENTS
 // ==========================================
+/** Removes an order (and its fulfillment record) from the local JSON store. Returns how many orders were removed. */
+export function deleteOrderFromStore(orderIdOrNumber) {
+  const clean = String(orderIdOrNumber || "").trim();
+  if (!clean) return 0;
+  const orders = readJson("orders.json", []);
+  const keep = orders.filter(
+    (o) =>
+      o.id !== clean &&
+      o.orderNumber !== clean &&
+      o.order_number !== clean &&
+      o.invoiceNumber !== clean &&
+      o.invoice_number !== clean
+  );
+  const removed = orders.length - keep.length;
+  if (removed > 0) writeJson("orders.json", keep);
+  const fulfillments = readJson("fulfillments.json", {});
+  if (fulfillments[clean]) {
+    delete fulfillments[clean];
+    writeJson("fulfillments.json", fulfillments);
+  }
+  return removed;
+}
+
 export function saveFulfillmentToStore(invoiceNumber, fulfillment) {
   const fulfillments = readJson("fulfillments.json", {});
   const existing = fulfillments[invoiceNumber] || {};

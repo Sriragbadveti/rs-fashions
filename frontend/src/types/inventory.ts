@@ -412,6 +412,11 @@ export interface Product {
   category?: string;
 
   /**
+   * Saree type: "SiCo" (SiCo Gadwal) or "Pure Gadwal Handloom". Decides which shop section it appears in.
+   */
+  material?: string;
+
+  /**
    * Purchase price.
    */
   purchasePrice: number;

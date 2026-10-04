@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { LOW_STOCK_THRESHOLD } from "../types/catalog";
 import {
   TrendingUp,
   Package,
@@ -71,7 +72,7 @@ export default function Overview({
     const list: { name: string; color: string; stock: number; sku: string }[] = [];
     inventory.forEach((p) => {
       (p.variants || []).forEach((v) => {
-        if (v.stock <= 2) {
+        if (v.stock <= LOW_STOCK_THRESHOLD) {
           list.push({
             name: p.name,
             color: v.color,
