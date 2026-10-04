@@ -940,11 +940,20 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
         customerPhone: sale.customerPhone || "9999999999",
       }),
     })
-      .then((response) => {
-        if (!response.ok) throw new Error("Could not persist sale to server.");
+      .then(async (response) => {
+        if (!response.ok) {
+          const body = await response.json().catch(() => ({}));
+          throw new Error(body?.message || "Could not persist sale to server.");
+        }
         return loadLiveBootstrap(true);
       })
-      .catch((err) => console.warn("Checkout sync error:", err));
+      .catch((err) => {
+        console.warn("Checkout sync error:", err);
+        // The sale was only applied on screen: tell the owner it was NOT saved (instead of it
+        // silently vanishing on refresh) and restore the real server stock/sales.
+        window.alert(`Sale ${sale.invoiceNumber} was NOT saved to the server: ${err?.message || "network error"}. Stock was not deducted. Please check and record it again.`);
+        loadLiveBootstrap(true);
+      });
   }
 
   function handleAddStockMovement(movement: StockMovement) {

@@ -87,24 +87,44 @@ async function handleCheckoutUnlocked(req, res) {
     }
 
     const saleId = `inv-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
-    const finalInvoiceNumber = await resolveSequentialInvoiceNumber(invoiceNumber, orderNumber);
+    let finalInvoiceNumber = await resolveSequentialInvoiceNumber(invoiceNumber, orderNumber);
 
     if (supabase) {
-      // 0. Idempotency check: don't double-insert or double-deduct stock if already recorded
-      const { data: existingOrder } = await supabase
-        .from("orders")
-        .select("id, order_number, invoice_number")
-        .or(`order_number.eq.${finalInvoiceNumber},invoice_number.eq.${finalInvoiceNumber}`)
-        .limit(1)
-        .maybeSingle();
+      // 0. Idempotency check: a retry of the SAME sale must not double-insert or double-deduct.
+      // The counter picks its invoice number from the browser's own saved history, so it can
+      // propose a number another order already owns (new browser/device, cleared storage, online
+      // orders sharing the sequence). That is a different sale: give it the next free number
+      // instead of silently dropping it (it used to be "already recorded": never saved, no stock
+      // deducted, and gone after a refresh).
+      const digits = (v) => String(v || "").replace(/\D/g, "").slice(-10);
+      const itemSig = (list) =>
+        (Array.isArray(list) ? list : [])
+          .map((i) => `${i.sku || i.productId || i.id}:${String(i.color || i.selectedColor || "").toLowerCase()}:${Number(i.qty || i.quantity) || 1}`)
+          .sort()
+          .join("|");
 
-      if (existingOrder) {
-        return successResponse(res, {
-          saleId: existingOrder.id,
-          invoiceNumber: existingOrder.invoice_number || existingOrder.order_number,
-          order: existingOrder,
-          alreadyRecorded: true,
-        }, "Sale already recorded in database.");
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const { data: existingOrder } = await supabase
+          .from("orders")
+          .select("id, order_number, invoice_number, phone, total, items")
+          .or(`order_number.eq.${finalInvoiceNumber},invoice_number.eq.${finalInvoiceNumber}`)
+          .limit(1)
+          .maybeSingle();
+        if (!existingOrder) break;
+
+        const sameSale =
+          digits(existingOrder.phone) === digits(effectivePhone) &&
+          Math.abs((Number(existingOrder.total) || 0) - (Number(total) || 0)) < 0.5 &&
+          itemSig(existingOrder.items) === itemSig(items);
+        if (sameSale) {
+          return successResponse(res, {
+            saleId: existingOrder.id,
+            invoiceNumber: existingOrder.invoice_number || existingOrder.order_number,
+            order: existingOrder,
+            alreadyRecorded: true,
+          }, "Sale already recorded in database.");
+        }
+        finalInvoiceNumber = await peekNextOrderNumber();
       }
 
       // Reject orders for more pieces than are in stock (checked after the idempotency check so
