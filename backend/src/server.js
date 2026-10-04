@@ -1,3 +1,4 @@
+import { Sentry } from "./instrument.js";
 import express from "express";
 import cors from "cors";
 import { ENV, validateEnv } from "./config/env.js";
@@ -73,6 +74,8 @@ app.get("/", (req, res) => {
 });
 
 // Centralized Error Handling
+// Sentry first (records the crash with its stack), then our own JSON error response.
+Sentry.setupExpressErrorHandler(app);
 app.use(errorHandler);
 
 // Start Server

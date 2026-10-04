@@ -5,6 +5,9 @@ import tailwindcss from "@tailwindcss/vite";
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   build: {
+    // Maps are only used to give Sentry readable stack traces: they are uploaded and then deleted
+    // by scripts/upload-sourcemaps.mjs, never served to visitors.
+    sourcemap: "hidden",
     chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {

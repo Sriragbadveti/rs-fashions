@@ -4,6 +4,7 @@ import { errorResponse } from "../utils/response.js";
  * Global Error Handling Middleware
  */
 export function errorHandler(err, req, res, next) {
+  res.locals.errorReported = true; // Sentry already has this one (setupExpressErrorHandler)
   console.error(`[Error] ${req.method} ${req.originalUrl}:`, err);
 
   const statusCode = err.statusCode || (res.statusCode >= 400 ? res.statusCode : 500);
