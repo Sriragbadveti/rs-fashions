@@ -22,6 +22,8 @@ import {
   Copy,
   Check,
   Smartphone,
+  Download,
+  FileSpreadsheet,
 } from "lucide-react";
 import type { CompletedSale } from "../types/inventory";
 import logo from "../assets/logo/logo1.png";
@@ -85,6 +87,28 @@ const formatDate = (date: string) => {
   const parts = formatDateParts(date);
   return parts.time ? `${parts.date}, ${parts.time}` : parts.date;
 };
+
+const formatTallyDate = (dateStr: string) => {
+  const parsed = new Date(dateStr);
+  if (Number.isNaN(parsed.getTime())) return dateStr || "";
+  const dd = String(parsed.getDate()).padStart(2, "0");
+  const mm = String(parsed.getMonth() + 1).padStart(2, "0");
+  const yyyy = parsed.getFullYear();
+  return `${dd}-${mm}-${yyyy}`;
+};
+
+const downloadCsv = (content: string, filename: string) => {
+  const blob = new Blob(["\uFEFF" + content], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
 
 const getPaymentLabel = (method: string) => {
   switch (method?.toLowerCase()) {
@@ -170,7 +194,7 @@ const SaleItemThumbs = ({ items }: { items: any[] }) => {
       {zoom &&
         createPortal(
 <div
-          className="fixed inset-0 z-[100000] flex cursor-zoom-out items-center justify-center bg-black/80 p-4"
+          className="fixed inset-0 z-100000 flex cursor-zoom-out items-center justify-center bg-black/80 p-4"
           onClick={(e) => {
             e.stopPropagation();
             setZoom(null);
@@ -237,6 +261,9 @@ export default function TransactionHistory({
   const [inspectInvoice, setInspectInvoice] =
     useState<CompletedSale | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [showStatementModal, setShowStatementModal] = useState(false);
+  const [statementTab, setStatementTab] = useState<"item-wise" | "voucher-wise">("item-wise");
+  const [downloadSuccess, setDownloadSuccess] = useState<string | null>(null);
 
   const { getFulfillment, updateStatus } = useOrderFulfillment();
 
@@ -268,8 +295,122 @@ export default function TransactionHistory({
   const getNetPayable = (sale: CompletedSale) =>
     Math.max(
       0,
-      Number(sale.subtotal || 0) - Number(sale.discount || 0) + Number(sale.shippingFee || 0)
+      Number(sale.subtotal || 0) + Number(sale.shippingFee || 0)
     );
+
+  /* ------------------------------------------------------------------------ */
+  /* TALLY & SALES REGISTER STATEMENT GENERATION                              */
+  /* ------------------------------------------------------------------------ */
+
+  const generateTallySalesRegisterCSV = (sales: CompletedSale[]) => {
+    const headers = [
+      "Date (DD-MM-YYYY)",
+      "Voucher No",
+      "Voucher Type",
+      "Customer Name",
+      "Phone Number",
+      "Customer Address",
+      "Place of Supply / State",
+      "Item Name",
+      "SKU Code",
+      "Color",
+      "HSN",
+      "Quantity",
+      "Units",
+      "Rate (INR)",
+      "Shipping (INR)",
+      "Total Amount (INR)",
+      "Payment Mode",
+      "Order Status",
+      "Narration",
+    ];
+
+    const escape = (val: any) => `"${String(val ?? "").replace(/"/g, '""')}"`;
+
+    let totalShipping = 0;
+    let totalNet = 0;
+
+    const rows: string[] = [];
+
+    sales.forEach((sale) => {
+      const invNo = formatInvoiceNumber(sale.invoiceNumber);
+      const dateFormatted = formatTallyDate(saleWhen(sale));
+      const custName = getCustomerName(sale);
+      const custPhone = getCustomerPhone(sale);
+      const custAddress = getCustomerAddress(sale);
+      const placeOfSupply = sale.customer?.state || "Telangana (36)";
+      const status = getFulfillment(sale.invoiceNumber).status;
+      const statusLabel = ORDER_STATUS_LABELS[status] || status;
+      const paymentMode = getPaymentLabel(sale.paymentMethod);
+      const netPayable = getNetPayable(sale);
+      const shipping = Number(sale.shippingFee || 0);
+
+      totalShipping += shipping;
+      totalNet += netPayable;
+
+      const items =
+        sale.items && sale.items.length > 0
+          ? sale.items
+          : [
+              {
+                name: "SiCo Gadwal Saree",
+                sku: "N/A",
+                color: "Standard",
+                hsn: "5208",
+                qty: 1,
+                unitPrice: Number(sale.subtotal || sale.total || 0),
+              },
+            ];
+
+      items.forEach((item: any, idx: number) => {
+        const q = Number(item.qty || item.quantity) || 1;
+        const rate = Number(item.unitPrice || item.price) || 0;
+
+        const narration = `Sale of ${item.name || "Saree"} (${item.sku || "N/A"}) to ${custName} via ${paymentMode}`;
+
+        rows.push(
+          [
+            escape(dateFormatted),
+            escape(invNo),
+            escape("Sales"),
+            escape(custName),
+            escape(custPhone),
+            escape(custAddress),
+            escape(placeOfSupply),
+            escape(item.name || "SiCo Gadwal Saree"),
+            escape(item.sku || "N/A"),
+            escape(item.color || "Standard"),
+            escape(item.hsn || "5208"),
+            q,
+            escape("PCS"),
+            rate.toFixed(2),
+            idx === 0 ? shipping.toFixed(2) : "0.00",
+            idx === 0 ? netPayable.toFixed(2) : "0.00",
+            escape(paymentMode),
+            escape(statusLabel),
+            escape(narration),
+          ].join(",")
+        );
+      });
+    });
+    return [headers.join(","), ...rows].join("\r\n");
+  };
+
+  const handleDownloadTallyCSV = (mode: "detailed" | "summary" = "detailed") => {
+    const listToExport = filteredSales.length > 0 ? filteredSales : salesHistory;
+    if (listToExport.length === 0) {
+      alert("No sales transactions to export.");
+      return;
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    if (mode === "detailed") {
+      const csv = generateTallySalesRegisterCSV(listToExport);
+      downloadCsv(csv, `RS_Fashions_Sales_Register_${today}.csv`);
+      setDownloadSuccess("detailed");
+    }
+    window.setTimeout(() => setDownloadSuccess(null), 2500);
+  };
+
 
   /* ------------------------------------------------------------------------ */
   /* ROBUST COPY                                                              */
@@ -419,8 +560,7 @@ export default function TransactionHistory({
         sum +
         Math.max(
           0,
-          Number(sale.subtotal || 0) -
-            Number(sale.discount || 0) +
+          Number(sale.subtotal || 0) +
             Number(sale.shippingFee || 0)
         ),
       0
@@ -499,6 +639,21 @@ export default function TransactionHistory({
   // Render a page at a time so a long history never mounts hundreds of rows (and photos) at once.
   const salesPaging = useShowMore(filteredSales.length, 25, `${searchQuery}|${paymentFilter}`);
   const visibleSales = filteredSales.slice(0, salesPaging.visible);
+
+  const statementTotals = useMemo(() => {
+    let pieces = 0;
+    let shipping = 0;
+    let net = 0;
+
+    filteredSales.forEach((sale) => {
+      pieces += getSaleQty(sale);
+      shipping += Number(sale.shippingFee || 0);
+      net += getNetPayable(sale);
+    });
+
+    return { pieces, shipping, net };
+  }, [filteredSales]);
+
 
   /* ------------------------------------------------------------------------ */
   /* PRINT                                                                    */
@@ -643,7 +798,7 @@ export default function TransactionHistory({
               size={11}
               className="mt-0.5 shrink-0 text-stone-400"
             />
-            <span className="min-w-0 break-words">
+            <span className="min-w-0 wrap-break-word">
               {address}
             </span>
 
@@ -821,7 +976,7 @@ export default function TransactionHistory({
                         e.target.value as OrderStatus
                       );
                     }}
-                    className={`h-[31px] w-full min-w-0 rounded-lg border bg-white px-2 text-[9px] font-semibold outline-none cursor-pointer ${ORDER_STATUS_STYLES[currentStatus]}`}
+                    className={`h-7.75 w-full min-w-0 rounded-lg border bg-white px-2 text-[9px] font-semibold outline-none cursor-pointer ${ORDER_STATUS_STYLES[currentStatus]}`}
                   >
                     {statusOptionsFor(currentStatus, sale.paymentMethod).map((status) => (
                       <option key={status} value={status}>
@@ -900,7 +1055,7 @@ export default function TransactionHistory({
   ) => {
     return (
       <div className="hidden overflow-x-auto xl:block">
-        <table className="w-full min-w-[1020px] text-left">
+        <table className="w-full min-w-255 text-left">
           <thead className="border-b border-stone-200/80 bg-stone-50/60">
             <tr className="text-[10px] font-semibold uppercase tracking-[0.08em] text-stone-500">
               <th className="px-4 py-3.5">Invoice</th>
@@ -984,8 +1139,8 @@ export default function TransactionHistory({
 
                   {/* CUSTOMER */}
                   <td className="px-4 py-4 align-middle">
-                    <div className="min-w-[145px]">
-                      <p className="max-w-[170px] truncate text-[12px] font-semibold text-stone-900">
+                    <div className="min-w-36.25">
+                      <p className="max-w-42.5 truncate text-[12px] font-semibold text-stone-900">
                         {getCustomerName(sale)}
                       </p>
 
@@ -1038,10 +1193,10 @@ export default function TransactionHistory({
                         >
                           <MapPin
                             size={11}
-                            className="mt-[1px] shrink-0 text-stone-400"
+                            className="mt-px shrink-0 text-stone-400"
                           />
 
-                          <span className="max-w-[150px] truncate text-[10px] font-medium leading-snug">
+                          <span className="max-w-37.5 truncate text-[10px] font-medium leading-snug">
                             {address}
                           </span>
 
@@ -1049,12 +1204,12 @@ export default function TransactionHistory({
                           `address-${sale.invoiceNumber}` ? (
                             <Check
                               size={10}
-                              className="mt-[1px] shrink-0 text-green-500"
+                              className="mt-px shrink-0 text-green-500"
                             />
                           ) : (
                             <Copy
                               size={10}
-                              className="mt-[1px] shrink-0 text-stone-400 opacity-0 transition-opacity group-hover:opacity-100"
+                              className="mt-px shrink-0 text-stone-400 opacity-0 transition-opacity group-hover:opacity-100"
                             />
                           )}
                         </button>
@@ -1074,10 +1229,10 @@ export default function TransactionHistory({
                         >
                           <Mail
                             size={11}
-                            className="mt-[1px] shrink-0 text-stone-400"
+                            className="mt-px shrink-0 text-stone-400"
                           />
 
-                          <span className="max-w-[150px] truncate text-[10px] font-medium leading-snug">
+                          <span className="max-w-37.5 truncate text-[10px] font-medium leading-snug">
                             {email}
                           </span>
 
@@ -1085,12 +1240,12 @@ export default function TransactionHistory({
                           `email-${sale.invoiceNumber}` ? (
                             <Check
                               size={10}
-                              className="mt-[1px] shrink-0 text-green-500"
+                              className="mt-px shrink-0 text-green-500"
                             />
                           ) : (
                             <Copy
                               size={10}
-                              className="mt-[1px] shrink-0 text-stone-400 opacity-0 transition-opacity group-hover:opacity-100"
+                              className="mt-px shrink-0 text-stone-400 opacity-0 transition-opacity group-hover:opacity-100"
                             />
                           )}
                         </button>
@@ -1100,7 +1255,7 @@ export default function TransactionHistory({
 
                   {/* ITEM */}
                   <td className="px-4 py-4 align-middle">
-                    <div className="min-w-[160px] max-w-[210px]">
+                    <div className="min-w-40 max-w-52.5">
                       <p className="text-[11px] font-semibold text-stone-800">
                         {(sale.items || []).length === 1
                           ? (sale.items?.[0] as any)?.name
@@ -1236,20 +1391,52 @@ export default function TransactionHistory({
     <div className="mx-auto w-full max-w-7xl min-w-0 overflow-x-hidden px-3 pb-8 font-sans select-none sm:px-4 sm:pb-12 lg:px-0">
       <div className="space-y-4 sm:space-y-6">
         {/* HEADER */}
-        <header className="min-w-0">
-          <h1 className="font-display text-2xl font-medium tracking-tight text-stone-950 sm:text-3xl">
-            Sales Receipts &amp; Invoices
-          </h1>
+        <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between min-w-0">
+          <div>
+            <h1 className="font-display text-2xl font-medium tracking-tight text-stone-950 sm:text-3xl">
+              Sales Receipts &amp; Invoices
+            </h1>
 
-          <p className="mt-1 max-w-2xl text-[11px] leading-5 text-stone-500 sm:text-xs">
-            Review counter receipts, customer registries, and
-            re-print slips in thermal POS layout.
-          </p>
+            <p className="mt-1 max-w-2xl text-[11px] leading-5 text-stone-500 sm:text-xs">
+              Review Sales Receipts &amp; Invoices
+              </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => handleDownloadTallyCSV("detailed")}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-[#2A0E20] px-3.5 py-2 text-xs font-semibold text-amber-100 shadow-sm transition-all hover:bg-[#3D142E] active:scale-[0.98]"
+              title="Download full item-wise statement for Tally Prime / ERP 9"
+            >
+              {downloadSuccess === "detailed" ? (
+                <>
+                  <Check size={14} className="text-emerald-400" />
+                  <span>Downloaded Tally CSV!</span>
+                </>
+              ) : (
+                <>
+                  <Download size={14} className="text-brand-gold" />
+                  <span>Download Statement</span>
+                </>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowStatementModal(true)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-stone-200 bg-white px-3 py-2 text-xs font-semibold text-stone-700 shadow-2xs transition-all hover:bg-stone-50 active:scale-[0.98]"
+              title="View Statement of Sales & Accounting Register"
+            >
+              <FileSpreadsheet size={14} className="text-emerald-700" />
+              <span>Statement of Sales</span>
+            </button>
+          </div>
         </header>
 
         {/* KPI TILES */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-          <div className="glass-panel flex min-h-[105px] min-w-0 items-center gap-3 rounded-2xl p-4 shadow-sm sm:min-h-[122px] sm:gap-4 sm:p-5">
+          <div className="glass-panel flex min-h-26.25 min-w-0 items-center gap-3 rounded-2xl p-4 shadow-sm sm:min-h-30.5 sm:gap-4 sm:p-5">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100/80 text-emerald-800 sm:h-11 sm:w-11">
               <IndianRupee
                 size={19}
@@ -1273,7 +1460,7 @@ export default function TransactionHistory({
             </div>
           </div>
 
-          <div className="glass-panel flex min-h-[105px] min-w-0 items-center gap-3 rounded-2xl p-4 shadow-sm sm:min-h-[122px] sm:gap-4 sm:p-5">
+          <div className="glass-panel flex min-h-26.25 min-w-0 items-center gap-3 rounded-2xl p-4 shadow-sm sm:min-h-30.5 sm:gap-4 sm:p-5">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100/80 text-amber-800 sm:h-11 sm:w-11">
               <Package size={19} strokeWidth={2.2} />
             </div>
@@ -1305,7 +1492,7 @@ export default function TransactionHistory({
 
               <input
                 type="text"
-                placeholder="Search invoice, customer, phone, item..."
+                placeholder="Search..."
                 value={searchQuery}
                 onChange={(e) =>
                   setSearchQuery(e.target.value)
@@ -1323,12 +1510,9 @@ export default function TransactionHistory({
               {[
                 { id: "ALL", label: "All Sales" },
                 { id: "cashfree", label: "Cashfree" },
-                { id: "upi", label: "UPI" },
-                { id: "razorpay", label: "Razorpay" },
-                { id: "phonepe", label: "PhonePe" },
-                { id: "card", label: "Card" },
                 { id: "cash", label: "Cash" },
-                { id: "split", label: "Split" },
+                { id: "upi", label: "UPI" },
+                { id: "card", label: "Debit Card" },
               ].map((mode) => (
                 <button
                   key={mode.id}
@@ -1363,7 +1547,7 @@ export default function TransactionHistory({
 
           <div className="min-w-0 rounded-xl border border-stone-200 bg-white/60 px-3 py-2.5 sm:px-4">
             <p className="text-[8px] uppercase tracking-wider text-stone-400 sm:text-[9px]">
-              Retail Bills
+              Bills
             </p>
 
             <p className="mt-0.5 text-sm font-semibold text-stone-700">
@@ -1404,33 +1588,55 @@ export default function TransactionHistory({
                 </div>
 
                 <p className="mt-0.5 truncate text-[9px] text-stone-400 sm:text-[10px]">
-                  All completed counter receipts and invoices
+                  All completed counter / web receipts and invoices
                 </p>
               </div>
             </div>
 
-            <div className="hidden text-right sm:block">
-              <p className="text-[9px] uppercase tracking-wider text-stone-400">
-                Section Total
-              </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleDownloadTallyCSV("detailed")}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-stone-700 shadow-2xs hover:bg-stone-50 transition-colors"
+                title="Download Tally Sales Register (CSV)"
+              >
+                <Download size={12} className="text-[#8E3D51]" />
+                <span className="hidden sm:inline">Export Tally CSV</span>
+                <span className="sm:hidden">Tally CSV</span>
+              </button>
 
-              <p className="mt-0.5 font-display text-sm font-semibold text-stone-800">
-                {currency(
-                  filteredSales
-                    .filter((sale) => getFulfillment(sale.invoiceNumber).status !== "cancelled")
-                    .reduce(
-                    (sum, sale) =>
-                      sum +
-                      Math.max(
-                        0,
-                        Number(sale.subtotal || 0) -
-                          Number(sale.discount || 0) +
-                          Number(sale.shippingFee || 0)
-                      ),
-                    0
-                  )
-                )}
-              </p>
+              <button
+                type="button"
+                onClick={() => setShowStatementModal(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-stone-700 shadow-2xs hover:bg-stone-50 transition-colors"
+                title="View Statement of Sales"
+              >
+                <FileSpreadsheet size={12} className="text-emerald-700" />
+                <span className="hidden sm:inline">Statement</span>
+              </button>
+
+              <div className="hidden text-right sm:block ml-1 border-l border-stone-200/80 pl-3">
+                <p className="text-[9px] uppercase tracking-wider text-stone-400">
+                  Section Total
+                </p>
+
+                <p className="mt-0.5 font-display text-sm font-semibold text-stone-800">
+                  {currency(
+                    filteredSales
+                      .filter((sale) => getFulfillment(sale.invoiceNumber).status !== "cancelled")
+                      .reduce(
+                      (sum, sale) =>
+                        sum +
+                        Math.max(
+                          0,
+                          Number(sale.subtotal || 0)+
+                            Number(sale.shippingFee || 0)
+                        ),
+                      0
+                    )
+                  )}
+                </p>
+              </div>
             </div>
           </div>
 
@@ -1456,7 +1662,7 @@ export default function TransactionHistory({
 
       {inspectInvoice && (
         <div
-          className="fixed inset-0 z-[9999] flex h-[100dvh] w-screen items-center justify-center overflow-hidden bg-stone-900/60 p-2 backdrop-blur-md sm:p-4"
+          className="fixed inset-0 z-9999 flex h-dvh w-screen items-center justify-center overflow-hidden bg-stone-900/60 p-2 backdrop-blur-md sm:p-4"
           onClick={() => setInspectInvoice(null)}
         >
           <div
@@ -1464,7 +1670,7 @@ export default function TransactionHistory({
             onClick={(e) => e.stopPropagation()}
           >
             {/* MODAL HEADER */}
-            <div className="flex min-w-0 shrink-0 items-center gap-2 border-b border-stone-200 px-3 py-3 sm:px-6 sm:py-3.5">
+            <div className="no-print print:hidden flex min-w-0 shrink-0 items-center gap-2 border-b border-stone-200 px-3 py-3 sm:px-6 sm:py-3.5">
               <div className="flex min-w-0 flex-1 items-center gap-2">
                 <ReceiptIndianRupee
                   size={16}
@@ -1533,7 +1739,7 @@ export default function TransactionHistory({
                   <img
                     src={logo}
                     alt="RS Fashions Logo"
-                    className="h-10 w-auto max-w-[110px] object-contain"
+                    className="h-10 w-auto max-w-27.5 object-contain"
                   />
                 </div>
 
@@ -1542,10 +1748,11 @@ export default function TransactionHistory({
                 </h2>
 
                 <p className="mt-0.5 text-[10px] font-medium text-stone-500 sm:text-xs">
-                  SiCo Gadwal Sarees
+                  SiCo Gadwal Sarees • Pure Handlooms • Heritage
+                  Silks
                 </p>
 
-                <p className="mx-auto mt-1 max-w-full break-words text-[9px] leading-4 text-stone-600 sm:max-w-sm sm:text-[10px]">
+                <p className="mx-auto mt-1 max-w-full wrap-break-word text-[9px] leading-4 text-stone-600 sm:max-w-sm sm:text-[10px]">
                   {showroom.storeAddress || STORE_ADDRESS}
                 </p>
 
@@ -1579,7 +1786,7 @@ export default function TransactionHistory({
                           `modal-inv-${inspectInvoice.invoiceNumber}`
                         )
                       }
-                      className="shrink-0 p-0.5 text-stone-400 hover:text-stone-700"
+                      className="no-print print:hidden shrink-0 p-0.5 text-stone-400 hover:text-stone-700"
                       title="Copy Invoice Number"
                     >
                       {copiedField ===
@@ -1636,7 +1843,7 @@ export default function TransactionHistory({
                           `modal-cust-${inspectInvoice.invoiceNumber}`
                         );
                       }}
-                      className="inline-flex shrink-0 items-center gap-1 rounded bg-stone-200/70 px-1.5 py-0.5 text-[8px] font-semibold text-stone-700 transition-colors hover:bg-stone-300/80 sm:text-[9px]"
+                      className="no-print print:hidden inline-flex shrink-0 items-center gap-1 rounded bg-stone-200/70 px-1.5 py-0.5 text-[8px] font-semibold text-stone-700 transition-colors hover:bg-stone-300/80 sm:text-[9px]"
                     >
                       {copiedField ===
                       `modal-cust-${inspectInvoice.invoiceNumber}` ? (
@@ -1658,7 +1865,7 @@ export default function TransactionHistory({
                     </button>
                   </div>
 
-                  <p className="mt-1 break-words font-semibold text-stone-900">
+                  <p className="mt-1 wrap-break-word font-semibold text-stone-900">
                     {getCustomerName(inspectInvoice)}
                   </p>
 
@@ -1676,7 +1883,7 @@ export default function TransactionHistory({
                             `modal-phone-${inspectInvoice.invoiceNumber}`
                           )
                         }
-                        className="shrink-0 p-0.5 text-stone-400 hover:text-stone-700"
+                        className="no-print print:hidden shrink-0 p-0.5 text-stone-400 hover:text-stone-700"
                       >
                         {copiedField ===
                         `modal-phone-${inspectInvoice.invoiceNumber}` ? (
@@ -1705,7 +1912,7 @@ export default function TransactionHistory({
                             `modal-email-${inspectInvoice.invoiceNumber}`
                           )
                         }
-                        className="shrink-0 p-0.5 text-stone-400 hover:text-stone-700"
+                        className="no-print print:hidden shrink-0 p-0.5 text-stone-400 hover:text-stone-700"
                       >
                         {copiedField ===
                         `modal-email-${inspectInvoice.invoiceNumber}` ? (
@@ -1722,7 +1929,7 @@ export default function TransactionHistory({
 
                   {getCustomerAddress(inspectInvoice) && (
                     <div className="mt-0.5 flex items-start gap-1.5 text-[10px] text-stone-500 sm:justify-end">
-                      <span className="min-w-0 break-words text-left sm:max-w-[260px] sm:text-right">
+                      <span className="min-w-0 wrap-break-word text-left sm:max-w-65 sm:text-right">
                         {getCustomerAddress(inspectInvoice)}
                       </span>
 
@@ -1736,7 +1943,7 @@ export default function TransactionHistory({
                             `modal-addr-${inspectInvoice.invoiceNumber}`
                           )
                         }
-                        className="mt-0.5 shrink-0 p-0.5 text-stone-400 hover:text-stone-700"
+                        className="no-print print:hidden mt-0.5 shrink-0 p-0.5 text-stone-400 hover:text-stone-700"
                       >
                         {copiedField ===
                         `modal-addr-${inspectInvoice.invoiceNumber}` ? (
@@ -1789,12 +1996,12 @@ export default function TransactionHistory({
                             className="text-[10px] sm:text-[11px]"
                           >
                             <td className="min-w-0 py-2.5 pr-2">
-                              <p className="break-words font-semibold text-stone-900">
+                              <p className="wrap-break-word font-semibold text-stone-900">
                                 {item.name ||
                                   "SiCo Gadwal Saree"}
                               </p>
 
-                              <span className="break-words text-[9px] font-mono text-stone-400 sm:text-[10px]">
+                              <span className="wrap-break-word text-[9px] font-mono text-stone-400 sm:text-[10px]">
                                 {item.color ||
                                   "Standard"}{" "}
                                 • {item.sku || "N/A"}
@@ -1821,9 +2028,7 @@ export default function TransactionHistory({
                 {Number(inspectInvoice.discount) > 0 && (
                   <div className="flex items-center justify-between gap-4 font-medium text-emerald-700">
                     <span>Trade Discount</span>
-                    <span className="shrink-0">
-                      -{currency(inspectInvoice.discount)}
-                    </span>
+                    
                   </div>
                 )}
 
@@ -1871,7 +2076,7 @@ export default function TransactionHistory({
             </div>
 
             {/* MODAL ACTIONS */}
-            <div className="shrink-0 border-t border-stone-200 bg-stone-50/70 p-2.5 sm:px-6 sm:py-3.5">
+            <div className="no-print print:hidden shrink-0 border-t border-stone-200 bg-stone-50/70 p-2.5 sm:px-6 sm:py-3.5">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <button
                   type="button"
@@ -1958,11 +2163,379 @@ export default function TransactionHistory({
         </div>
       )}
 
+      {/* ================================================================== */}
+      {/* TALLY STATEMENT OF SALES MODAL                                      */}
+      {/* ================================================================== */}
+
+      {showStatementModal && (
+        <div
+          className="fixed inset-0 z-9999 flex h-dvh w-screen items-center justify-center overflow-hidden bg-stone-900/60 p-2 backdrop-blur-md sm:p-4"
+          onClick={() => setShowStatementModal(false)}
+        >
+          <div
+            className="flex h-auto max-h-[calc(100dvh-1rem)] w-full min-w-0 max-w-5xl flex-col overflow-hidden rounded-2xl border border-stone-200/80 bg-white shadow-2xl sm:max-h-[calc(100dvh-2rem)] sm:rounded-3xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* MODAL HEADER (NO-PRINT) */}
+            <div className="no-print print:hidden flex min-w-0 shrink-0 items-center justify-between border-b border-stone-200 px-3.5 py-3 sm:px-6 sm:py-4">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-900 sm:h-10 sm:w-10">
+                  <FileSpreadsheet size={19} />
+                </div>
+
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="truncate font-display text-base font-bold text-stone-900 sm:text-lg">
+                      Statement of Sales
+                    </h3>
+                    <span className="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">
+                      {filteredSales.length} Vouchers
+                    </span>
+                  </div>
+                  <p className="truncate text-[10px] text-stone-500 sm:text-xs">
+                    Sales register formatted for Excel
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowStatementModal(false)}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-stone-400 hover:bg-stone-100 hover:text-stone-700"
+                aria-label="Close statement modal"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* ACTION TOOLBAR (NO-PRINT) */}
+            <div className="no-print print:hidden flex flex-wrap items-center justify-between gap-2.5 border-b border-stone-200 bg-stone-50/80 px-3 py-2.5 sm:px-6 sm:py-3">
+              {/* TABS */}
+              <div className="flex items-center gap-1 rounded-xl bg-stone-200/70 p-1 text-[11px] font-semibold text-stone-600">
+                <button
+                  type="button"
+                  onClick={() => setStatementTab("item-wise")}
+                  className={`rounded-lg px-2.5 py-1 transition-all ${
+                    statementTab === "item-wise"
+                      ? "bg-white text-stone-900 shadow-2xs"
+                      : "hover:text-stone-900"
+                  }`}
+                >
+                  Item-Wise Detail
+                </button>
+              </div>
+
+              {/* ACTION BUTTONS */}
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleDownloadTallyCSV("detailed")}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-[#2A0E20] px-3 py-1.5 text-xs font-semibold text-amber-100 shadow-sm transition-all hover:bg-[#3D142E] active:scale-[0.98]"
+                  title="Download Statement (.xml)"
+                >
+                  {downloadSuccess === "detailed" ? (
+                    <>
+                      <Check size={13} className="text-emerald-400" />
+                      <span>Download Statement (.xml)</span>
+                    </>
+                  ) : (
+                    <>
+                      <Download size={13} className="text-brand-gold" />
+                      <span>Download Statement (.xml)</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-stone-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-stone-700 shadow-2xs transition-all hover:bg-stone-50"
+                  title="Print Statement / Save PDF"
+                >
+                  <Printer size={13} className="text-stone-600" />
+                  <span>Print Statement</span>
+                </button>
+              </div>
+            </div>
+
+            {/* STATEMENT REPORT BODY (PRINTABLE) */}
+            <div
+              id="printable-statement-preview"
+              className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3.5 text-stone-800 sm:p-6"
+            >
+              {/* STATEMENT HEADER */}
+              <div className="border-b border-stone-200 pb-4 text-center">
+                <div className="mb-2 flex h-9 justify-center">
+                  <img
+                    src={logo}
+                    alt="RS Fashions Logo"
+                    className="h-9 w-auto max-w-25 object-contain"
+                  />
+                </div>
+
+                <h2 className="font-mona text-xl font-bold tracking-wide text-[#2A0E20] sm:text-2xl">
+                  {showroom.storeName || STORE_LEGAL_NAME}
+                </h2>
+
+                <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-wider text-stone-600 sm:text-xs">
+                  Sales Register &amp; Statement of Transactions
+                </p>
+
+                <p className="mx-auto mt-1 max-w-md text-[9px] leading-4 text-stone-500 sm:text-[10px]">
+                  {showroom.storeAddress || STORE_ADDRESS} • Ph: {showroom.storePhone || STORE_WHATSAPP_NUMBER}
+                  {showroom.gstin ? ` • GSTIN: ${showroom.gstin}` : ""}
+                </p>
+
+                <div className="mt-2.5 flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-[10px] text-stone-600 font-medium">
+                  <span className="rounded bg-stone-100 px-2 py-0.5 font-mono">
+                    Period: All Available Records
+                  </span>
+                  <span className="rounded bg-stone-100 px-2 py-0.5 font-mono">
+                    Filter: {paymentFilter === "ALL" ? "All Payment Modes" : getPaymentLabel(paymentFilter)}
+                  </span>
+                  <span className="rounded bg-stone-100 px-2 py-0.5 font-mono">
+                    Generated: {new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                  </span>
+                </div>
+              </div>
+
+              {/* KPI SUMMARY CARDS */}
+              <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
+                <div className="rounded-xl border border-stone-200/80 bg-stone-50/70 p-2.5 text-center">
+                  <p className="text-[8px] font-semibold uppercase tracking-wider text-stone-400 sm:text-[9px]">
+                    Total Invoices
+                  </p>
+                  <p className="mt-0.5 font-display text-base font-bold text-stone-900 sm:text-lg">
+                    {filteredSales.length}
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-stone-200/80 bg-stone-50/70 p-2.5 text-center">
+                  <p className="text-[8px] font-semibold uppercase tracking-wider text-stone-400 sm:text-[9px]">
+                    Total Sarees Sold
+                  </p>
+                  <p className="mt-0.5 font-display text-base font-bold text-stone-900 sm:text-lg">
+                    {statementTotals.pieces} Pcs
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-stone-200/80 bg-stone-50/70 p-2.5 text-center">
+                  <p className="text-[8px] font-semibold uppercase tracking-wider text-stone-400 sm:text-[9px]">
+                    Net Revenue
+                  </p>
+                  <p className="mt-0.5 font-display text-base font-bold text-[#2A0E20] sm:text-lg">
+                    {currency(statementTotals.net)}
+                  </p>
+                </div>
+              </div>
+
+              {/* REPORT TABLE */}
+              <div className="mt-4 min-w-0 overflow-x-auto rounded-xl border border-stone-200">
+                {statementTab === "item-wise" ? (
+                  <table className="w-full min-w-190 text-left text-xs">
+                    <thead className="border-b border-stone-200 bg-stone-100/80 text-[9px] font-bold uppercase tracking-wider text-stone-600">
+                      <tr>
+                        <th className="whitespace-nowrap px-2.5 py-2">Date</th>
+                        <th className="whitespace-nowrap px-2.5 py-2">Voucher</th>
+                        <th className="whitespace-nowrap px-2.5 py-2">Customer</th>
+                        <th className="whitespace-nowrap px-2.5 py-2">Saree</th>
+                        <th className="whitespace-nowrap px-2 py-2 text-center">HSN</th>
+                        <th className="whitespace-nowrap px-2 py-2 text-center">Qty</th>
+                        <th className="whitespace-nowrap px-2 py-2 text-right">Rate</th>
+                        <th className="whitespace-nowrap px-2.5 py-2 text-right">Total</th>
+                        <th className="whitespace-nowrap px-2.5 py-2">Payment method</th>
+                        <th className="whitespace-nowrap px-2.5 py-2">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-stone-100 font-mono text-[10px]">
+                      {filteredSales.map((sale) => {
+                        const invNo = formatInvoiceNumber(sale.invoiceNumber);
+                        const dateFormatted = formatTallyDate(saleWhen(sale));
+                        const custName = getCustomerName(sale);
+                        const status = getFulfillment(sale.invoiceNumber).status;
+                        const statusLabel = ORDER_STATUS_LABELS[status] || status;
+                        const paymentMode = getPaymentLabel(sale.paymentMethod);
+                        const netPayable = getNetPayable(sale);
+
+                        const items =
+                          sale.items && sale.items.length > 0
+                            ? sale.items
+                            : [
+                                {
+                                  name: "SiCo Gadwal Saree",
+                                  sku: "N/A",
+                                  color: "Standard",
+                                  hsn: "5208",
+                                  qty: 1,
+                                  unitPrice: Number(sale.subtotal || sale.total || 0),
+                                },
+                              ];
+
+                        return items.map((item: any, idx: number) => {
+                          const q = Number(item.qty || item.quantity) || 1;
+                          const rate = Number(item.unitPrice || item.price) || 0;
+
+                          return (
+                            <tr key={`${sale.invoiceNumber}-${idx}`} className="hover:bg-amber-50/30">
+                              <td className="whitespace-nowrap px-2.5 py-2 text-stone-700">{dateFormatted}</td>
+                              <td className="whitespace-nowrap px-2.5 py-2 font-bold text-stone-900">{invNo}</td>
+                              <td className="max-w-35 truncate px-2.5 py-2 font-sans font-medium text-stone-800" title={custName}>
+                                {custName}
+                              </td>
+                              <td className="max-w-40 truncate px-2.5 py-2 font-sans text-stone-800" title={item.name}>
+                                {item.name || "SiCo Gadwal Saree"}{" "}
+                                <span className="text-[9px] text-stone-400">({item.sku || "N/A"})</span>
+                              </td>
+                              <td className="px-2 py-2 text-center text-stone-500">{item.hsn || "5208"}</td>
+                              <td className="px-2 py-2 text-center font-bold text-stone-800">{q}</td>
+                              <td className="px-2 py-2 text-right text-stone-600">₹{rate.toFixed(0)}</td>
+                              <td className="px-2.5 py-2 text-right font-bold text-stone-950">
+                                {idx === 0 ? `₹${netPayable.toFixed(0)}` : "—"}
+                              </td>
+                              <td className="whitespace-nowrap px-2.5 py-2 font-sans text-[9px] font-semibold text-stone-700">
+                                {paymentMode}
+                              </td>
+                              <td className="whitespace-nowrap px-2.5 py-2 font-sans text-[9px]">
+                                <span className="rounded bg-stone-100 px-1.5 py-0.5 text-stone-600">
+                                  {statusLabel}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        });
+                      })}
+                    </tbody>
+                    <tfoot className="border-t-2 border-stone-300 bg-stone-100/90 font-mono text-[10px] font-bold text-stone-900">
+                      <tr>
+                        <td colSpan={5} className="px-2.5 py-2.5 uppercase tracking-wider font-sans">
+                          Total ({filteredSales.length} Vouchers)
+                        </td>
+                        <td className="px-2 py-2.5 text-center">{statementTotals.pieces}</td>
+                        <td className="px-2 py-2.5 text-right text-emerald-700">
+                        </td>
+                        <td className="px-2.5 py-2.5 text-right text-[#2A0E20]">
+                          ₹{statementTotals.net.toFixed(0)}
+                        </td>
+                          <td className="px-2 py-2.5 text-right text-emerald-700">
+                        </td>
+                          <td className="px-2 py-2.5 text-right text-emerald-700">
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                ) : (
+                  <table className="w-full min-w-175 text-left text-xs">
+                    <thead className="border-b border-stone-200 bg-stone-100/80 text-[9px] font-bold uppercase tracking-wider text-stone-600">
+                      <tr>
+                        <th className="whitespace-nowrap px-2.5 py-2">Date</th>
+                        <th className="whitespace-nowrap px-2.5 py-2">Voucher</th>
+                        <th className="whitespace-nowrap px-2.5 py-2">Customer Name</th>
+                        <th className="whitespace-nowrap px-2.5 py-2">Phone</th>
+                        <th className="whitespace-nowrap px-2.5 py-2">Items Summary</th>
+                        <th className="whitespace-nowrap px-2 py-2 text-center">Pcs</th> 
+                        <th className="whitespace-nowrap px-2.5 py-2 text-right">Total</th>
+                        <th className="whitespace-nowrap px-2.5 py-2">Payment mode</th>
+                        <th className="whitespace-nowrap px-2.5 py-2">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-stone-100 font-mono text-[10px]">
+                      {filteredSales.map((sale) => {
+                        const invNo = formatInvoiceNumber(sale.invoiceNumber);
+                        const dateFormatted = formatTallyDate(saleWhen(sale));
+                        const custName = getCustomerName(sale);
+                        const custPhone = getCustomerPhone(sale) || "—";
+                        const status = getFulfillment(sale.invoiceNumber).status;
+                        const statusLabel = ORDER_STATUS_LABELS[status] || status;
+                        const paymentMode = getPaymentLabel(sale.paymentMethod);
+                        const netPayable = getNetPayable(sale);
+                        const pieces = getSaleQty(sale);
+
+                        const itemsSummary =
+                          (sale.items || [])
+                            .map((it: any) => `${it.name || "Saree"} (${it.color || "Standard"}) x${Number(it.qty || it.quantity) || 1}`)
+                            .join(", ") || "Saree (1 Pcs)";
+
+                        return (
+                          <tr key={sale.invoiceNumber} className="hover:bg-amber-50/30">
+                            <td className="whitespace-nowrap px-2.5 py-2 text-stone-700">{dateFormatted}</td>
+                            <td className="whitespace-nowrap px-2.5 py-2 font-bold text-stone-900">{invNo}</td>
+                            <td className="max-w-32.5 truncate px-2.5 py-2 font-sans font-medium text-stone-800" title={custName}>
+                              {custName}
+                            </td>
+                            <td className="whitespace-nowrap px-2.5 py-2 text-stone-500">{custPhone}</td>
+                            <td className="max-w-45 truncate px-2.5 py-2 font-sans text-stone-700" title={itemsSummary}>
+                              {itemsSummary}
+                            </td>
+                            <td className="px-2 py-2 text-center font-bold text-stone-800">{pieces}</td>
+                           
+                            <td className="px-2.5 py-2 text-right font-bold text-stone-950">
+                              ₹{netPayable.toFixed(0)}
+                            </td>
+                            <td className="whitespace-nowrap px-2.5 py-2 font-sans text-[9px] font-semibold text-stone-700">
+                              {paymentMode}
+                            </td>
+                            <td className="whitespace-nowrap px-2.5 py-2 font-sans text-[9px]">
+                              <span className="rounded bg-stone-100 px-1.5 py-0.5 text-stone-600">
+                                {statusLabel}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+
+              {/* FOOTER NOTE */}
+              <div className="mt-4 border-t border-dashed border-stone-200 pt-3 text-center">
+                <p className="text-[9px] text-stone-500">
+                  Sales statement generated automatically. All values are in Indian Rupees (INR).
+                </p>
+              </div>
+            </div>
+
+            {/* MODAL FOOTER ACTIONS (NO-PRINT) */}
+            <div className="no-print print:hidden shrink-0 border-t border-stone-200 bg-stone-50/70 p-2.5 sm:px-6 sm:py-3.5">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <button
+                  type="button"
+                  onClick={() => setShowStatementModal(false)}
+                  className="w-full rounded-xl px-4 py-2 text-xs font-semibold text-stone-600 transition-colors hover:bg-stone-200/60 sm:w-auto"
+                >
+                  Close
+                </button>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadTallyCSV("detailed")}
+                    className="inline-flex min-w-0 items-center justify-center gap-1.5 rounded-xl bg-[#2A0E20] px-3.5 py-2 text-xs font-semibold text-amber-100 shadow-sm transition-all hover:bg-[#3D142E] active:scale-[0.98]"
+                  >
+                    <Download size={13} className="text-brand-gold" />
+                    <span>Download CSV</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    className="inline-flex min-w-0 items-center justify-center gap-1.5 rounded-xl border border-stone-200 bg-white px-3.5 py-2 text-xs font-semibold text-stone-700 shadow-2xs transition-all hover:bg-stone-100"
+                  >
+                    <Printer size={13} className="text-stone-700" />
+                    <span>Print Statement</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* PRINT CSS */}
       <style>{`
         @media print {
           @page {
-            margin: 0;
+            margin: 8mm;
             size: auto;
           }
 
@@ -1978,7 +2551,9 @@ export default function TransactionHistory({
           }
 
           #printable-invoice-preview,
-          #printable-invoice-preview * {
+          #printable-invoice-preview *,
+          #printable-statement-preview,
+          #printable-statement-preview * {
             visibility: visible !important;
           }
 
@@ -1996,8 +2571,41 @@ export default function TransactionHistory({
             overflow: visible !important;
           }
 
-          .no-print {
+          #printable-statement-preview {
+            position: fixed !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100vw !important;
+            min-height: 100vh !important;
+            height: auto !important;
+            background: white !important;
+            padding: 16px !important;
+            margin: 0 !important;
+            box-shadow: none !important;
+            overflow: visible !important;
+          }
+
+          .no-print,
+          .no-print *,
+          .print\\:hidden,
+          .print\\:hidden *,
+          #printable-invoice-preview .no-print,
+          #printable-invoice-preview .no-print *,
+          #printable-invoice-preview .print\\:hidden,
+          #printable-invoice-preview .print\\:hidden *,
+          #printable-invoice-preview button,
+          #printable-statement-preview .no-print,
+          #printable-statement-preview .no-print *,
+          #printable-statement-preview .print\\:hidden,
+          #printable-statement-preview .print\\:hidden *,
+          #printable-statement-preview button {
             display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            height: 0 !important;
+            width: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
           }
         }
       `}</style>
