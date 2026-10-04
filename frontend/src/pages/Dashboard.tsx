@@ -594,7 +594,6 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
   }, [loadLiveBootstrap]);
 
   const triggerRefresh = useCallback(() => {
-    sound.playGunReload();
     setIsRefreshing(true);
     loadLiveBootstrap(true).finally(() => {
       window.setTimeout(() => {
@@ -602,18 +601,6 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       }, 600);
     });
   }, [loadLiveBootstrap]);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const isModifier = e.ctrlKey || e.metaKey;
-      if (isModifier && e.key.toLowerCase() === "r") {
-        e.preventDefault();
-        triggerRefresh();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [triggerRefresh]);
 
   function reportSaveWarnings(json: any) {
     const warnings: string[] = json?.warnings || json?.data?.warnings || [];
