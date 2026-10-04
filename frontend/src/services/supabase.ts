@@ -92,6 +92,28 @@ export interface Coupon {
 
 // Local Storage Keys for offline / caching
 const LOCAL_STORAGE_PRODUCTS = "rs_fashions_products";
+// Last shop listing (light "card" view). Shown instantly on the next visit while a fresh copy loads.
+const CARD_CACHE_KEY = "rs_shop_card_cache_v1";
+const CARD_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+let cardListInFlight: Promise<Product[]> | null = null;
+let cardListFreshAt = 0;
+let cardListMemory: Product[] | null = null;
+
+/** The shop listing saved by the last visit (or this visit), or null. Synchronous: safe for first render. */
+export function getCachedCardProducts(): Product[] | null {
+  if (cardListMemory) return cardListMemory;
+  try {
+    const raw = localStorage.getItem(CARD_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !Array.isArray(parsed.products) || parsed.products.length === 0) return null;
+    if (Date.now() - Number(parsed.at || 0) > CARD_CACHE_MAX_AGE_MS) return null;
+    cardListMemory = parsed.products as Product[];
+    return cardListMemory;
+  } catch {
+    return null;
+  }
+}
 const LOCAL_STORAGE_CATEGORIES = "rs_fashions_categories";
 const LOCAL_STORAGE_STOCK_MOVEMENTS = "rs_fashions_stock_movements";
 const LOCAL_STORAGE_CUSTOMERS = "rs_fashions_customers";
@@ -130,6 +152,34 @@ export const StoreService = {
    * with all its photos. Partial results never overwrite the full local cache.
    */
   async getProducts(opts: { view?: "card"; id?: string } = {}): Promise<Product[]> {
+    // Several parts of a page ask for the same listing at once; fetch it a single time, and reuse
+    // a result that is only a few seconds old.
+    if (opts.view === "card" && !opts.id) {
+      if (cardListMemory && Date.now() - cardListFreshAt < 8000) return cardListMemory;
+      if (!cardListInFlight) {
+        cardListInFlight = this.fetchProducts(opts)
+          .then((list) => {
+            if (Array.isArray(list) && list.length > 0) {
+              cardListMemory = list;
+              cardListFreshAt = Date.now();
+              try {
+                localStorage.setItem(CARD_CACHE_KEY, JSON.stringify({ at: Date.now(), products: list }));
+              } catch {
+                // storage full or blocked: the listing just won't be remembered
+              }
+            }
+            return list;
+          })
+          .finally(() => {
+            cardListInFlight = null;
+          });
+      }
+      return cardListInFlight;
+    }
+    return this.fetchProducts(opts);
+  },
+
+  async fetchProducts(opts: { view?: "card"; id?: string } = {}): Promise<Product[]> {
     const isPartial = Boolean(opts.view || opts.id);
     const cleanAndHealProducts = async (list: Product[]): Promise<Product[]> => {
       const filtered = (list || []).filter(

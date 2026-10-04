@@ -4,7 +4,7 @@ import { useSearchParams, Link } from "react-router-dom";
 import { FiChevronDown, FiFilter, FiSearch, FiSliders, FiX, FiRotateCcw, FiShoppingBag, FiCheck, FiTag } from "react-icons/fi";
 import { type Product } from "../data/products";
 import FilterSheet, { type FilterState } from "../components/shop/FilterSheet";
-import { StoreService } from "../services/supabase";
+import { StoreService, getCachedCardProducts } from "../services/supabase";
 import { useCart } from "../context/CartContext";
 import { handleSareeImageError } from "../utils/imageConverter";
 import { API_BASE } from "../config/api";
@@ -234,6 +234,22 @@ function HorizontalProductCard({ product, isOffer, offerBadgeText }: { product: 
 const MemoHorizontalProductCard = memo(HorizontalProductCard);
 
 // =====================================================================
+// LOADING PLACEHOLDERS (shown during the very first load instead of "no sarees")
+// =====================================================================
+
+function ProductSkeletons({ count, className = "", grid = false }: { count: number; className?: string; grid?: boolean }) {
+  const cards = Array.from({ length: count }, (_, i) => (
+    <div key={i} className="animate-pulse overflow-hidden rounded-2xl border border-white/60 bg-white p-2.5 shadow-xs">
+      <div className="aspect-[3/4] w-full rounded-xl bg-[#E9C9C3]/45" />
+      <div className="mt-3 h-3 w-1/3 rounded bg-stone-200" />
+      <div className="mt-2 h-4 w-3/4 rounded bg-stone-200" />
+      <div className="mt-3 h-4 w-1/4 rounded bg-stone-200" />
+    </div>
+  ));
+  return grid ? <>{cards}</> : <div className={`grid grid-cols-2 gap-3 ${className}`}>{cards}</div>;
+}
+
+// =====================================================================
 // EMPTY STATE
 // =====================================================================
 
@@ -303,6 +319,11 @@ export default function Shop() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [allProducts, setAllProducts] = useState<Product[]>(() => {
+    // Instant first paint: the listing remembered from the last visit (refreshed in the background).
+    const remembered = getCachedCardProducts();
+    if (remembered && remembered.length > 0) {
+      return remembered.filter((p) => p && p.id && !DUMMY_PRODUCT_IDS.has(String(p.id)));
+    }
     try {
       const saved = localStorage.getItem("rs_fashions_products");
       if (saved) {
@@ -316,6 +337,9 @@ export default function Shop() {
     } catch {}
     return [];
   });
+
+  // True until the first answer from the server: show placeholders, never "No sarees available".
+  const [isFirstLoad, setIsFirstLoad] = useState(true);
 
   const [offerProductIds, setOfferProductIds] = useState<Set<string>>(new Set());
   const [offerBadgesMap, setOfferBadgesMap] = useState<Record<string, string>>({});
@@ -384,6 +408,8 @@ export default function Shop() {
         }
       } catch (err) {
         console.error("Error loading products:", err);
+      } finally {
+        if (isMounted) setIsFirstLoad(false);
       }
     }
     loadProducts();
@@ -825,7 +851,7 @@ export default function Shop() {
               )
             )
           ) : (
-            <EmptyState onReset={handleResetAll} isInitialEmpty={allProducts.length === 0} />
+            isFirstLoad && allProducts.length === 0 ? <ProductSkeletons count={4} /> : <EmptyState onReset={handleResetAll} isInitialEmpty={allProducts.length === 0} />
           )}
         </div>
 
@@ -836,7 +862,9 @@ export default function Shop() {
               <MemoProductCard key={product.id} product={product} />
             ))
           ) : (
-            <EmptyState onReset={handleResetAll} isInitialEmpty={allProducts.length === 0} className="col-span-full" />
+            isFirstLoad && allProducts.length === 0
+              ? <ProductSkeletons count={8} className="col-span-full" grid />
+              : <EmptyState onReset={handleResetAll} isInitialEmpty={allProducts.length === 0} className="col-span-full" />
           )}
         </div>
       </div>

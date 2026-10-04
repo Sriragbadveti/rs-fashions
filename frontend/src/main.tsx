@@ -44,3 +44,11 @@ ReactDOM.createRoot(
     </BrowserRouter>
   </React.StrictMode>
 );
+
+// Start downloading the shop listing right away, in parallel with the page's own code, so the
+// sarees are usually ready by the time the Shop (or home) page asks for them. Not for the admin.
+if (!window.location.pathname.startsWith("/admin")) {
+  import("./services/supabase")
+    .then((m) => m.StoreService.getProducts({ view: "card" }))
+    .catch(() => {});
+}

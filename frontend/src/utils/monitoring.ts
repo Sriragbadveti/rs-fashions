@@ -20,6 +20,11 @@ const IGNORED_MESSAGES = [
   "NetworkError when attempting to fetch resource",
   "Load failed",
   "AbortError",
+  // Scripts injected by social apps' in-app browsers (Instagram, Facebook, TikTok...) into our page.
+  // They talk to the app through window.webkit.messageHandlers, which a normal browser lacks.
+  /webkit\.messageHandlers/,
+  /_AutofillCallbackHandler/,
+  /Java object is gone/,
 ];
 
 export function scrubBrowserEvent<T extends Sentry.ErrorEvent>(event: T): T {
