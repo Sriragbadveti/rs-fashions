@@ -616,40 +616,68 @@ export async function updateFulfillment(req, res) {
 
 
 
+/** Was stock taken off the shelf for this order? Unpaid online orders never deducted anything. */
+function stockWasDeducted(order) {
+  const status = String(order.order_status || order.orderStatus || "").toLowerCase();
+  if (status === "cancelled") return false; // cancelling already put it back
+  const method = String(order.payment_method || order.paymentMethod || "").toLowerCase();
+  const pay = String(order.payment_status || order.paymentStatus || "").toLowerCase();
+  if (method === "cashfree" && ["pending", "failed"].includes(pay)) return false;
+  return true;
+}
+
 /**
- * DELETE /api/sales/:invoiceNumber — permanently removes a sales receipt (order record).
- * Stock is NOT changed (use Saree Stock to correct it) and no payment is refunded. Customer totals
- * and revenue update by themselves because they are computed from the remaining orders.
+ * DELETE /api/sales/:invoiceNumber — permanently removes a sales receipt (order record) and puts
+ * its sarees back in stock (+qty per item, logged in Stock History as RETURN), unless the order was
+ * already cancelled (stock already restored) or never took stock (unpaid online order).
+ * No payment is refunded. Customer totals and revenue update by themselves because they are
+ * computed from the remaining orders.
  */
 export async function deleteSale(req, res) {
   try {
     const key = String(req.params.invoiceNumber || "").trim();
-    if (!key) return errorResponse(res, "Invoice number is required", 400);
+    if (!key || /[,()]/.test(key)) return errorResponse(res, "Invoice number is required", 400);
 
-    let removed = 0;
+    const performedBy = req.adminUser?.name || req.adminUser?.email || "Store Manager";
+    const deleted = []; // the rows this request actually removed (so stock is restored once)
+
     if (supabase) {
       const { data: rows, error } = await supabase
         .from("orders")
-        .select("id, order_number, invoice_number")
+        .select("id")
         .or(`invoice_number.eq.${key},order_number.eq.${key},id.eq.${key}`);
       if (error) throw error;
       const ids = (rows || []).map((r) => r.id);
       if (ids.length > 0) {
-        const { error: delErr } = await supabase.from("orders").delete().in("id", ids);
+        const { data: gone, error: delErr } = await supabase.from("orders").delete().in("id", ids).select("*");
         if (delErr) throw delErr;
-        removed = ids.length;
-        const labels = new Set([key, ...(rows || []).flatMap((r) => [r.invoice_number, r.order_number]).filter(Boolean)]);
+        deleted.push(...(gone || []));
+        const labels = new Set([key, ...deleted.flatMap((r) => [r.invoice_number, r.order_number]).filter(Boolean)]);
         await supabase.from("tracked_orders").delete().in("id", [...labels].map((l) => `trk-${l}`));
       }
     }
-    removed += deleteOrderFromStore(key);
+    const local = findOrderFromStore(key);
+    if (local && deleteOrderFromStore(key) > 0) deleted.push(local);
 
-    if (removed === 0) return errorResponse(res, "Receipt not found", 404);
+    if (deleted.length === 0) return errorResponse(res, "Receipt not found", 404);
+
+    const restored = [];
+    for (const order of deleted) {
+      if (!stockWasDeducted(order)) continue;
+      const items = Array.isArray(order.items) ? order.items : [];
+      const label = order.invoice_number || order.invoiceNumber || key;
+      const r = await restoreStockForOrderItems(items, {
+        referenceNumber: `DEL-${label}`,
+        performedBy,
+        note: `Receipt ${label} deleted: stock restored.`,
+      });
+      restored.push(...r);
+    }
 
     invalidateSalesCache();
     invalidateBootstrapCache();
-    console.log(`[Sales] Receipt ${key} deleted by ${req.adminUser?.email || req.adminUser?.name || "admin"}`);
-    return successResponse(res, { invoiceNumber: key, removed }, "Receipt deleted");
+    console.log(`[Sales] Receipt ${key} deleted by ${performedBy}; ${restored.length} item(s) restocked`);
+    return successResponse(res, { invoiceNumber: key, removed: deleted.length, restored }, "Receipt deleted and stock restored");
   } catch (err) {
     console.error("Delete receipt error:", err);
     return errorResponse(res, err.message, 500);

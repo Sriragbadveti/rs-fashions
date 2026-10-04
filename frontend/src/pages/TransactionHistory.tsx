@@ -299,7 +299,7 @@ export default function TransactionHistory({
     const ok = window.confirm(
       `Delete receipt ${inv} for ${name}?\n\n` +
         `• The receipt is removed for good and can't be brought back.\n` +
-        `• Saree stock is NOT changed. If the saree is back on the shelf, fix the stock in Saree Stock.\n` +
+        `• The sarees go back into stock (+1 for each piece on this receipt), and Stock History records it.\n` +
         `• Any payment is NOT refunded.\n` +
         `• The customer's total spent and your revenue figures will drop by this amount.`
     );
