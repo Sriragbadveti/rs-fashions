@@ -146,11 +146,11 @@ export default function TrackOrder({ salesHistory }: TrackOrderProps) {
 
       const matchesSearch =
         !q ||
-        sale.invoiceNumber.toLowerCase().includes(q) ||
-        sale.customerName.toLowerCase().includes(q) ||
-        sale.customerPhone.toLowerCase().includes(q) ||
-        sale.items.some((item) => item.sku.toLowerCase().includes(q)) ||
-        getFulfillment(sale.invoiceNumber).trackingNumber.toLowerCase().includes(q);
+        (sale.invoiceNumber || "").toLowerCase().includes(q) ||
+        (sale.customerName || "").toLowerCase().includes(q) ||
+        (sale.customerPhone || "").toLowerCase().includes(q) ||
+        (sale.items || []).some((item) => (item.sku || "").toLowerCase().includes(q)) ||
+        (getFulfillment(sale.invoiceNumber).trackingNumber || "").toLowerCase().includes(q);
 
       return matchesStatus && matchesSearch;
     });

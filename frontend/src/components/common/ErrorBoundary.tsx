@@ -44,6 +44,12 @@ export default class ErrorBoundary extends Component<Props, State> {
               An unexpected interruption occurred while preparing your showroom view. Please refresh the page to resume exploring our collection.
             </p>
 
+            {this.state.error?.message && (
+              <p className="mt-3 break-words text-[10px] leading-snug text-[#B0A396]">
+                Details: {String(this.state.error.message).slice(0, 160)}
+              </p>
+            )}
+
             <div className="mt-7 flex flex-col gap-3">
               <button
                 type="button"

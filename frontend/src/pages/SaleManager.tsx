@@ -254,7 +254,7 @@ export default function SaleManager({ inventory }: SaleManagerProps) {
 
   // Filtered sale items for search
   const filteredSaleItems = (saleConfig.saleItems || []).filter((it) =>
-    it.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (it.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
     (it.category && it.category.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 

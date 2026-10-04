@@ -241,11 +241,11 @@ export default function ReviewsManager({ inventory }: ReviewsManagerProps) {
     return reviews.filter((r) => {
       const matchSearch =
         searchQuery === "" ||
-        r.reviewerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        r.productName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        r.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        r.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        r.reviewerLocation.toLowerCase().includes(searchQuery.toLowerCase());
+        (r.reviewerName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (r.productName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (r.title || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (r.content || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (r.reviewerLocation || "").toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchRating = selectedRatingFilter === "all" || r.rating === selectedRatingFilter;
       const matchProduct = selectedProductFilter === "all" || String(r.productId) === String(selectedProductFilter);

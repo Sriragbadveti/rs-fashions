@@ -515,11 +515,11 @@ export function useBilling({
 
       const searchable = [
         product.id,
-        product.name,
+        product.name || "",
         category?.name ?? "",
         category?.hsn ?? "",
-        ...product.tags,
-        ...product.variants.flatMap((variant) => [
+        ...(product.tags || []),
+        ...(product.variants || []).flatMap((variant) => [
           variant.sku,
           variant.color,
           variant.colorSlug,

@@ -662,8 +662,8 @@ export default function CRM({
 
       if (!q) return true;
       return (
-        customer.name.toLowerCase().includes(q) ||
-        customer.phone.includes(q) ||
+        (customer.name || "").toLowerCase().includes(q) ||
+        (customer.phone || "").includes(q) ||
         Boolean(customer.email?.toLowerCase().includes(q)) ||
         Boolean(customer.city?.toLowerCase().includes(q)) ||
         Boolean(customer.address?.toLowerCase().includes(q)) ||

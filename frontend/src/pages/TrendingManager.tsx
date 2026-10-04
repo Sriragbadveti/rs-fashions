@@ -219,8 +219,8 @@ export default function TrendingManager({ inventory }: TrendingManagerProps) {
   };
 
   const filteredInventory = inventory.filter((p) =>
-    p.name.toLowerCase().includes(searchInventoryQuery.toLowerCase()) ||
-    p.id.toLowerCase().includes(searchInventoryQuery.toLowerCase())
+    (p.name || "").toLowerCase().includes(searchInventoryQuery.toLowerCase()) ||
+    String(p.id || "").toLowerCase().includes(searchInventoryQuery.toLowerCase())
   );
 
   return (
