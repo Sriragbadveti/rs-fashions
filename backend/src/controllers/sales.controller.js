@@ -683,3 +683,58 @@ export async function deleteSale(req, res) {
     return errorResponse(res, err.message, 500);
   }
 }
+
+
+/**
+ * PUT /api/sales/:invoiceNumber/address { address } — lets the admin add or correct the delivery
+ * address on a receipt (older counter sales were saved without one). Also fills the customer's
+ * card if it has no address yet.
+ */
+export async function updateSaleAddress(req, res) {
+  try {
+    const key = String(req.params.invoiceNumber || "").trim();
+    const address = String(req.body?.address ?? "").trim().slice(0, 500);
+    if (!key || /[,()]/.test(key)) return errorResponse(res, "Invoice number is required", 400);
+    if (!address) return errorResponse(res, "Please enter the address", 400);
+
+    let phone = null;
+    let found = false;
+    if (supabase) {
+      const { data: rows, error } = await supabase
+        .from("orders")
+        .select("id, phone")
+        .or(`invoice_number.eq.${key},order_number.eq.${key},id.eq.${key}`)
+        .limit(1);
+      if (error) throw error;
+      if (rows && rows[0]) {
+        found = true;
+        phone = rows[0].phone;
+        const { error: upErr } = await supabase
+          .from("orders")
+          .update({ shipping_address: address, updated_at: new Date().toISOString() })
+          .eq("id", rows[0].id);
+        if (upErr) throw upErr;
+        const digits = String(phone || "").replace(/\D/g, "").slice(-10);
+        if (digits.length === 10) {
+          const { data: custs } = await supabase.from("customers").select("id, phone, address").ilike("phone", `%${digits}%`);
+          for (const c of custs || []) {
+            if (!String(c.address || "").trim()) await supabase.from("customers").update({ address }).eq("id", c.id);
+          }
+        }
+      }
+    }
+    const local = findOrderFromStore(key);
+    if (local) {
+      saveOrderToStore({ ...local, shipping_address: address });
+      found = true;
+    }
+    if (!found) return errorResponse(res, "Receipt not found", 404);
+
+    invalidateSalesCache();
+    invalidateBootstrapCache();
+    return successResponse(res, { invoiceNumber: key, address }, "Address saved");
+  } catch (err) {
+    console.error("Update receipt address error:", err);
+    return errorResponse(res, err.message, 500);
+  }
+}

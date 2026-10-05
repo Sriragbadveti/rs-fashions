@@ -100,6 +100,10 @@ async function handleCheckoutUnlocked(req, res) {
       return errorResponse(res, "Customer phone and at least one item are required", 400);
     }
 
+    if (!effectiveAddress) {
+      console.warn(`[Billing] Sale for ${effectivePhone} arrived without an address (keys: ${Object.keys(req.body || {}).join(",")})`);
+    }
+
     const saleId = `inv-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
     let finalInvoiceNumber = await resolveSequentialInvoiceNumber(invoiceNumber, orderNumber);
 
@@ -193,6 +197,8 @@ async function handleCheckoutUnlocked(req, res) {
             name: existingCust.name || effectiveName,
             ...(!existingCust.email && effectiveEmail ? { email: String(effectiveEmail).trim().toLowerCase() } : {}),
             ...(!phoneKey(existingCust.phone) && phoneKey(effectivePhone) ? { phone: phoneKey(effectivePhone) } : {}),
+            // Keep the address from the counter on the customer card too (only fills a blank one).
+            ...(typeof effectiveAddress === "string" && effectiveAddress && !String(existingCust.address || "").trim() ? { address: effectiveAddress } : {}),
             total_spent: newSpent,
             orders_count: newOrders,
             updated_at: new Date().toISOString(),
@@ -204,6 +210,7 @@ async function handleCheckoutUnlocked(req, res) {
             phone: effectivePhone,
             email: effectiveEmail || null,
             city: "Hyderabad",
+            ...(typeof effectiveAddress === "string" && effectiveAddress ? { address: effectiveAddress } : {}),
             total_spent: saleTotal,
             orders_count: 1,
           }]);

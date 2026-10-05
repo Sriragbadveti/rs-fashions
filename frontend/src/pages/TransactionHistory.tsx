@@ -42,6 +42,8 @@ interface TransactionHistoryProps {
   salesHistory: CompletedSale[];
   /** Permanently deletes a receipt on the server; resolves true when it is gone. */
   onDeleteSale?: (sale: CompletedSale) => Promise<boolean>;
+  /** Saves a delivery address on a receipt (for older sales that have none); resolves true on success. */
+  onUpdateAddress?: (sale: CompletedSale, address: string) => Promise<boolean>;
 }
 
 const STORE_LEGAL_NAME = "Fashions";
@@ -258,6 +260,7 @@ const PaymentBadge = ({ method }: { method: string }) => {
 export default function TransactionHistory({
   salesHistory,
   onDeleteSale,
+  onUpdateAddress,
 }: TransactionHistoryProps) {
   const showroom = useShowroomSettings();
   const [searchQuery, setSearchQuery] = useState("");
@@ -290,6 +293,32 @@ export default function TransactionHistory({
     "";
 
   const [deletingInvoice, setDeletingInvoice] = useState<string | null>(null);
+
+  // Add / edit the delivery address on the open receipt.
+  const [addressDraft, setAddressDraft] = useState<string | null>(null);
+  const [savingAddress, setSavingAddress] = useState(false);
+  useEffect(() => setAddressDraft(null), [inspectInvoice?.invoiceNumber]);
+  const saveAddressDraft = async () => {
+    if (!inspectInvoice || !onUpdateAddress) return;
+    const value = (addressDraft || "").trim();
+    if (!value) return;
+    setSavingAddress(true);
+    try {
+      const ok = await onUpdateAddress(inspectInvoice, value);
+      if (!ok) {
+        alert("Could not save the address. Please try again.");
+        return;
+      }
+      setInspectInvoice({
+        ...inspectInvoice,
+        shippingAddress: value,
+        customer: { ...(inspectInvoice.customer as any), address: value },
+      } as CompletedSale);
+      setAddressDraft(null);
+    } finally {
+      setSavingAddress(false);
+    }
+  };
 
   /** Permanently removes a receipt after the admin confirms. Stock is not touched. */
   const handleDeleteReceipt = async (sale: CompletedSale) => {
@@ -2013,6 +2042,47 @@ export default function TransactionHistory({
                           <Copy size={10} />
                         )}
                       </button>
+                    </div>
+                  )}
+
+                  {onUpdateAddress && (
+                    <div className="no-print print:hidden mt-1 sm:text-right">
+                      {addressDraft === null ? (
+                        <button
+                          type="button"
+                          onClick={() => setAddressDraft(getCustomerAddress(inspectInvoice))}
+                          className="text-[10px] font-semibold text-[#8E3D51] underline underline-offset-2"
+                        >
+                          {getCustomerAddress(inspectInvoice) ? "Edit address" : "Add address"}
+                        </button>
+                      ) : (
+                        <div className="flex flex-col gap-1.5 sm:items-end">
+                          <textarea
+                            value={addressDraft}
+                            onChange={(e) => setAddressDraft(e.target.value)}
+                            rows={3}
+                            placeholder="House no., street, town, district, PIN code"
+                            className="w-full rounded-lg border border-stone-300 bg-white p-2 text-[11px] text-stone-800 outline-none focus:border-[#8E3D51] sm:max-w-65"
+                          />
+                          <div className="flex gap-1.5">
+                            <button
+                              type="button"
+                              disabled={savingAddress || !(addressDraft || "").trim()}
+                              onClick={saveAddressDraft}
+                              className="rounded-lg bg-[#2A0E20] px-3 py-1.5 text-[10px] font-semibold text-amber-100 disabled:opacity-50"
+                            >
+                              {savingAddress ? "Saving..." : "Save address"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setAddressDraft(null)}
+                              className="rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-[10px] font-semibold text-stone-600"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

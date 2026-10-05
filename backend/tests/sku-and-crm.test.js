@@ -553,6 +553,25 @@ test("a counter sale keeps the address typed at the counter (sent inside `custom
   assert.match(JSON.stringify(order.shippingAddress || order.shipping_address || ""), /12-3-45 Test Street/);
 });
 
+test("an admin can add the missing address to an older receipt", async () => {
+  const created = (await api("POST", "/catalog", product({ variants: [{ color: "Red", colorSlug: "RED", stock: 2, sku: "" }] }))).body.product;
+  const line = { id: created.id, productId: created.id, name: "Test Saree", color: "Red", quantity: 1, qty: 1, price: 1000 };
+  const sale = await api("POST", "/billing/checkout", { customerPhone: "9123456784", customerName: "Old Sale", items: [line], total: 1000, paymentMethod: "cash", invoiceNumber: `OLD-${Date.now()}` }, { auth: false });
+  const inv = sale.body.invoiceNumber;
+  const addrOf = async () => {
+    const orders = (await api("GET", "/sales/customer-orders?phone=9123456784", undefined, { auth: false })).body.orders || [];
+    const o = orders.find((x) => (x.invoiceNumber || x.orderNumber) === inv);
+    return JSON.stringify(o?.shippingAddress || o?.shipping_address || "");
+  };
+  assert.doesNotMatch(await addrOf(), /Lakshmi/);
+  assert.ok([401, 403].includes((await api("PUT", `/sales/${inv}/address`, { address: "x" }, { auth: false })).status), "needs an admin login");
+  assert.equal((await api("PUT", `/sales/${inv}/address`, { address: "  " })).status, 400);
+  const ok = await api("PUT", `/sales/${inv}/address`, { address: "9-1-2 Lakshmi Nagar, Gadwal 509125" });
+  assert.equal(ok.status, 200, JSON.stringify(ok.body));
+  assert.match(await addrOf(), /Lakshmi Nagar/);
+  assert.equal((await api("PUT", "/sales/NOPE-404/address", { address: "x" })).status, 404);
+});
+
 // ------------------------------------------------------------------------------------------
 // Exhaustion (must run last: it consumes the top of the range)
 // ------------------------------------------------------------------------------------------

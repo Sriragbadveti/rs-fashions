@@ -990,6 +990,31 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       .catch((err) => console.warn("Movement sync error:", err));
   }
 
+  async function handleUpdateSaleAddress(sale: CompletedSale, address: string): Promise<boolean> {
+    try {
+      const res = await adminFetch(`${API_BASE}/sales/${encodeURIComponent(sale.invoiceNumber)}/address`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address }),
+      });
+      if (!res.ok) return false;
+      setSalesHistory((prev) => {
+        const updated = prev.map((s) =>
+          s.invoiceNumber === sale.invoiceNumber
+            ? ({ ...s, shippingAddress: address, customer: { ...(s.customer as any), address } } as CompletedSale)
+            : s
+        );
+        safeStorageSet("rs_admin_sales_history", updated);
+        return updated;
+      });
+      void loadLiveBootstrap(true);
+      return true;
+    } catch (err) {
+      console.warn("Update receipt address error:", err);
+      return false;
+    }
+  }
+
   async function handleDeleteSale(sale: CompletedSale): Promise<boolean> {
     try {
       const res = await adminFetch(`${API_BASE}/sales/${encodeURIComponent(sale.invoiceNumber)}`, { method: "DELETE" });
@@ -1370,7 +1395,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
               )}
 
               {activeTab === "sales-ledger" && (
-                <TransactionHistory salesHistory={salesHistory} onDeleteSale={handleDeleteSale} />
+                <TransactionHistory salesHistory={salesHistory} onDeleteSale={handleDeleteSale} onUpdateAddress={handleUpdateSaleAddress} />
               )}
 
               {activeTab === "categories" && (

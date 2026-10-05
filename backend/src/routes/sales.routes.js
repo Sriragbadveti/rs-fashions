@@ -7,6 +7,7 @@ import {
   updateFulfillment,
   cancelOrder,
   deleteSale,
+  updateSaleAddress,
 } from "../controllers/sales.controller.js";
 import { requireAdminAuth } from "../middleware/adminAuth.js";
 
@@ -24,5 +25,6 @@ router.get("/analytics/summary", requireAdminAuth, getAnalyticsSummary);
 router.put("/:invoiceNumber/fulfillment", requireAdminAuth, updateFulfillment);
 router.post("/:invoiceNumber/cancel", requireAdminAuth, cancelOrder);
 router.delete("/:invoiceNumber", requireAdminAuth, deleteSale);
+router.put("/:invoiceNumber/address", requireAdminAuth, updateSaleAddress);
 
 export default router;
