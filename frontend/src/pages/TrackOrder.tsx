@@ -24,6 +24,7 @@ import {
 } from "../context/OrderFulfillmentContext";
 import type { OrderStatus } from "../context/OrderFulfillmentContext";
 import { statusOptionsFor } from "../types/orderStatus";
+import { selectionForSearch } from "../utils/orderSearch";
 import { sound } from "../types/soundEngine";
 import { useShowroomSettings } from "../types/settings";
 import { variantImgProps } from "../utils/imageVariants";
@@ -73,6 +74,7 @@ export default function TrackOrder({ salesHistory }: TrackOrderProps) {
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const detailsPanelRef = useRef<HTMLDivElement>(null);
 
   const inventoryProducts: Product[] = useMemo(() => {
     try {
@@ -160,6 +162,21 @@ export default function TrackOrder({ salesHistory }: TrackOrderProps) {
     () => salesHistory.find((sale) => sale.invoiceNumber === selectedInvoice) ?? null,
     [salesHistory, selectedInvoice]
   );
+
+  // Typing a customer's name opens that order's AWB / shipment details straight away (no click needed).
+  useEffect(() => {
+    const next = selectionForSearch(
+      searchQuery,
+      filteredOrders.map((sale) => sale.invoiceNumber),
+      selectedInvoice
+    );
+    if (next === undefined) return;
+    setSelectedInvoice(next);
+    // On phones/tablets the details sit below the list: bring them into view.
+    if (next && typeof window !== "undefined" && window.innerWidth < 1024) {
+      window.setTimeout(() => detailsPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+    }
+  }, [searchQuery, filteredOrders, selectedInvoice]);
 
   const copyToClipboard = async (text: string, fieldId: string) => {
     try {
@@ -413,7 +430,7 @@ export default function TrackOrder({ salesHistory }: TrackOrderProps) {
         </div>
 
         {/* RIGHT: SELECTED ORDER DETAILS & VISUAL DRAPE INSPECTION */}
-        <div className="lg:col-span-7 min-w-0 glass-panel p-6 md:p-7 rounded-3xl shadow-premium space-y-6 sticky top-4">
+        <div ref={detailsPanelRef} className="lg:col-span-7 min-w-0 glass-panel p-6 md:p-7 rounded-3xl shadow-premium space-y-6 sticky top-4 scroll-mt-4">
           {selectedOrder ? (
             (() => {
               const fulfillment = getFulfillment(selectedOrder.invoiceNumber);
