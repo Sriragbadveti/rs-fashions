@@ -25,6 +25,7 @@ import {
 import type { OrderStatus } from "../context/OrderFulfillmentContext";
 import { statusOptionsFor } from "../types/orderStatus";
 import { selectionForSearch } from "../utils/orderSearch";
+import { createPortal } from "react-dom";
 import { sound } from "../types/soundEngine";
 import { useShowroomSettings } from "../types/settings";
 import { variantImgProps } from "../utils/imageVariants";
@@ -72,6 +73,9 @@ export default function TrackOrder({ salesHistory }: TrackOrderProps) {
   const [previewImage, setPreviewImage] = useState<{ url: string; title: string } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  // Floating confirmation: stays on screen even if the iPad keyboard or scrolling hides the button.
+  const [saveToast, setSaveToast] = useState<{ ok: boolean; text: string } | null>(null);
+  const saveToastTimer = useRef<number | undefined>(undefined);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const detailsPanelRef = useRef<HTMLDivElement>(null);
@@ -189,17 +193,32 @@ export default function TrackOrder({ salesHistory }: TrackOrderProps) {
     }
   };
 
+  const showSaveToast = (ok: boolean, text: string) => {
+    setSaveToast({ ok, text });
+    window.clearTimeout(saveToastTimer.current);
+    saveToastTimer.current = window.setTimeout(() => setSaveToast(null), 3500);
+  };
+
   const handleSaveDispatchDetails = async () => {
-    if (!selectedOrder) return;
+    if (!selectedOrder || isSaving) return;
+    const invoice = selectedOrder.invoiceNumber;
+    // Close the iPad keyboard first so the screen settles back to its normal size.
+    (document.activeElement as HTMLElement | null)?.blur?.();
     try {
       setIsSaving(true);
       sound.playNotification();
-      const currentFulfillment = getFulfillment(selectedOrder.invoiceNumber);
-      await saveFulfillment(selectedOrder.invoiceNumber, currentFulfillment);
-      setSavedSuccess(true);
-      setTimeout(() => setSavedSuccess(false), 3000);
+      const currentFulfillment = getFulfillment(invoice);
+      const ok = await saveFulfillment(invoice, currentFulfillment);
+      if (ok) {
+        setSavedSuccess(true);
+        window.setTimeout(() => setSavedSuccess(false), 3000);
+        showSaveToast(true, `Saved: AWB & shipment details for ${invoice}`);
+      } else {
+        showSaveToast(false, "Could not sync to the server. Please check your connection and press Save again.");
+      }
     } catch (err) {
       console.error("Failed to save dispatch details:", err);
+      showSaveToast(false, "Could not save. Please try again.");
     } finally {
       setIsSaving(false);
     }
@@ -475,6 +494,8 @@ export default function TrackOrder({ salesHistory }: TrackOrderProps) {
                       <button
                         type="button"
                         onClick={handleSaveDispatchDetails}
+                        // Keeps the text field focused on touch screens, so the first tap is not spent closing the keyboard.
+                        onMouseDown={(e) => e.preventDefault()}
                         disabled={isSaving}
                         className={`h-9 shrink-0 flex items-center justify-center gap-1.5 px-4 rounded-xl text-xs font-semibold shadow-sm transition-all ${
                           savedSuccess
@@ -782,6 +803,21 @@ export default function TrackOrder({ salesHistory }: TrackOrderProps) {
           </div>
         </div>
       )}
+
+      {saveToast &&
+        createPortal(
+          <div
+            role="status"
+            aria-live="polite"
+            className={`fixed bottom-6 left-1/2 z-100000 flex max-w-[90vw] -translate-x-1/2 items-center gap-2 rounded-2xl px-4 py-3 text-xs font-semibold shadow-2xl ${
+              saveToast.ok ? "bg-emerald-700 text-white" : "bg-rose-700 text-white"
+            }`}
+          >
+            {saveToast.ok ? <Check size={14} className="shrink-0 text-emerald-200" /> : <span className="shrink-0">!</span>}
+            <span>{saveToast.text}</span>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
