@@ -76,7 +76,21 @@ async function handleCheckoutUnlocked(req, res) {
     const effectivePhone = customerPhone || req.body.phone || req.body.customer_phone;
     const effectiveName = customerName || req.body.customer_name || "Guest Customer";
     const effectiveEmail = customerEmail || req.body.email || req.body.customer_email || null;
-    const effectiveAddress = req.body.shipping_address || req.body.address || null;
+    // The counter sends the address inside `customer` (and the storefront as shipping_address): take whichever is filled.
+    const pickAddress = (...cands) => {
+      for (const c of cands) {
+        if (typeof c === "string" && c.trim()) return c.trim();
+        if (c && typeof c === "object") return c;
+      }
+      return null;
+    };
+    const effectiveAddress = pickAddress(
+      req.body.shipping_address,
+      req.body.shippingAddress,
+      req.body.address,
+      req.body.customerAddress,
+      req.body.customer?.address
+    );
 
     if (String(paymentMethod).toLowerCase() === "cod") {
       return errorResponse(res, "Cash on Delivery is no longer available. Please pay online.", 400);

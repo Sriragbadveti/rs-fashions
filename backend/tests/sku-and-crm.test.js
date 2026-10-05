@@ -539,6 +539,20 @@ test("deleting an already-cancelled receipt does not restore stock a second time
   assert.equal(await stockOf(), 3, "delete after cancel does not add it again");
 });
 
+test("a counter sale keeps the address typed at the counter (sent inside `customer`)", async () => {
+  const created = (await api("POST", "/catalog", product({ variants: [{ color: "Red", colorSlug: "RED", stock: 2, sku: "" }] }))).body.product;
+  const line = { id: created.id, productId: created.id, name: "Test Saree", color: "Red", quantity: 1, qty: 1, price: 1000 };
+  const sale = await api("POST", "/billing/checkout", {
+    customerPhone: "9123456783", customerName: "Addr Test", items: [line], total: 1000, paymentMethod: "cash",
+    invoiceNumber: `ADR-${Date.now()}`, customer: { name: "Addr Test", phone: "9123456783", address: "12-3-45 Test Street, Gadwal" },
+  }, { auth: false });
+  const inv = sale.body.invoiceNumber;
+  const mine = (await api("GET", "/sales/customer-orders?phone=9123456783", undefined, { auth: false })).body.orders || [];
+  const order = mine.find((o) => (o.invoiceNumber || o.orderNumber) === inv);
+  assert.ok(order, "order found");
+  assert.match(JSON.stringify(order.shippingAddress || order.shipping_address || ""), /12-3-45 Test Street/);
+});
+
 // ------------------------------------------------------------------------------------------
 // Exhaustion (must run last: it consumes the top of the range)
 // ------------------------------------------------------------------------------------------

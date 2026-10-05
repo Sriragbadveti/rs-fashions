@@ -254,3 +254,16 @@ img {
     scroll-behavior: auto !important;
   }
 }
+
+/* Admin on touch devices (iPad/phones): frosted-glass blur on big panels can fail to paint, leaving
+   the screen hazy or half blank until the next tap. Use near-solid panels there instead. */
+@media (hover: none) and (pointer: coarse) {
+  .admin-shell [class*="backdrop-blur"] {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+  .admin-shell aside,
+  .admin-shell header {
+    background-color: rgba(255, 255, 255, 0.96) !important;
+  }
+}

@@ -938,6 +938,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       body: JSON.stringify({
         ...sale,
         customerPhone: sale.customerPhone || "9999999999",
+        shipping_address: sale.customer?.address || undefined,
       }),
     })
       .then(async (response) => {
@@ -1101,10 +1102,12 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
 
   return (
     <OrderFulfillmentProvider initialFulfillments={initialFulfillments}>
-      <div className="relative h-screen w-screen overflow-hidden bg-[#FBF9F5] flex select-none font-sans text-stone-800 antialiased">
-        {/* Ambient Glows */}
-        <div className="pointer-events-none absolute -top-48 -left-48 h-[650px] w-[650px] rounded-full bg-linear-to-br from-[#EEDFD5]/60 via-[#E4CEBD]/30 to-transparent blur-3xl opacity-70" />
-        <div className="pointer-events-none absolute -bottom-48 -right-48 h-[750px] w-[750px] rounded-full bg-linear-to-tl from-[#E5D7E2]/50 via-[#F3EAE3]/40 to-transparent blur-3xl opacity-70" />
+      {/* Pinned to the screen (not 100vh): on iPad Safari 100vh can end up shorter than the screen and
+          leave a blank band until the next tap. */}
+      <div className="admin-shell fixed inset-0 overflow-hidden bg-[#FBF9F5] flex select-none font-sans text-stone-800 antialiased">
+        {/* Ambient glows: soft radial gradients (no blur filter, which iPads fail to paint on big layers) */}
+        <div className="pointer-events-none absolute -top-48 -left-48 h-[650px] w-[650px] rounded-full opacity-70" style={{ background: "radial-gradient(closest-side, rgba(238,223,213,0.65), rgba(228,206,189,0.3) 55%, transparent)" }} />
+        <div className="pointer-events-none absolute -bottom-48 -right-48 h-[750px] w-[750px] rounded-full opacity-70" style={{ background: "radial-gradient(closest-side, rgba(229,215,226,0.55), rgba(243,234,227,0.4) 55%, transparent)" }} />
 
         {isSidebarOpen && (
           <button

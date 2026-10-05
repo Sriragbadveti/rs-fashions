@@ -166,6 +166,13 @@ export async function getBootstrapData(req, res) {
       return v?.imageUrl || prod.imageUrl || "";
     };
 
+    // Receipts saved before the address was recorded show the customer's saved address (matched by phone).
+    const addressByPhone = new Map();
+    for (const c of custsRes.data || []) {
+      const key = String(c.phone || "").replace(/\D/g, "").slice(-10);
+      if (key.length === 10 && c.address && String(c.address).trim()) addressByPhone.set(key, String(c.address).trim());
+    }
+
     const sales = (ordersRes.data || []).filter(isVisibleOrder).map((o) => {
       const normalizedItems = (Array.isArray(o.items) ? o.items : []).map((item, idx) => ({
         ...item,
@@ -183,7 +190,7 @@ export async function getBootstrapData(req, res) {
         image: thumbFor(item),
       }));
 
-      const fullAddress = typeof o.shipping_address === "string"
+      let fullAddress = typeof o.shipping_address === "string"
         ? o.shipping_address
         : o.shipping_address && typeof o.shipping_address === "object"
           ? [
@@ -196,6 +203,9 @@ export async function getBootstrapData(req, res) {
               .filter(Boolean)
               .join(", ")
           : "";
+      if (!fullAddress) {
+        fullAddress = addressByPhone.get(String(o.phone || "").replace(/\D/g, "").slice(-10)) || "";
+      }
 
       return {
         id: o.id,
