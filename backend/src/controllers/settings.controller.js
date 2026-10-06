@@ -1,6 +1,11 @@
 import { supabase } from "../config/supabase.js";
 import { successResponse, errorResponse } from "../utils/response.js";
 import { invalidateBootstrapCache } from "./bootstrap.controller.js";
+import {
+  FESTIVAL_OFFER_SETTING_KEY,
+  normalizeFestivalOfferConfig,
+  invalidateFestivalOfferCache,
+} from "../services/festivalOffer.js";
 
 /**
  * Controller: Store Settings & POS Device Configuration
@@ -107,10 +112,18 @@ export async function updateSaleConfig(req, res) {
 export async function updateSetting(req, res) {
   try {
     const { key } = req.params;
-    const { value } = req.body;
+    let { value } = req.body;
 
     if (value === undefined) {
       return errorResponse(res, "Setting value is required", 400);
+    }
+
+    // Festival offer: always store a complete, valid config (missing fields fall back to defaults).
+    if (key === FESTIVAL_OFFER_SETTING_KEY) {
+      if (!value || typeof value !== "object" || Array.isArray(value)) {
+        return errorResponse(res, "Festival offer setting must be an object", 400);
+      }
+      value = normalizeFestivalOfferConfig(value);
     }
 
     if (supabase) {
@@ -121,11 +134,13 @@ export async function updateSetting(req, res) {
       }).select().single();
 
       invalidateBootstrapCache();
+      invalidateFestivalOfferCache();
       if (error) throw error;
       return successResponse(res, { setting: data }, `Setting '${key}' updated successfully`);
     }
 
     invalidateBootstrapCache();
+    invalidateFestivalOfferCache();
     return successResponse(res, { key, value }, "Setting updated locally");
   } catch (err) {
     return errorResponse(res, err.message, 500);
