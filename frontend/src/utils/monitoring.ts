@@ -49,8 +49,8 @@ export function initMonitoring(): void {
   const configured = env.VITE_SENTRY_DSN as string | undefined;
   const dsn = String(configured ?? DEFAULT_DSN).trim();
   const host = typeof window !== "undefined" ? window.location.hostname : "";
-  // Production only: nothing is sent from local development or Vercel preview URLs.
-  if (!dsn || !env.PROD || host === "localhost" || host === "127.0.0.1" || host.endsWith(".vercel.app")) return;
+  // Production only: nothing is sent from local development or Vercel / Cloudflare preview URLs.
+  if (!dsn || !env.PROD || host === "localhost" || host === "127.0.0.1" || host.endsWith(".vercel.app") || host.endsWith(".pages.dev")) return;
 
   Sentry.init({
     dsn,

@@ -2,6 +2,9 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
+// Release id for Sentry: the git commit on Cloudflare Pages (CF_PAGES_COMMIT_SHA) or Vercel.
+process.env.VITE_VERCEL_GIT_COMMIT_SHA ||= process.env.CF_PAGES_COMMIT_SHA || process.env.VERCEL_GIT_COMMIT_SHA || "";
+
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   build: {
