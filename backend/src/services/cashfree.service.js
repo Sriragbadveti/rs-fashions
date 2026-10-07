@@ -108,7 +108,10 @@ export async function createCashfreeOrder({
 
     if (!response.ok) {
       console.error(`[Cashfree API Error] Create Order Failed (HTTP ${response.status}):`, json?.message || json?.code || response.statusText);
-      throw new Error(sanitizeErrorMessage(json.message || `Cashfree Error: ${response.statusText}`));
+      const gatewayErr = new Error(sanitizeErrorMessage(json.message || `Cashfree Error: ${response.statusText}`));
+      gatewayErr.gatewayStatus = response.status;
+      gatewayErr.gatewayCode = json?.code;
+      throw gatewayErr;
     }
 
     return {
@@ -120,6 +123,7 @@ export async function createCashfreeOrder({
       environment: ENV.CASHFREE.ENV,
     };
   } catch (err) {
+    if (err?.gatewayStatus) throw err;
     throw new Error(sanitizeErrorMessage(err?.message || err));
   }
 }

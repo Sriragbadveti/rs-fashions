@@ -6,7 +6,9 @@ import {
 } from "../services/cashfree.service.js";
 import { supabase } from "../config/supabase.js";
 import { ENV } from "../config/env.js";
+import * as Sentry from "@sentry/node";
 import { successResponse, errorResponse } from "../utils/response.js";
+import { customerPaymentError } from "../utils/paymentErrors.js";
 import { invalidateBootstrapCache } from "./bootstrap.controller.js";
 import { deductStockForOrderItems } from "../services/inventory.service.js";
 import {
@@ -302,8 +304,17 @@ export async function createCashfreeOrder(req, res) {
       "Cashfree payment order created successfully"
     );
   } catch (err) {
-    console.error("[Cashfree Controller] Create Order Error:", safeErrorMsg(err));
-    return errorResponse(res, safeErrorMsg(err), 500);
+    const gatewayMsg = safeErrorMsg(err);
+    console.error("[Cashfree Controller] Create Order Error:", gatewayMsg);
+    const { message, statusCode } = customerPaymentError(err, gatewayMsg);
+    if (message !== gatewayMsg) {
+      // The customer gets a friendly message; Sentry still gets the gateway's real reason.
+      try {
+        Sentry.captureMessage(`Cashfree create-order rejected: ${gatewayMsg}`, "error");
+      } catch {}
+      res.locals.errorReported = true;
+    }
+    return errorResponse(res, message, statusCode);
   } finally {
     releaseLock(orderKey);
   }
