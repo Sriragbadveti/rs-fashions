@@ -1,0 +1,11 @@
+// Website on Cloudflare Workers (static assets only, no server code).
+// Workers Builds: build command `npm run build`, deploy command `npx wrangler deploy`.
+{
+  "name": "rs-fashions",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./frontend/dist",
+    // Unknown paths (e.g. /product/abc refreshed in the browser) get index.html, like Vercel's rewrite.
+    "not_found_handling": "single-page-application"
+  }
+}
