@@ -357,6 +357,8 @@ export async function verifyPayment(req, res) {
 //    Server-side check used by the counter page polling, /pay and network-recovery. Idempotent.
 // ---------------------------------------------------------------------------------------------
 export async function getPaymentStatus(req, res) {
+  // Live payment state: never let a browser, CDN or proxy cache it.
+  res.set("Cache-Control", "no-store");
   const razorpayOrderId = String(req.params?.razorpayOrderId || "").trim();
   if (!RAZORPAY_ORDER_ID.test(razorpayOrderId)) {
     return errorResponse(res, "A valid payment reference is required", 400);

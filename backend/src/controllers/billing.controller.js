@@ -8,6 +8,7 @@ import { findExistingCustomer, phoneKey } from "../services/customerIdentity.js"
 import { peekNextOrderNumber } from "../services/orderNumber.js";
 import { deductStockForOrderItems, findStockShortages, holdStock, releaseHolds, withStockLock } from "../services/inventory.service.js";
 import { isOnlineGatewayMethod } from "../services/orderVisibility.js";
+import { claimPendingSale, unclaimPendingSale } from "../services/paymentStore.js";
 
 /**
  * Controller: POS Billing, Counter Invoicing & Coupons
@@ -52,6 +53,9 @@ function stockShortageResponse(res, shortages) {
 
 // 1. ATOMIC CHECKOUT
 async function handleCheckoutUnlocked(req, res) {
+  // Set below when this request claims a Razorpay payment-link cart (released again on failure).
+  let linkOrderId = null;
+  let claimedLinkSale = false;
   try {
     const {
       invoiceNumber,
@@ -108,7 +112,40 @@ async function handleCheckoutUnlocked(req, res) {
     const saleId = `inv-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
     let finalInvoiceNumber = await resolveSequentialInvoiceNumber(invoiceNumber, orderNumber);
 
+    // A counter sale paid through a Razorpay payment link is ALSO recorded by the server the
+    // moment the payment is confirmed (payments.controller autoRecordPosSale). Both sides claim
+    // the same pending cart, so exactly one of them records it (and deducts stock).
+    linkOrderId = (() => {
+      try {
+        const id = new URL(String(req.body.paymentLink || "")).searchParams.get("order_id");
+        return /^order_[A-Za-z0-9]+$/.test(id || "") ? id : null;
+      } catch {
+        return null;
+      }
+    })();
+    const linkPaymentId = /^pay_[A-Za-z0-9]+$/.test(String(req.body.transactionId || "")) ? String(req.body.transactionId) : null;
+
     if (supabase) {
+      if (linkOrderId) {
+        claimedLinkSale = Boolean(await claimPendingSale(linkOrderId));
+        if (!claimedLinkSale && linkPaymentId) {
+          const { data: recorded } = await supabase
+            .from("orders")
+            .select("id, order_number, invoice_number, total, items")
+            .ilike("notes", `%(${linkPaymentId})%`)
+            .limit(1)
+            .maybeSingle();
+          if (recorded) {
+            return successResponse(res, {
+              saleId: recorded.id,
+              invoiceNumber: recorded.invoice_number || recorded.order_number,
+              order: recorded,
+              alreadyRecorded: true,
+            }, "Sale already recorded when the customer paid the link.");
+          }
+        }
+      }
+
       // 0. Idempotency check: a retry of the SAME sale must not double-insert or double-deduct.
       // The counter picks its invoice number from the browser's own saved history, so it can
       // propose a number another order already owns (new browser/device, cleared storage, online
@@ -172,7 +209,7 @@ async function handleCheckoutUnlocked(req, res) {
         payment_status: paymentStatus,
         order_status: orderStatus === "new" ? "ordered" : (orderStatus || "ordered"),
         billing_type: billingType,
-        notes: notes || null,
+        notes: notes || (linkPaymentId ? `Paid via Razorpay payment link (${linkPaymentId})` : null),
       }]).select().single();
 
       if (orderErr) throw orderErr;
@@ -281,6 +318,8 @@ async function handleCheckoutUnlocked(req, res) {
     return successResponse(res, { sale: localSaved, invoiceNumber: finalInvoiceNumber }, "Sale recorded locally", 201);
   } catch (err) {
     console.error("POS Checkout error:", err);
+    // Not recorded after all: let the server-side recorder (or a retry) take the cart back.
+    if (claimedLinkSale && linkOrderId) await unclaimPendingSale(linkOrderId).catch(() => {});
     return errorResponse(res, err.message, 500);
   }
 }
