@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { API_BASE } from "../config/api";
 import { adminFetch } from "../utils/adminSession";
 import { Device, Product, CompletedSale, StockMovement } from "../types/inventory";
+import { SUPPORT_EMAIL, SUPPORT_PHONE } from "../config/business";
 
 export type AppTheme = "light-luxury" | "dark-midnight" | "peach-blush" | "emerald-jade" | "royal-sapphire";
 
@@ -33,10 +34,11 @@ export interface ShowroomSettings {
 
 export const DEFAULT_SETTINGS: ShowroomSettings = {
   storeName: "Fashions",
-  gstin: "36AAAAA0000A1Z5",
+  // Left empty on purpose: enter the store's real GSTIN in Settings. Never ship a placeholder.
+  gstin: "",
   storeAddress: "Gadwal, Telangana 509125",
-  storePhone: "7842070881",
-  storeEmail: "concierge@rsfashions.in",
+  storePhone: SUPPORT_PHONE,
+  storeEmail: SUPPORT_EMAIL,
   invoicePrefix: "RSF/",
   financialYear: "2026-27",
   defaultHsnCode: "5208",

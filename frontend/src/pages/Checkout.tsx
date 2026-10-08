@@ -26,6 +26,7 @@ import { StoreService } from "../services/supabase";
 import { products, type Product } from "../data/products";
 import { getUserSession, saveAddress, getSavedAddresses, type SavedAddress } from "../utils/userSession";
 import { variantImgProps } from "../utils/imageVariants";
+import { SUPPORT_EMAIL, SUPPORT_PHONE_DISPLAY } from "../config/business";
 
 type CheckoutStep = "address" | "payment" | "success";
 type PaymentMethod = "cashfree" | "cod" | "upi" | "razorpay" | "phonepe";
@@ -811,7 +812,7 @@ function CheckoutInner() {
               if (verifyRes.paid) {
                 await completeCashfreeSuccess(cfRes.orderId!, verifyRes.paymentId);
               } else {
-                toast("Payment failed", "We could not confirm your payment. If money was debited it is refunded automatically.", "error");
+                toast("Payment failed", `We could not confirm your payment. If money was debited, contact us at ${SUPPORT_EMAIL} or ${SUPPORT_PHONE_DISPLAY} with your order details.`, "error");
               }
             } catch (vErr) {
               console.warn("Verification error:", vErr);

@@ -28,21 +28,22 @@ import {
 } from "../types/inventory";
 
 import { loadSettings } from "./settings";
+import { SUPPORT_EMAIL, SUPPORT_PHONE } from "../config/business";
 
 // -----------------------------------------------------------------
 // STORE / INVOICE CONSTANTS & DYNAMIC GETTERS
 // Dynamically sourced from Showroom Settings (Single Source of Truth)
 // -----------------------------------------------------------------
 export const getStoreLegalName = () => loadSettings().storeName || "RS Fashions";
-export const getStoreGstin = () => loadSettings().gstin || "36AAAAA0000A1Z5";
+export const getStoreGstin = () => loadSettings().gstin || "";
 export const getStoreAddress = () => loadSettings().storeAddress || "Gadwal, Telangana 509125";
-export const getStorePhone = () => loadSettings().storePhone || "7842070881";
-export const getStoreEmail = () => loadSettings().storeEmail || "concierge@rsfashions.in";
+export const getStorePhone = () => loadSettings().storePhone || SUPPORT_PHONE;
+export const getStoreEmail = () => loadSettings().storeEmail || SUPPORT_EMAIL;
 
-export const STORE_GSTIN = loadSettings().gstin || "36AAAAA0000A1Z5";
+export const STORE_GSTIN = loadSettings().gstin || "";
 export const STORE_LEGAL_NAME = loadSettings().storeName || "RS Fashions";
 export const STORE_ADDRESS = loadSettings().storeAddress || "Gadwal, Telangana 509125";
-export const STORE_WHATSAPP_NUMBER = (loadSettings().storePhone || "7842070881").replace(/\D/g, "").slice(-10);
+export const STORE_WHATSAPP_NUMBER = (loadSettings().storePhone || SUPPORT_PHONE).replace(/\D/g, "").slice(-10);
 export const INDIA_COUNTRY_CODE = "91";
 
 
@@ -980,8 +981,8 @@ export function useBilling({
     if (!completedSale) return;
     const settings = loadSettings();
     const liveStoreName = settings.storeName || "RS Fashions";
-    const liveStoreGstin = settings.gstin || "36AAAAA0000A1Z5";
-    const livePhone = (settings.storePhone || "7842070881").replace(/\D/g, "").slice(-10);
+    const liveStoreGstin = settings.gstin || "";
+    const livePhone = (settings.storePhone || SUPPORT_PHONE).replace(/\D/g, "").slice(-10);
 
     const lines = completedSale.items.map(
       (item) =>
@@ -1000,7 +1001,7 @@ export function useBilling({
           : "RETAIL INVOICE"
       }*`,
       `*Invoice #:* ${completedSale.invoiceNumber}`,
-      completedSale.billingType === "gst"
+      completedSale.billingType === "gst" && liveStoreGstin
         ? `*Store GSTIN:* ${liveStoreGstin}`
         : null,
       `*Date:* ${formatDate(completedSale.date)}`,

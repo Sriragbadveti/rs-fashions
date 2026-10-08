@@ -4,4 +4,4 @@
  */
 export const ADMIN_SECRET_PATH = "/admin-7f9a2b8e";
 export const ADMIN_LOGIN_PATH = "/admin-7f9a2b8e/login";
-export const STORE_WHATSAPP_NUMBER = "917842070881";
+export { SUPPORT_WHATSAPP as STORE_WHATSAPP_NUMBER } from "./business";

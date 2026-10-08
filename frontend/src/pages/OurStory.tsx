@@ -4,6 +4,8 @@ import { Link } from "react-router-dom";
 import { FiVolume2, FiVolumeX, FiChevronDown, FiHeart, FiArrowRight, FiHelpCircle } from "react-icons/fi";
 import { Sparkles } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
+import { BusinessDetails } from "../components/common/BusinessDetails";
+import { LEGAL_BUSINESS_NAME, whatsappLink } from "../config/business";
 import homeBannerImg from "../assets/images/home_banner.jpeg";
 import founderImg from "../assets/images/founder.jpeg";
 import founder1Img from "../assets/images/founder1.jpeg";
@@ -226,7 +228,7 @@ export default function OurStory() {
             transition={{ delay: 0.45, duration: 1 }}
             className="mx-auto mt-8 max-w-2xl font-serif text-lg sm:text-2xl md:text-3xl font-light italic leading-relaxed text-[#E8D4BE]"
           >
-            I’m Kanneboina Sindhuja, Founder & Proprietor of RS Fashions.
+            I’m Sindhuja Kanneboina, Founder & Proprietor of RS Fashions ({LEGAL_BUSINESS_NAME}).
           </motion.p>
 
           <motion.p
@@ -532,11 +534,15 @@ export default function OurStory() {
             {/* Founder Sign-off */}
             <div className="mt-14 pt-8 border-t border-white/10 text-center">
               <p className="font-serif text-2xl sm:text-3xl font-light italic text-[#D4AF37]">
-                Kanneboina Sindhuja
+                Sindhuja Kanneboina
               </p>
               <p className="text-xs uppercase tracking-[0.25em] text-[#A89C8F] mt-1.5 font-medium">
-                Founder &amp; Proprietor &bull; RS Fashions
+                Founder &amp; Proprietor &bull; {LEGAL_BUSINESS_NAME}
               </p>
+            </div>
+
+            <div className="mx-auto mt-10 max-w-xl text-left">
+              <BusinessDetails />
             </div>
           </motion.div>
 
@@ -562,7 +568,7 @@ export default function OurStory() {
               </Link>
 
               <a
-                href="https://api.whatsapp.com/send?phone=917842070881&text=Hi%20RS%20Fashions,%20I%20would%20like%20to%20connect%20with%20you"
+                href={whatsappLink("Hi RS Fashions, I would like to connect with you")}
                 target="_blank"
                 rel="noreferrer"
                 className="flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-6 py-4 text-xs font-semibold uppercase tracking-[0.18em] text-[#FAF7F2] transition-all hover:bg-green-600 active:scale-95"

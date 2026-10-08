@@ -2,6 +2,15 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { FiArrowLeft, FiClock, FiVideo, FiAlertCircle } from "react-icons/fi";
 import { FaWhatsapp } from "react-icons/fa";
+import { BusinessDetails, PolicyNav } from "../components/common/BusinessDetails";
+import {
+  BRAND_NAME,
+  LEGAL_BUSINESS_NAME,
+  SUPPORT_EMAIL,
+  POLICY_LAST_UPDATED,
+  whatsappLink,
+  mailtoLink,
+} from "../config/business";
 
 export default function ReturnPolicy() {
   return (
@@ -25,143 +34,145 @@ export default function ReturnPolicy() {
           {/* Header */}
           <header className="border-b border-[#8E3D51]/10 pb-6">
             <div className="inline-flex items-center gap-2 rounded-full border border-[#8E3D51]/15 bg-[#8E3D51]/5 px-3 py-1 text-[11px] font-semibold text-[#8E3D51] mb-3">
-              <span>Customer Care &amp; Guarantees</span>
+              <span>Orders &amp; Payments</span>
             </div>
 
             <h1 className="font-serif text-3xl sm:text-4xl text-[#2C2420] font-normal tracking-tight">
-              Return &amp; Replacement Policy
+              Cancellation &amp; Refund Policy
             </h1>
             <p className="mt-2 text-xs text-stone-500">
-              Last updated: September 2026 &middot; RS Fashions
+              Last updated: {POLICY_LAST_UPDATED} &middot; {BRAND_NAME} ({LEGAL_BUSINESS_NAME})
             </p>
           </header>
 
-          {/* Core Unboxing Requirement Box */}
+          {/* Core policy box */}
           <div className="mt-7 rounded-xl border border-[#8E3D51]/25 bg-[#8E3D51]/5 p-4 sm:p-5">
             <div className="flex items-start gap-3">
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#8E3D51] text-white mt-0.5">
                 <FiAlertCircle size={17} />
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-[#8E3D51]">
-                  Important: 48-Hour Window &amp; Unboxing Video
-                </h3>
+                <h2 className="text-sm font-semibold text-[#8E3D51]">
+                  We do not offer refunds
+                </h2>
                 <p className="mt-1 text-xs text-stone-700 leading-relaxed">
-                  Every handloom saree undergoes thorough manual checks before packing. In the unlikely event that your saree arrives physically torn, stained, or damaged in transit, replacements or refunds require:
+                  All purchases from {BRAND_NAME} ({LEGAL_BUSINESS_NAME}) are final. Orders are non-refundable and
+                  cannot be cancelled once payment is completed. Please review your saree, colour and order details
+                  carefully before paying.
                 </p>
-                <ul className="mt-2.5 space-y-1.5 text-xs text-stone-800">
-                  <li className="flex items-center gap-2">
-                    <FiClock size={14} className="text-[#8E3D51] shrink-0" />
-                    <span>Informing us within <strong>48 hours (2 days)</strong> of delivery confirmation.</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <FiVideo size={14} className="text-[#8E3D51] shrink-0" />
-                    <span>Sharing a single, continuous <strong>360&deg; unboxing video</strong> from the sealed outer parcel to opening the saree.</span>
-                  </li>
-                </ul>
               </div>
             </div>
           </div>
 
           {/* Body Content */}
           <div className="mt-8 space-y-7 text-xs sm:text-[13px] leading-relaxed text-stone-700">
-            {/* Section 1 */}
+            <section>
+              <h2 className="font-serif text-lg font-medium text-[#2C2420] mb-2">1. Refunds</h2>
+              <p>
+                {BRAND_NAME} does not offer refunds on any order, whatever the payment method used (UPI, cards or
+                netbanking).
+              </p>
+            </section>
+
+            <section>
+              <h2 className="font-serif text-lg font-medium text-[#2C2420] mb-2">2. Cancellations</h2>
+              <p>
+                Orders cannot be cancelled by the customer once the order has been placed and payment has been
+                completed. The website does not offer an option to cancel a confirmed order.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="font-serif text-lg font-medium text-[#2C2420] mb-2">3. Returns &amp; Exchanges</h2>
+              <p>
+                We do not accept returns or exchanges, including for a change of mind, colour preference, or natural
+                handloom characteristics such as minute zari shifts, minor selvedge unevenness, or small knots on the
+                reverse side.
+              </p>
+            </section>
+
             <section>
               <h2 className="font-serif text-lg font-medium text-[#2C2420] mb-2">
-                1. What Your Unboxing Video Needs to Show
+                4. Saree Damaged in Transit (Replacement Only)
               </h2>
               <p className="mb-3 text-stone-600">
-                Because handloom silks are delicate and transit mishandling is outside our direct control, a clear video helps us quickly approve your claim without back-and-forth:
+                Every handloom saree is checked by hand before packing. If your saree arrives physically torn,
+                stained, or damaged in transit, you may request a <strong>replacement</strong> (not a refund). A
+                request is only considered when:
               </p>
+              <ul className="mb-4 space-y-1.5 text-stone-800">
+                <li className="flex items-center gap-2">
+                  <FiClock size={14} className="text-[#8E3D51] shrink-0" />
+                  <span>You inform us within <strong>48 hours (2 days)</strong> of delivery, and</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <FiVideo size={14} className="text-[#8E3D51] shrink-0" />
+                  <span>You share a single, continuous <strong>360&deg; unboxing video</strong> from the sealed outer parcel to opening the saree.</span>
+                </li>
+              </ul>
 
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="rounded-xl border border-stone-200/80 bg-white/60 p-3.5 shadow-xs">
-                  <h3 className="text-xs font-bold text-[#8E3D51] mb-1">
-                    1. Show Sealed Parcel
-                  </h3>
+                  <h3 className="text-xs font-bold text-[#8E3D51] mb-1">1. Show Sealed Parcel</h3>
                   <p className="text-[11px] text-stone-600 leading-normal">
                     Show the intact package tape and the courier label clearly before opening.
                   </p>
                 </div>
-
                 <div className="rounded-xl border border-stone-200/80 bg-white/60 p-3.5 shadow-xs">
-                  <h3 className="text-xs font-bold text-[#8E3D51] mb-1">
-                    2. Unbroken Recording
-                  </h3>
+                  <h3 className="text-xs font-bold text-[#8E3D51] mb-1">2. Unbroken Recording</h3>
                   <p className="text-[11px] text-stone-600 leading-normal">
                     Film continuously without pauses or cuts while you open the parcel and unfold the saree.
                   </p>
                 </div>
-
                 <div className="rounded-xl border border-stone-200/80 bg-white/60 p-3.5 shadow-xs">
-                  <h3 className="text-xs font-bold text-[#8E3D51] mb-1">
-                    3. Highlight the Issue
-                  </h3>
+                  <h3 className="text-xs font-bold text-[#8E3D51] mb-1">3. Highlight the Issue</h3>
                   <p className="text-[11px] text-stone-600 leading-normal">
                     Bring any stain, cut, or visible fabric defect clearly into good lighting and focus.
                   </p>
                 </div>
               </div>
-            </section>
 
-            {/* Section 2 */}
-            <section>
-              <h2 className="font-serif text-lg font-medium text-[#2C2420] mb-2">
-                2. When Returns Are Not Accepted
-              </h2>
+              <p className="mt-4 mb-1.5 font-semibold text-stone-800">Replacement requests are not accepted for:</p>
               <ul className="space-y-1.5 pl-1 text-stone-600">
-                <li className="flex items-start gap-2">
-                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-[#8E3D51] shrink-0" />
-                  <span>Requests submitted after 48 hours from delivery.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-[#8E3D51] shrink-0" />
-                  <span>Sarees opened without a continuous, unedited unboxing video.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-[#8E3D51] shrink-0" />
-                  <span>Drapes that have been draped, worn, dry-cleaned, washed, altered, or scented.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-[#8E3D51] shrink-0" />
-                  <span>Pieces with missing tags, removed tassels, or cut/stitched blouse pieces.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-[#8E3D51] shrink-0" />
-                  <span>Natural handloom traits—such as minute zari shifts, minor selvedge unevenness, or small knots on the reverse side.</span>
-                </li>
+                {[
+                  "Requests submitted after 48 hours from delivery.",
+                  "Sarees opened without a continuous, unedited unboxing video.",
+                  "Drapes that have been draped, worn, dry-cleaned, washed, altered, or scented.",
+                  "Pieces with missing tags, removed tassels, or cut/stitched blouse pieces.",
+                  "Natural handloom traits—such as minute zari shifts, minor selvedge unevenness, or small knots on the reverse side.",
+                ].map((text) => (
+                  <li key={text} className="flex items-start gap-2">
+                    <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-[#8E3D51] shrink-0" />
+                    <span>{text}</span>
+                  </li>
+                ))}
               </ul>
+              <p className="mt-3">
+                To request a replacement, send your order number and the unboxing video to us on WhatsApp or by email
+                within 48 hours of delivery. Our team will review it and reply with the outcome.
+              </p>
             </section>
 
-            {/* Section 3 */}
             <section>
-              <h2 className="font-serif text-lg font-medium text-[#2C2420] mb-2">
-                3. How the Replacement Process Works
-              </h2>
-              <div className="space-y-2.5 pl-1 text-stone-700">
-                <p>
-                  <strong>Step 1:</strong> Record your unboxing video as soon as the courier delivers the package.
-                </p>
-                <p>
-                  <strong>Step 2:</strong> Send your Order Number and video to us over WhatsApp or email within 48 hours.
-                </p>
-                <p>
-                  <strong>Step 3:</strong> Our team reviews the clip within 24 hours to verify the issue.
-                </p>
-              </div>
+              <h2 className="font-serif text-lg font-medium text-[#2C2420] mb-2">5. Failed or Incomplete Payments</h2>
+              <p>
+                If a payment fails or is not confirmed, no order is placed. If an amount was debited from your
+                account for a payment that failed, please contact us at{" "}
+                <a href={mailtoLink("Failed payment")} className="font-medium text-[#8E3D51] underline-offset-4 hover:underline">
+                  {SUPPORT_EMAIL}
+                </a>{" "}
+                with your order number, payment date and amount so we can help you check its status.
+              </p>
             </section>
 
-            {/* Section 4 */}
             <section className="rounded-xl border border-stone-200/90 bg-white/70 p-4 sm:p-5">
-              <h2 className="font-serif text-base font-medium text-[#2C2420] mb-1.5">
-                4. Need to Request a Return or Replacement?
-              </h2>
+              <h2 className="font-serif text-base font-medium text-[#2C2420] mb-1.5">6. Need Help With an Order?</h2>
               <p className="text-xs text-stone-600 mb-3">
-                Message us directly with your order details and our team will guide you through the process right away:
+                Message us with your order number and our team will assist you:
               </p>
               <div className="flex flex-wrap gap-2.5">
                 <a
-                  href="https://api.whatsapp.com/send?phone=917842070881&text=Hi%20RS%20Fashions,%20I%20need%20assistance%20with%20my%20recent%20order"
+                  href={whatsappLink("Hi RS Fashions, I need assistance with my recent order")}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 rounded-xl bg-green-700 text-white px-4 py-2.5 text-xs font-semibold tracking-wide hover:bg-[#28492C] transition-colors"
@@ -169,41 +180,20 @@ export default function ReturnPolicy() {
                   <FaWhatsapp size={15} />
                   <span>WhatsApp Support</span>
                 </a>
-
                 <a
-                  href="mailto:support@rsfashions.com?subject=Return%20or%20Replacement%20Assistance"
-                  className="inline-flex items-center gap-2 rounded-xl border border-stone-300 bg-[#FAF7F2] text-stone-800 px-4 py-2.5 text-xs font-semibold tracking-wide hover:bg-[#F3ECE1] hover:border-[#8E3D51]/30 transition-colors"
+                  href={mailtoLink("Order Assistance")}
+                  className="inline-flex items-center gap-2 rounded-xl border border-stone-300 bg-[#FAF7F2] text-stone-800 px-4 py-2.5 text-xs font-semibold tracking-wide hover:bg-[#F3ECE1] hover:border-[#8E3D51]/30 transition-colors break-all"
                 >
-                  <span>Email: support@rsfashions.com</span>
+                  <span>Email: {SUPPORT_EMAIL}</span>
                 </a>
               </div>
             </section>
+
+            <BusinessDetails />
           </div>
         </article>
 
-        {/* Sub-Footer Policy Navigation */}
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-stone-500 text-center">
-          <Link
-            to="/privacy-policy"
-            className="hover:text-[#8E3D51] transition-colors underline-offset-4 hover:underline"
-          >
-            Privacy Policy
-          </Link>
-          <span className="text-stone-300 select-none">&bull;</span>
-          <Link
-            to="/terms"
-            className="hover:text-[#8E3D51] transition-colors underline-offset-4 hover:underline"
-          >
-            Terms &amp; Conditions
-          </Link>
-          <span className="text-stone-300 select-none">&bull;</span>
-          <Link
-            to="/shipping"
-            className="hover:text-[#8E3D51] transition-colors underline-offset-4 hover:underline"
-          >
-            Shipping Policy
-          </Link>
-        </div>
+        <PolicyNav current="/cancellation-refund-policy" />
       </div>
     </div>
   );

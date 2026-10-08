@@ -1,6 +1,8 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { FiArrowLeft } from "react-icons/fi";
+import { BusinessDetails, PolicyNav } from "../components/common/BusinessDetails";
+import { BRAND_NAME, LEGAL_BUSINESS_NAME, PROPRIETOR_NAME, SUPPORT_EMAIL, POLICY_LAST_UPDATED, mailtoLink } from "../config/business";
 
 export default function PrivacyPolicy() {
   return (
@@ -31,7 +33,7 @@ export default function PrivacyPolicy() {
               Privacy &amp; Shopping Policy
             </h1>
             <p className="mt-2 text-xs text-stone-500">
-              Last updated: September 2026 &middot; RS Fashions
+              Last updated: {POLICY_LAST_UPDATED} &middot; {BRAND_NAME} ({LEGAL_BUSINESS_NAME})
             </p>
           </header>
 
@@ -43,7 +45,7 @@ export default function PrivacyPolicy() {
                 1. Our Promise to You
               </h2>
               <p>
-                At RS Fashions, we focus solely on bringing authentic handwoven Gadwal sarees directly from our looms to your wardrobe. We only collect the basic details needed to pack your saree carefully, ship it safely to your doorstep, and keep you updated on your parcel. We do not sell or trade your details to marketers.
+                {BRAND_NAME} is operated by {LEGAL_BUSINESS_NAME} (Proprietor: {PROPRIETOR_NAME}). We focus solely on bringing authentic handwoven Gadwal sarees directly from our looms to your wardrobe. We only collect the basic details needed to pack your saree carefully, ship it safely to your doorstep, and keep you updated on your parcel. We do not sell or trade your details to marketers.
               </p>
             </section>
 
@@ -122,67 +124,30 @@ export default function PrivacyPolicy() {
               <p>
                 If you need to correct your delivery address before dispatch, check past orders, or delete your shopping account with us, simply drop a note to{" "}
                 <a
-                  href="mailto:support@rsfashions.com"
+                  href={mailtoLink()}
                   className="font-medium text-[#8E3D51] underline underline-offset-2 hover:text-[#6E2A3C]"
                 >
-                  support@rsfashions.com
+                  {SUPPORT_EMAIL}
                 </a>{" "}
                 or message us directly on WhatsApp.
               </p>
             </section>
 
             {/* Section 6 */}
-            <section className="rounded-xl border border-stone-200/90 bg-white/70 p-4 sm:p-5">
-              <h2 className="font-serif text-base font-medium text-[#2C2420] mb-1.5">
+            <section>
+              <h2 className="font-serif text-lg font-medium text-[#2C2420] mb-2">
                 6. Customer Support &amp; Grievances
               </h2>
-              <p className="text-xs text-stone-600 mb-3">
-                For any questions regarding an order, billing, or your personal information, reach out to our team directly:
+              <p className="mb-3">
+                For any questions regarding an order, billing, or your personal information, reach out to us directly. We reply to customer inquiries within 24 to 48 hours.
               </p>
-              <div className="text-xs space-y-1 text-stone-800">
-                <p><strong>Brand:</strong> RS Fashions</p>
-                <p><strong>Contact:</strong> Founder / Customer Care</p>
-                <p>
-                  <strong>Email:</strong>{" "}
-                  <a
-                    href="mailto:support@rsfashions.com"
-                    className="font-medium text-[#8E3D51] underline underline-offset-2 hover:text-[#6E2A3C]"
-                  >
-                    support@rsfashions.com
-                  </a>
-                </p>
-                <p><strong>Origin:</strong> Telangana, India</p>
-                <p className="text-[11px] text-stone-500 pt-1">
-                  We reply to all customer inquiries and concerns within 24 to 48 hours.
-                </p>
-              </div>
+              <BusinessDetails />
+              <p className="mt-3 text-[11px] text-stone-500">Origin: Telangana, India.</p>
             </section>
           </div>
         </article>
 
-        {/* Sub-Footer Policy Navigation (Centered Under Card) */}
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-stone-500 text-center">
-          <Link
-            to="/terms"
-            className="hover:text-[#8E3D51] transition-colors underline-offset-4 hover:underline"
-          >
-            Terms &amp; Conditions
-          </Link>
-          <span className="text-stone-300 select-none">&bull;</span>
-          <Link
-            to="/returns"
-            className="hover:text-[#8E3D51] transition-colors underline-offset-4 hover:underline"
-          >
-            Return &amp; Replacement
-          </Link>
-          <span className="text-stone-300 select-none">&bull;</span>
-          <Link
-            to="/shipping"
-            className="hover:text-[#8E3D51] transition-colors underline-offset-4 hover:underline"
-          >
-            Shipping Policy
-          </Link>
-        </div>
+        <PolicyNav current="/privacy-policy" />
       </div>
     </div>
   );

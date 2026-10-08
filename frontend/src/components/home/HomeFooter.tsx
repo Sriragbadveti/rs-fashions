@@ -5,19 +5,53 @@ import { FaWhatsapp } from "react-icons/fa";
 import { Globe, Smartphone } from "lucide-react";
 
 import logo from "../../assets/logo/logo1.png";
-import { STORE_WHATSAPP_NUMBER } from "../../config/routes";
+import {
+  BRAND_NAME,
+  LEGAL_BUSINESS_NAME,
+  PROPRIETOR_NAME,
+  SUPPORT_EMAIL,
+  SUPPORT_PHONE_DISPLAY,
+  SUPPORT_PHONE_TEL,
+  SUPPORT_WHATSAPP,
+  POLICY_LINKS,
+  mailtoLink,
+} from "../../config/business";
+
+/** Business identity + support line, shared by the full and the slim footer. */
+function BusinessLine({ className = "" }: { className?: string }) {
+  return (
+    <p className={className}>
+      {BRAND_NAME} is operated by {LEGAL_BUSINESS_NAME} (Proprietor: {PROPRIETOR_NAME}) &bull; Email:{" "}
+      <a href={mailtoLink()} className="underline-offset-2 hover:underline">{SUPPORT_EMAIL}</a> &bull; Phone:{" "}
+      <a href={`tel:${SUPPORT_PHONE_TEL}`} className="underline-offset-2 hover:underline">{SUPPORT_PHONE_DISPLAY}</a>
+    </p>
+  );
+}
 
 function HomeFooter() {
   const location = useLocation();
   const currentYear = new Date().getFullYear();
   const [whatsappModalOpen, setWhatsappModalOpen] = useState(false);
 
+  // Every page other than home gets a slim strip so policies and contact details are always reachable.
   if (location.pathname !== "/") {
-    return null;
+    return (
+      <footer className="border-t border-[#8E3D51]/10 bg-white/50 px-4 py-5 text-center font-sans text-[11px] text-stone-500">
+        <nav aria-label="Store policies" className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5">
+          {POLICY_LINKS.map((link) => (
+            <Link key={link.path} to={link.path} className="transition-colors hover:text-[#8E3D51]">
+              {link.label}
+            </Link>
+          ))}
+        </nav>
+        <BusinessLine className="mt-2 leading-relaxed" />
+        <p className="mt-1">&copy; {currentYear} {BRAND_NAME}. All rights reserved.</p>
+      </footer>
+    );
   }
 
   const defaultMsg = encodeURIComponent("Hello RS Fashions, I would like to inquire about your handcrafted sarees and special offers.");
-  const waNumber = STORE_WHATSAPP_NUMBER || "917842070881";
+  const waNumber = SUPPORT_WHATSAPP;
   const whatsappUrl = `https://api.whatsapp.com/send?phone=${waNumber}&text=${defaultMsg}`;
   const whatsappWebUrl = `https://web.whatsapp.com/send?phone=${waNumber}&text=${defaultMsg}`;
   const whatsappAppUrl = `https://api.whatsapp.com/send?phone=${waNumber}&text=${defaultMsg}`;
@@ -35,24 +69,22 @@ function HomeFooter() {
     },
     {
       title: "About Us",
-      links: [{ label: "Our Story", path: "/our-story" }],
+      links: [
+        { label: "About Us", path: "/about-us" },
+        { label: "Contact Us", path: "/contact-us" },
+      ],
     },
     {
       title: "Customer Support",
       links: [
         { label: "Track Your Order", path: "/account" },
-        { label: "Shipping & Delivery", path: "/shipping" },
-        { label: "Return & Replacement", path: "/returns" },
+        { label: "Shipping & Delivery Policy", path: "/shipping-policy" },
+        { label: "Cancellation & Refund Policy", path: "/cancellation-refund-policy" },
       ],
     },
   ];
 
-  const legalLinks = [
-    { label: "Privacy Policy", path: "/privacy-policy" },
-    { label: "Terms & Conditions", path: "/terms" },
-    { label: "Return & Replacement", path: "/returns" },
-    { label: "Shipping Policy", path: "/shipping" },
-  ];
+  const legalLinks = POLICY_LINKS;
 
   return (
     <>
@@ -130,7 +162,7 @@ function HomeFooter() {
                     href={whatsappUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    aria-label="WhatsApp Support (+91 78420 70881)"
+                    aria-label={`WhatsApp Support (${SUPPORT_PHONE_DISPLAY})`}
                     className="group/btn flex flex-col items-center justify-center gap-1.5 rounded-2xl border border-emerald-200 bg-linear-to-b from-[#F0FDF4] to-[#DCFCE7] p-3.5 transition-transform duration-300 hover:-translate-y-1 cursor-pointer"
                   >
                     <span className="transition-transform duration-300 group-hover/btn:scale-110">
@@ -140,7 +172,7 @@ function HomeFooter() {
                   </a>
 
                   <a
-                    href="mailto:support@rsfashions.com"
+                    href={mailtoLink()}
                     aria-label="Email Support"
                     className="group/btn flex flex-col items-center justify-center gap-1.5 rounded-2xl border border-rose-200 bg-linear-to-b from-[#FFF5F6] to-[#FFE2E7] p-3.5 transition-transform duration-300 hover:-translate-y-1"
                   >
@@ -202,8 +234,9 @@ function HomeFooter() {
             <div className="flex flex-col items-center justify-between gap-4 text-center sm:flex-row sm:text-left">
               <div className="flex flex-col items-center gap-2 sm:items-start">
                 <span className="text-[10.5px] font-sans tracking-wide text-white">
-                  &copy; {currentYear} RS Fashions. All rights reserved.
+                  &copy; {currentYear} {BRAND_NAME}. All rights reserved.
                 </span>
+                <BusinessLine className="max-w-xl text-[10.5px] leading-relaxed text-[#D8CBC3]" />
                 <div className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 text-[10.5px] text-[#D8CBC3] sm:justify-start">
                   {legalLinks.map((link, index) => (
                     <React.Fragment key={link.path}>

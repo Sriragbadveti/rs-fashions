@@ -12,6 +12,7 @@ import { getDesignDescription, isAutoDescription } from "../types/designDescript
 import { variantImgProps } from "../utils/imageVariants";
 import ProductCard from "../components/product/ProductCard";
 import RelatedProducts from "../components/product/RelatedProducts";
+import { BRAND_NAME, LEGAL_BUSINESS_NAME, SUPPORT_WHATSAPP } from "../config/business";
 
 interface ColorVariantItem {
   name: string;
@@ -322,7 +323,8 @@ export default function Product() {
               itemCondition: "https://schema.org/NewCondition",
               seller: {
                 "@type": "Organization",
-                name: "RS Fashions",
+                name: BRAND_NAME,
+                legalName: LEGAL_BUSINESS_NAME,
               },
             },
           },
@@ -817,11 +819,11 @@ export default function Product() {
                   <span>Secure Protective Packaging</span>
                 </div>
                 <Link
-                  to="/return-policy"
+                  to="/cancellation-refund-policy"
                   className="flex items-center gap-2 text-xs text-[#8E3D51] font-semibold hover:underline"
                 >
                   <FileText size={16} className="shrink-0" />
-                  <span>Return &amp; Exchange Policy &rarr;</span>
+                  <span>Cancellation &amp; Refund Policy &rarr;</span>
                 </Link>
               </div>
             </div>
@@ -843,7 +845,7 @@ export default function Product() {
             <div className="mt-5 flex flex-col sm:flex-row lg:flex-col gap-2.5">
               <div className="flex flex-col gap-1.5">
                 <a
-                  href={`https://api.whatsapp.com/send?phone=917842070881&text=${encodeURIComponent(
+                  href={`https://api.whatsapp.com/send?phone=${SUPPORT_WHATSAPP}&text=${encodeURIComponent(
                     `Hi RS Fashions, I am inquiring about "${product.name}" (Ref: ${product.id}). Is this available?`
                   )}`}
                   target="_blank"
@@ -863,11 +865,11 @@ export default function Product() {
               </div>
 
               <Link
-                to="/return-policy"
+                to="/cancellation-refund-policy"
                 className="inline-flex items-center justify-center gap-1.5 rounded-full border border-stone-300 bg-white px-5 py-2.5 text-xs font-semibold text-stone-700 hover:bg-stone-50 transition-colors"
               >
                 <FileText size={13} className="text-[#8E3D51]" />
-                <span>Read Return Policy</span>
+                <span>Read Cancellation &amp; Refund Policy</span>
               </Link>
             </div>
           </div>
@@ -883,12 +885,12 @@ export default function Product() {
                 a: "We ship orders within 24 hours via courier's. Most metro destinations receive delivery in 2 to 4 business days.",
               },
               {
-                q: "What is your return or replacement policy?",
+                q: "Can I cancel my order or get a refund?",
                 a: (
                   <span>
-                    To protect the exclusivity and delicate nature of authentic handwoven pit-loom sarees, orders are subject to our dedicated return guidelines. Please review our full{" "}
-                    <Link to="/return-policy" className="text-[#8E3D51] font-semibold underline">
-                      Return &amp; Replacement Policy
+                    We do not offer refunds, and orders cannot be cancelled once payment is completed. A replacement may be requested only for a saree damaged in transit. Please review our full{" "}
+                    <Link to="/cancellation-refund-policy" className="text-[#8E3D51] font-semibold underline">
+                      Cancellation &amp; Refund Policy
                     </Link>{" "}
                     before placing your order.
                   </span>

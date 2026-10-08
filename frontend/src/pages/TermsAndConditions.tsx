@@ -1,6 +1,8 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { FiArrowLeft } from "react-icons/fi";
+import { BusinessDetails, PolicyNav } from "../components/common/BusinessDetails";
+import { BRAND_NAME, LEGAL_BUSINESS_NAME, PROPRIETOR_NAME, POLICY_LAST_UPDATED } from "../config/business";
 
 export default function TermsAndConditions() {
   return (
@@ -31,7 +33,7 @@ export default function TermsAndConditions() {
               Terms &amp; Conditions
             </h1>
             <p className="mt-2 text-xs text-stone-500">
-              Last updated: September 2026 &middot; RS Fashions
+              Last updated: {POLICY_LAST_UPDATED} &middot; {BRAND_NAME} ({LEGAL_BUSINESS_NAME})
             </p>
           </header>
 
@@ -43,7 +45,7 @@ export default function TermsAndConditions() {
                 1. Shopping With Us
               </h2>
               <p>
-                Welcome to RS Fashions. When you browse our collection or place an order for our sarees through our website, you agree to the practical shopping guidelines detailed below. Please take a moment to read through them so you know what to expect.
+                This website is operated by {LEGAL_BUSINESS_NAME} (Proprietor: {PROPRIETOR_NAME}) under the brand name {BRAND_NAME}. When you browse our collection or place an order for our sarees through our website, you agree to the practical shopping guidelines detailed below. Please take a moment to read through them so you know what to expect.
               </p>
             </section>
 
@@ -83,7 +85,14 @@ export default function TermsAndConditions() {
                 4. Order Confirmations &amp; Payments
               </h2>
               <p>
-                Once your payment succeeds through our verified gateways (UPI, Cards, or Netbanking), you will receive an immediate confirmation via WhatsApp and email. If an unexpected stock count issue occurs before packing, we will inform you right away and issue an immediate 100% refund to your source account.
+                Once your payment succeeds through our verified gateways (UPI, Cards, or Netbanking), you will receive an immediate confirmation via WhatsApp and email. If an unexpected stock issue occurs before packing, we will contact you right away using the details on your order.
+              </p>
+              <p className="mt-2">
+                All orders are non-refundable and cannot be cancelled once payment is completed. Please read our{" "}
+                <Link to="/cancellation-refund-policy" className="font-medium text-[#8E3D51] underline underline-offset-2 hover:text-[#6E2A3C]">
+                  Cancellation &amp; Refund Policy
+                </Link>{" "}
+                before placing an order.
               </p>
             </section>
 
@@ -103,61 +112,27 @@ export default function TermsAndConditions() {
                 6. Photographs &amp; Store Content
               </h2>
               <p>
-                All drape photography, saree styling images, motif layouts, and design descriptions are original creative assets of RS Fashions. We ask that our pictures not be copied or repurposed for unauthorized commercial listings elsewhere.
+                All drape photography, saree styling images, motif layouts, and design descriptions are original creative assets of {BRAND_NAME} ({LEGAL_BUSINESS_NAME}). We ask that our pictures not be copied or repurposed for unauthorized commercial listings elsewhere.
               </p>
             </section>
 
             {/* Section 7 */}
-            <section className="rounded-xl border border-stone-200/90 bg-white/70 p-4 sm:p-5">
-              <h2 className="font-serif text-base font-medium text-[#2C2420] mb-1.5">
+            <section>
+              <h2 className="font-serif text-lg font-medium text-[#2C2420] mb-2">
                 7. Questions or Assistance?
               </h2>
-              <p className="text-xs text-stone-600 mb-2">
-                If you ever face an issue with your parcel, invoice, or saree condition, reach out to us directly so we can make it right:
+              <p className="mb-3">
+                If you ever face an issue with your parcel, invoice, or saree condition, reach out to us directly:
               </p>
-              <div className="text-xs space-y-1 text-stone-800">
-                <p><strong>Brand:</strong> RS Fashions</p>
-                <p>
-                  <strong>Customer Care Email:</strong>{" "}
-                  <a
-                    href="mailto:support@rsfashions.com"
-                    className="font-medium text-[#8E3D51] underline underline-offset-2 hover:text-[#6E2A3C]"
-                  >
-                    support@rsfashions.com
-                  </a>
-                </p>
-                <p><strong>Location:</strong> Telangana, India</p>
-                <p className="text-[11px] text-stone-500 pt-1">
-                  Legal claims or disputes are subject to the jurisdiction of the competent courts in Telangana, India.
-                </p>
-              </div>
+              <BusinessDetails />
+              <p className="mt-3 text-[11px] text-stone-500">
+                Location: Telangana, India. Legal claims or disputes are subject to the jurisdiction of the competent courts in Telangana, India.
+              </p>
             </section>
           </div>
         </article>
 
-        {/* Sub-Footer Policy Navigation */}
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-stone-500 text-center">
-          <Link
-            to="/privacy-policy"
-            className="hover:text-[#8E3D51] transition-colors underline-offset-4 hover:underline"
-          >
-            Privacy Policy
-          </Link>
-          <span className="text-stone-300 select-none">&bull;</span>
-          <Link
-            to="/returns"
-            className="hover:text-[#8E3D51] transition-colors underline-offset-4 hover:underline"
-          >
-            Return &amp; Replacement
-          </Link>
-          <span className="text-stone-300 select-none">&bull;</span>
-          <Link
-            to="/shipping"
-            className="hover:text-[#8E3D51] transition-colors underline-offset-4 hover:underline"
-          >
-            Shipping Policy
-          </Link>
-        </div>
+        <PolicyNav current="/terms-and-conditions" />
       </div>
     </div>
   );

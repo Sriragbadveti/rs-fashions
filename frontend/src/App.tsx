@@ -28,6 +28,7 @@ const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const TermsAndConditions = lazy(() => import("./pages/TermsAndConditions"));
 const ReturnPolicy = lazy(() => import("./pages/ReturnPolicy"));
 const ShippingPolicy = lazy(() => import("./pages/ShippingPolicy"));
+const ContactUs = lazy(() => import("./pages/ContactUs"));
 
 import { ADMIN_SECRET_PATH, ADMIN_LOGIN_PATH } from "./config/routes";
 
@@ -90,6 +91,12 @@ function AppContent() {
             path="/our-story"
             element={<OurStory />}
           />
+          <Route path="/about" element={<OurStory />} />
+          <Route path="/about-us" element={<OurStory />} />
+
+          {/* CONTACT */}
+          <Route path="/contact" element={<ContactUs />} />
+          <Route path="/contact-us" element={<ContactUs />} />
 
           {/* POLICIES & LEGAL CHARTER */}
           <Route path="/privacy" element={<PrivacyPolicy />} />
@@ -98,6 +105,9 @@ function AppContent() {
           <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
           <Route path="/returns" element={<ReturnPolicy />} />
           <Route path="/return-policy" element={<ReturnPolicy />} />
+          <Route path="/refund-policy" element={<ReturnPolicy />} />
+          <Route path="/cancellation-policy" element={<ReturnPolicy />} />
+          <Route path="/cancellation-refund-policy" element={<ReturnPolicy />} />
           <Route path="/shipping" element={<ShippingPolicy />} />
           <Route path="/shipping-policy" element={<ShippingPolicy />} />
 

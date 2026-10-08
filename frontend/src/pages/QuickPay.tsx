@@ -16,6 +16,7 @@ import {
   User,
 } from "lucide-react";
 import { API_BASE } from "../config/api";
+import { LEGAL_BUSINESS_NAME, PROPRIETOR_NAME, SUPPORT_EMAIL, SUPPORT_PHONE_DISPLAY, SUPPORT_PHONE_TEL, POLICY_LINKS } from "../config/business";
 
 const loadCashfreeScript = (): Promise<boolean> => {
   return new Promise((resolve) => {
@@ -330,7 +331,18 @@ export default function QuickPay() {
         {/* Footer */}
         <div className="bg-stone-50 border-t border-stone-100 px-6 py-3 text-center">
           <p className="text-[10px] text-stone-400">
-            RS Fashions &bull; Authentic Gadwal Handloom Showroom &bull; All Rights Reserved
+            RS Fashions &bull; {LEGAL_BUSINESS_NAME} (Proprietor: {PROPRIETOR_NAME}) &bull; All Rights Reserved
+          </p>
+          <p className="mt-1 text-[10px] text-stone-400">
+            Support: <a href={`mailto:${SUPPORT_EMAIL}`} className="underline">{SUPPORT_EMAIL}</a> &bull;{" "}
+            <a href={`tel:${SUPPORT_PHONE_TEL}`} className="underline">{SUPPORT_PHONE_DISPLAY}</a>
+          </p>
+          <p className="mt-1 flex flex-wrap justify-center gap-x-2 text-[10px] text-stone-400">
+            {POLICY_LINKS.map((link) => (
+              <a key={link.path} href={link.path} className="underline hover:text-stone-600">
+                {link.label}
+              </a>
+            ))}
           </p>
         </div>
       </div>

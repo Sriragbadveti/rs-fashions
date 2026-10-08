@@ -2,6 +2,8 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { FiArrowLeft, FiTruck, FiClock, FiShield } from "react-icons/fi";
 import { FaWhatsapp } from "react-icons/fa";
+import { BusinessDetails, PolicyNav } from "../components/common/BusinessDetails";
+import { BRAND_NAME, LEGAL_BUSINESS_NAME, SUPPORT_EMAIL, POLICY_LAST_UPDATED, whatsappLink, mailtoLink } from "../config/business";
 
 export default function ShippingPolicy() {
   return (
@@ -32,7 +34,7 @@ export default function ShippingPolicy() {
               Shipping &amp; Delivery Policy
             </h1>
             <p className="mt-2 text-xs text-stone-500">
-              Last updated: September 2026 &middot; RS Fashions
+              Last updated: {POLICY_LAST_UPDATED} &middot; {BRAND_NAME} ({LEGAL_BUSINESS_NAME})
             </p>
           </header>
 
@@ -77,7 +79,7 @@ export default function ShippingPolicy() {
                 1. Shipping Charges &amp; Free Delivery Rules
               </h2>
               <p className="mb-3 text-stone-600">
-                Delivery charges are calculated based on your total order value. Free delivery is granted only when the qualifying threshold is met:
+                Delivery charges are calculated at checkout from your order value (after any discounts):
               </p>
 
               <div className="grid gap-3 sm:grid-cols-2">
@@ -85,14 +87,14 @@ export default function ShippingPolicy() {
                 <div className="rounded-xl border border-stone-200/80 bg-white/60 p-4 shadow-xs">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-[#8E3D51] uppercase tracking-wider">
-                      Orders ₹1,950 – ₹2,499
+                      Orders below ₹1,999
                     </span>
                     <span className="rounded-md bg-stone-100 px-2 py-0.5 text-[11px] font-semibold text-stone-700">
-                      ₹100 Shipping
+                      ₹99 Shipping
                     </span>
                   </div>
                   <p className="text-[11px] text-stone-600 mt-2 leading-relaxed">
-                    A flat ₹100 shipping fee is added at checkout for orders in this price range. Standard free shipping does not apply to this tier.
+                    A flat ₹99 shipping fee is added at checkout for orders below ₹1,999.
                   </p>
                 </div>
 
@@ -100,14 +102,14 @@ export default function ShippingPolicy() {
                 <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/40 p-4 shadow-xs">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider">
-                      Orders ₹2,800 – ₹3,100+
+                      Orders of ₹1,999 and above
                     </span>
                     <span className="rounded-md bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
                       Free Shipping
                     </span>
                   </div>
                   <p className="text-[11px] text-emerald-950 mt-2 leading-relaxed">
-                    Complimentary doorstep delivery is applied automatically at checkout once your cart value meets this range. No coupons needed.
+                    Free doorstep delivery is applied automatically at checkout once your order value reaches ₹1,999. No coupons needed.
                   </p>
                 </div>
               </div>
@@ -189,7 +191,7 @@ export default function ShippingPolicy() {
               </p>
               <div className="flex flex-wrap gap-2.5">
                 <a
-                  href="https://api.whatsapp.com/send?phone=917842070881&text=Hi%20RS%20Fashions,%20I%20need%20an%20update%20on%20my%20saree%20shipment"
+                  href={whatsappLink("Hi RS Fashions, I need an update on my saree shipment")}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center gap-2 rounded-xl bg-green-600 text-white px-4 py-2.5 text-xs font-semibold tracking-wide hover:bg-[#28492C] transition-colors"
@@ -199,39 +201,19 @@ export default function ShippingPolicy() {
                 </a>
 
                 <a
-                  href="mailto:support@rsfashions.com?subject=Delivery%20Tracking%20Query"
+                  href={mailtoLink("Delivery Tracking Query")}
                   className="inline-flex items-center gap-2 rounded-xl border border-stone-300 bg-[#FAF7F2] text-stone-800 px-4 py-2.5 text-xs font-semibold tracking-wide hover:bg-[#F3ECE1] hover:border-[#8E3D51]/30 transition-colors"
                 >
-                  <span>Email: support@rsfashions.com</span>
+                  <span>Email: {SUPPORT_EMAIL}</span>
                 </a>
               </div>
             </section>
+
+            <BusinessDetails />
           </div>
         </article>
 
-        {/* Sub-Footer Policy Navigation */}
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-stone-500 text-center">
-          <Link
-            to="/privacy-policy"
-            className="hover:text-[#8E3D51] transition-colors underline-offset-4 hover:underline"
-          >
-            Privacy Policy
-          </Link>
-          <span className="text-stone-300 select-none">&bull;</span>
-          <Link
-            to="/terms"
-            className="hover:text-[#8E3D51] transition-colors underline-offset-4 hover:underline"
-          >
-            Terms &amp; Conditions
-          </Link>
-          <span className="text-stone-300 select-none">&bull;</span>
-          <Link
-            to="/returns"
-            className="hover:text-[#8E3D51] transition-colors underline-offset-4 hover:underline"
-          >
-            Return &amp; Replacement
-          </Link>
-        </div>
+        <PolicyNav current="/shipping-policy" />
       </div>
     </div>
   );

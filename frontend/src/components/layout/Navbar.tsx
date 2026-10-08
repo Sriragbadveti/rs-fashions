@@ -214,7 +214,7 @@ function Navbar() {
                   {Array.from({ length: 6 }).map((_, index) => (
                     <div key={index} className="flex shrink-0 items-center whitespace-nowrap">
                       <span className="px-4 text-[8px] font-medium uppercase tracking-[0.2em] text-stone-200 sm:px-8 sm:text-[9.5px] sm:tracking-[0.24em]">
-                        Complimentary shipping on orders over ₹2,800
+                        Complimentary shipping on orders of ₹1,999 &amp; above
                       </span>
                       <span className="text-[7px] text-[#8E3D51]">✦</span>
                     </div>

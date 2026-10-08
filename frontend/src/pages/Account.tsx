@@ -13,7 +13,7 @@ import logo from "../assets/logo/logo1.png";
 import { FaWhatsapp } from "react-icons/fa";
 
 const getWhatsAppTrackingUrl = (order: any) => {
-  const rawNumber = STORE_WHATSAPP_NUMBER || "919876543210";
+  const rawNumber = STORE_WHATSAPP_NUMBER;
   const cleanPhone = rawNumber.replace(/\D/g, "");
   const formattedPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
   const status = (order.orderStatus || "ordered").toLowerCase();

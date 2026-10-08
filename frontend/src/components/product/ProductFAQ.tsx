@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { FiMessageCircle, FiMail } from "react-icons/fi";
 import ProductAccordion from "./ProductAccordion";
+import { SUPPORT_PHONE_DISPLAY, whatsappLink, mailtoLink } from "../../config/business";
 
 const faqCategories = ["All", "Draping & Fit", "Care & SiCo Craft", "Delivery"];
 
@@ -31,9 +32,9 @@ const faqData = [
   },
   {
     category: "Delivery",
-    title: "What is your return & exchange policy on bridal drapes?",
+    title: "Can I cancel my order, return it, or get a refund?",
     content:
-      "We offer a 7-day doorstep return and exchange window for unused drapes with intact security tags and original gift packaging. Custom stitched blouses are non-returnable.",
+      "We do not offer refunds, returns or exchanges, and orders cannot be cancelled once payment is completed. If a saree arrives damaged in transit, you may request a replacement within 48 hours of delivery with a continuous unboxing video. See our Cancellation & Refund Policy.",
   },
 ];
 
@@ -95,17 +96,17 @@ function ProductFAQ() {
 
             <div className="mt-4 flex items-center gap-3">
               <a
-                href="https://api.whatsapp.com/send?phone=917842070881&text=Hi%20RS%20Fashions,%20I%20have%20a%20question%20regarding%20your%20sarees"
+                href={whatsappLink("Hi RS Fashions, I have a question regarding your sarees")}
                 target="_blank"
                 rel="noreferrer"
                 className="flex items-center gap-1.5 rounded-full bg-[#8E3D51] px-3.5 py-2 text-[10px] font-semibold uppercase tracking-wider text-white transition-transform active:scale-95"
               >
                 <FiMessageCircle size={13} />
-                <span>WhatsApp (+91 78420 70881)</span>
+                <span>WhatsApp ({SUPPORT_PHONE_DISPLAY})</span>
               </a>
 
               <a
-                href="mailto:concierge@rsfashions.com"
+                href={mailtoLink()}
                 className="flex items-center gap-1.5 rounded-full border border-black/10 bg-white px-3.5 py-2 text-[10px] font-semibold uppercase tracking-wider text-[#2A2421] transition-transform active:scale-95"
               >
                 <FiMail size={13} />
