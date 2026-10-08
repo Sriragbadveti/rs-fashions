@@ -28,6 +28,8 @@ function CartDrawer({ open, onClose }: CartDrawerProps) {
     subtotal,
     offerDiscount,
     tierOffer,
+    festivalOffer,
+    festivalDiscount,
     finalSubtotal,
     updateQuantity,
     removeFromCart,
@@ -264,6 +266,13 @@ function CartDrawer({ open, onClose }: CartDrawerProps) {
                     <div className="flex items-center justify-between text-xs text-emerald-700 font-medium bg-emerald-50 px-2 py-1 rounded-lg">
                       <span className="text-[10.5px]">Special Offer bundle</span>
                       <span className="font-mono font-bold">-₹{offerDiscount.toLocaleString("en-IN")}</span>
+                    </div>
+                  )}
+
+                  {festivalDiscount > 0 && (
+                    <div className="flex items-center justify-between text-xs text-emerald-700 font-medium bg-emerald-50 px-2 py-1 rounded-lg">
+                      <span className="text-[10.5px]">{festivalOffer.name}</span>
+                      <span className="font-mono font-bold">-₹{festivalDiscount.toLocaleString("en-IN")}</span>
                     </div>
                   )}
 

@@ -6,6 +6,8 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Store, Package, MapPin, LogOut, User as UserIcon, ChevronDown } from "lucide-react";
 
 import { useCart } from "../../context/CartContext";
+import { festivalMarqueeText } from "../../utils/festivalOffer";
+import { computeBundleOffer } from "../../utils/specialOffer";
 import { getUserSession, clearUserSession, USER_SESSION_EVENT, type UserSession } from "../../utils/userSession";
 
 import CartDrawer from "../cart/CartDrawer";
@@ -15,7 +17,15 @@ import logo from "../../assets/logo/logo1.png";
 function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { itemCount } = useCart();
+  const { itemCount, festivalConfig } = useCart();
+
+  // Header marquee: every offer that is running right now (festival offer only while switched on).
+  const tickerMessages = [
+    ...(festivalConfig?.active ? [festivalMarqueeText(festivalConfig)] : []),
+    computeBundleOffer(0, 0).message,
+    "Complimentary shipping on orders of ₹1,999 & above",
+  ];
+  const tickerItems = Array.from({ length: Math.max(6, tickerMessages.length * 2) }, (_, i) => tickerMessages[i % tickerMessages.length]);
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -206,15 +216,15 @@ function Navbar() {
           <div className="flex h-7 items-center overflow-hidden">
             <motion.div
               animate={{ x: ["0%", "-50%"] }}
-              transition={{ duration: 45, repeat: Infinity, ease: "linear", repeatType: "loop" }}
+              transition={{ duration: Math.max(45, Math.round(tickerItems.join("").length / 7)), repeat: Infinity, ease: "linear", repeatType: "loop" }}
               className="flex w-max items-center will-change-transform"
             >
               {[0, 1].map((copyIndex) => (
                 <div key={copyIndex} className="flex shrink-0 items-center">
-                  {Array.from({ length: 6 }).map((_, index) => (
+                  {tickerItems.map((message, index) => (
                     <div key={index} className="flex shrink-0 items-center whitespace-nowrap">
                       <span className="px-4 text-[8px] font-medium uppercase tracking-[0.2em] text-stone-200 sm:px-8 sm:text-[9.5px] sm:tracking-[0.24em]">
-                        Complimentary shipping on orders of ₹1,999 &amp; above
+                        {message}
                       </span>
                       <span className="text-[7px] text-[#8E3D51]">✦</span>
                     </div>

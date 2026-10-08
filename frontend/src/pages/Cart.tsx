@@ -15,6 +15,7 @@ import {
 } from "react-icons/fi";
 import { Sparkles } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import { festivalNextTierHint } from "../utils/festivalOffer";
 import { useCart } from "../context/CartContext";
 import { variantImgProps } from "../utils/imageVariants";
 
@@ -27,6 +28,9 @@ function Cart() {
     subtotal,
     offerDiscount,
     tierOffer,
+    festivalConfig,
+    festivalOffer,
+    festivalDiscount,
     finalSubtotal,
     updateQuantity,
     removeFromCart,
@@ -76,6 +80,22 @@ function Cart() {
             </div>
           )}
         </header>
+
+        {festivalOffer.active && (
+          <div className="-mt-3 mb-6 rounded-2xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-xs sm:text-sm text-stone-800">
+            <span className="rounded-full bg-amber-600 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-white">
+              {festivalOffer.name}
+            </span>
+            <p className="mt-1.5 font-semibold">
+              {festivalDiscount > 0
+                ? `You save ₹${festivalDiscount.toLocaleString("en-IN")} with the ${festivalOffer.name}`
+                : `Get up to ₹${Math.max(...(festivalConfig?.tiers || []).map((t) => t.discount), 0).toLocaleString("en-IN")} off on sarees above ₹${(festivalConfig?.minPriceExclusive ?? 2900).toLocaleString("en-IN")}`}
+            </p>
+            {festivalNextTierHint(festivalOffer, festivalConfig) && (
+              <p className="mt-0.5 text-amber-800">{festivalNextTierHint(festivalOffer, festivalConfig)}</p>
+            )}
+          </div>
+        )}
 
         {/* =====================================================
             SPECIAL TIERED OFFER PROGRESS BANNER
@@ -360,6 +380,18 @@ function Cart() {
                       </span>
                       <span className="font-mono font-bold text-emerald-700">
                         -{formatCurrency(offerDiscount)}
+                      </span>
+                    </div>
+                  )}
+
+                  {festivalDiscount > 0 && (
+                    <div className="flex items-center justify-between rounded-xl bg-emerald-50/80 px-3 py-2 text-emerald-800 border border-emerald-200/60">
+                      <span className="flex items-center gap-1.5 font-semibold text-xs">
+                        <FiTag size={13} className="text-emerald-600" />
+                        <span>{festivalOffer.name}</span>
+                      </span>
+                      <span className="font-mono font-bold text-emerald-700">
+                        -{formatCurrency(festivalDiscount)}
                       </span>
                     </div>
                   )}

@@ -1847,7 +1847,7 @@ export const StoreService = {
   },
 
   /** Creates the order on the server (payment pending) before an online payment starts. */
-  async createPendingOrder(payload: Record<string, unknown>): Promise<{ ok: boolean; orderNumber?: string; stockConflict?: { name: string; available: number }; message?: string }> {
+  async createPendingOrder(payload: Record<string, unknown>): Promise<{ ok: boolean; orderNumber?: string; stockConflict?: { name: string; available: number }; offerChanged?: boolean; message?: string }> {
     try {
       const res = await fetch(`${API_BASE}/billing/pending-order`, {
         method: "POST",
@@ -1855,6 +1855,9 @@ export const StoreService = {
         body: JSON.stringify({ ...payload, sessionId: this.getSessionId() }),
       });
       const json = await res.json().catch(() => ({}));
+      if (res.status === 409 && json.code === "OFFER_CHANGED") {
+        return { ok: false, offerChanged: true, message: json.message };
+      }
       if (res.status === 409) {
         const first = json.shortages?.[0];
         return { ok: false, stockConflict: first ? { name: first.name, available: first.available } : { name: "", available: 0 }, message: json.message };

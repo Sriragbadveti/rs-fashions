@@ -20,13 +20,14 @@ import {
   X,
   Tag,
   ChevronRight,
-  Star,
+  Star, BadgePercent
 } from "lucide-react";
 import Overview from "./Overview";
 import Catalog from "./SareeStock";
 import SettingsView from "./Settings";
 import Billing from "./Billing";
 import SaleManager from "./SaleManager";
+import OffersManager from "./OffersManager";
 import StockHistory from "./StockHistory";
 import TransactionHistory from "./TransactionHistory";
 import Analysis from "./Analysis";
@@ -1109,6 +1110,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
           { id: "billing", label: "Billing Counter", icon: ReceiptIndianRupee },
           { id: "sales-ledger", label: "Sales Receipts", icon: ScrollText, badge: salesHistory.length },
           { id: "sale" as DashboardTab, label: "Special Offers", icon: Tag },
+          { id: "offers" as DashboardTab, label: "Festival Offers", icon: BadgePercent },
         ],
       },
       {
@@ -1294,6 +1296,8 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
                                 ? "Low Stock Alerts & Weaver POs"
                                 : activeTab === ("sale" as DashboardTab)
                                   ? "Promotional Bundles & Offers"
+                                  : activeTab === ("offers" as DashboardTab)
+                                  ? "Festival Offers"
                                   : activeTab === "history"
                                     ? "Stock Movement Ledger"
                                     : activeTab === "analytics"
@@ -1467,6 +1471,8 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
               {activeTab === ("sale" as DashboardTab) && (
                 <SaleManager inventory={inventory} />
               )}
+
+              {activeTab === ("offers" as DashboardTab) && <OffersManager />}
 
               {activeTab === "tracking" && (
                 <TrackOrder salesHistory={salesHistory} />

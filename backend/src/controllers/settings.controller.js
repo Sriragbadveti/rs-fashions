@@ -5,6 +5,7 @@ import {
   FESTIVAL_OFFER_SETTING_KEY,
   normalizeFestivalOfferConfig,
   invalidateFestivalOfferCache,
+  setLocalFestivalOfferConfig,
 } from "../services/festivalOffer.js";
 
 /**
@@ -139,6 +140,7 @@ export async function updateSetting(req, res) {
       return successResponse(res, { setting: data }, `Setting '${key}' updated successfully`);
     }
 
+    if (key === FESTIVAL_OFFER_SETTING_KEY) setLocalFestivalOfferConfig(value);
     invalidateBootstrapCache();
     invalidateFestivalOfferCache();
     return successResponse(res, { key, value }, "Setting updated locally");

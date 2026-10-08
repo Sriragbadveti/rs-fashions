@@ -7,7 +7,7 @@ import {
 } from "../services/festivalOffer.js";
 
 /**
- * Controller: Festival Offer quotes (server-side; not used by the storefront yet)
+ * Controller: Festival Offer (public config for the storefront + server-side quotes)
  */
 
 function publicConfig(config, active) {
@@ -35,6 +35,18 @@ async function quote(req, res, { preview }) {
   } catch (err) {
     console.error("[Festival Offer] Quote error:", err.message);
     return errorResponse(res, "Could not work out the festival offer", 500);
+  }
+}
+
+/** GET /api/billing/festival-offer — what the storefront shows (marquee, cart). Never cached. */
+export async function getFestivalOffer(req, res) {
+  res.set("Cache-Control", "no-store");
+  try {
+    const config = await loadFestivalOfferConfig();
+    return successResponse(res, { config: publicConfig(config, isFestivalOfferActive(config)) });
+  } catch (err) {
+    console.error("[Festival Offer] Config error:", err.message);
+    return errorResponse(res, "Could not load offers", 500);
   }
 }
 

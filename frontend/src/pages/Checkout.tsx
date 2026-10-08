@@ -103,7 +103,7 @@ function CheckoutInner() {
   const { toast } = useModal();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { items, subtotal, offerDiscount, tierOffer, finalSubtotal, clearCart, addToCart, removeFromCart } = useCart();
+  const { items, subtotal, offerDiscount, tierOffer, festivalOffer, festivalDiscount, refreshFestivalOffer, finalSubtotal, clearCart, addToCart, removeFromCart } = useCart();
 
   const [step, setStep] = useState<CheckoutStep>("address");
   const [address, setAddress] = useState<AddressForm>(initialAddress);
@@ -640,8 +640,16 @@ function CheckoutInner() {
             subtotal,
             shippingFee: shipping,
             discount: Math.max(0, subtotal - finalSubtotal),
+            festivalDiscount,
             total,
           });
+          if (pending.offerChanged) {
+            // The festival offer was switched on/off (or changed) since the cart was priced.
+            await refreshFestivalOffer();
+            toast("Offer updated", pending.message || "The festival offer changed. Please review your new total and pay again.", "info");
+            release();
+            return;
+          }
           if (pending.stockConflict) {
             setStockConflict({
               productId: items[0]?.product.id,
@@ -1256,6 +1264,13 @@ function CheckoutInner() {
                     </div>
                   )}
 
+                  {festivalDiscount > 0 && (
+                    <div className="flex justify-between text-emerald-700 font-medium bg-emerald-50 px-2 py-0.5 rounded">
+                      <span>{festivalOffer.name}</span>
+                      <span className="font-mono font-semibold">-₹{festivalDiscount.toLocaleString("en-IN")}</span>
+                    </div>
+                  )}
+
                   <div className="flex justify-between text-[#756A60]">
                     <span>Shipping</span>
                     <span className="text-emerald-700 font-medium">
@@ -1840,6 +1855,13 @@ function CheckoutInner() {
                     <div className="flex justify-between text-emerald-700 font-medium bg-emerald-50 px-2.5 py-1 rounded-lg">
                       <span>Special Offer bundle</span>
                       <span className="font-mono font-semibold">-₹{offerDiscount.toLocaleString("en-IN")}</span>
+                    </div>
+                  )}
+
+                  {festivalDiscount > 0 && (
+                    <div className="flex justify-between text-emerald-700 font-medium bg-emerald-50 px-2.5 py-1 rounded-lg">
+                      <span>{festivalOffer.name}</span>
+                      <span className="font-mono font-semibold">-₹{festivalDiscount.toLocaleString("en-IN")}</span>
                     </div>
                   )}
 

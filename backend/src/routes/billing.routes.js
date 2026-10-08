@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { quoteFestivalOffer, previewFestivalOffer } from "../controllers/festivalOffer.controller.js";
+import { getFestivalOffer, quoteFestivalOffer, previewFestivalOffer } from "../controllers/festivalOffer.controller.js";
 import { requireAdminAuth } from "../middleware/adminAuth.js";
 import { handleCheckout, validateCoupon, checkStock, createPendingOrderHandler, abandonPendingOrderHandler } from "../controllers/billing.controller.js";
 
@@ -21,6 +21,7 @@ router.post("/check-stock", checkStock);
 router.get("/coupons/validate", validateCoupon);
 
 // Festival Offer (server-side only; the storefront does not call these yet)
+router.get("/festival-offer", getFestivalOffer);
 router.post("/festival-offer/quote", quoteFestivalOffer);
 router.post("/festival-offer/preview", requireAdminAuth, previewFestivalOffer);
 

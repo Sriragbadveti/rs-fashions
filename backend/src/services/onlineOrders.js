@@ -20,6 +20,7 @@ import { recordPaymentAlert } from "./paymentStore.js";
 import { invalidateCatalogCache } from "../controllers/catalog.controller.js";
 import { invalidateBootstrapCache } from "../controllers/bootstrap.controller.js";
 import { ONLINE_GATEWAY_METHODS } from "./orderVisibility.js";
+import { computeFestivalOffer, loadFestivalOfferConfig, resolveCartProducts } from "./festivalOffer.js";
 
 const ONLINE_HOLD_MS = 30 * 60 * 1000; // stock is held for the payment window
 const STALE_PENDING_MS = 2 * 60 * 60 * 1000;
@@ -53,6 +54,24 @@ export async function createPendingOrder(body = {}) {
     return { status: 200, body: { success: true, alreadyPaid: true, orderNumber } };
   }
 
+  // Festival offer: the discount the browser applied must be exactly what the server works out
+  // from the stored prices/tags (it can't be inflated, and a switch-off/on mid-checkout is caught).
+  const festival = computeFestivalOffer(await resolveCartProducts(items), await loadFestivalOfferConfig());
+  const claimedFestival = Math.max(0, Number(body.festivalDiscount) || 0);
+  if (Math.abs(claimedFestival - festival.discount) > 0.5) {
+    return {
+      status: 409,
+      body: {
+        success: false,
+        code: "OFFER_CHANGED",
+        message: festival.discount > 0
+          ? `The ${festival.name} discount for your cart is ₹${festival.discount}. Please review your total.`
+          : "The festival offer has ended. Please review your total.",
+        festivalDiscount: festival.discount,
+      },
+    };
+  }
+
   // Reserve the pieces for the whole payment window; refuse if someone else holds/bought them.
   const sessionId = String(body.sessionId || body.session_id || orderNumber);
   const shortages = await holdStock(items, sessionId, ONLINE_HOLD_MS);
@@ -79,7 +98,7 @@ export async function createPendingOrder(body = {}) {
     payment_status: "pending",
     order_status: "ordered",
     billing_type: "gst",
-    notes: `hold:${sessionId}`,
+    notes: `hold:${sessionId}${festival.discount > 0 ? ` festival:${festival.discount}` : ""}`,
     updated_at: new Date().toISOString(),
   };
 

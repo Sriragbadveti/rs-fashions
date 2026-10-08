@@ -1,4 +1,17 @@
 import { computeBundleOffer, isSpecialOfferProduct } from "../utils/specialOffer";
+import { computeFestivalOffer, type FestivalOfferConfig, type FestivalOfferResult } from "../utils/festivalOffer";
+import { API_BASE } from "../config/api";
+
+async function fetchFestivalConfig(): Promise<FestivalOfferConfig | null> {
+  try {
+    const res = await fetch(`${API_BASE}/billing/festival-offer`, { cache: "no-store" });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return (json.data?.config || json.config || null) as FestivalOfferConfig | null;
+  } catch {
+    return null;
+  }
+}
 import {
   createContext,
   useContext,
@@ -72,6 +85,12 @@ interface CartContextType {
   subtotal: number;
   offerDiscount: number;
   tierOffer: TierOfferInfo;
+  /** Festival offer (admin-controlled); config is null until loaded or when the server is unreachable. */
+  festivalConfig: FestivalOfferConfig | null;
+  festivalOffer: FestivalOfferResult;
+  festivalDiscount: number;
+  /** Re-reads the festival offer from the server (e.g. after checkout reports it changed). */
+  refreshFestivalOffer: () => Promise<FestivalOfferConfig | null>;
   finalSubtotal: number;
   totalSavings: number;
   freeShippingThreshold: number;
@@ -252,7 +271,36 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [specialEditionCount, specialEditionSubtotal]);
 
   const offerDiscount = tierOffer.discountAmount;
-  const finalSubtotal = Math.max(0, subtotal - offerDiscount);
+
+  /* Festival offer: rules come from the server; re-read on load, every minute and on tab focus,
+     so switching it on/off in the admin shows up without customers reloading. */
+  const [festivalConfig, setFestivalConfig] = useState<FestivalOfferConfig | null>(null);
+  const refreshFestivalOffer = useCallback(async (): Promise<FestivalOfferConfig | null> => {
+    const cfg = await fetchFestivalConfig();
+    if (cfg) setFestivalConfig(cfg); // keep the last known config if the server is briefly unreachable
+    return cfg;
+  }, []);
+  useEffect(() => {
+    const load = () => {
+      fetchFestivalConfig().then((cfg) => {
+        if (cfg) setFestivalConfig(cfg);
+      });
+    };
+    load();
+    const timer = window.setInterval(load, 60 * 1000);
+    const onVisible = () => { if (document.visibilityState === "visible") load(); };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", load);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", load);
+    };
+  }, []);
+
+  const festivalOffer = useMemo(() => computeFestivalOffer(items, festivalConfig), [items, festivalConfig]);
+  const festivalDiscount = festivalOffer.discount;
+  const finalSubtotal = Math.max(0, subtotal - offerDiscount - festivalDiscount);
 
   /* Total Original Savings Calculation */
   const totalSavings = useMemo(() => {
@@ -262,8 +310,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }
       return total;
     }, 0);
-    return rawSavings + offerDiscount;
-  }, [items, offerDiscount]);
+    return rawSavings + offerDiscount + festivalDiscount;
+  }, [items, offerDiscount, festivalDiscount]);
 
   /* Free Shipping Progress (0 to 100) */
   const progressToFreeShipping = useMemo(() => {
@@ -276,6 +324,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
     subtotal,
     offerDiscount,
     tierOffer,
+    festivalConfig,
+    festivalOffer,
+    festivalDiscount,
+    refreshFestivalOffer,
     finalSubtotal,
     totalSavings,
     freeShippingThreshold: FREE_SHIPPING_LIMIT,

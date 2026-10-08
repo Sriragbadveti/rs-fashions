@@ -9,9 +9,10 @@ import { getProductsFromStore } from "../database/localStore.js";
  * Eligible: sarees priced ABOVE ₹2,900 that are NOT in the Special Offer section
  * (Special Offer sarees already get their own bundle price).
  *
- * Switched OFF by default. It is stored in the `festival_offer` setting and turned on with
- *   PUT /api/admin/settings/festival_offer  { "value": { "enabled": true } }
- * The storefront does not use it yet, so nothing changes for customers until it is wired in.
+ * Switched OFF by default. It is stored in the `festival_offer` setting and switched on/off from
+ * the admin dashboard (Offers tab), which calls PUT /api/admin/settings/festival_offer.
+ * The storefront shows and applies it (cart, checkout, header marquee); the server re-checks the
+ * discount when the order is created (onlineOrders.createPendingOrder), so it can't be inflated.
  */
 
 export const FESTIVAL_OFFER_SETTING_KEY = "festival_offer";
@@ -169,9 +170,17 @@ export function computeFestivalOffer(items, config, { ignoreSchedule = false, no
 }
 
 // The setting rarely changes; a short cache keeps quotes from hitting the database every time.
+// Saving the setting clears it, so a switch-on/off takes effect on the next request.
 const CONFIG_TTL_MS = 30 * 1000;
 let cachedConfig = null;
 let cachedAt = 0;
+// Without Supabase (local development / tests) the last saved value lives in memory.
+let localConfig = null;
+
+export function setLocalFestivalOfferConfig(value) {
+  localConfig = value ? normalizeFestivalOfferConfig(value) : null;
+  invalidateFestivalOfferCache();
+}
 
 export function invalidateFestivalOfferCache() {
   cachedConfig = null;
@@ -194,6 +203,8 @@ export async function loadFestivalOfferConfig() {
     } catch (err) {
       console.warn("[Festival Offer] Could not read setting:", err.message);
     }
+  } else {
+    raw = localConfig;
   }
   cachedConfig = normalizeFestivalOfferConfig(raw);
   cachedAt = Date.now();

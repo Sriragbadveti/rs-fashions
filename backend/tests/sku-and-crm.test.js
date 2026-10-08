@@ -538,6 +538,55 @@ test("the webhook rejects unsigned or wrongly signed calls and finalises a paid 
   }
 });
 
+test("festival offer: admin switch-on applies immediately, the server checks the discount, switch-off ends it", async () => {
+  const setOffer = (value) => api("PUT", "/admin/settings/festival_offer", { value });
+  const config = async () => (await api("GET", "/billing/festival-offer", undefined, { auth: false })).body.config;
+  const mk = async (name, price, extra = {}) =>
+    (await api("POST", "/catalog", { ...product({ name, variants: [{ color: "Red", colorSlug: "RED", stock: 5, sku: "" }] }), salePrice: price, price, ...extra })).body.product;
+  const line = (p, quantity = 1) => ({ id: p.id, productId: p.id, name: p.name, color: "Red", quantity, qty: quantity, price: p.salePrice || p.price });
+  let n = 0;
+  const pending = (items, festivalDiscount) =>
+    api("POST", "/billing/pending-order", { orderNumber: `RSF-ORD-F${Date.now().toString(36).toUpperCase()}${n++}`, customerPhone: "9876511111", customerName: "Fest", items, total: 1, festivalDiscount, sessionId: `sess-fest-${n}` }, { auth: false });
+
+  try {
+    assert.equal((await config()).active, false, "off by default");
+    const premium = await mk("Festival Premium", 3200);
+    const cheap = await mk("Festival Cheap", 2900); // not ABOVE 2,900
+    const special = await mk("Festival Special", 3500, { tags: ["special_offer"], isSpecialOffer: true });
+
+    // Off: no discount may be claimed.
+    assert.equal((await pending([line(premium)], 100)).status, 409);
+    assert.equal((await pending([line(premium)], 0)).status, 201);
+
+    // Admin switches it on: the public config says active straight away.
+    const on = await setOffer({ enabled: true });
+    assert.equal(on.status, 200, JSON.stringify(on.body));
+    const live = await config();
+    assert.equal(live.active, true);
+    assert.deepEqual(live.tiers.map((t) => [t.qty, t.discount]), [[1, 100], [2, 250], [3, 350], [4, 450], [5, 750], [10, 1500]]);
+
+    // 2 eligible sarees (+ a ₹2,900 one and a Special Offer one that don't count) -> ₹250.
+    const cart = [line(premium, 2), line(cheap), line(special)];
+    const inflated = await pending(cart, 1500);
+    assert.equal(inflated.status, 409);
+    assert.equal(inflated.body.code, "OFFER_CHANGED");
+    assert.equal(inflated.body.festivalDiscount, 250);
+    assert.equal((await pending(cart, 0)).status, 409, "a cart priced without the live offer is sent back to re-price");
+    assert.equal((await pending(cart, 250)).status, 201);
+    // 5-9 sarees are on the 5-saree tier (₹750).
+    const bulk = (await api("POST", "/catalog", { ...product({ name: "Festival Bulk", variants: [{ color: "Red", colorSlug: "RED", stock: 10, sku: "" }] }), salePrice: 3100, price: 3100 })).body.product;
+    const seven = await pending([line(bulk, 7)], 750);
+    assert.equal(seven.status, 201, JSON.stringify(seven.body));
+
+    // Switched off again: the discount is gone.
+    await setOffer({ enabled: false });
+    assert.equal((await config()).active, false);
+    assert.equal((await pending([line(premium)], 100)).status, 409);
+  } finally {
+    await setOffer({ enabled: false });
+  }
+});
+
 test("Cash on Delivery orders are refused", async () => {
   const r = await api("POST", "/billing/checkout", { customerPhone: "9876543210", paymentMethod: "cod", items: [{ id: "x", name: "x", quantity: 1, price: 1 }], total: 1 }, { auth: false });
   assert.equal(r.status, 400);
