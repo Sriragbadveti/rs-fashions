@@ -471,6 +471,8 @@ export default function Shop() {
     return () => { isMounted = false; };
   }, []);
 
+  // Whenever the address changes (a menu/footer link, back button, or "All"), the filters follow it
+  // exactly: a parameter that isn't in the URL means "no filter" for it, so old filters never linger.
   useEffect(() => {
     const urlQuery = searchParams.get("search");
     const urlCategory = searchParams.get("category");
@@ -479,23 +481,22 @@ export default function Shop() {
     const urlMax = searchParams.get("maxPrice");
     const urlSort = searchParams.get("sort");
 
-    if (urlQuery !== null) setSearch(urlQuery);
-    if (urlCategory) setFilters((prev) => ({ ...prev, category: urlCategory as any }));
-    if (urlMaterial) setFilters((prev) => ({ ...prev, material: urlMaterial as any }));
-    if (urlMin || urlMax) {
-      setCustomPriceRange({
-        min: urlMin ? Number(urlMin) : null,
-        max: urlMax ? Number(urlMax) : null,
-      });
-    }
+    setSearch(urlQuery || "");
+    setFilters({ category: (urlCategory || "All") as FilterState["category"], material: (urlMaterial || "All") as FilterState["material"], priceRange: "All" });
+    setCustomPriceRange({
+      min: urlMin ? Number(urlMin) : null,
+      max: urlMax ? Number(urlMax) : null,
+    });
     if (urlSort) {
       if (urlSort === "price_asc") setSort("Price: Low to High");
       else if (urlSort === "price_desc") setSort("Price: High to Low");
       else if (urlSort === "bestseller") setSort("Most Popular");
     }
-    if (searchParams.get("offers") === "true" || searchParams.get("special_offers") === "true") {
-      setShowOnlyOffers(true);
-    }
+    setShowOnlyOffers(
+      searchParams.get("offers") === "true" ||
+        searchParams.get("special_offers") === "true" ||
+        searchParams.get("filter") === "sale"
+    );
   }, [searchParams]);
 
   const filteredProducts = useMemo(() => {
@@ -535,7 +536,7 @@ export default function Shop() {
         const prodBorder = ((product as any).borderColor || (product as any).border || "").toLowerCase().trim();
         const tags = Array.isArray((product as any).tags) ? (product as any).tags.map((t: string) => String(t).toLowerCase()) : [];
 
-        if (prodCat === catFilter || prodCat.includes(catFilter) || catFilter.includes(prodCat)) {
+        if (prodCat && (prodCat === catFilter || prodCat.includes(catFilter) || catFilter.includes(prodCat))) {
           return true;
         }
 
@@ -666,6 +667,52 @@ export default function Shop() {
     customPriceRange.min !== null || customPriceRange.max !== null,
   ].filter(Boolean).length;
 
+  /**
+   * Applies a filter change made on the page. If the page was opened from a filtered link
+   * (/shop?search=…, ?category=…), the address is rewritten to match the new selection, so the
+   * filters that came with the link can't silently come back or linger.
+   */
+  const applyFilters = (patch: {
+    filters?: FilterState;
+    search?: string;
+    offers?: boolean;
+    price?: { min: number | null; max: number | null };
+  }) => {
+    const next = {
+      filters: patch.filters ?? filters,
+      search: patch.search ?? search,
+      offers: patch.offers ?? showOnlyOffers,
+      price: patch.price ?? customPriceRange,
+    };
+    setFilters(next.filters);
+    setSearch(next.search);
+    if (patch.search !== undefined) setDebouncedSearch(next.search);
+    setShowOnlyOffers(next.offers);
+    setCustomPriceRange(next.price);
+    if (searchParams.toString()) {
+      const p = new URLSearchParams();
+      if (next.search.trim()) p.set("search", next.search.trim());
+      if (next.filters.category !== "All") p.set("category", next.filters.category);
+      if (next.filters.material !== "All") p.set("material", next.filters.material);
+      if (next.price.min !== null) p.set("minPrice", String(next.price.min));
+      if (next.price.max !== null) p.set("maxPrice", String(next.price.max));
+      if (next.offers) p.set("offers", "true");
+      const sortParam = searchParams.get("sort");
+      if (sortParam) p.set("sort", sortParam);
+      setSearchParams(p);
+    }
+  };
+
+  /** "All" pill: every saree, no search, no material/price/offer filter (sort order is kept). */
+  const showAllSarees = () => {
+    setSearch("");
+    setDebouncedSearch("");
+    setShowOnlyOffers(false);
+    setFilters(initialFilters);
+    setCustomPriceRange({ min: null, max: null });
+    if (searchParams.toString()) setSearchParams({});
+  };
+
   const handleResetAll = () => {
     setSearch("");
     setShowOnlyOffers(false);
@@ -684,7 +731,7 @@ export default function Shop() {
               <FiSearch size={18} className="shrink-0 text-stone-400" />
               <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search..." className="h-10 sm:h-11 w-full bg-transparent pl-2.5 sm:pl-3 pr-8 text-xs sm:text-sm font-light tracking-wide text-[#2A2421] placeholder-stone-400 outline-none" />
               {search && (
-                <button type="button" onClick={() => { setSearch(""); setSearchParams({}); }} className="absolute right-2 flex h-6 w-6 items-center justify-center rounded-full bg-black/5 text-stone-500 hover:bg-black/10 transition-colors">
+                <button type="button" onClick={() => applyFilters({ search: "" })} className="absolute right-2 flex h-6 w-6 items-center justify-center rounded-full bg-black/5 text-stone-500 hover:bg-black/10 transition-colors">
                   <FiX size={13} />
                 </button>
               )}
@@ -718,7 +765,7 @@ export default function Shop() {
                   {showFilters && (
                     <FilterSheet
                       filters={filters}
-                      onChange={setFilters}
+                      onChange={(next) => applyFilters({ filters: next })}
                       onClose={() => setShowFilters(false)}
                     />
                   )}
@@ -761,7 +808,7 @@ export default function Shop() {
         {/* Categories Bar */}
         <div className="relative z-10 mb-4 flex flex-col gap-2">
           <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-            <button type="button" onClick={() => setShowOnlyOffers((prev) => !prev)} className={`shrink-0 inline-flex items-center gap-1.5 rounded-full px-3.5 sm:px-4 py-1.5 sm:py-2 text-xs font-medium tracking-wide transition-all active:scale-95 ${showOnlyOffers ? "bg-[#8E3D51] text-white shadow-xs border border-[#8E3D51]" : "border border-amber-200 bg-amber-50/80 text-[#8E3D51] hover:bg-amber-100/80"}`}>
+            <button type="button" onClick={() => applyFilters({ offers: !showOnlyOffers })} className={`shrink-0 inline-flex items-center gap-1.5 rounded-full px-3.5 sm:px-4 py-1.5 sm:py-2 text-xs font-medium tracking-wide transition-all active:scale-95 ${showOnlyOffers ? "bg-[#8E3D51] text-white shadow-xs border border-[#8E3D51]" : "border border-amber-200 bg-amber-50/80 text-[#8E3D51] hover:bg-amber-100/80"}`}>
               <FiTag size={12} />
               <span>Special Offers</span>
             </button>
@@ -769,7 +816,7 @@ export default function Shop() {
             {categoryPills.map((cat) => {
               const isActive = filters.category === cat && !showOnlyOffers;
               return (
-                <button key={cat} type="button" onClick={() => { setShowOnlyOffers(false); setFilters({ ...filters, category: cat as FilterState["category"] }); }} className={`shrink-0 rounded-full px-3.5 sm:px-4 py-1.5 sm:py-2 text-xs font-medium tracking-wide transition-all active:scale-95 ${isActive ? "bg-[#2A2421] text-[#F7EBEC] shadow-xs border border-[#2A2421]" : "border border-stone-200 bg-white text-stone-600 hover:border-black/20 hover:bg-stone-50"}`}>{cat}</button>
+                <button key={cat} type="button" onClick={() => { if (cat === "All") { showAllSarees(); return; } applyFilters({ offers: false, filters: { ...filters, category: cat as FilterState["category"] } }); }} className={`shrink-0 rounded-full px-3.5 sm:px-4 py-1.5 sm:py-2 text-xs font-medium tracking-wide transition-all active:scale-95 ${isActive ? "bg-[#2A2421] text-[#F7EBEC] shadow-xs border border-[#2A2421]" : "border border-stone-200 bg-white text-stone-600 hover:border-black/20 hover:bg-stone-50"}`}>{cat}</button>
               );
             })}
           </div>
@@ -784,31 +831,31 @@ export default function Shop() {
                 </button>
               )}
               {search && (
-                <button type="button" onClick={() => { setSearch(""); setSearchParams({}); }} className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white px-2.5 py-1 text-[11px] text-[#8E3D51] hover:bg-stone-50">
+                <button type="button" onClick={() => applyFilters({ search: "" })} className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white px-2.5 py-1 text-[11px] text-[#8E3D51] hover:bg-stone-50">
                   <span>"{search}"</span>
                   <FiX size={12} />
                 </button>
               )}
               {filters.category !== "All" && (
-                <button type="button" onClick={() => setFilters({ ...filters, category: "All" })} className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white px-3 py-1 text-[11px] text-[#2A2421] hover:bg-stone-50">
+                <button type="button" onClick={() => applyFilters({ filters: { ...filters, category: "All" } })} className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white px-3 py-1 text-[11px] text-[#2A2421] hover:bg-stone-50">
                   <span>{filters.category}</span>
                   <FiX size={12} />
                 </button>
               )}
               {filters.material !== "All" && (
-                <button type="button" onClick={() => setFilters({ ...filters, material: "All" })} className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white px-3 py-1 text-[11px] text-[#2A2421] hover:bg-stone-50">
+                <button type="button" onClick={() => applyFilters({ filters: { ...filters, material: "All" } })} className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white px-3 py-1 text-[11px] text-[#2A2421] hover:bg-stone-50">
                   <span>Material: {filters.material}</span>
                   <FiX size={12} />
                 </button>
               )}
               {(customPriceRange.min !== null || customPriceRange.max !== null) && (
-                <button type="button" onClick={() => setCustomPriceRange({ min: null, max: null })} className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white px-3 py-1 text-[11px] text-[#2A2421] hover:bg-stone-50">
+                <button type="button" onClick={() => applyFilters({ price: { min: null, max: null } })} className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white px-3 py-1 text-[11px] text-[#2A2421] hover:bg-stone-50">
                   <span>₹{customPriceRange.min?.toLocaleString("en-IN") || "0"} — ₹{customPriceRange.max?.toLocaleString("en-IN") || "50,000+"}</span>
                   <FiX size={12} />
                 </button>
               )}
               {filters.priceRange !== "All" && (
-                <button type="button" onClick={() => setFilters({ ...filters, priceRange: "All" })} className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white px-3 py-1 text-[11px] text-[#2A2421] hover:bg-stone-50">
+                <button type="button" onClick={() => applyFilters({ filters: { ...filters, priceRange: "All" } })} className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white px-3 py-1 text-[11px] text-[#2A2421] hover:bg-stone-50">
                   <span>{filters.priceRange}</span>
                   <FiX size={12} />
                 </button>
