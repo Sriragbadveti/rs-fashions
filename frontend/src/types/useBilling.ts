@@ -93,7 +93,7 @@ export const getNextInvoiceNumber = (existingSales?: Array<{ invoiceNumber?: str
 export interface CompleteBillOptions {
   commitImmediate?: boolean;
   /**
-   * Only for the automatic "customer paid the Cashfree link" recording, where nobody is at the
+   * Only for the automatic "customer paid the payment link" recording, where nobody is at the
    * screen to type a name. Every other sale must have the customer's real name and phone.
    */
   allowAnonymousCustomer?: boolean;

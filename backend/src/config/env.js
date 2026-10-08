@@ -2,7 +2,6 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-import crypto from "crypto";
 
 function cleanEnv(val) {
   if (val === undefined || val === null) return "";
@@ -30,78 +29,26 @@ export const ENV = {
     return val || "http://localhost:5173";
   })(),
   BACKEND_URL: cleanEnv(process.env.BACKEND_URL) || "http://localhost:5001",
-  CASHFREE: {
-    get APP_ID() {
-      const raw = cleanEnv(process.env.CASHFREE_APP_ID || process.env.CASHFREE_CLIENT_ID || process.env.CASHFREE_KEY_ID);
-      return raw.replace(/[^a-zA-Z0-9]/g, "");
+  // Razorpay (Standard Checkout). The secrets stay on the server: only KEY_ID is ever sent to a browser.
+  RAZORPAY: {
+    get KEY_ID() {
+      return cleanEnv(process.env.RAZORPAY_KEY_ID);
     },
-    get SECRET_KEY() {
-      const raw = cleanEnv(process.env.CASHFREE_SECRET_KEY || process.env.CASHFREE_CLIENT_SECRET || process.env.CASHFREE_SECRET);
-      return raw.replace(/[^a-zA-Z0-9_]/g, "");
+    get KEY_SECRET() {
+      return cleanEnv(process.env.RAZORPAY_KEY_SECRET);
     },
-    get isProduction() {
-      const key = this.SECRET_KEY;
-      const envStr = cleanEnv(process.env.CASHFREE_ENVIRONMENT || process.env.CASHFREE_ENV || "").toUpperCase();
-      const appId = this.APP_ID;
-      
-      if (key.startsWith("cfsk_ma_prod_") || envStr === "PRODUCTION" || envStr === "PROD") {
-        return true;
-      }
-      if (key.startsWith("cfsk_ma_test_") || appId.startsWith("TEST") || envStr === "SANDBOX" || envStr === "TEST") {
-        return false;
-      }
-      return envStr === "PRODUCTION";
+    /** Set in Razorpay Dashboard > Webhooks; different from KEY_SECRET. */
+    get WEBHOOK_SECRET() {
+      return cleanEnv(process.env.RAZORPAY_WEBHOOK_SECRET);
     },
-    get ENV() {
-      return this.isProduction ? "PRODUCTION" : "SANDBOX";
+    get isConfigured() {
+      return Boolean(this.KEY_ID && this.KEY_SECRET);
     },
-    get API_VERSION() {
-      return cleanEnv(process.env.CASHFREE_API_VERSION || "2023-08-01");
-    },
-    get BASE_URL() {
-      return this.isProduction
-        ? "https://api.cashfree.com/pg"
-        : "https://sandbox.cashfree.com/pg";
+    get isTestMode() {
+      return this.KEY_ID.startsWith("rzp_test_");
     },
   },
 };
-
-let cachedOutboundIp = null;
-fetch("https://api.ipify.org?format=json")
-  .then((r) => r.json())
-  .then((d) => {
-    cachedOutboundIp = d.ip;
-  })
-  .catch(() => {});
-
-export function logSafeCashfreeDiagnostics() {
-  const rawAppId = process.env.CASHFREE_APP_ID || process.env.CASHFREE_CLIENT_ID || process.env.CASHFREE_KEY_ID || "";
-  const rawSecret = process.env.CASHFREE_SECRET_KEY || process.env.CASHFREE_CLIENT_SECRET || process.env.CASHFREE_SECRET || "";
-  const cleanAppId = ENV.CASHFREE.APP_ID;
-  const cleanSecret = ENV.CASHFREE.SECRET_KEY;
-
-  const mask = (str, start = 4, end = 4) => {
-    if (!str) return "NONE";
-    if (str.length <= start + end) return "****";
-    return `${str.slice(0, start)}****${str.slice(-end)}`;
-  };
-
-  const sha256 = (val) => crypto.createHash("sha256").update(val || "").digest("hex").slice(0, 8);
-
-  const nonAsciiInAppId = /[^a-zA-Z0-9]/.test(rawAppId.trim());
-  const nonAsciiInSecret = /[^a-zA-Z0-9_]/.test(rawSecret.trim());
-
-  console.log("=== [Cashfree Safe Configuration Diagnostics] ===");
-  console.log(`- APP_ID present: ${Boolean(cleanAppId) ? "YES" : "NO"} (len: ${cleanAppId.length}, masked: ${mask(cleanAppId, 4, 3)}, sha256: ${sha256(cleanAppId)})`);
-  console.log(`- SECRET_KEY present: ${Boolean(cleanSecret) ? "YES" : "NO"} (len: ${cleanSecret.length}, masked: ${mask(cleanSecret, 12, 4)}, sha256: ${sha256(cleanSecret)})`);
-  console.log(`- Non-alphanumeric/hidden characters stripped: ${Boolean(nonAsciiInAppId || nonAsciiInSecret) ? "YES (Cleaned)" : "NO"}`);
-  console.log(`- API environment: ${ENV.CASHFREE.ENV}`);
-  console.log(`- API endpoint: ${ENV.CASHFREE.BASE_URL}`);
-  console.log(`- API version: ${ENV.CASHFREE.API_VERSION}`);
-  console.log(`- Server Outbound IP: ${cachedOutboundIp || "resolving..."}`);
-  console.log(`- Cashfree client ready: ${Boolean(cleanAppId && cleanSecret) ? "YES" : "NO"}`);
-  console.log("================================================");
-}
 
 export function validateEnv() {
   const missing = [];

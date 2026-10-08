@@ -1,6 +1,6 @@
 /**
  * Business identity shown to customers. These must match the merchant details registered with the
- * payment gateway (Cashfree), so change them here only, never inline in a page.
+ * payment gateway, so change them here only, never inline in a page.
  *
  *   Brand (display name):  RS Fashions
  *   Legal business name:   M/S R S FASHIONS

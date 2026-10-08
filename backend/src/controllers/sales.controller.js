@@ -1,4 +1,4 @@
-import { isVisibleOrder, amountPaid } from "../services/orderVisibility.js";
+import { isVisibleOrder, amountPaid, isOnlineGatewayMethod } from "../services/orderVisibility.js";
 import { supabase } from "../config/supabase.js";
 import { successResponse, errorResponse } from "../utils/response.js";
 import {
@@ -622,7 +622,7 @@ function stockWasDeducted(order) {
   if (status === "cancelled") return false; // cancelling already put it back
   const method = String(order.payment_method || order.paymentMethod || "").toLowerCase();
   const pay = String(order.payment_status || order.paymentStatus || "").toLowerCase();
-  if (method === "cashfree" && ["pending", "failed"].includes(pay)) return false;
+  if (isOnlineGatewayMethod(method) && ["pending", "failed"].includes(pay)) return false;
   return true;
 }
 

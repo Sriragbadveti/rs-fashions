@@ -224,6 +224,9 @@ export function deleteReviewFromStore(id) {
 // ==========================================
 // PAYMENT ATTEMPTS & IDEMPOTENCY
 // ==========================================
+// An attempt is keyed by the gateway's order id: `gatewayOrderId` (Razorpay) or, on records written
+// before the switch, `cfOrderId` (Cashfree).
+const attemptId = (a) => a?.gatewayOrderId || a?.cfOrderId;
 export function getPaymentHistory(orderKey) {
   const attempts = readJson("payment_attempts.json", {});
   return attempts[orderKey] || null;
@@ -239,7 +242,7 @@ export function savePaymentAttempt(orderKey, attemptRecord) {
   };
 
   const attemptIdx = existing.attempts.findIndex(
-    (a) => a.cfOrderId === attemptRecord.cfOrderId
+    (a) => attemptId(a) === attemptId(attemptRecord)
   );
 
   if (attemptIdx >= 0) {
@@ -263,11 +266,11 @@ export function savePaymentAttempt(orderKey, attemptRecord) {
   return existing;
 }
 
-export function updatePaymentAttemptStatus(cfOrderId, status, metadata = {}) {
+export function updatePaymentAttemptStatus(gatewayOrderId, status, metadata = {}) {
   const attempts = readJson("payment_attempts.json", {});
   for (const key of Object.keys(attempts)) {
     const record = attempts[key];
-    const attempt = record.attempts?.find((a) => a.cfOrderId === cfOrderId);
+    const attempt = record.attempts?.find((a) => attemptId(a) === gatewayOrderId);
     if (attempt) {
       // Valid state transitions: CREATED -> PENDING -> PAID / FAILED / EXPIRED / CANCELLED
       // Terminal state check: if already PAID, do not revert to earlier state!
@@ -316,8 +319,8 @@ export function markOrderPaidInStore(orderIdOrNumber, paymentDetails = {}) {
   if (ordIdx >= 0) {
     orders[ordIdx].paymentStatus = "paid";
     orders[ordIdx].payment_status = "paid";
-    orders[ordIdx].paymentMethod = "cashfree";
-    orders[ordIdx].payment_method = "cashfree";
+    orders[ordIdx].paymentMethod = paymentDetails.paymentMethod || "razorpay";
+    orders[ordIdx].payment_method = paymentDetails.paymentMethod || "razorpay";
     orders[ordIdx].paymentDetails = paymentDetails;
     orders[ordIdx].updatedAt = new Date().toISOString();
     writeJson("orders.json", orders);

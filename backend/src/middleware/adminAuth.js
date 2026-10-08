@@ -1,12 +1,28 @@
 import crypto from "crypto";
 import { errorResponse } from "../utils/response.js";
-import { ENV } from "../config/env.js";
 
 // Active in-memory revoked tokens blacklist for immediate invalidation upon logout
 const revokedTokens = new Set();
 const activeAdminSessions = new Map();
 
-const AUTH_SECRET = process.env.ADMIN_JWT_SECRET || ENV.CASHFREE.SECRET_KEY || "rs_fashions_admin_secure_key_2026";
+// Legacy fallback: before ADMIN_JWT_SECRET existed, admin tokens were signed with the (cleaned)
+// Cashfree secret. Keep reading it exactly as before so existing sessions stay valid and the
+// hard-coded default below is never used in production. Set ADMIN_JWT_SECRET to retire this.
+const legacyGatewaySecret = String(
+  process.env.CASHFREE_SECRET_KEY || process.env.CASHFREE_CLIENT_SECRET || process.env.CASHFREE_SECRET || ""
+)
+  .trim()
+  .replace(/^["'`]|["'`]$/g, "")
+  .replace(/\\r|\\n|\\t/g, "")
+  .replace(/[\r\n\t]/g, "")
+  .trim()
+  .replace(/[^a-zA-Z0-9_]/g, "");
+
+if (!process.env.ADMIN_JWT_SECRET && !legacyGatewaySecret && process.env.NODE_ENV !== "test") {
+  console.warn("[Security] ADMIN_JWT_SECRET is not set: admin sessions use the built-in default key. Set ADMIN_JWT_SECRET.");
+}
+
+const AUTH_SECRET = process.env.ADMIN_JWT_SECRET || legacyGatewaySecret || "rs_fashions_admin_secure_key_2026";
 
 /**
  * Generate a cryptographically signed admin session token.

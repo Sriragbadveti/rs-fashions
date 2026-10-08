@@ -1876,23 +1876,6 @@ export const StoreService = {
     } catch {}
   },
 
-  /** Asks the server to confirm payment with Cashfree and finalise the order. null = unreachable. */
-  async finalizeCashfreeOrder(payload: { orderNumber: string; cfOrderId?: string }): Promise<{ paid: boolean; found: boolean } | null> {
-    try {
-      const res = await fetch(`${API_BASE}/payments/cashfree/finalize`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) return null;
-      const json = await res.json();
-      const d = json.data || json;
-      return { paid: Boolean(d.paid), found: Boolean(d.found) };
-    } catch {
-      return null;
-    }
-  },
-
   /** Authoritative server-side stock check; null when the server can't be reached. */
   async checkStock(
     items: { id: string; name?: string; color?: string; quantity: number }[]
@@ -1946,166 +1929,89 @@ export const StoreService = {
     }
   },
 
-  // 6. CASHFREE PAYMENT GATEWAY (PG v2023-08-01)
-  async createCashfreeOrder(payload: {
-    amount: number;
-    customerName: string;
-    email: string;
-    phone: string;
-    customerId?: string;
-    orderNumber?: string;
-    orderNote?: string;
-    returnUrl?: string;
-  }): Promise<{
-    success: boolean;
+  // 6. RAZORPAY PAYMENTS (Standard Web Checkout). The server decides amounts and paid status.
+  /** Creates (or reuses) the Razorpay order for one of OUR orders. Amount comes from the server. */
+  async createPaymentOrder(payload: { orderNumber: string; amount?: number }): Promise<{
+    ok: boolean;
+    status: number;
     orderId?: string;
-    paymentSessionId?: string;
-    orderAmount?: number;
-    orderCurrency?: string;
-    orderStatus?: string;
-    environment?: string;
+    amount?: number;
+    currency?: string;
+    keyId?: string;
     alreadyPaid?: boolean;
     message?: string;
   }> {
     try {
-      const res = await fetch(`${API_BASE}/payments/cashfree/create-order`, {
+      const res = await fetch(`${API_BASE}/payments/create-order`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const data = await res.json();
-      const actualData = data.data || data;
+      const json = await res.json().catch(() => ({}));
+      const d = json.data || json;
       return {
-        success: Boolean(data.success),
-        orderId: actualData.orderId,
-        paymentSessionId: actualData.paymentSessionId,
-        orderAmount: actualData.orderAmount,
-        orderCurrency: actualData.orderCurrency,
-        orderStatus: actualData.orderStatus,
-        environment: actualData.environment,
-        alreadyPaid: Boolean(actualData.alreadyPaid),
-        message: data.message,
+        ok: res.ok && json.success !== false,
+        status: res.status,
+        orderId: d.order_id,
+        amount: typeof d.amount === "number" ? d.amount : undefined,
+        currency: d.currency,
+        keyId: d.key_id,
+        alreadyPaid: Boolean(d.alreadyPaid || d.paid),
+        message: json.message,
       };
-    } catch (err: any) {
-      console.warn("Cashfree create-order fetch error:", err);
-      return {
-        success: false,
-        message: err.message || "Could not connect to Cashfree payment server",
-      };
+    } catch {
+      return { ok: false, status: 0, message: "Could not reach the payment server. Please check your connection and try again." };
     }
   },
 
-  async verifyCashfreePayment(payload: {
-    orderId: string;
-  }): Promise<{
-    success: boolean;
-    verified: boolean;
+  /** Sends Razorpay's handler response to the server, which checks the signature and the payment. */
+  async verifyPayment(payload: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }): Promise<{
+    ok: boolean;
+    status: number;
     paid: boolean;
-    orderId?: string;
+    pending: boolean;
+    orderNumber?: string;
     paymentId?: string;
-    orderStatus?: string;
     message?: string;
   }> {
     try {
-      const res = await fetch(`${API_BASE}/payments/cashfree/verify`, {
+      const res = await fetch(`${API_BASE}/payments/verify-payment`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const data = await res.json();
-      const actualData = data.data || data;
+      const json = await res.json().catch(() => ({}));
+      const d = json.data || json;
       return {
-        success: Boolean(data.success),
-        verified: Boolean(actualData.verified || actualData.paid),
-        paid: Boolean(actualData.paid),
-        orderId: actualData.orderId,
-        paymentId: actualData.paymentId,
-        orderStatus: actualData.orderStatus,
-        message: data.message,
+        ok: res.ok && json.success !== false,
+        status: res.status,
+        paid: res.ok && Boolean(d.paid),
+        pending: Boolean(json.pending || d.pending),
+        orderNumber: d.orderNumber,
+        paymentId: d.paymentId,
+        message: json.message,
       };
-    } catch (err: any) {
-      console.warn("Cashfree verify error:", err);
-      return {
-        success: false,
-        verified: false,
-        paid: false,
-        orderId: payload.orderId,
-        message: err.message || "Failed to verify payment with server",
-      };
+    } catch {
+      return { ok: false, status: 0, paid: false, pending: false, message: "Could not reach the server to confirm your payment." };
     }
   },
 
-  async getCashfreePaymentStatus(orderId: string): Promise<{
-    success: boolean;
-    paid: boolean;
-    orderId?: string;
-    orderStatus?: string;
-    paymentSessionId?: string | null;
-    canRetry?: boolean;
-    message?: string;
-  }> {
+  /** Server-side status of a Razorpay order (checked with Razorpay). null = server unreachable. */
+  async getPaymentStatus(razorpayOrderId: string): Promise<{ paid: boolean; orderStatus?: string; paymentId?: string; orderNumber?: string; amount?: number; currency?: string; keyId?: string } | null> {
     try {
-      const res = await fetch(`${API_BASE}/payments/cashfree/status/${encodeURIComponent(orderId)}`);
-      const data = await res.json();
-      const actualData = data.data || data;
+      const res = await fetch(`${API_BASE}/payments/status/${encodeURIComponent(razorpayOrderId)}`);
+      if (!res.ok) return null;
+      const json = await res.json();
+      const d = json.data || json;
       return {
-        success: Boolean(data.success),
-        paid: Boolean(actualData.paid),
-        orderId: actualData.orderId || orderId,
-        orderStatus: actualData.orderStatus,
-        paymentSessionId: actualData.paymentSessionId,
-        canRetry: Boolean(actualData.canRetry),
-        message: data.message,
+        paid: Boolean(d.paid), orderStatus: d.orderStatus, paymentId: d.paymentId, orderNumber: d.orderNumber,
+        amount: typeof d.amount === "number" ? d.amount : undefined, currency: d.currency, keyId: d.key_id,
       };
-    } catch (err: any) {
-      return {
-        success: false,
-        paid: false,
-        message: err.message || "Failed to check payment status",
-      };
+    } catch {
+      return null;
     }
   },
 
-  async createCashfreePaymentLink(payload: {
-    amount: number;
-    customerName: string;
-    customerPhone: string;
-    customerEmail?: string;
-    invoiceNumber?: string;
-  }): Promise<{
-    success: boolean;
-    paymentLink?: string;
-    linkUrl?: string;
-    paymentLinkId?: string;
-    amount?: number;
-    invoiceNumber?: string;
-    message?: string;
-  }> {
-    try {
-      const res = await fetch(`${API_BASE}/payments/cashfree/create-payment-link`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      const actualData = data.data || data;
-      return {
-        success: Boolean(data.success),
-        paymentLink: actualData.paymentLink || actualData.linkUrl,
-        linkUrl: actualData.paymentLink || actualData.linkUrl,
-        paymentLinkId: actualData.paymentLinkId,
-        amount: actualData.amount,
-        invoiceNumber: actualData.invoiceNumber,
-        message: data.message,
-      };
-    } catch (err: any) {
-      console.warn("Cashfree payment link error:", err);
-      return {
-        success: false,
-        message: err.message || "Could not generate Cashfree payment link",
-      };
-    }
-  },
   // 9. CUSTOMER ORDERS & SHIPMENT TRACKING
   async getUserOrders(phone: string, email?: string): Promise<any[]> {
     const cleanPhone = (phone || "").replace(/\D/g, "").slice(-10);

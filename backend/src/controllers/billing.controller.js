@@ -7,6 +7,7 @@ import { createPendingOrder } from "../services/onlineOrders.js";
 import { findExistingCustomer, phoneKey } from "../services/customerIdentity.js";
 import { peekNextOrderNumber } from "../services/orderNumber.js";
 import { deductStockForOrderItems, findStockShortages, holdStock, releaseHolds, withStockLock } from "../services/inventory.service.js";
+import { isOnlineGatewayMethod } from "../services/orderVisibility.js";
 
 /**
  * Controller: POS Billing, Counter Invoicing & Coupons
@@ -180,7 +181,7 @@ async function handleCheckoutUnlocked(req, res) {
       await deductStockForOrderItems(items, {
         referenceNumber: finalInvoiceNumber,
         paymentMethod,
-        performedBy: paymentMethod === "cod" ? "Online Storefront (COD)" : (paymentMethod === "cashfree" ? "Online Storefront (Cashfree)" : "Showroom Billing Counter"),
+        performedBy: paymentMethod === "cod" ? "Online Storefront (COD)" : (isOnlineGatewayMethod(paymentMethod) ? "Online Storefront (Online Payment)" : "Showroom Billing Counter"),
         notePrefix: paymentMethod === "cod" ? "COD Order" : "Sale Invoice",
       });
 
@@ -271,7 +272,7 @@ async function handleCheckoutUnlocked(req, res) {
     await deductStockForOrderItems(items, {
       referenceNumber: finalInvoiceNumber,
       paymentMethod,
-      performedBy: paymentMethod === "cod" ? "Online Storefront (COD)" : (paymentMethod === "cashfree" ? "Online Storefront (Cashfree)" : "Showroom Billing Counter"),
+      performedBy: paymentMethod === "cod" ? "Online Storefront (COD)" : (isOnlineGatewayMethod(paymentMethod) ? "Online Storefront (Online Payment)" : "Showroom Billing Counter"),
       notePrefix: paymentMethod === "cod" ? "COD Order" : "Sale Invoice",
     });
 

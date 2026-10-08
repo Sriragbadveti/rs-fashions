@@ -12,8 +12,13 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = "";
 process.env.SUPABASE_ANON_KEY = "";
 process.env.ADMIN_JWT_SECRET = "sku-test-secret";
 process.env.NODE_ENV = "test";
+// Fake Razorpay credentials for this process; the SDK itself is replaced by an in-memory fake.
+process.env.RAZORPAY_KEY_ID = "rzp_test_integration01";
+process.env.RAZORPAY_KEY_SECRET = "integration_test_secret";
+process.env.RAZORPAY_WEBHOOK_SECRET = "integration_webhook_secret";
 
 import { test, before, after } from "node:test";
+import crypto from "node:crypto";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
@@ -391,61 +396,145 @@ test("catalog listing supports card view, single product and pagination", async 
   assert.equal(paged.pages, Math.ceil(full.products.length / 2));
 });
 
-test("online payment: pending order, webhook finalises once, duplicates and late failures are harmless", async () => {
-  const created = (await api("POST", "/catalog", product({ variants: [{ color: "Red", colorSlug: "RED", stock: 2, sku: "" }] }))).body.product;
-  const items = [{ id: created.id, productId: created.id, name: "Test Saree", color: "Red", quantity: 1, qty: 1, price: 1000 }];
-  const clientKey = `RSF-ORD-T${Date.now().toString(36).toUpperCase()}`;
-  const stockOf = async () => (await api("GET", "/catalog/products")).body.products.find((p) => p.id === created.id).stock;
+/** In-memory stand-in for the Razorpay SDK: orders, payments, capture. */
+function fakeRazorpay() {
+  const orders = new Map();
+  const payments = new Map();
+  let n = 0;
+  const notFound = () => Object.assign(new Error("not found"), { statusCode: 400, error: { description: "The id provided does not exist" } });
+  return {
+    orders: {
+      create: async (o) => {
+        const id = `order_TEST${String(++n).padStart(6, "0")}`;
+        const rec = { id, amount: o.amount, currency: o.currency, receipt: o.receipt, notes: o.notes, status: "created" };
+        orders.set(id, rec);
+        return rec;
+      },
+      fetch: async (id) => { if (!orders.has(id)) throw notFound(); return orders.get(id); },
+      fetchPayments: async (id) => ({ items: [...payments.values()].filter((p) => p.order_id === id).reverse() }),
+    },
+    payments: {
+      fetch: async (id) => { if (!payments.has(id)) throw notFound(); return payments.get(id); },
+      capture: async (id) => { const p = payments.get(id); p.status = "captured"; orders.get(p.order_id).status = "paid"; return p; },
+    },
+    /** Simulates the customer paying in the Razorpay window. */
+    pay(orderId, { status = "captured", amount } = {}) {
+      const o = orders.get(orderId);
+      const id = `pay_TEST${String(++n).padStart(6, "0")}`;
+      payments.set(id, { id, order_id: orderId, amount: amount ?? o.amount, currency: o.currency, status });
+      if (status === "captured") o.status = "paid";
+      return id;
+    },
+    get orderCount() { return orders.size; },
+  };
+}
 
-  const pending = await api("POST", "/billing/pending-order", { orderNumber: clientKey, customerPhone: "9876543210", customerName: "Tester", items, total: 1000, sessionId: "sess-pay" }, { auth: false });
-  assert.equal(pending.status, 201, JSON.stringify(pending.body));
-  // The server replaces the client's temporary key with the next sequential number (001, 002…).
-  const orderNumber = pending.body.orderNumber;
-  assert.match(orderNumber, /^\d{3,}$/);
-  assert.equal(await stockOf(), 2, "stock is only deducted once payment is confirmed");
-  const listed = async () => ((await api("GET", "/sales/customer-orders?phone=9876543210", undefined, { auth: false })).body.orders || []).some((o) => (o.orderNumber || o.invoiceNumber || o.order_number) === orderNumber);
-  assert.equal(await listed(), false, "an unpaid (pending) order is not in the customer's order history");
+const checkoutSignature = (orderId, paymentId) =>
+  crypto.createHmac("sha256", process.env.RAZORPAY_KEY_SECRET).update(`${orderId}|${paymentId}`).digest("hex");
 
-  const event = (status, id) => ({ type: "PAYMENT_SUCCESS_WEBHOOK", data: { order: { order_id: `RSF_${orderNumber}_A1`, order_tags: { orderNumber } }, payment: { cf_payment_id: id, payment_status: status } } });
-  const hook = (body) => api("POST", "/payments/cashfree/webhook", body, { auth: false });
+async function webhook(event, { sign = true, eventId } = {}) {
+  const raw = JSON.stringify(event);
+  const headers = { "Content-Type": "application/json" };
+  if (sign) headers["X-Razorpay-Signature"] = crypto.createHmac("sha256", process.env.RAZORPAY_WEBHOOK_SECRET).update(raw).digest("hex");
+  if (eventId) headers["X-Razorpay-Event-Id"] = eventId;
+  const res = await fetch(`${baseUrl}/payments/webhook`, { method: "POST", headers, body: raw });
+  return { status: res.status, body: await res.json() };
+}
 
-  assert.equal((await hook(event("SUCCESS", "pay-1"))).status, 200);
-  assert.equal(await stockOf(), 1, "paid: one piece deducted");
-  const dup = await hook(event("SUCCESS", "pay-1"));
-  assert.equal(dup.body.deduplicated, true);
-  assert.equal(await stockOf(), 1, "a duplicate webhook does not deduct again");
-  // A different event for the same order (e.g. verify + webhook) also cannot double-deduct.
-  await hook(event("SUCCESS", "pay-2"));
-  assert.equal(await stockOf(), 1, "second success event for an already-paid order is a no-op");
+test("online payment (Razorpay): server amount, signature check, pays exactly once, failures never un-pay", async () => {
+  const { setRazorpayClientForTests } = await import("../src/services/razorpay.service.js");
+  const rzp = fakeRazorpay();
+  setRazorpayClientForTests(rzp);
+  try {
+    const created = (await api("POST", "/catalog", product({ variants: [{ color: "Red", colorSlug: "RED", stock: 2, sku: "" }] }))).body.product;
+    const items = [{ id: created.id, productId: created.id, name: "Test Saree", color: "Red", quantity: 1, qty: 1, price: 1000 }];
+    const clientKey = `RSF-ORD-T${Date.now().toString(36).toUpperCase()}`;
+    const stockOf = async () => (await api("GET", "/catalog/products")).body.products.find((p) => p.id === created.id).stock;
 
-  assert.equal(await listed(), true, "once paid, the order appears in the customer's history");
-  await hook(event("FAILED", "pay-3"));
-  const orders = (await api("GET", "/sales/customer-orders?phone=9876543210", undefined, { auth: false })).body.orders || [];
-  assert.ok(orders.length >= 0);
-  assert.equal(await stockOf(), 1, "a late failure never un-pays an order");
+    const pending = await api("POST", "/billing/pending-order", { orderNumber: clientKey, customerPhone: "9876543210", customerName: "Tester", items, total: 1000, sessionId: "sess-pay" }, { auth: false });
+    assert.equal(pending.status, 201, JSON.stringify(pending.body));
+    const orderNumber = pending.body.orderNumber;
+    assert.match(orderNumber, /^\d{3,}$/);
+    assert.equal(await stockOf(), 2, "stock is only deducted once payment is confirmed");
+    const listed = async () => ((await api("GET", "/sales/customer-orders?phone=9876543210", undefined, { auth: false })).body.orders || []).some((o) => (o.orderNumber || o.invoiceNumber || o.order_number) === orderNumber);
+    assert.equal(await listed(), false, "an unpaid (pending) order is not in the customer's order history");
+
+    // The browser cannot choose the amount: a tampered amount is refused, the stored total is charged.
+    const tampered = await api("POST", "/payments/create-order", { orderNumber, amount: 1 }, { auth: false });
+    assert.equal(tampered.status, 400);
+    const co = await api("POST", "/payments/create-order", { orderNumber, amount: 1000 }, { auth: false });
+    assert.equal(co.status, 200, JSON.stringify(co.body));
+    assert.equal(co.body.amount, 100000, "₹1000 = 100000 paise, from the stored order");
+    assert.equal(co.body.currency, "INR");
+    assert.doesNotMatch(JSON.stringify(co.body), /integration_test_secret/, "the key secret is never returned");
+    const again = await api("POST", "/payments/create-order", { orderNumber }, { auth: false });
+    assert.equal(again.body.order_id, co.body.order_id, "a double click reuses the same Razorpay order");
+    assert.equal(rzp.orderCount, 1);
+    const rzpOrderId = co.body.order_id;
+
+    // Forged signature: rejected, nothing changes.
+    const fakePay = rzp.pay(rzpOrderId, { status: "failed" });
+    const forged = await api("POST", "/payments/verify-payment", { razorpay_order_id: rzpOrderId, razorpay_payment_id: fakePay, razorpay_signature: "0".repeat(64) }, { auth: false });
+    assert.equal(forged.status, 400);
+    // Genuine signature but the payment failed: not paid.
+    const failedVerify = await api("POST", "/payments/verify-payment", { razorpay_order_id: rzpOrderId, razorpay_payment_id: fakePay, razorpay_signature: checkoutSignature(rzpOrderId, fakePay) }, { auth: false });
+    assert.equal(failedVerify.status, 202);
+    assert.notEqual(failedVerify.body.paid, true);
+    assert.equal(await stockOf(), 2, "a failed payment deducts nothing");
+    assert.equal(await listed(), false, "a failed payment does not create an order in history");
+
+    // Customer retries in the same window and pays.
+    const payId = rzp.pay(rzpOrderId);
+    const ok = await api("POST", "/payments/verify-payment", { razorpay_order_id: rzpOrderId, razorpay_payment_id: payId, razorpay_signature: checkoutSignature(rzpOrderId, payId) }, { auth: false });
+    assert.equal(ok.status, 200, JSON.stringify(ok.body));
+    assert.equal(ok.body.paid, true);
+    assert.equal(ok.body.orderNumber, orderNumber);
+    assert.equal(await stockOf(), 1, "paid: one piece deducted");
+    assert.equal(await listed(), true, "once paid, the order appears in the customer's history");
+
+    // Refresh / repeat verify, webhook, duplicate webhook: all no-ops.
+    const repeat = await api("POST", "/payments/verify-payment", { razorpay_order_id: rzpOrderId, razorpay_payment_id: payId, razorpay_signature: checkoutSignature(rzpOrderId, payId) }, { auth: false });
+    assert.equal(repeat.status, 200);
+    const captured = { event: "payment.captured", payload: { payment: { entity: { id: payId, order_id: rzpOrderId, status: "captured" } } } };
+    assert.equal((await webhook(captured, { eventId: "evt_1" })).status, 200);
+    assert.equal((await webhook(captured, { eventId: "evt_1" })).body.deduplicated, true);
+    assert.equal(await stockOf(), 1, "verify + webhook + duplicates never deduct twice");
+
+    // A late failure event never un-pays the order.
+    await webhook({ event: "payment.failed", payload: { payment: { entity: { id: fakePay, order_id: rzpOrderId, status: "failed" } } } }, { eventId: "evt_2" });
+    assert.equal(await listed(), true);
+    assert.equal(await stockOf(), 1);
+
+    // Paying again for a paid order is refused politely.
+    const paidAgain = await api("POST", "/payments/create-order", { orderNumber }, { auth: false });
+    assert.equal(paidAgain.body.alreadyPaid, true);
+    assert.equal(rzp.orderCount, 1, "no new Razorpay order for a paid order");
+  } finally {
+    setRazorpayClientForTests(null);
+  }
 });
 
-test("webhook signatures are checked on the raw body and fail closed in production", async () => {
-  const crypto = await import("node:crypto");
-  const { verifyCashfreeWebhookSignature } = await import("../src/services/cashfree.service.js");
-  const raw = Buffer.from('{"data":{"order":{"order_id":"X"}}}');
-  const ts = "1700000000";
-  process.env.CASHFREE_SECRET_KEY = "unit_test_secret";
+test("the webhook rejects unsigned or wrongly signed calls and finalises a paid order on its own", async () => {
+  const { setRazorpayClientForTests } = await import("../src/services/razorpay.service.js");
+  const rzp = fakeRazorpay();
+  setRazorpayClientForTests(rzp);
   try {
-    const good = crypto.createHmac("sha256", "unit_test_secret").update(ts + raw.toString()).digest("base64");
-    assert.equal(verifyCashfreeWebhookSignature(raw, ts, good), true);
-    assert.equal(verifyCashfreeWebhookSignature(raw, ts, good.slice(0, -2) + "xx"), false);
-    assert.equal(verifyCashfreeWebhookSignature(raw, ts, undefined), false);
-    assert.equal(verifyCashfreeWebhookSignature(Buffer.from("{}"), ts, good), false, "tampered body is rejected");
+    const created = (await api("POST", "/catalog", product({ variants: [{ color: "Red", colorSlug: "RED", stock: 3, sku: "" }] }))).body.product;
+    const items = [{ id: created.id, productId: created.id, name: "Test Saree", color: "Red", quantity: 1, qty: 1, price: 1000 }];
+    const pending = await api("POST", "/billing/pending-order", { orderNumber: `RSF-ORD-W${Date.now().toString(36).toUpperCase()}`, customerPhone: "9876500000", customerName: "Webhook", items, total: 1000, sessionId: "sess-hook" }, { auth: false });
+    const orderNumber = pending.body.orderNumber;
+    const rzpOrderId = (await api("POST", "/payments/create-order", { orderNumber }, { auth: false })).body.order_id;
+    const payId = rzp.pay(rzpOrderId);
+    const event = { event: "payment.captured", payload: { payment: { entity: { id: payId, order_id: rzpOrderId } } } };
+    const stockOf = async () => (await api("GET", "/catalog/products")).body.products.find((p) => p.id === created.id).stock;
+
+    assert.equal((await webhook(event, { sign: false })).status, 400, "unsigned webhook rejected");
+    assert.equal(await stockOf(), 3);
+    // Browser closed after paying: the signed webhook alone confirms the order.
+    assert.equal((await webhook(event, { eventId: "evt_w1" })).status, 200);
+    assert.equal(await stockOf(), 2);
   } finally {
-    delete process.env.CASHFREE_SECRET_KEY;
-  }
-  const env = process.env.NODE_ENV;
-  process.env.NODE_ENV = "production";
-  try {
-    assert.equal(verifyCashfreeWebhookSignature(raw, ts, "anything"), false, "no secret in production: unsigned webhooks are rejected");
-  } finally {
-    process.env.NODE_ENV = env;
+    setRazorpayClientForTests(null);
   }
 });
 
@@ -602,9 +691,9 @@ test("the RS9999 limit is reported instead of generating an invalid SKU", async 
 });
 
 
-test("create-order accepts the storefront's phone/email fields and rejects a missing phone", async () => {
-  const ok = await api("POST", "/payments/cashfree/create-order", { amount: 222, customerName: "T", email: "t@example.com", phone: "+91 9876543210", orderNumber: "RSF-PHONE-TEST-A" }, { auth: false });
-  assert.notEqual(ok.status, 400, JSON.stringify(ok.body));
-  const missing = await api("POST", "/payments/cashfree/create-order", { amount: 222, customerName: "T", orderNumber: "RSF-PHONE-TEST-B" }, { auth: false });
+test("create-order needs one of our order numbers and refuses unknown orders", async () => {
+  const missing = await api("POST", "/payments/create-order", { amount: 222 }, { auth: false });
   assert.equal(missing.status, 400);
+  const unknown = await api("POST", "/payments/create-order", { orderNumber: "RSF-UNKNOWN-ORDER" }, { auth: false });
+  assert.equal(unknown.status, 404);
 });

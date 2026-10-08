@@ -15,164 +15,122 @@ import {
   Phone,
   User,
 } from "lucide-react";
-import { API_BASE } from "../config/api";
+import { StoreService } from "../services/supabase";
+import { loadRazorpayCheckout, openRazorpayCheckout, razorpayKeyId, describeRazorpayFailure } from "../utils/razorpay";
 import { LEGAL_BUSINESS_NAME, PROPRIETOR_NAME, SUPPORT_EMAIL, SUPPORT_PHONE_DISPLAY, SUPPORT_PHONE_TEL, POLICY_LINKS } from "../config/business";
-
-const loadCashfreeScript = (): Promise<boolean> => {
-  return new Promise((resolve) => {
-    if (typeof window !== "undefined" && (window as any).Cashfree) {
-      return resolve(true);
-    }
-    const existing = document.querySelector('script[src="https://sdk.cashfree.com/js/v3/cashfree.js"]');
-    if (existing) {
-      existing.addEventListener("load", () => resolve(true));
-      existing.addEventListener("error", () => resolve(false));
-      if ((window as any).Cashfree) return resolve(true);
-      return;
-    }
-    const script = document.createElement("script");
-    script.src = "https://sdk.cashfree.com/js/v3/cashfree.js";
-    script.async = true;
-    script.onload = () => resolve(true);
-    script.onerror = () => resolve(false);
-    document.body.appendChild(script);
-  });
-};
 
 export default function QuickPay() {
   const [searchParams] = useSearchParams();
   const orderId = searchParams.get("order_id") || "";
-  const sessionId = searchParams.get("session_id") || "";
   const amountStr = searchParams.get("amount") || "";
   const invoiceNumber = searchParams.get("invoice") || "";
   const customerName = searchParams.get("customer") || "Valued Patron";
 
+  // Links from the previous gateway carried a session_id and an RSF_… reference: they can't be paid now.
+  const isRazorpayLink = /^order_[A-Za-z0-9]+$/.test(orderId);
+
   const [isLoading, setIsLoading] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isPaid, setIsPaid] = useState(false);
-  const [paymentDetails, setPaymentDetails] = useState<any>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [paymentDetails, setPaymentDetails] = useState<{ paymentId?: string } | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(
+    orderId && !isRazorpayLink ? "This payment link has expired. Please ask the showroom for a new link." : null
+  );
+  // What Razorpay will actually charge (from the server), shown instead of the URL's amount.
+  const [serverAmountPaise, setServerAmountPaise] = useState<number | null>(null);
+  const [serverKeyId, setServerKeyId] = useState<string | undefined>(undefined);
 
-  // Check if order is already paid on mount
+  // On open: ask the server whether this link is already paid, and what it will charge.
   useEffect(() => {
-    if (!orderId) return;
-
+    if (!isRazorpayLink) return;
     let isMounted = true;
-    const checkStatus = async () => {
-      try {
-        const res = await fetch(`${API_BASE}/payments/cashfree/verify`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ orderId }),
-        });
-        const data = await res.json();
-        const actual = data.data || data;
-        if (isMounted && (actual.paid || actual.verified)) {
-          setIsPaid(true);
-          setPaymentDetails(actual);
-        }
-      } catch {
-        // ignore initial background check
+    StoreService.getPaymentStatus(orderId).then((status) => {
+      if (!isMounted || !status) return;
+      if (status.paid) {
+        setIsPaid(true);
+        setPaymentDetails({ paymentId: status.paymentId });
+        return;
       }
-    };
-
-    checkStatus();
+      if (typeof status.amount === "number") setServerAmountPaise(status.amount);
+      setServerKeyId(status.keyId);
+    });
     return () => {
       isMounted = false;
     };
-  }, [orderId]);
+  }, [orderId, isRazorpayLink]);
 
   const handlePayNow = async () => {
-    if (!sessionId) {
-      setErrorMessage("Payment session token is missing. Please ask the showroom to regenerate the link.");
+    if (!isRazorpayLink) {
+      setErrorMessage("This payment link is not valid. Please ask the showroom to generate a new one.");
       return;
     }
+    if (isLoading || isVerifying) return;
 
+    setIsLoading(true);
+    setErrorMessage(null);
     try {
-      setIsLoading(true);
-      setErrorMessage(null);
-      await loadCashfreeScript();
-
-      const CashfreeConstructor = (window as any).Cashfree;
-      if (!CashfreeConstructor) {
-        throw new Error("Cashfree payment gateway script could not be loaded in browser");
+      const ready = await loadRazorpayCheckout();
+      const status = serverAmountPaise ? null : await StoreService.getPaymentStatus(orderId);
+      if (status?.paid) {
+        setIsPaid(true);
+        setPaymentDetails({ paymentId: status.paymentId });
+        setIsLoading(false);
+        return;
+      }
+      const amountPaise = serverAmountPaise ?? status?.amount;
+      const keyId = razorpayKeyId(serverKeyId ?? status?.keyId);
+      if (!ready || !keyId || !amountPaise) {
+        throw new Error("The payment window could not be opened. Please check your connection and try again.");
       }
 
-      const cashfree = CashfreeConstructor({ mode: "production" });
-
-      const checkoutOptions = {
-        paymentSessionId: sessionId,
-        redirectTarget: "_modal",
-      };
-
-      cashfree.checkout(checkoutOptions).then(async (result: any) => {
-        if (result.error) {
-          console.warn("Cashfree checkout error:", result.error);
-          setIsLoading(false);
-          if (result.error.message) {
-            setErrorMessage(result.error.message);
+      let handled = false;
+      openRazorpayCheckout({
+        keyId,
+        orderId,
+        amount: amountPaise,
+        currency: "INR",
+        description: invoiceNumber ? `Invoice ${invoiceNumber}` : "Showroom bill",
+        prefill: { name: customerName === "Valued Patron" ? "" : customerName },
+        onSuccess: async (resp) => {
+          handled = true;
+          setIsVerifying(true);
+          // The server checks the signature and the payment before the sale is recorded.
+          let result = await StoreService.verifyPayment(resp);
+          if (!result.paid && result.status === 0) {
+            const again = await StoreService.getPaymentStatus(orderId);
+            if (again?.paid) result = { ...result, paid: true, paymentId: again.paymentId };
           }
-          return;
-        }
-
-        if (result.redirect) {
-          return;
-        }
-
-        // Verify status with server
-        setIsVerifying(true);
-        try {
-          const verifyRes = await fetch(`${API_BASE}/payments/cashfree/verify`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ orderId }),
-          });
-          const verifyJson = await verifyRes.json();
-          const actual = verifyJson.data || verifyJson;
-
-          if (actual.paid || actual.verified) {
+          if (result.paid) {
             setIsPaid(true);
-            setPaymentDetails(actual);
+            setPaymentDetails({ paymentId: result.paymentId || resp.razorpay_payment_id });
+          } else if (result.pending) {
+            setErrorMessage(result.message || "Your payment is being confirmed by the bank. Please don't pay again.");
           } else {
-            // Give Cashfree webhook 2 seconds and re-check
-            setTimeout(async () => {
-              try {
-                const secondCheck = await fetch(`${API_BASE}/payments/cashfree/verify`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ orderId }),
-                });
-                const secondJson = await secondCheck.json();
-                const secondActual = secondJson.data || secondJson;
-                if (secondActual.paid || secondActual.verified) {
-                  setIsPaid(true);
-                  setPaymentDetails(secondActual);
-                } else {
-                  setErrorMessage("Payment is pending or awaiting confirmation from bank. Please check your transaction.");
-                }
-              } catch {
-                setErrorMessage("Unable to verify payment with server. Please check your order history.");
-              }
-              setIsVerifying(false);
-              setIsLoading(false);
-            }, 2000);
-            return;
+            setErrorMessage(result.message || "We could not confirm this payment. Please show this screen at the counter.");
           }
-        } catch {
-          setErrorMessage("Failed to reach server for payment confirmation.");
-        } finally {
           setIsVerifying(false);
           setIsLoading(false);
-        }
+        },
+        onFailure: (resp) => {
+          setErrorMessage(describeRazorpayFailure(resp));
+        },
+        onDismiss: () => {
+          if (handled) return;
+          setIsLoading(false);
+        },
       });
-    } catch (err: any) {
+    } catch (err) {
       console.error("Payment initiation error:", err);
-      setErrorMessage(err.message || "Could not launch Cashfree payment dialog");
+      setErrorMessage(err instanceof Error ? err.message : "Could not open the payment window. Please try again.");
       setIsLoading(false);
     }
   };
 
-  const amountDisplay = amountStr ? Number(amountStr).toLocaleString("en-IN") : "---";
+  const amountDisplay = serverAmountPaise
+    ? (serverAmountPaise / 100).toLocaleString("en-IN")
+    : amountStr
+      ? Number(amountStr).toLocaleString("en-IN")
+      : "---";
 
   return (
     <div className="min-h-screen bg-linear-to-b from-[#F7EBEC] via-[#F4E7E4] to-[#E9C9C3]/45 flex flex-col items-center justify-center p-4 selection:bg-[#8E3D51]/20">
@@ -299,13 +257,13 @@ export default function QuickPay() {
               <button
                 type="button"
                 onClick={handlePayNow}
-                disabled={isLoading || isVerifying}
+                disabled={isLoading || isVerifying || !isRazorpayLink}
                 className="w-full h-12 rounded-2xl bg-linear-to-r from-[#783144] via-[#8E3D51] to-[#783144] hover:opacity-95 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-[#8E3D51]/30 transition-all active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading || isVerifying ? (
                   <>
                     <Loader2 className="h-5 w-5 animate-spin" />
-                    <span>{isVerifying ? "Verifying Payment..." : "Opening Cashfree Gateway..."}</span>
+                    <span>{isVerifying ? "Verifying Payment..." : "Opening Secure Payment..."}</span>
                   </>
                 ) : (
                   <>
@@ -319,7 +277,7 @@ export default function QuickPay() {
               <div className="flex items-center justify-center gap-4 text-[11px] text-stone-500 pt-1">
                 <span className="flex items-center gap-1">
                   <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-                  Cashfree 256-Bit SSL
+                  Secured by Razorpay
                 </span>
                 <span>&bull;</span>
                 <span>Official Showroom POS</span>

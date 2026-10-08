@@ -27,9 +27,10 @@ import { products, type Product } from "../data/products";
 import { getUserSession, saveAddress, getSavedAddresses, type SavedAddress } from "../utils/userSession";
 import { variantImgProps } from "../utils/imageVariants";
 import { SUPPORT_EMAIL, SUPPORT_PHONE_DISPLAY } from "../config/business";
+import { loadRazorpayCheckout, openRazorpayCheckout, razorpayKeyId, describeRazorpayFailure } from "../utils/razorpay";
 
 type CheckoutStep = "address" | "payment" | "success";
-type PaymentMethod = "cashfree" | "cod" | "upi" | "razorpay" | "phonepe";
+type PaymentMethod = "razorpay" | "cod";
 
 interface CountryConfig {
   name: string;
@@ -98,27 +99,6 @@ interface OrderSnapshot {
   recipient: AddressForm;
 }
 
-const loadCashfreeScript = (): Promise<boolean> => {
-  return new Promise((resolve) => {
-    if (typeof window !== "undefined" && (window as any).Cashfree) {
-      return resolve(true);
-    }
-    const existing = document.querySelector('script[src="https://sdk.cashfree.com/js/v3/cashfree.js"]');
-    if (existing) {
-      existing.addEventListener("load", () => resolve(true));
-      existing.addEventListener("error", () => resolve(false));
-      if ((window as any).Cashfree) return resolve(true);
-      return;
-    }
-    const script = document.createElement("script");
-    script.src = "https://sdk.cashfree.com/js/v3/cashfree.js";
-    script.async = true;
-    script.onload = () => resolve(true);
-    script.onerror = () => resolve(false);
-    document.body.appendChild(script);
-  });
-};
-
 function CheckoutInner() {
   const { toast } = useModal();
   const navigate = useNavigate();
@@ -127,7 +107,7 @@ function CheckoutInner() {
 
   const [step, setStep] = useState<CheckoutStep>("address");
   const [address, setAddress] = useState<AddressForm>(initialAddress);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cashfree");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("razorpay");
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSummaryOpen, setIsSummaryOpen] = useState(true);
   const [errors, setErrors] = useState<Partial<Record<keyof AddressForm, string>>>({});
@@ -246,9 +226,8 @@ function CheckoutInner() {
     const stateParam = searchParams.get("state") || "";
     const pincodeParam = searchParams.get("pincode") || "";
 
-    if (methodParam === "razorpay" || methodParam === "phonepe") {
-      setPaymentMethod(methodParam);
-    }
+    // Online payment always goes through Razorpay; no URL parameter can pick a path that skips it.
+    if (methodParam) setPaymentMethod("razorpay");
 
     if (orderNumberParam) setExistingOrderNumber(orderNumberParam);
     if (orderIdParam) setExistingOrderId(orderIdParam);
@@ -292,9 +271,8 @@ function CheckoutInner() {
             pincode: addr?.pincode || "400001",
           });
 
-          if (foundOrder.paymentMethod === "cashfree" || foundOrder.paymentMethod === "cod" || foundOrder.paymentMethod === "razorpay" || foundOrder.paymentMethod === "phonepe") {
-            setPaymentMethod(foundOrder.paymentMethod as any);
-          }
+          // Existing unpaid order: COD stays COD, anything paid online is paid through Razorpay.
+          setPaymentMethod(foundOrder.paymentMethod === "cod" ? "cod" : "razorpay");
 
           // Also populate cart if empty
           if (items.length === 0 && foundOrder.items && foundOrder.items.length > 0) {
@@ -530,29 +508,16 @@ function CheckoutInner() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // Auto-verify if returning from Cashfree redirect
-  useEffect(() => {
-    const statusParam = searchParams.get("status");
-    const orderIdParam = searchParams.get("order_id") || searchParams.get("orderId");
-    if (statusParam === "cashfree_return" && orderIdParam) {
-      setIsProcessing(true);
-      StoreService.verifyCashfreePayment({ orderId: orderIdParam }).then((res) => {
-        if (res.paid) {
-          completeCashfreeSuccess(orderIdParam, res.paymentId);
-        } else {
-          setIsProcessing(false);
-        }
-      });
-    }
-  }, [searchParams]);
-
-  const completeCashfreeSuccess = async (orderId: string, paymentId?: string) => {
+  /**
+   * Shows the confirmation for an order the SERVER has already confirmed as paid (signature and
+   * payment checked by POST /payments/verify-payment, or the order was paid before). Nothing here
+   * marks anything paid: the browser only displays the result.
+   */
+  const completePaidOrder = async (orderNumber: string) => {
     setIsProcessing(true);
 
-    const effectiveOrderId = existingOrderNumber || orderId || `RSF-${Date.now().toString().slice(-6)}`;
-
     const snapshot: OrderSnapshot = {
-      orderId: effectiveOrderId,
+      orderId: orderNumber,
       date: new Date().toLocaleDateString("en-IN", {
         day: "numeric",
         month: "short",
@@ -577,7 +542,7 @@ function CheckoutInner() {
       subtotal,
       shipping,
       total,
-      paymentMethod: "cashfree",
+      paymentMethod: "razorpay",
       recipient: { ...address },
     };
 
@@ -603,70 +568,7 @@ function CheckoutInner() {
       }
     }
 
-    // If this checkout created the order on the server before payment, the server confirms the
-    // payment with Cashfree and finalises it (idempotent with the webhook): nothing to re-create.
-    let confirmedByServer = false;
-    const serverOrderNumber = stableOrderNumberRef.current || orderId.replace(/^RSF_(.+)_A\d+$/, "$1");
-    let hadPending = false;
-    try { hadPending = Boolean(serverOrderNumber && sessionStorage.getItem(`rs_pending_${serverOrderNumber}`)); } catch {}
-    if (hadPending) {
-      const fin = await StoreService.finalizeCashfreeOrder({
-        orderNumber: serverOrderNumber,
-        cfOrderId: /^RSF_.+_A\d+$/.test(orderId) ? orderId : undefined,
-      });
-      confirmedByServer = Boolean(fin?.paid && fin.found);
-      if (confirmedByServer) { try { sessionStorage.removeItem(`rs_pending_${serverOrderNumber}`); } catch {} }
-    }
-
-    try {
-      if (confirmedByServer) {
-        // Already saved and paid on the server.
-      } else if (existingOrderId || existingOrderNumber) {
-        await StoreService.updateOrderPaymentStatus(
-          existingOrderId || existingOrderNumber!,
-          "paid",
-          "cashfree",
-          paymentId || orderId,
-          {
-            gateway: "Cashfree Payments",
-            cashfree_order_id: orderId,
-            cashfree_payment_id: paymentId,
-            verified_at: new Date().toISOString(),
-            status: "PAID",
-          }
-        );
-      } else {
-        await StoreService.createOrder({
-          customerName: `${address.firstName} ${address.lastName}`.trim(),
-          email: address.email,
-          phone: `${address.countryDial} ${address.phone}`,
-          address: {
-            address: address.address,
-            apartment: address.apartment,
-            city: address.city,
-            state: address.state,
-            pincode: address.pincode,
-          },
-          items: snapshot.items,
-          subtotal,
-          shipping,
-          discount: 0,
-          total,
-          paymentMethod: "cashfree",
-          paymentStatus: "paid",
-          transactionId: paymentId || orderId,
-          paymentDetails: {
-            gateway: "Cashfree Payments",
-            cashfree_order_id: orderId,
-            cashfree_payment_id: paymentId,
-            verified_at: new Date().toISOString(),
-            status: "PAID",
-          },
-        });
-      }
-    } catch (err) {
-      console.warn("Failed to persist Cashfree order:", err);
-    }
+    try { sessionStorage.removeItem(`rs_pending_${orderNumber}`); } catch {}
 
     setCompletedOrder(snapshot);
     setIsProcessing(false);
@@ -696,8 +598,12 @@ function CheckoutInner() {
     }
     let orderNum = stableOrderNumberRef.current;
 
-    // If Cashfree Gateway is selected
-    if (paymentMethod === "cashfree") {
+    // Online payment (Razorpay Standard Checkout)
+    if (paymentMethod === "razorpay") {
+      const release = () => {
+        isSubmittingRef.current = false;
+        setIsProcessing(false);
+      };
       try {
         // Create the order on the server BEFORE paying: if the customer's connection or browser
         // dies after paying, the webhook still finalises it and it shows up in My Orders.
@@ -742,105 +648,95 @@ function CheckoutInner() {
               productName: pending.stockConflict.name || items[0]?.product.name || "",
               availableStock: Math.max(0, pending.stockConflict.available),
             });
-            isSubmittingRef.current = false;
-            setIsProcessing(false);
+            release();
             return;
           }
-          if (pending.ok) {
-            // The server assigns the sequential order number (001, 002…); use it from here on.
-            if (pending.orderNumber) {
-              orderNum = pending.orderNumber;
-              stableOrderNumberRef.current = pending.orderNumber;
-            }
-            try { sessionStorage.setItem(`rs_pending_${orderNum}`, "1"); } catch {}
+          if (!pending.ok || !pending.orderNumber) {
+            // Payment needs the order on the server (it sets the amount and receives the payment).
+            toast("Could not start payment", pending.message || "We could not create your order. Please try again.", "error");
+            release();
+            return;
           }
+          // The server assigns the sequential order number (001, 002…); use it from here on.
+          orderNum = pending.orderNumber;
+          stableOrderNumberRef.current = pending.orderNumber;
+          try { sessionStorage.setItem(`rs_pending_${orderNum}`, "1"); } catch {}
         }
-        await loadCashfreeScript();
+        const [scriptReady, rzpOrder] = await Promise.all([
+          loadRazorpayCheckout(),
+          // The server charges the order's stored total; `amount` is only a consistency check.
+          StoreService.createPaymentOrder({ orderNumber: orderNum, amount: total }),
+        ]);
 
-        const cfRes = await StoreService.createCashfreeOrder({
-          amount: total,
-          customerName: `${address.firstName} ${address.lastName}`.trim(),
-          email: address.email || currentUser?.email || "customer@rsfashions.in",
-          phone: `${address.countryDial} ${address.phone}`,
-          orderNumber: orderNum,
-          orderNote: `RS Fashions Saree Order (${itemCount} items)`,
-        });
-
-        // 1. If backend identifies that the order is ALREADY PAID, complete immediately
-        if (cfRes.alreadyPaid || cfRes.orderStatus === "PAID") {
-          await completeCashfreeSuccess(cfRes.orderId || orderNum);
-          isSubmittingRef.current = false;
-          setIsProcessing(false);
+        if (rzpOrder.alreadyPaid) {
+          await completePaidOrder(orderNum);
+          release();
+          return;
+        }
+        if (!rzpOrder.ok || !rzpOrder.orderId || !rzpOrder.amount) {
+          toast("Could not start payment", rzpOrder.message || "Please try again in a moment.", "error");
+          release();
+          return;
+        }
+        const keyId = razorpayKeyId(rzpOrder.keyId);
+        if (!scriptReady || !keyId) {
+          toast("Could not open the payment window", "Please check your connection and try again.", "error");
+          release();
           return;
         }
 
-        if (!cfRes.success || !cfRes.paymentSessionId || !cfRes.orderId) {
-          throw new Error(cfRes.message || "Failed to initialize Cashfree payment session");
-        }
-
-        const CashfreeConstructor = (window as any).Cashfree;
-        if (!CashfreeConstructor) {
-          throw new Error("Cashfree SDK failed to load in browser");
-        }
-
-        const mode = (cfRes.environment || "SANDBOX").toLowerCase() === "production" ? "production" : "sandbox";
-        const cashfree = CashfreeConstructor({ mode });
-
-        const checkoutOptions = {
-          paymentSessionId: cfRes.paymentSessionId,
-          redirectTarget: "_modal",
-        };
-
-        cashfree.checkout(checkoutOptions).then(async (result: any) => {
-          if (result.error) {
-            console.warn("Cashfree checkout error:", result.error);
-            isSubmittingRef.current = false;
-            setIsProcessing(false);
-            // Closed/declined/failed: the order was never paid, so it is not recorded anywhere.
-            toast("Payment failed", "Your payment was not completed and you have not been charged.", "error");
-            StoreService.abandonPendingOrder(orderNum);
-            return;
-          }
-          if (result.redirect) {
-            // Cashfree handles redirect
-            return;
-          }
-          if (result.paymentDetails) {
-            // Server-side verification is the sole authority of payment success
-            try {
-              const verifyRes = await StoreService.verifyCashfreePayment({ orderId: cfRes.orderId! });
-              if (verifyRes.paid) {
-                await completeCashfreeSuccess(cfRes.orderId!, verifyRes.paymentId);
-              } else {
-                toast("Payment failed", `We could not confirm your payment. If money was debited, contact us at ${SUPPORT_EMAIL} or ${SUPPORT_PHONE_DISPLAY} with your order details.`, "error");
-              }
-            } catch (vErr) {
-              console.warn("Verification error:", vErr);
-              alert("Payment could not be verified by the server. Please check your order history or contact support.");
-            } finally {
-              isSubmittingRef.current = false;
-              setIsProcessing(false);
+        const razorpayOrderId = rzpOrder.orderId;
+        let handled = false;
+        openRazorpayCheckout({
+          keyId,
+          orderId: razorpayOrderId,
+          amount: rzpOrder.amount,
+          currency: rzpOrder.currency || "INR",
+          description: `Order #${orderNum}`,
+          prefill: {
+            name: `${address.firstName} ${address.lastName}`.trim(),
+            email: address.email || currentUser?.email || "",
+            contact: address.phone ? `${address.countryDial}${address.phone}` : "",
+          },
+          onSuccess: async (resp) => {
+            handled = true;
+            setIsProcessing(true);
+            // Only the server's signature + payment check can confirm the order.
+            let result = await StoreService.verifyPayment(resp);
+            if (!result.paid && result.status === 0) {
+              // Lost connection while confirming: ask the server again before giving up.
+              const status = await StoreService.getPaymentStatus(razorpayOrderId);
+              if (status?.paid) result = { ...result, paid: true, orderNumber: status.orderNumber };
             }
-          }
+            if (result.paid) {
+              await completePaidOrder(result.orderNumber || orderNum);
+            } else if (result.pending) {
+              toast("Payment is being confirmed", result.message || "Please don't pay again. Your order will update shortly in My Orders.", "info");
+            } else {
+              toast(
+                "Payment not confirmed",
+                result.message || `We could not confirm your payment. If money was debited, contact us at ${SUPPORT_EMAIL} or ${SUPPORT_PHONE_DISPLAY} with your order number.`,
+                "error"
+              );
+            }
+            release();
+          },
+          onFailure: (resp) => {
+            // The window stays open so the customer can retry; nothing is marked paid.
+            toast("Payment failed", describeRazorpayFailure(resp), "error");
+          },
+          onDismiss: () => {
+            if (handled) return;
+            StoreService.abandonPendingOrder(orderNum);
+            toast("Payment cancelled", "You closed the payment window. Your order has not been paid.", "info");
+            release();
+          },
         });
         return;
-      } catch (cfErr: any) {
-        console.error("Cashfree checkout network/creation error:", cfErr);
-
-        // Network recovery: query backend order status before blindly recreating or failing
-        try {
-          const statusRes = await StoreService.getCashfreePaymentStatus(orderNum);
-          if (statusRes.paid) {
-            await completeCashfreeSuccess(statusRes.orderId || orderNum);
-            isSubmittingRef.current = false;
-            setIsProcessing(false);
-            return;
-          }
-        } catch {}
-
-        alert(cfErr.message || "Could not initialize payment session. Please check your network and try again.");
-        isSubmittingRef.current = false;
-        setIsProcessing(false);
+      } catch (err) {
+        console.error("Payment start error:", err);
+        toast("Could not start payment", "Please check your connection and try again.", "error");
+        release();
         return;
       }
     }
@@ -1004,11 +900,7 @@ function CheckoutInner() {
                     Payment Method
                   </span>
                   <span className="inline-block font-medium text-[#2A2421] mt-0.5 text-xs">
-                    {completedOrder.paymentMethod === "cod"
-                      ? "Cash on Delivery"
-                      : completedOrder.paymentMethod === "upi"
-                        ? "UPI Transfer (Verified)"
-                        : "Online Prepaid (Verified)"}
+                    {completedOrder.paymentMethod === "cod" ? "Cash on Delivery" : "Online Prepaid (Verified)"}
                   </span>
                 </div>
               </div>
@@ -1823,12 +1715,12 @@ function CheckoutInner() {
                 )}
 
                 <div className="space-y-3 sm:space-y-4">
-                  {/* Cashfree Payment Gateway (Cards, UPI, Netbanking, Wallets, EMI) */}
+                  {/* Online payment via Razorpay (Cards, UPI, Netbanking, Wallets) */}
                   <button
                     type="button"
-                    onClick={() => setPaymentMethod("cashfree")}
+                    onClick={() => setPaymentMethod("razorpay")}
                     className={`w-full rounded-2xl sm:rounded-3xl border p-4 sm:p-5 text-left transition-all duration-200 bg-white relative overflow-hidden ${
-                      paymentMethod === "cashfree"
+                      paymentMethod === "razorpay"
                         ? "border-[#8E3D51] shadow-[0_10px_30px_rgba(142,61,81,0.12)] ring-2 ring-[#8E3D51]/25"
                         : "border-black/10 hover:border-black/20"
                     }`}
@@ -1842,7 +1734,7 @@ function CheckoutInner() {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <span className="font-serif text-base sm:text-lg text-[#2A2421] font-semibold">
-                              Cashfree Payments
+                              Pay Online (Razorpay)
                             </span>
                             <span className="rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/60 px-2 py-0.5 text-[8.5px] sm:text-[9px] font-semibold uppercase tracking-wider">
                               Fast & Secure
@@ -1859,12 +1751,12 @@ function CheckoutInner() {
 
                       <div
                         className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-all ${
-                          paymentMethod === "cashfree"
+                          paymentMethod === "razorpay"
                             ? "border-[#8E3D51] bg-[#8E3D51] text-white"
                             : "border-black/20"
                         }`}
                       >
-                        {paymentMethod === "cashfree" && <FiCheck size={11} />}
+                        {paymentMethod === "razorpay" && <FiCheck size={11} />}
                       </div>
                     </div>
                   </button>
@@ -1883,7 +1775,7 @@ function CheckoutInner() {
                         <span>
                           {paymentMethod === "cod"
                             ? "Confirm Cash On Delivery Order"
-                            : `Pay ₹${total.toLocaleString("en-IN")} via Cashfree Payments`}
+                            : `Pay ₹${total.toLocaleString("en-IN")} Securely`}
                         </span>
                         <FiArrowRight size={13} />
                       </>

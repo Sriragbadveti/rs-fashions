@@ -1,8 +1,8 @@
 /**
  * Storefront (online) orders are created on the SERVER before the customer pays, as
  * "ordered / payment pending", and are finalised (marked paid, stock deducted, customer updated)
- * by whichever confirmation arrives first: the Cashfree webhook, the browser's verify call, or
- * the admin polling. This means a paid order exists even if the customer's browser died after
+ * by whichever server-checked confirmation arrives first: the Razorpay webhook or the browser's
+ * signature-verified callback. This means a paid order exists even if the customer's browser died after
  * paying, and it appears in "My Orders" and the admin panel without anyone being on a page.
  */
 import { supabase } from "../config/supabase.js";
@@ -19,21 +19,15 @@ import { peekNextOrderNumber, withOrderNumberLock } from "./orderNumber.js";
 import { recordPaymentAlert } from "./paymentStore.js";
 import { invalidateCatalogCache } from "../controllers/catalog.controller.js";
 import { invalidateBootstrapCache } from "../controllers/bootstrap.controller.js";
+import { ONLINE_GATEWAY_METHODS } from "./orderVisibility.js";
 
-const ONLINE_HOLD_MS = 30 * 60 * 1000; // Cashfree sessions live ~30 min
+const ONLINE_HOLD_MS = 30 * 60 * 1000; // stock is held for the payment window
 const STALE_PENDING_MS = 2 * 60 * 60 * 1000;
 export const ORDER_NUMBER_PATTERN = /^[A-Za-z0-9_-]{3,60}$/;
 
 const holdOf = (notes) => /hold:([\w-]+)/.exec(String(notes || ""))?.[1] || null;
 
-/** "RSF_<orderNumber>_A2" -> "<orderNumber>" (null for counter POS links). */
-export function orderNumberFromCfOrderId(cfOrderId) {
-  const m = /^RSF_(.+)_A\d+$/.exec(String(cfOrderId || ""));
-  if (!m || m[1].startsWith("POS_")) return null;
-  return ORDER_NUMBER_PATTERN.test(m[1]) ? m[1] : null;
-}
-
-async function getOrder(orderNumber) {
+export async function getOrder(orderNumber) {
   if (supabase) {
     const { data } = await supabase.from("orders").select("*").eq("order_number", orderNumber).maybeSingle();
     return data || null;
@@ -42,7 +36,7 @@ async function getOrder(orderNumber) {
   return o ? { ...o, order_number: orderNumber, payment_status: o.payment_status || o.paymentStatus } : null;
 }
 
-/** POST /billing/pending-order — called by checkout right before the Cashfree payment opens. */
+/** POST /billing/pending-order — called by checkout right before the payment window opens. */
 export async function createPendingOrder(body = {}) {
   const clientKey = String(body.orderNumber || "").trim();
   const items = Array.isArray(body.items) ? body.items : [];
@@ -81,7 +75,7 @@ export async function createPendingOrder(body = {}) {
     discount_amount: Number(body.discount ?? body.discount_amount) || 0,
     coupon_code: body.couponCode || null,
     total: Number(body.total) || 0,
-    payment_method: "cashfree",
+    payment_method: "razorpay",
     payment_status: "pending",
     order_status: "ordered",
     billing_type: "gst",
@@ -110,7 +104,7 @@ export async function createPendingOrder(body = {}) {
     // Housekeeping: online orders never paid within 2 hours are closed.
     const cutoff = new Date(Date.now() - STALE_PENDING_MS).toISOString();
     const { data: stale } = await supabase.from("orders").select("order_number")
-      .eq("payment_status", "pending").eq("payment_method", "cashfree").lt("updated_at", cutoff);
+      .eq("payment_status", "pending").in("payment_method", ONLINE_GATEWAY_METHODS).lt("updated_at", cutoff);
     for (const o of stale || []) await voidUnpaidOrder(o.order_number);
   } else if (existing) {
     saveOrderToStore({ id: existing.id || `ord-${Date.now().toString(36)}`, ...row, paymentStatus: "pending", orderStatus: "ordered", orderNumber, invoiceNumber: orderNumber });
@@ -153,16 +147,17 @@ async function upsertCustomer(order) {
 
 /**
  * Marks the order paid exactly once (the status flip is the atomic claim), then deducts stock and
- * updates the customer. Safe to call from the webhook, verify and finalize endpoints concurrently.
- * Returns { found, finalized, already }.
+ * updates the customer. Safe to call from the webhook and verify endpoints concurrently.
+ * `payment` = { paymentId, paymentMethod }. Returns { found, finalized, already }.
  */
 export function finalizePaidOrder(orderNumber, payment = {}) {
+  const method = payment.paymentMethod || "razorpay";
   return withStockLock(async () => {
     let claimed = null;
     if (supabase) {
       const { data, error } = await supabase
         .from("orders")
-        .update({ payment_status: "paid", payment_method: "cashfree", updated_at: new Date().toISOString() })
+        .update({ payment_status: "paid", payment_method: method, updated_at: new Date().toISOString() })
         .eq("order_number", orderNumber)
         .in("payment_status", ["pending", "failed"])
         .select()
@@ -172,7 +167,7 @@ export function finalizePaidOrder(orderNumber, payment = {}) {
     } else {
       const o = findOrderFromStore(orderNumber);
       if (o && String(o.payment_status || o.paymentStatus).toLowerCase() !== "paid") {
-        markOrderPaidInStore(orderNumber, payment);
+        markOrderPaidInStore(orderNumber, { ...payment, paymentMethod: method });
         claimed = { ...o, order_number: orderNumber };
       }
     }
@@ -180,6 +175,13 @@ export function finalizePaidOrder(orderNumber, payment = {}) {
     if (!claimed) {
       const existing = await getOrder(orderNumber);
       return existing ? { found: true, finalized: false, already: true } : { found: false };
+    }
+
+    // Keep the gateway payment id on the order (notes already holds "hold:<session>").
+    if (supabase && payment.paymentId) {
+      await supabase.from("orders")
+        .update({ notes: `${claimed.notes || ""} payment:${payment.paymentId}`.trim() })
+        .eq("order_number", orderNumber);
     }
 
     const sessionId = holdOf(claimed.notes);
@@ -194,8 +196,8 @@ export function finalizePaidOrder(orderNumber, payment = {}) {
     }
     await deductStockForOrderItems(items, {
       referenceNumber: orderNumber,
-      paymentMethod: "cashfree",
-      performedBy: "Online Storefront (Cashfree)",
+      paymentMethod: method,
+      performedBy: "Online Storefront (Razorpay)",
       notePrefix: "Online Order",
     });
     releaseHolds(sessionId);

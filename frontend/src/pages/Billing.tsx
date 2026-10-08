@@ -136,7 +136,7 @@ const Billing: React.FC<BillingProps> = ({
   const [nameError, setNameError] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // PAYMENT LINK STATES (Cashfree)
+  // PAYMENT LINK STATES (Razorpay)
   const [isGeneratingLink, setIsGeneratingLink] = useState(false);
   const [paymentLinkData, setPaymentLinkData] = useState<{
     provider: "cashfree" | "phonepe" | "razorpay";
@@ -183,9 +183,9 @@ const Billing: React.FC<BillingProps> = ({
   const liveDiscountAmount = (subtotal * effectiveDiscountPercent) / 100;
   const liveNetPayable = Math.max(0, subtotal - liveDiscountAmount);
 
-  // 1. GENERATE PAYMENT LINK (Cashfree)
+  // 1. GENERATE PAYMENT LINK (Razorpay)
   // Captures full order details, sends to backend, and initiates real-time monitoring
-  const handleGeneratePaymentLink = async (provider: "cashfree" | "phonepe" | "razorpay" = "cashfree"): Promise<string | null> => {
+  const handleGeneratePaymentLink = async (provider: "cashfree" | "phonepe" | "razorpay" = "razorpay"): Promise<string | null> => {
     if (!customer.name || !customer.name.trim()) {
       setNameError(true);
       setShowCustomer(true);
@@ -209,7 +209,7 @@ const Billing: React.FC<BillingProps> = ({
     const stableInvoice = `RSF-POS-${cleanPhone.slice(-4)}-${liveNetPayable}`;
 
     try {
-      const res = await fetch(`${API_BASE}/payments/cashfree/create-payment-link`, {
+      const res = await fetch(`${API_BASE}/payments/create-payment-link`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -229,15 +229,15 @@ const Billing: React.FC<BillingProps> = ({
       const json = await res.json();
       const actualData = json.data || json;
       if (!res.ok || json.success === false) {
-        throw new Error(json.message || "Cashfree payment link creation failed");
+        throw new Error(json.message || "Payment link creation failed");
       }
       const link = actualData.paymentLink || actualData.linkUrl || actualData.payment_link || actualData.shortUrl;
-      if (!link) throw new Error("No payment link URL returned by Cashfree");
+      if (!link) throw new Error("No payment link URL returned by the server");
 
       const data = {
-        provider: "cashfree" as const,
+        provider: "razorpay" as const,
         url: link,
-        refId: actualData.paymentLinkId || actualData.linkId || `cf_link_${Date.now()}`,
+        refId: actualData.paymentLinkId || actualData.orderId || "",
         amount: liveNetPayable,
       };
 
@@ -245,7 +245,7 @@ const Billing: React.FC<BillingProps> = ({
       isAutoRecordingRef.current = false;
       activePollingRefId.current = data.refId;
       setPaymentLinkData(data);
-      triggerToast("Cashfree payment link generated successfully!");
+      triggerToast("Payment link generated successfully!");
       return link;
     } catch (err: any) {
       console.error("Payment link error:", err);
@@ -274,11 +274,8 @@ const Billing: React.FC<BillingProps> = ({
       if (!orderIdToPoll || isAutoRecordingRef.current || isCancelled) return;
 
       try {
-        const res = await fetch(`${API_BASE}/payments/cashfree/verify`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ orderId: orderIdToPoll }),
-        });
+        // Server-side check with Razorpay; it also records the sale exactly once when paid.
+        const res = await fetch(`${API_BASE}/payments/status/${encodeURIComponent(orderIdToPoll)}`);
         const json = await res.json();
         const actual = json.data || json;
 
@@ -319,7 +316,7 @@ const Billing: React.FC<BillingProps> = ({
 
           // Complete and commit sale immediately to ledger and database!
           completeBillRef.current({
-            customMethod: "cashfree",
+            customMethod: "razorpay",
             paymentLink: paymentLinkData.url,
             transactionId: payId,
             commitImmediate: true,
@@ -1141,8 +1138,8 @@ const Billing: React.FC<BillingProps> = ({
                     <PaymentButton
                       active={paymentMethod === "cashfree" || paymentMethod === "phonepe" || paymentMethod === "razorpay"}
                       onClick={() => {
-                        setPaymentMethod("cashfree");
-                        triggerToast("Payment Link mode: Cashfree Payments");
+                        setPaymentMethod("razorpay");
+                        triggerToast("Payment Link mode: Razorpay");
                       }}
                       icon={<Link2 className="h-3.5 w-3.5" />}
                       label="Pay Link"
@@ -1150,7 +1147,7 @@ const Billing: React.FC<BillingProps> = ({
                   </div>
                 </div>
 
-                {/* PAYMENT LINK GATEWAY OPTIONS (Cashfree) */}
+                {/* PAYMENT LINK GATEWAY OPTIONS (Razorpay) */}
                 {(paymentMethod === "cashfree" || paymentMethod === "phonepe" || paymentMethod === "razorpay") && (
                   <div className="rounded-2xl border border-stone-200 bg-stone-50/90 p-3.5 space-y-3 shadow-xs">
                     <div className="flex items-center justify-between">
@@ -1161,11 +1158,11 @@ const Billing: React.FC<BillingProps> = ({
                         </span>
                       </div>
                       <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
-                        Cashfree Active
+                        Razorpay Active
                       </span>
                     </div>
 
-                    {/* Cashfree Gateway Card */}
+                    {/* Razorpay Gateway Card */}
                     <div className="rounded-xl border border-rose-200 bg-white p-3 space-y-1.5 shadow-xs">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
@@ -1173,7 +1170,7 @@ const Billing: React.FC<BillingProps> = ({
                             CF
                           </div>
                           <div>
-                            <span className="text-xs font-bold text-stone-800 block">Cashfree Payment Link</span>
+                            <span className="text-xs font-bold text-stone-800 block">Razorpay Payment Link</span>
                             <span className="text-[9px] text-stone-500">UPI Apps, Cards, Net Banking &amp; EMI</span>
                           </div>
                         </div>
@@ -1188,18 +1185,18 @@ const Billing: React.FC<BillingProps> = ({
                       <button
                         type="button"
                         disabled={isGeneratingLink || cart.length === 0}
-                        onClick={() => handleGeneratePaymentLink("cashfree")}
+                        onClick={() => handleGeneratePaymentLink("razorpay")}
                         className="w-full h-10 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 shadow-sm transition-all text-white disabled:opacity-50 disabled:cursor-not-allowed bg-[#8E3D51] hover:bg-[#783144] active:scale-[0.99]"
                       >
                         {isGeneratingLink ? (
                           <>
                             <Loader2 className="h-4 w-4 animate-spin" />
-                            <span>Generating Cashfree Link...</span>
+                            <span>Generating Payment Link...</span>
                           </>
                         ) : (
                           <>
                             <Link2 className="h-4 w-4" />
-                            <span>Generate Cashfree Link ({currency(liveNetPayable)})</span>
+                            <span>Generate Payment Link ({currency(liveNetPayable)})</span>
                           </>
                         )}
                       </button>
@@ -1276,7 +1273,7 @@ const Billing: React.FC<BillingProps> = ({
                         <div className="flex items-center justify-between text-[11px] font-semibold text-stone-700">
                           <span className="flex items-center gap-1.5 text-emerald-800 font-bold">
                             <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                            Cashfree Link Active
+                            Payment Link Active
                           </span>
                           <span className="font-mono text-[10px] text-stone-500">Ref: {paymentLinkData.refId.slice(0, 14)}</span>
                         </div>
@@ -1373,7 +1370,7 @@ const Billing: React.FC<BillingProps> = ({
                 )}
 
                 {/* COMPLETE SALE BUTTON FOR DIRECT SETTLEMENT (Cash / Card / UPI) */}
-                {(paymentMethod !== "cashfree" || (!paymentLinkData && !paymentCompletedInfo)) && paymentMethod !== "phonepe" && paymentMethod !== "razorpay" && (
+                {(paymentMethod !== "razorpay" || (!paymentLinkData && !paymentCompletedInfo)) && paymentMethod !== "phonepe" && paymentMethod !== "cashfree" && (
                   <button
                     type="button"
                     disabled={cart.length === 0}
@@ -1797,7 +1794,7 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({
   const [modalGenerating, setModalGenerating] = useState(false);
   const [modalActiveLink, setModalActiveLink] = useState<string | null>(sale.paymentLink || activePaymentLink?.url || null);
 
-  const handleModalGenerateLink = async (provider: "cashfree" | "phonepe" | "razorpay" = "cashfree") => {
+  const handleModalGenerateLink = async (provider: "cashfree" | "phonepe" | "razorpay" = "razorpay") => {
     if (!onGenerateGatewayLink) {
       onWhatsApp();
       return;
@@ -1859,7 +1856,7 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({
                 </span>
               </div>
               <p className="text-[11px] text-emerald-700 mt-0.5">
-                Patron paid {currency(trueNetPayable)} via Cashfree (Ref: {paymentCompletedInfo?.paymentId || sale.transactionId || "Confirmed"}). The sale is already committed to Transaction History &amp; inventory has been updated. No manual save needed!
+                Patron paid {currency(trueNetPayable)} via Razorpay (Ref: {paymentCompletedInfo?.paymentId || sale.transactionId || "Confirmed"}). The sale is already committed to Transaction History &amp; inventory has been updated. No manual save needed!
               </p>
             </div>
           </div>
@@ -2005,11 +2002,11 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({
                 <span>{currency(trueNetPayable)}</span>
               </div>
 
-              {(isCommitted || paymentCompletedInfo || sale.paymentMethod === "cashfree") && (
+              {(isCommitted || paymentCompletedInfo || sale.paymentMethod === "cashfree" || sale.paymentMethod === "razorpay") && (
                 <div className="mt-2 rounded-lg bg-emerald-50 border border-emerald-200 p-2 text-center text-[10px] text-emerald-800">
                   <span className="font-bold flex items-center justify-center gap-1">
                     <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                    PAID VIA CASHFREE (AUTO-RECORDED)
+                    PAID VIA {sale.paymentMethod === "cashfree" ? "CASHFREE" : "RAZORPAY"} (AUTO-RECORDED)
                   </span>
                   {(paymentCompletedInfo?.paymentId || sale.transactionId) && (
                     <span className="font-mono text-[9px] text-emerald-700 block mt-0.5">
@@ -2050,15 +2047,15 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({
             Close
           </button>
 
-          {/* Share Cashfree Payment Link (hidden if already settled) */}
+          {/* Share Razorpay Payment Link (hidden if already settled) */}
           {!isCommitted && !paymentCompletedInfo && (
             <button
               type="button"
-              onClick={() => handleModalGenerateLink("cashfree")}
+              onClick={() => handleModalGenerateLink("razorpay")}
               className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-stone-200 bg-white px-4 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 transition-colors"
             >
               {modalGenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Share2 className="h-3.5 w-3.5" />}
-              <span>Share Cashfree Link</span>
+              <span>Share Payment Link</span>
             </button>
           )}
 
