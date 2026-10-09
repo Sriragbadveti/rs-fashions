@@ -1,4 +1,5 @@
 import { API_BASE } from "../config/api";
+import { describeDevice } from "./deviceInfo";
 
 export interface UserSession {
   id: string;
@@ -73,27 +74,7 @@ export function getDeviceMetadata(): { deviceName: string; platform: string; use
     return { deviceName: "Web Terminal", platform: "windows", userAgent: "" };
   }
   const ua = navigator.userAgent;
-  let platform = "windows";
-  let deviceName = "Billing Terminal (Web)";
-
-  if (/mac/i.test(ua)) {
-    platform = "macos";
-    deviceName = "MacBook Pro / iMac";
-  } else if (/iphone|ipad|ipod/i.test(ua)) {
-    platform = "ios";
-    deviceName = /ipad/i.test(ua) ? "Showroom iPad Terminal" : "iPhone Mobile Counter";
-  } else if (/android/i.test(ua)) {
-    platform = "android";
-    deviceName = "Android POS Terminal";
-  } else if (/windows/i.test(ua)) {
-    platform = "windows";
-    deviceName = "Showroom PC Terminal (Windows)";
-  } else if (/linux/i.test(ua)) {
-    platform = "linux";
-    deviceName = "Linux Workstation";
-  }
-
-  return { deviceName, platform, userAgent: ua };
+  return { ...describeDevice(ua, navigator.maxTouchPoints), userAgent: ua };
 }
 
 export async function syncDeviceSessionToBackend(session: UserSession): Promise<void> {

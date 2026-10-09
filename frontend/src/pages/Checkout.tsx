@@ -28,6 +28,7 @@ import { getUserSession, saveAddress, getSavedAddresses, type SavedAddress } fro
 import { variantImgProps } from "../utils/imageVariants";
 import { SUPPORT_EMAIL, SUPPORT_PHONE_DISPLAY } from "../config/business";
 import { loadRazorpayCheckout, openRazorpayCheckout, razorpayKeyId, describeRazorpayFailure } from "../utils/razorpay";
+import { inAppBrowserName } from "../utils/deviceInfo";
 
 type CheckoutStep = "address" | "payment" | "success";
 type PaymentMethod = "razorpay" | "cod";
@@ -108,6 +109,8 @@ function CheckoutInner() {
   const [step, setStep] = useState<CheckoutStep>("address");
   const [address, setAddress] = useState<AddressForm>(initialAddress);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("razorpay");
+  // UPI apps often cannot be opened from Instagram/Facebook's built-in browser.
+  const inAppBrowser = useMemo(() => (typeof navigator === "undefined" ? null : inAppBrowserName(navigator.userAgent)), []);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSummaryOpen, setIsSummaryOpen] = useState(true);
   const [errors, setErrors] = useState<Partial<Record<keyof AddressForm, string>>>({});
@@ -1776,6 +1779,16 @@ function CheckoutInner() {
                     </div>
                   </button>
 
+                  {paymentMethod === "razorpay" && inAppBrowser && (
+                    <div role="note" className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-[11px] sm:text-xs leading-relaxed text-amber-900">
+                      <p className="font-semibold">You're in {inAppBrowser}'s browser</p>
+                      <p className="mt-0.5">
+                        UPI apps (Google Pay, PhonePe, Paytm) may not open from here. For a smooth payment, tap the
+                        <span className="font-semibold"> ⋯ menu</span> and choose <span className="font-semibold">Open in browser</span> (Safari/Chrome), then pay.
+                      </p>
+                    </div>
+                  )}
+
                   {/* Place Order CTA */}
                   <button
                     type="button"
@@ -1796,6 +1809,11 @@ function CheckoutInner() {
                       </>
                     )}
                   </button>
+                  {paymentMethod === "razorpay" && (
+                    <p className="text-center text-[10px] sm:text-[11px] font-light text-[#756A60]">
+                      Paying by UPI? Approve the request in your UPI app within 5 minutes, then come back to this page.
+                    </p>
+                  )}
                 </div>
               </div>
             )}
