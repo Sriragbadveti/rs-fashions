@@ -27,7 +27,18 @@ const IGNORED_MESSAGES = [
   /Java object is gone/,
 ];
 
-export function scrubBrowserEvent<T extends Sentry.ErrorEvent>(event: T): T {
+// Headless/automation browsers (scrapers, bots) run their own bootstrap script, which shows up as
+// a "<obscura:bootstrap>" style frame. Their crashes come from the fake browser, not our code.
+const AUTOMATION_FRAME_RE = /^<(obscura|puppeteer|playwright)/i;
+
+export function isAutomationBrowserEvent(event: Pick<Sentry.ErrorEvent, "exception">): boolean {
+  return (event.exception?.values || []).some((ex) =>
+    (ex.stacktrace?.frames || []).some((f) => AUTOMATION_FRAME_RE.test(String(f.filename || f.abs_path || "")))
+  );
+}
+
+export function scrubBrowserEvent<T extends Sentry.ErrorEvent>(event: T): T | null {
+  if (isAutomationBrowserEvent(event)) return null;
   if (event.request) {
     delete event.request.cookies;
     delete (event.request as { data?: unknown }).data;
