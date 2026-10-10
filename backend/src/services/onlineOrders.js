@@ -21,6 +21,16 @@ import { invalidateCatalogCache } from "../controllers/catalog.controller.js";
 import { invalidateBootstrapCache } from "../controllers/bootstrap.controller.js";
 import { ONLINE_GATEWAY_METHODS } from "./orderVisibility.js";
 import { computeFestivalOffer, loadFestivalOfferConfig, resolveCartProducts } from "./festivalOffer.js";
+import { writeWithOptionalColumns } from "./optionalColumns.js";
+
+// The signed-in account (e.g. a Google login) can differ from the phone/email typed at checkout;
+// it is stored so the order still shows in that account's "My Orders". Newer than schema.sql.
+const OPTIONAL_ORDER_COLUMNS = ["account_email"];
+const EMAIL_RE = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/;
+export const normalizeAccountEmail = (v) => {
+  const e = String(v || "").trim().toLowerCase();
+  return EMAIL_RE.test(e) ? e : null;
+};
 
 const ONLINE_HOLD_MS = 30 * 60 * 1000; // stock is held for the payment window
 const STALE_PENDING_MS = 2 * 60 * 60 * 1000;
@@ -85,6 +95,7 @@ export async function createPendingOrder(body = {}) {
     customer_name: body.customerName || body.customer_name || "Guest Customer",
     phone,
     email: body.customerEmail || body.email || null,
+    account_email: normalizeAccountEmail(body.accountEmail),
     shipping_address: body.shipping_address || body.address || null,
     items,
     subtotal: Number(body.subtotal) || 0,
@@ -104,16 +115,16 @@ export async function createPendingOrder(body = {}) {
 
   if (supabase) {
     if (existing) {
-      const { error } = await supabase.from("orders").update(row).eq("order_number", orderNumber);
+      const { error } = await writeWithOptionalColumns("orders", row,
+        (r) => supabase.from("orders").update(r).eq("order_number", orderNumber), OPTIONAL_ORDER_COLUMNS);
       if (error) throw error;
     } else {
       await withOrderNumberLock(async () => {
         for (let attempt = 0; attempt < 5; attempt++) {
           orderNumber = await peekNextOrderNumber();
-          const { error } = await supabase.from("orders").insert({
-            id: `ord-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
-            ...row, order_number: orderNumber, invoice_number: orderNumber,
-          });
+          const id = `ord-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+          const { error } = await writeWithOptionalColumns("orders", { id, ...row, order_number: orderNumber, invoice_number: orderNumber },
+            (r) => supabase.from("orders").insert(r), OPTIONAL_ORDER_COLUMNS);
           if (!error) return;
           if (error.code !== "23505") throw error;
         }

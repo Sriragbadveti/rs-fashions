@@ -2017,7 +2017,10 @@ export const StoreService = {
 
   // 9. CUSTOMER ORDERS & SHIPMENT TRACKING
   async getUserOrders(phone: string, email?: string): Promise<any[]> {
-    const cleanPhone = (phone || "").replace(/\D/g, "").slice(-10);
+    // Google/Contact sign-ups store a "G-…"/"C-…" placeholder, not a phone: its digits must never
+    // be used to look up orders (they could match a stranger's number).
+    const realPhone = /^[A-Za-z]-/.test((phone || "").trim()) ? "" : phone;
+    const cleanPhone = (realPhone || "").replace(/\D/g, "").slice(-10);
     const cleanEmail = (email || "").trim().toLowerCase();
 
     // Read active local fulfillments map

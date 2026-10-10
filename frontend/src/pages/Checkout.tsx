@@ -615,6 +615,9 @@ function CheckoutInner() {
             orderNumber: orderNum,
             customerName: `${address.firstName} ${address.lastName}`.trim(),
             email: address.email || currentUser?.email,
+            // The signed-in account can differ from the e-mail typed above; the order must still
+            // show in this account's My Orders.
+            accountEmail: currentUser?.email,
             phone: `${address.countryDial} ${address.phone}`,
             address: {
               address: address.address,

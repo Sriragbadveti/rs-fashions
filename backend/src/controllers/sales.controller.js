@@ -118,8 +118,12 @@ export function getCourierTrackingUrl(carrier, awb) {
 
 export async function getCustomerOrders(req, res) {
   try {
-    const rawEmail = req.query.email ? String(req.query.email).trim().toLowerCase() : null;
-    const rawPhone = req.query.phone ? String(req.query.phone).replace(/\D/g, "").slice(-10) : null;
+    // Only a full 10-digit phone or a plain e-mail address: a partial number (or an e-mail with
+    // filter characters / wildcards) must never match other customers' orders.
+    const emailParam = req.query.email ? String(req.query.email).trim().toLowerCase() : "";
+    const phoneParam = req.query.phone ? String(req.query.phone).replace(/\D/g, "").slice(-10) : "";
+    const rawEmail = /^[a-z0-9._+-]+@[a-z0-9.-]+\.[a-z]{2,}$/.test(emailParam) ? emailParam : null;
+    const rawPhone = phoneParam.length === 10 ? phoneParam : null;
 
     if (!rawEmail && !rawPhone) {
       return errorResponse(res, "User phone or email is required to retrieve orders", 400);
@@ -130,16 +134,19 @@ export async function getCustomerOrders(req, res) {
     let sbOrders = [];
     if (supabase) {
       try {
-        let query = supabase.from("orders").select("*");
-        if (rawPhone && rawEmail) {
-          query = query.or(`phone.ilike.%${rawPhone}%,email.ilike.${rawEmail}`);
-        } else if (rawPhone) {
-          query = query.ilike("phone", `%${rawPhone}%`);
-        } else if (rawEmail) {
-          query = query.ilike("email", rawEmail);
+        // Orders match the phone/e-mail typed at checkout, or the signed-in account that placed them.
+        const runQuery = (withAccountEmail) => {
+          const filters = [];
+          if (rawPhone) filters.push(`phone.ilike.%${rawPhone}%`);
+          if (rawEmail) filters.push(`email.ilike.${rawEmail}`);
+          if (rawEmail && withAccountEmail) filters.push(`account_email.eq.${rawEmail}`);
+          return supabase.from("orders").select("*").or(filters.join(",")).order("created_at", { ascending: false });
+        };
+        let { data: ordersData, error: ordersErr } = await runQuery(true);
+        if (ordersErr && /account_email/.test(`${ordersErr.message || ""} ${ordersErr.details || ""}`)) {
+          // The account_email column has not been added to this database yet.
+          ({ data: ordersData, error: ordersErr } = await runQuery(false));
         }
-
-        const { data: ordersData, error: ordersErr } = await query.order("created_at", { ascending: false });
         if (!ordersErr && ordersData) {
           const visibleOrders = ordersData.filter(isVisibleOrder);
           const invoiceNumbers = visibleOrders.map((o) => o.invoice_number || o.order_number || o.id).filter(Boolean);

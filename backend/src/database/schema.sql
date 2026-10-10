@@ -103,6 +103,9 @@ CREATE TABLE IF NOT EXISTS public.orders (
 
 CREATE INDEX IF NOT EXISTS idx_orders_phone ON public.orders(phone);
 CREATE INDEX IF NOT EXISTS idx_orders_created ON public.orders(created_at DESC);
+-- Signed-in account that placed an online order (may differ from the e-mail typed at checkout)
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS account_email TEXT;
+CREATE INDEX IF NOT EXISTS idx_orders_account_email ON public.orders(account_email);
 
 -- ------------------------------------------------------------------------------
 -- 5. CRM CUSTOMER PROFILES & LOYALTY TIERS
