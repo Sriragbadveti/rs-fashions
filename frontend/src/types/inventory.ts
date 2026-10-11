@@ -412,7 +412,7 @@ export interface Product {
   category?: string;
 
   /**
-   * Saree type: "SiCo" (SiCo Gadwal) or "Pure Gadwal Handloom". Decides which shop section it appears in.
+   * Saree type: "SiCo" (SiCo Gadwal), "Pure Gadwal Handloom" or "Gatti Borders". Decides which shop section it appears in.
    */
   material?: string;
 

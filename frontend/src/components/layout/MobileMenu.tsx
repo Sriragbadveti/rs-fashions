@@ -55,9 +55,14 @@ const pureGadwalSubcategories = [
   { label: "Maa Inti Bangaram", path: "/shop?material=Pure+Gadwal+Handloom&category=Maa+Inti+Bangaram" },
 ];
 
+const gattiBordersSubcategories = [
+  { label: "All Gatti Borders Sarees", path: "/shop?material=Gatti+Borders" },
+];
+
 const menuSections: MenuSection[] = [
   { title: "SiCo Gadwal Sarees", subtitle: "Interlocked Zari & Pure Silk Warp", letter: "G", items: sicoSubcategories },
   { title: "Pure Gadwal Handloom Sarees", subtitle: "Handwoven Pure Gadwal Silk", letter: "P", items: pureGadwalSubcategories },
+  { title: "Gatti Borders Sarees", subtitle: "Bold Woven Gatti Borders", letter: "B", items: gattiBordersSubcategories },
 ];
 
 const secondaryLinks = [

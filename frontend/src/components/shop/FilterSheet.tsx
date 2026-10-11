@@ -38,6 +38,7 @@ const materials: FilterState["material"][] = [
   "All",
   "SiCo",
   "Pure Gadwal Handloom",
+  "Gatti Borders",
 ];
 
 const priceRanges: FilterState["priceRange"][] = [

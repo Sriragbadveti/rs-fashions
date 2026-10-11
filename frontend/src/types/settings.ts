@@ -61,7 +61,8 @@ export const DEFAULT_SETTINGS: ShowroomSettings = {
 
 const LEGACY_PLACEHOLDERS = {
   address: ["Hyderabad, Telangana 500033", "Plot No. 42, Jubilee Hills Road No. 36, Hyderabad, Telangana 500033"],
-  phone: ["+91 98765 43210", "9876543210"],
+  // Old placeholders and the previous support number: replaced by the current one.
+  phone: ["+91 98765 43210", "9876543210", "9502853964", "+91 95028 53964", "+919502853964", "919502853964"],
 };
 
 const SETTINGS_STORAGE_KEY = "rs_fashions_showroom_settings";

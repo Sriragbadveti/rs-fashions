@@ -11,11 +11,11 @@ export const LEGAL_BUSINESS_NAME = "M/S R S FASHIONS";
 export const PROPRIETOR_NAME = "SINDHUJA KANNEBOINA";
 
 export const SUPPORT_EMAIL = "rsfashionsupport@gmail.com";
-export const SUPPORT_PHONE = "9502853964";
-export const SUPPORT_PHONE_DISPLAY = "+91 95028 53964";
-export const SUPPORT_PHONE_TEL = "+919502853964";
-/** Country code + number, the format WhatsApp links expect. */
-export const SUPPORT_WHATSAPP = "919502853964";
+export const SUPPORT_PHONE = "9100570881";
+export const SUPPORT_PHONE_DISPLAY = "+91 91005 70881";
+export const SUPPORT_PHONE_TEL = "+919100570881";
+/** Country code + number, the format WhatsApp links expect. Every WhatsApp query goes here. */
+export const SUPPORT_WHATSAPP = "919100570881";
 
 export const POLICY_LAST_UPDATED = "October 2026";
 

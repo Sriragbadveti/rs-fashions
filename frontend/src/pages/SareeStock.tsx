@@ -1,4 +1,4 @@
-import { SAREE_TYPES, SAREE_TYPE_LABELS, toSareeType, type SareeType } from "../types/sareeType";
+import { SAREE_TYPES, SAREE_TYPE_LABELS, SAREE_TYPE_SHORT, toSareeType, type SareeType } from "../types/sareeType";
 import { useShowMore, ShowMoreButton } from "../components/common/ShowMore";
 import { getImageVariantUrl, fallbackToOriginalImage } from "../utils/imageVariants";
 import {
@@ -1437,7 +1437,7 @@ function ProductCard({
       <div className="flex min-h-[145px] flex-1 flex-col p-4 justify-between">
         <div>
           <div className="flex items-center justify-between text-[10px] uppercase font-bold tracking-widest text-[#8E3D51]">
-            <span>{toSareeType(product.material) === "SiCo" ? "SiCo Gadwal" : "Pure Gadwal Handloom"}</span>
+            <span>{SAREE_TYPE_SHORT[toSareeType(product.material)]}</span>
             <span className="font-mono text-stone-400 font-semibold text-[9.5px]">
               {(product.variants || []).length} Shades
             </span>

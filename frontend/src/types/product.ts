@@ -1,6 +1,7 @@
 export type ProductMaterial =
   | "SiCo"
   | "Pure Gadwal Handloom"
+  | "Gatti Borders"
   | "Pure Handloom Silk"
   | "Gadwal Zari Silk"
   | "Organic Cotton";
