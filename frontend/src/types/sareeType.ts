@@ -22,3 +22,21 @@ export function toSareeType(material: unknown): SareeType {
   if (/pure/i.test(m) && /gadwal/i.test(m)) return "Pure Gadwal Handloom";
   return "SiCo";
 }
+
+/**
+ * Admin categories. Gatti Borders sarees get their own category; SiCo and Pure Gadwal Handloom
+ * sarees stay in SiCo Gadwal Sarees (as before). The category always follows the saree type.
+ */
+export const SICO_CATEGORY = { id: "cat_sico_gadwal", name: "SiCo Gadwal Sarees" } as const;
+export const GATTI_CATEGORY = { id: "cat_gatti_borders", name: "Gatti Borders Sarees" } as const;
+export const ADMIN_SAREE_CATEGORIES = [SICO_CATEGORY, GATTI_CATEGORY] as const;
+
+export function isGattiCategory(c: { id?: string; name?: string } | null | undefined): boolean {
+  return Boolean(c) && (c!.id === GATTI_CATEGORY.id || /gatti/i.test(String(c!.name || "")));
+}
+
+/** Saree type after the admin picks a category (keeps Pure Gadwal Handloom when staying on SiCo). */
+export function sareeTypeForCategory(categoryId: string, current: SareeType): SareeType {
+  if (categoryId === GATTI_CATEGORY.id) return "Gatti Borders";
+  return current === "Gatti Borders" ? "SiCo" : current;
+}
