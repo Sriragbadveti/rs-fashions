@@ -6,7 +6,7 @@
  * paying, and it appears in "My Orders" and the admin panel without anyone being on a page.
  */
 import { supabase } from "../config/supabase.js";
-import { saveOrderToStore, findOrderFromStore, markOrderPaidInStore } from "../database/localStore.js";
+import { saveOrderToStore, findOrderFromStore, markOrderPaidInStore, renumberOrderInStore } from "../database/localStore.js";
 import {
   deductStockForOrderItems,
   findStockShortages,
@@ -38,13 +38,65 @@ export const ORDER_NUMBER_PATTERN = /^[A-Za-z0-9_-]{3,60}$/;
 
 const holdOf = (notes) => /hold:([\w-]+)/.exec(String(notes || ""))?.[1] || null;
 
-export async function getOrder(orderNumber) {
+/**
+ * Online orders get their sequential invoice number (001, 002…) only once the payment is confirmed.
+ * Until then the order's number is a temporary reference equal to its id ("ord-…"), so an abandoned
+ * checkout never uses up an invoice number. The reference keeps working after the order is
+ * numbered (it stays the order's id), which matters because Razorpay's notes hold it.
+ */
+export const isTemporaryOrderRef = (key) => /^ord-[a-z0-9]+-[a-z0-9]+$/i.test(String(key || ""));
+const isInvoiceNumber = (n) => /^\d+$/.test(String(n || "").trim());
+const newOrderRef = () => `ord-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+
+/** Finds an order by its invoice number or by its id / temporary reference. */
+export async function getOrder(orderKey) {
+  const key = String(orderKey || "").trim();
+  if (!ORDER_NUMBER_PATTERN.test(key)) return null;
   if (supabase) {
-    const { data } = await supabase.from("orders").select("*").eq("order_number", orderNumber).maybeSingle();
+    const { data } = await supabase.from("orders").select("*")
+      .or(`order_number.eq.${key},id.eq.${key}`).limit(1).maybeSingle();
     return data || null;
   }
-  const o = findOrderFromStore(orderNumber);
-  return o ? { ...o, order_number: orderNumber, payment_status: o.payment_status || o.paymentStatus } : null;
+  const o = findOrderFromStore(key);
+  if (!o) return null;
+  return {
+    ...o,
+    order_number: o.order_number || o.orderNumber || key,
+    payment_status: o.payment_status || o.paymentStatus,
+  };
+}
+
+/**
+ * Gives a paid online order the next sequential invoice number (no-op if it already has one).
+ * Runs under the order-number lock; the UNIQUE(order_number) constraint covers other instances.
+ * Returns the invoice number, or null if it could not be assigned (the order stays paid).
+ */
+async function assignInvoiceNumber(order) {
+  if (isInvoiceNumber(order.order_number)) return String(order.order_number);
+  return withOrderNumberLock(async () => {
+    if (!supabase) {
+      const number = await peekNextOrderNumber();
+      return renumberOrderInStore(order.id, number) ? number : null;
+    }
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const number = await peekNextOrderNumber();
+      const { data, error } = await supabase.from("orders")
+        .update({ order_number: number, invoice_number: number, updated_at: new Date().toISOString() })
+        .eq("id", order.id).eq("order_number", order.order_number)
+        .select("order_number").maybeSingle();
+      if (!error) {
+        if (data) return String(data.order_number);
+        // Someone else numbered it meanwhile: read back the number it got.
+        const { data: now } = await supabase.from("orders").select("order_number").eq("id", order.id).maybeSingle();
+        return isInvoiceNumber(now?.order_number) ? String(now.order_number) : null;
+      }
+      if (error.code !== "23505") {
+        console.warn("[OnlineOrders] invoice number not assigned:", error.message);
+        return null;
+      }
+    }
+    return null;
+  });
 }
 
 /** POST /billing/pending-order — called by checkout right before the payment window opens. */
@@ -55,14 +107,17 @@ export async function createPendingOrder(body = {}) {
   if (!ORDER_NUMBER_PATTERN.test(clientKey)) return { status: 400, body: { success: false, message: "A valid order number is required" } };
   if (!phone || items.length === 0) return { status: 400, body: { success: false, message: "Customer phone and at least one item are required" } };
 
-  // A number the server already issued (001, 002…) is a retry of the same order. Anything else is
-  // a temporary client key: the server assigns the next sequential number when saving the order.
-  const isIssued = /^\d{3,}$/.test(clientKey);
-  let orderNumber = clientKey;
-  const existing = isIssued ? await getOrder(orderNumber) : null;
-  if (existing && String(existing.payment_status).toLowerCase() === "paid") {
-    return { status: 200, body: { success: true, alreadyPaid: true, orderNumber } };
+  // A reference the server issued ("ord-…", or an older numeric order) is a retry of the same
+  // order. Anything else is the browser's own key: the server creates the order and returns its
+  // reference. The invoice number is only given once the payment is confirmed.
+  const isIssued = isTemporaryOrderRef(clientKey) || /^\d{3,}$/.test(clientKey);
+  const found = isIssued ? await getOrder(clientKey) : null;
+  if (found && String(found.payment_status).toLowerCase() === "paid") {
+    return { status: 200, body: { success: true, alreadyPaid: true, orderNumber: String(found.order_number) } };
   }
+  // Only a still-unpaid order is updated; a closed (failed/cancelled) one is replaced by a new order.
+  const existing = found && String(found.payment_status).toLowerCase() === "pending" ? found : null;
+  let orderNumber = existing ? String(existing.order_number) : newOrderRef();
 
   // Festival offer: the discount the browser applied must be exactly what the server works out
   // from the stored prices/tags (it can't be inflated, and a switch-off/on mid-checkout is caught).
@@ -116,33 +171,21 @@ export async function createPendingOrder(body = {}) {
   if (supabase) {
     if (existing) {
       const { error } = await writeWithOptionalColumns("orders", row,
-        (r) => supabase.from("orders").update(r).eq("order_number", orderNumber), OPTIONAL_ORDER_COLUMNS);
+        (r) => supabase.from("orders").update(r).eq("id", existing.id).eq("payment_status", "pending"), OPTIONAL_ORDER_COLUMNS);
       if (error) throw error;
     } else {
-      await withOrderNumberLock(async () => {
-        for (let attempt = 0; attempt < 5; attempt++) {
-          orderNumber = await peekNextOrderNumber();
-          const id = `ord-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
-          const { error } = await writeWithOptionalColumns("orders", { id, ...row, order_number: orderNumber, invoice_number: orderNumber },
-            (r) => supabase.from("orders").insert(r), OPTIONAL_ORDER_COLUMNS);
-          if (!error) return;
-          if (error.code !== "23505") throw error;
-        }
-        throw new Error("Could not allocate an order number");
-      });
+      // New order: its id doubles as the temporary order reference until it is paid.
+      const { error } = await writeWithOptionalColumns("orders", { id: orderNumber, ...row },
+        (r) => supabase.from("orders").insert(r), OPTIONAL_ORDER_COLUMNS);
+      if (error) throw error;
     }
     // Housekeeping: online orders never paid within 2 hours are closed.
     const cutoff = new Date(Date.now() - STALE_PENDING_MS).toISOString();
     const { data: stale } = await supabase.from("orders").select("order_number")
       .eq("payment_status", "pending").in("payment_method", ONLINE_GATEWAY_METHODS).lt("updated_at", cutoff);
     for (const o of stale || []) await voidUnpaidOrder(o.order_number);
-  } else if (existing) {
-    saveOrderToStore({ id: existing.id || `ord-${Date.now().toString(36)}`, ...row, paymentStatus: "pending", orderStatus: "ordered", orderNumber, invoiceNumber: orderNumber });
   } else {
-    await withOrderNumberLock(async () => {
-      orderNumber = await peekNextOrderNumber();
-      saveOrderToStore({ id: `ord-${Date.now().toString(36)}`, ...row, order_number: orderNumber, invoice_number: orderNumber, paymentStatus: "pending", orderStatus: "ordered", orderNumber, invoiceNumber: orderNumber });
-    });
+    saveOrderToStore({ id: existing?.id || orderNumber, ...row, paymentStatus: "pending", orderStatus: "ordered", orderNumber, invoiceNumber: orderNumber });
   }
   invalidateBootstrapCache();
   return { status: 201, body: { success: true, orderNumber, holdMinutes: 30 } };
@@ -178,40 +221,58 @@ async function upsertCustomer(order) {
 /**
  * Marks the order paid exactly once (the status flip is the atomic claim), then deducts stock and
  * updates the customer. Safe to call from the webhook and verify endpoints concurrently.
- * `payment` = { paymentId, paymentMethod }. Returns { found, finalized, already }.
+ * `orderKey` = the order's reference ("ord-…") or invoice number.
+ * `payment` = { paymentId, paymentMethod }.
+ * Returns { found, finalized, already, orderNumber } — orderNumber is the invoice number.
  */
-export function finalizePaidOrder(orderNumber, payment = {}) {
+export function finalizePaidOrder(orderKey, payment = {}) {
   const method = payment.paymentMethod || "razorpay";
+  const key = String(orderKey || "").trim();
   return withStockLock(async () => {
     let claimed = null;
+    if (!ORDER_NUMBER_PATTERN.test(key)) return { found: false };
     if (supabase) {
       const { data, error } = await supabase
         .from("orders")
         .update({ payment_status: "paid", payment_method: method, updated_at: new Date().toISOString() })
-        .eq("order_number", orderNumber)
+        .or(`order_number.eq.${key},id.eq.${key}`)
         .in("payment_status", ["pending", "failed"])
         .select()
         .maybeSingle();
       if (error) throw error;
       claimed = data;
     } else {
-      const o = findOrderFromStore(orderNumber);
+      const o = findOrderFromStore(key);
       if (o && String(o.payment_status || o.paymentStatus).toLowerCase() !== "paid") {
-        markOrderPaidInStore(orderNumber, { ...payment, paymentMethod: method });
-        claimed = { ...o, order_number: orderNumber };
+        markOrderPaidInStore(key, { ...payment, paymentMethod: method });
+        claimed = { ...o, order_number: o.order_number || o.orderNumber || key };
       }
     }
 
     if (!claimed) {
-      const existing = await getOrder(orderNumber);
-      return existing ? { found: true, finalized: false, already: true } : { found: false };
+      const existing = await getOrder(key);
+      if (!existing) return { found: false };
+      // Paid earlier but its number could not be given then: give it now.
+      const number = String(existing.payment_status).toLowerCase() === "paid"
+        ? await assignInvoiceNumber(existing) : null;
+      return { found: true, finalized: false, already: true, orderNumber: number || String(existing.order_number) };
+    }
+
+    // The order is paid: only now does it get its sequential invoice number.
+    const assigned = await assignInvoiceNumber(claimed);
+    const orderNumber = assigned || String(claimed.order_number);
+    if (!assigned) {
+      await recordPaymentAlert({
+        type: "number_pending", orderKey: orderNumber,
+        message: `Online order ${orderNumber} is paid but could not get its invoice number yet. It will be numbered on the next payment update; check Sales Receipts.`,
+      });
     }
 
     // Keep the gateway payment id on the order (notes already holds "hold:<session>").
     if (supabase && payment.paymentId) {
       await supabase.from("orders")
         .update({ notes: `${claimed.notes || ""} payment:${payment.paymentId}`.trim() })
-        .eq("order_number", orderNumber);
+        .eq("id", claimed.id);
     }
 
     const sessionId = holdOf(claimed.notes);
@@ -234,11 +295,12 @@ export function finalizePaidOrder(orderNumber, payment = {}) {
     await upsertCustomer(claimed);
     invalidateCatalogCache();
     invalidateBootstrapCache();
-    return { found: true, finalized: true };
+    return { found: true, finalized: true, orderNumber };
   });
 }
 
-// A failed order is not an invoice: moving it off its number lets the next order reuse it (no gaps).
+// A failed order is not an invoice. Orders created before invoice numbers were given at payment
+// still hold a number while unpaid; moving them off it keeps it out of the receipts.
 const voidedNumbers = (orderNumber) => {
   const v = `VOID-${orderNumber}-${Date.now().toString(36)}`;
   return { order_number: v, invoice_number: v };

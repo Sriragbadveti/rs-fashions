@@ -1942,6 +1942,8 @@ export const StoreService = {
     currency?: string;
     keyId?: string;
     alreadyPaid?: boolean;
+    /** Invoice number of an order that turned out to be paid already. */
+    orderNumber?: string;
     message?: string;
   }> {
     try {
@@ -1960,6 +1962,7 @@ export const StoreService = {
         currency: d.currency,
         keyId: d.key_id,
         alreadyPaid: Boolean(d.alreadyPaid || d.paid),
+        orderNumber: typeof d.orderNumber === "string" ? d.orderNumber : undefined,
         message: json.message,
       };
     } catch {

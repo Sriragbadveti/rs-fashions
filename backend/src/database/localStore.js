@@ -304,6 +304,16 @@ export function findOrderFromStore(orderIdOrNumber) {
   ) || null;
 }
 
+/** Gives the stored order with this id its final order/invoice number. Returns the order or null. */
+export function renumberOrderInStore(id, number) {
+  const orders = readJson("orders.json", []);
+  const idx = orders.findIndex((o) => o.id === id);
+  if (idx < 0) return null;
+  Object.assign(orders[idx], { order_number: number, invoice_number: number, orderNumber: number, invoiceNumber: number });
+  writeJson("orders.json", orders);
+  return orders[idx];
+}
+
 export function markOrderPaidInStore(orderIdOrNumber, paymentDetails = {}) {
   const orders = readJson("orders.json", []);
   const clean = String(orderIdOrNumber).trim();

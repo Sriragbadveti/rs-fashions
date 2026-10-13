@@ -451,12 +451,16 @@ test("online payment (Razorpay): server amount, signature check, pays exactly on
     const clientKey = `RSF-ORD-T${Date.now().toString(36).toUpperCase()}`;
     const stockOf = async () => (await api("GET", "/catalog/products")).body.products.find((p) => p.id === created.id).stock;
 
+    const { peekNextOrderNumber } = await import("../src/services/orderNumber.js");
+    const nextBefore = await peekNextOrderNumber();
     const pending = await api("POST", "/billing/pending-order", { orderNumber: clientKey, customerPhone: "9876543210", customerName: "Tester", items, total: 1000, sessionId: "sess-pay" }, { auth: false });
     assert.equal(pending.status, 201, JSON.stringify(pending.body));
+    // Unpaid: a temporary reference, and no invoice number is used up.
     const orderNumber = pending.body.orderNumber;
-    assert.match(orderNumber, /^\d{3,}$/);
+    assert.match(orderNumber, /^ord-/);
+    assert.equal(await peekNextOrderNumber(), nextBefore, "an unpaid checkout does not take an invoice number");
     assert.equal(await stockOf(), 2, "stock is only deducted once payment is confirmed");
-    const listed = async () => ((await api("GET", "/sales/customer-orders?phone=9876543210", undefined, { auth: false })).body.orders || []).some((o) => (o.orderNumber || o.invoiceNumber || o.order_number) === orderNumber);
+    const listed = async () => ((await api("GET", "/sales/customer-orders?phone=9876543210", undefined, { auth: false })).body.orders || []).some((o) => o.id === orderNumber);
     assert.equal(await listed(), false, "an unpaid (pending) order is not in the customer's order history");
 
     // The browser cannot choose the amount: a tampered amount is refused, the stored total is charged.
@@ -488,13 +492,16 @@ test("online payment (Razorpay): server amount, signature check, pays exactly on
     const ok = await api("POST", "/payments/verify-payment", { razorpay_order_id: rzpOrderId, razorpay_payment_id: payId, razorpay_signature: checkoutSignature(rzpOrderId, payId) }, { auth: false });
     assert.equal(ok.status, 200, JSON.stringify(ok.body));
     assert.equal(ok.body.paid, true);
-    assert.equal(ok.body.orderNumber, orderNumber);
+    // Paid: the order now gets exactly the next invoice number.
+    assert.equal(ok.body.orderNumber, nextBefore, "the paid order gets the next invoice number");
+    const invoiceNumber = ok.body.orderNumber;
     assert.equal(await stockOf(), 1, "paid: one piece deducted");
     assert.equal(await listed(), true, "once paid, the order appears in the customer's history");
 
     // Refresh / repeat verify, webhook, duplicate webhook: all no-ops.
     const repeat = await api("POST", "/payments/verify-payment", { razorpay_order_id: rzpOrderId, razorpay_payment_id: payId, razorpay_signature: checkoutSignature(rzpOrderId, payId) }, { auth: false });
     assert.equal(repeat.status, 200);
+    assert.equal(repeat.body.orderNumber, invoiceNumber, "a repeat verify keeps the same invoice number");
     const captured = { event: "payment.captured", payload: { payment: { entity: { id: payId, order_id: rzpOrderId, status: "captured" } } } };
     assert.equal((await webhook(captured, { eventId: "evt_1" })).status, 200);
     assert.equal((await webhook(captured, { eventId: "evt_1" })).body.deduplicated, true);
@@ -508,6 +515,8 @@ test("online payment (Razorpay): server amount, signature check, pays exactly on
     // Paying again for a paid order is refused politely.
     const paidAgain = await api("POST", "/payments/create-order", { orderNumber }, { auth: false });
     assert.equal(paidAgain.body.alreadyPaid, true);
+    assert.equal(paidAgain.body.orderNumber, invoiceNumber);
+    assert.equal(await peekNextOrderNumber(), String(Number(invoiceNumber) + 1).padStart(3, "0"), "exactly one number was used");
     assert.equal(rzp.orderCount, 1, "no new Razorpay order for a paid order");
   } finally {
     setRazorpayClientForTests(null);

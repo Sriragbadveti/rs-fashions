@@ -197,9 +197,10 @@ async function settlePaidRazorpayOrder(order, payment) {
     return { settled: false, orderNumber, mismatch: true };
   }
 
+  // notes.orderNumber is the order's reference; the result carries its final invoice number.
   const result = await finalizePaidOrder(orderNumber, { paymentId, paymentMethod: "razorpay" });
   updatePaymentAttemptStatus(order.id, "PAID", { paymentId });
-  return { settled: Boolean(result.found), orderNumber, already: Boolean(result.already) };
+  return { settled: Boolean(result.found), orderNumber: result.orderNumber || orderNumber, already: Boolean(result.already) };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -229,7 +230,7 @@ export async function createOrder(req, res) {
     if (!order) return errorResponse(res, "Order not found. Please go back to checkout and try again.", 404);
 
     if (isPaidStatus(order)) {
-      return successResponse(res, { paid: true, alreadyPaid: true, orderNumber }, "This order has already been paid.");
+      return successResponse(res, { paid: true, alreadyPaid: true, orderNumber: String(order.order_number || orderNumber) }, "This order has already been paid.");
     }
     if (!isPayableStatus(order) || String(order.order_status || "").toLowerCase() === "cancelled") {
       return errorResponse(res, "This order can no longer be paid online. Please place a new order.", 409);
@@ -256,8 +257,8 @@ export async function createOrder(req, res) {
         if (existing.status === "paid") {
           const confirmed = await confirmOrderPayment(existing.id);
           if (confirmed.paid) {
-            await settlePaidRazorpayOrder(confirmed.order, confirmed.payment);
-            return successResponse(res, { paid: true, alreadyPaid: true, orderNumber }, "This order has already been paid.");
+            const settled = await settlePaidRazorpayOrder(confirmed.order, confirmed.payment);
+            return successResponse(res, { paid: true, alreadyPaid: true, orderNumber: settled.orderNumber || orderNumber }, "This order has already been paid.");
           }
         } else if (Number(existing.amount) === amountPaise) {
           return successResponse(res, {

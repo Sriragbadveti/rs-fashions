@@ -571,7 +571,11 @@ function CheckoutInner() {
       }
     }
 
-    try { sessionStorage.removeItem(`rs_pending_${orderNumber}`); } catch {}
+    try {
+      sessionStorage.removeItem(`rs_pending_${orderNumber}`);
+      // The pending marker was saved under the order's temporary reference.
+      if (stableOrderNumberRef.current) sessionStorage.removeItem(`rs_pending_${stableOrderNumberRef.current}`);
+    } catch {}
 
     setCompletedOrder(snapshot);
     setIsProcessing(false);
@@ -671,7 +675,8 @@ function CheckoutInner() {
             release();
             return;
           }
-          // The server assigns the sequential order number (001, 002…); use it from here on.
+          // The server's reference for this order ("ord-…"). The invoice number (001, 002…) is
+          // only given once the payment is confirmed, so abandoned checkouts leave no gaps.
           orderNum = pending.orderNumber;
           stableOrderNumberRef.current = pending.orderNumber;
           try { sessionStorage.setItem(`rs_pending_${orderNum}`, "1"); } catch {}
@@ -683,7 +688,7 @@ function CheckoutInner() {
         ]);
 
         if (rzpOrder.alreadyPaid) {
-          await completePaidOrder(orderNum);
+          await completePaidOrder(rzpOrder.orderNumber || orderNum);
           release();
           return;
         }
@@ -706,7 +711,8 @@ function CheckoutInner() {
           orderId: razorpayOrderId,
           amount: rzpOrder.amount,
           currency: rzpOrder.currency || "INR",
-          description: `Order #${orderNum}`,
+          // Only a real invoice number is shown; a temporary reference means "not numbered yet".
+          description: /^\d+$/.test(orderNum) ? `Order #${orderNum}` : "Saree order",
           prefill: {
             name: `${address.firstName} ${address.lastName}`.trim(),
             email: address.email || currentUser?.email || "",
