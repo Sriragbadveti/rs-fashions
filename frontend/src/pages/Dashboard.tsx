@@ -1469,7 +1469,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
               )}
 
               {activeTab === ("sale" as DashboardTab) && (
-                <SaleManager inventory={inventory} />
+                <SaleManager inventory={inventory} onUpdateProduct={handleUpdateProduct} />
               )}
 
               {activeTab === ("offers" as DashboardTab) && <OffersManager />}

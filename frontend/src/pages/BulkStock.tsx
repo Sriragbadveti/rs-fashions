@@ -68,7 +68,7 @@ interface BulkRow {
   saveError?: string;
   /** Additional photos for this row's product only (the primary photo stays in imageUrl). */
   extraImages?: ExtraImage[];
-  /** Enables the Buy 1/2/3 bundle offers for this row's saree. */
+  /** Puts this row's saree on the Special Offers page at ₹2,500. */
   specialOffer?: boolean;
 }
 
@@ -1608,7 +1608,7 @@ export default function BulkStock({
                     </span>
                     <label
                       className={`inline-flex cursor-pointer items-center gap-1.5 rounded-xl px-3 py-1.5 text-[11px] font-bold border ${row.specialOffer ? "bg-[#8E3D51] text-white border-[#8E3D51]" : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50"}`}
-                      title="Enables Buy 1 @ ₹2,500 / Buy 2 @ ₹4,900 / Buy 3 @ ₹4,800 for this saree"
+                      title="Puts this saree on the Special Offers page at ₹2,500 (nowhere else)"
                     >
                       <input
                         type="checkbox"

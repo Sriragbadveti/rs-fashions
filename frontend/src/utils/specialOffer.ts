@@ -1,9 +1,5 @@
-/**
- * Special Offer bundle pricing. Only sarees with the Special Offer setting enabled qualify.
- *   Buy 1 @ ₹2,500 · Buy 2 @ ₹4,900 · Buy 3 @ ₹4,800 (bundle totals).
- * More than three: each full group of three costs ₹4,800, the remainder uses the 1/2 price.
- */
-export const OFFER_BUNDLE_PRICES: Record<1 | 2 | 3, number> = { 1: 2500, 2: 4900, 3: 4800 };
+/** Special Offer pricing: every saree with the Special Offer setting costs this much, flat. */
+export const SPECIAL_OFFER_PRICE = 2500;
 
 interface OfferFlags {
   isSpecialOffer?: boolean;
@@ -44,10 +40,7 @@ export interface BundleOffer {
 }
 
 export function bundleTotalFor(count: number): number {
-  if (count <= 0) return 0;
-  const groups = Math.floor(count / 3);
-  const rest = count % 3;
-  return groups * OFFER_BUNDLE_PRICES[3] + (rest ? OFFER_BUNDLE_PRICES[rest as 1 | 2] : 0);
+  return count > 0 ? count * SPECIAL_OFFER_PRICE : 0;
 }
 
 const inr = (n: number) => `₹${n.toLocaleString("en-IN")}`;
@@ -55,16 +48,9 @@ const inr = (n: number) => `₹${n.toLocaleString("en-IN")}`;
 export function computeBundleOffer(count: number, regularSubtotal: number): BundleOffer {
   const offerTotal = bundleTotalFor(count);
   const discount = count > 0 ? Math.max(0, Math.round(regularSubtotal - offerTotal)) : 0;
-  const rest = count % 3;
-  const moreNeeded = count === 0 ? 0 : rest === 0 ? 0 : 3 - rest;
-  const nextTotal = bundleTotalFor(count + moreNeeded);
-  let message: string;
-  if (count === 0) {
-    message = `Special Offer sarees: Buy 1 @ ${inr(2500)} · Buy 2 @ ${inr(4900)} · Buy 3 @ ${inr(4800)}`;
-  } else if (moreNeeded > 0) {
-    message = `Add ${moreNeeded} more Special Offer saree${moreNeeded > 1 ? "s" : ""} to get ${count + moreNeeded} for just ${inr(nextTotal)}`;
-  } else {
-    message = `Special Offer applied: ${count} sarees for ${inr(offerTotal)}`;
-  }
-  return { count, offerTotal, discount, moreNeeded, nextTotal, message };
+  const message =
+    count === 0
+      ? `Special Offer: any saree just ${inr(SPECIAL_OFFER_PRICE)}`
+      : `Special Offer applied: ${count} saree${count > 1 ? "s" : ""} for ${inr(offerTotal)}`;
+  return { count, offerTotal, discount, moreNeeded: 0, nextTotal: offerTotal, message };
 }

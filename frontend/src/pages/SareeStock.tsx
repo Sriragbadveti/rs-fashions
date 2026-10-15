@@ -2589,7 +2589,7 @@ export default function Catalog({
                       </label>
                     </div>
                     <p className="text-[11px] text-stone-500">
-                      Enables the Buy 1 @ ₹2,500 / Buy 2 @ ₹4,900 / Buy 3 @ ₹4,800 bundle offers for this saree.
+                      Puts this saree on the Special Offers page at ₹2,500 (it will not appear anywhere else).
                     </p>
                   </div>
                   <label className="relative inline-flex cursor-pointer items-center shrink-0">

@@ -119,17 +119,9 @@ function Cart() {
                   )}
                 </div>
               </div>
-              <div className="flex gap-1.5 text-[10px] font-bold self-start sm:self-auto">
-                {[
-                  { n: 1, t: "Buy 1 @ ₹2,500" },
-                  { n: 2, t: "Buy 2 @ ₹4,900" },
-                  { n: 3, t: "Buy 3 @ ₹4,800" },
-                ].map(({ n, t }) => (
-                  <span key={n} className={`px-2.5 py-1 rounded-full border transition-all ${tierOffer.eligibleCount >= n ? "bg-amber-100 border-amber-300 text-amber-900" : "bg-white/60 border-stone-200 text-stone-400"}`}>
-                    {t}
-                  </span>
-                ))}
-              </div>
+              <span className="self-start sm:self-auto px-2.5 py-1 rounded-full border border-amber-300 bg-amber-100 text-[10px] font-bold text-amber-900">
+                Any saree ₹2,500
+              </span>
             </div>
           </div>
         )}

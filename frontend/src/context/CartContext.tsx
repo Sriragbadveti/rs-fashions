@@ -253,7 +253,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     [specialEditionItems]
   );
 
-  /* Special Offer bundles: Buy 1 @ ₹2,500 · Buy 2 @ ₹4,900 · Buy 3 @ ₹4,800 (eligible sarees only) */
+  /* Special Offer: every eligible saree costs a flat ₹2,500 */
   const tierOffer: TierOfferInfo = useMemo(() => {
     const o = computeBundleOffer(specialEditionCount, specialEditionSubtotal);
     return {

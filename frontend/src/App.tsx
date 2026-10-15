@@ -3,6 +3,7 @@ import {
   Routes,
   Route,
   useLocation,
+  Navigate,
 } from "react-router-dom";
 
 import SiteLayout from "./components/layout/SiteLayout";
@@ -20,7 +21,6 @@ const Login = lazy(() => import("./pages/Login"));
 const Checkout = lazy(() => import("./pages/Checkout"));
 const Account = lazy(() => import("./pages/Account"));
 const QuickPay = lazy(() => import("./pages/QuickPay"));
-const OffersStore = lazy(() => import("./pages/OffersStore"));
 const SpecialOffers = lazy(() => import("./pages/SpecialOffers"));
 const OurStory = lazy(() => import("./pages/OurStory"));
 const AuthCallback = lazy(() => import("./pages/AuthCallback"));
@@ -75,11 +75,8 @@ function AppContent() {
             element={<Shop />}
           />
 
-          {/* EXCLUSIVE OFFERS STORE (Bundle Deals) */}
-          <Route
-            path="/offers"
-            element={<OffersStore />}
-          />
+          {/* Old Offers Store address now points to the Special Offers page */}
+          <Route path="/offers" element={<Navigate to="/special-offers" replace />} />
 
           {/* SPECIAL OFFERS (admin-selected sarees; they appear nowhere else) */}
           <Route

@@ -4,8 +4,7 @@ import { FiArrowRight } from "react-icons/fi";
 import SEO from "../components/common/SEO";
 import ProductCard from "../components/product/ProductCard";
 import { StoreService, getCachedCardProducts } from "../services/supabase";
-import { useCart } from "../context/CartContext";
-import { OFFER_BUNDLE_PRICES, onlySpecialOffers } from "../utils/specialOffer";
+import { SPECIAL_OFFER_PRICE, onlySpecialOffers } from "../utils/specialOffer";
 import type { Product } from "../data/products";
 
 const inr = (n: number) => `₹${n.toLocaleString("en-IN")}`;
@@ -15,7 +14,6 @@ const inr = (n: number) => `₹${n.toLocaleString("en-IN")}`;
  * on "Special Offer" for it; every other page (shop, trending, search, suggestions) leaves them out.
  */
 export default function SpecialOffers() {
-  const { tierOffer } = useCart();
   const [products, setProducts] = useState<Product[]>(() => (getCachedCardProducts?.() as Product[] | undefined) || []);
   const [loaded, setLoaded] = useState(products.length > 0);
 
@@ -52,21 +50,18 @@ export default function SpecialOffers() {
     <main className="min-h-screen bg-linear-to-b from-[#F7EBEC] via-[#F4E7E4] to-[#E9C9C3]/40 px-3.5 pb-16 pt-6 sm:px-6 lg:px-12 font-sans text-[#2A2421]">
       <SEO
         title="Special Offers — RS Fashions"
-        description="Special Offer sarees from RS Fashions with bundle pricing."
+        description="Any saree under this offer costs only ₹2,500."
         canonicalPath="/special-offers"
       />
       <div className="mx-auto max-w-[1500px]">
         <header className="mx-auto max-w-2xl text-center">
           <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[#8E3D51]">Special Offers</p>
           <h1 className="mt-2 font-serif text-3xl font-light sm:text-4xl">
-            Bundle <span className="italic text-[#8E3D51]">Deals</span>
+            Special <span className="italic text-[#8E3D51]">Offers</span>
           </h1>
-          <p className="mt-3 text-xs leading-relaxed text-[#6E6359] sm:text-sm">
-            Buy 1 @ {inr(OFFER_BUNDLE_PRICES[1])} · Buy 2 @ {inr(OFFER_BUNDLE_PRICES[2])} · Buy 3 @ {inr(OFFER_BUNDLE_PRICES[3])}
+          <p className="mt-3 text-sm font-medium text-[#6E6359]">
+            Any saree under this offer costs only {inr(SPECIAL_OFFER_PRICE)}
           </p>
-          {tierOffer?.eligibleCount > 0 && (
-            <p className="mt-2 text-xs font-medium text-[#8E3D51]">{tierOffer.label}</p>
-          )}
         </header>
 
         {offers.length > 0 ? (

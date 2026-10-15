@@ -432,46 +432,6 @@ export default function Shop() {
     };
   }, []);
 
-  useEffect(() => {
-    let isMounted = true;
-    async function loadSaleConfig() {
-      try {
-        const res = await fetch(`${API_BASE}/settings/sale`);
-        if (!res.ok) return;
-        const json = await res.json();
-        const conf = json?.data?.saleConfig || json?.saleConfig;
-        if (isMounted && conf && conf.isEnabled !== false) {
-          const ids = new Set<string>();
-          const badgeMap: Record<string, string> = {};
-
-          if (Array.isArray(conf.saleItems)) {
-            conf.saleItems.forEach((item: any) => {
-              if (item.isActive !== false) {
-                const sId = String(item.id);
-                ids.add(sId);
-                badgeMap[sId] = item.customOfferText || "Special Offer";
-              }
-            });
-          }
-
-          if (Array.isArray(conf.saleProductIds)) {
-            conf.saleProductIds.forEach((id: any) => {
-              const sId = String(id);
-              ids.add(sId);
-              if (!badgeMap[sId]) badgeMap[sId] = "Special Offer";
-            });
-          }
-
-          setOfferProductIds(ids);
-          setOfferBadgesMap(badgeMap);
-        }
-      } catch (e) {
-        console.error("Error reading sale config:", e);
-      }
-    }
-    loadSaleConfig();
-    return () => { isMounted = false; };
-  }, []);
 
   // Whenever the address changes (a menu/footer link, back button, or "All"), the filters follow it
   // exactly: a parameter that isn't in the URL means "no filter" for it, so old filters never linger.

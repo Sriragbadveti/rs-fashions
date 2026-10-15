@@ -7,7 +7,6 @@ import MaterialCollections from "../components/home/MaterialCollections";
 import LazySection from "../components/common/LazySection";
 
 // Below-the-fold sections load their code and data only when scrolled near.
-const ForSaleProducts = lazy(() => import("../components/home/ForSaleProducts"));
 const TrendingProducts = lazy(() => import("../components/home/TrendingProducts"));
 const ProductShowcase = lazy(() => import("../components/home/ProductShowcase"));
 const CinematicReel = lazy(() => import("../components/home/CinematicReel"));
@@ -42,7 +41,6 @@ function Home() {
 
       <MaterialCollections />
 
-      <LazySection minHeight={420}><Suspense fallback={null}><ForSaleProducts /></Suspense></LazySection>
 
       {/* Trending Section: Exclusively displays sarees marked as Special Offer */}
       <LazySection minHeight={520}><Suspense fallback={null}><TrendingProducts /></Suspense></LazySection>
