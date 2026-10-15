@@ -104,7 +104,6 @@ export interface Category {
 
 export const CANONICAL_SAREE_CATEGORIES: Category[] = [
   { id: "cat_sico_gadwal", name: "SiCo Gadwal Sarees", slug: "SICO-GADWAL", hsn: "5208", nextSequence: 1 },
-  { id: "cat_gatti_borders", name: "Gatti Borders Sarees", slug: "GATTI-BORDERS", hsn: "5208", nextSequence: 1 },
 ];
 
 /**

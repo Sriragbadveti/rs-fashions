@@ -1,4 +1,4 @@
-import { SAREE_TYPES, SAREE_TYPE_LABELS, SAREE_TYPE_SHORT, toSareeType, type SareeType, ADMIN_SAREE_CATEGORIES, GATTI_CATEGORY, isGattiCategory, sareeTypeForCategory } from "../types/sareeType";
+import { SAREE_TYPES, SAREE_TYPE_LABELS, SAREE_TYPE_SHORT, toSareeType, type SareeType } from "../types/sareeType";
 import { useShowMore, ShowMoreButton } from "../components/common/ShowMore";
 import { getImageVariantUrl, fallbackToOriginalImage } from "../utils/imageVariants";
 import {
@@ -1679,10 +1679,6 @@ export default function Catalog({
     );
     return found?.id || "cat_sico_gadwal";
   }, [categories]);
-  const gattiCategoryId = useMemo(
-    () => (categories || []).find((c) => isGattiCategory(c))?.id || GATTI_CATEGORY.id,
-    [categories]
-  );
 
   // Form State
   const [formName, setFormName] = useState("");
@@ -1989,10 +1985,8 @@ export default function Catalog({
       };
     });
 
-    // The category follows the saree type: Gatti Borders sarees go to the Gatti Borders category.
-    const isGatti = formSareeType === "Gatti Borders";
-    const finalCategory = isGatti ? gattiCategoryId : sicoCategoryId;
-    const finalCategoryName = isGatti ? GATTI_CATEGORY.name : lockedCategoryName;
+    const finalCategory = sicoCategoryId;
+    const finalCategoryName = lockedCategoryName;
     // The gallery is the source of truth; the first photo is the primary image.
     const effectiveImages = formImages.length > 0
       ? formImages
@@ -2418,17 +2412,14 @@ export default function Catalog({
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="min-w-0">
                   <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-stone-400">
-                    Category
+                    Weave Classification (Locked)
                   </label>
-                  <select
-                    value={formSareeType === "Gatti Borders" ? GATTI_CATEGORY.id : ADMIN_SAREE_CATEGORIES[0].id}
-                    onChange={(e) => setFormSareeType((t) => sareeTypeForCategory(e.target.value, t))}
-                    className="h-11 w-full rounded-2xl border border-stone-200/80 bg-white/90 px-3 text-xs font-semibold text-stone-900 outline-none transition-all focus:border-[#D4A373] focus:ring-2 focus:ring-[#D4A373]/10"
-                  >
-                    {ADMIN_SAREE_CATEGORIES.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
+                  <div className="flex h-11 items-center justify-between overflow-hidden rounded-2xl border border-stone-200/80 bg-stone-50 px-3.5 font-semibold text-stone-800 text-xs">
+                    <span className="truncate">{lockedCategoryName}</span>
+                    <span className="rounded-md bg-stone-200/60 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-stone-500">
+                      Standard
+                    </span>
+                  </div>
                 </div>
 
                 <div className="min-w-0">

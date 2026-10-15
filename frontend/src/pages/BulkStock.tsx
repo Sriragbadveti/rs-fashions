@@ -1,4 +1,4 @@
-import { SAREE_TYPES, SAREE_TYPE_LABELS, type SareeType, GATTI_CATEGORY, sareeTypeForCategory } from "../types/sareeType";
+import { SAREE_TYPES, SAREE_TYPE_LABELS, type SareeType } from "../types/sareeType";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Package,
@@ -565,12 +565,6 @@ export default function BulkStock({
       code: "5208",
       description: "HSN: 5208 · Handloom SiCo Gadwal Standard",
     },
-    {
-      value: GATTI_CATEGORY.id,
-      label: "Gatti Borders",
-      code: "5208",
-      description: "HSN: 5208 · Gatti Borders Sarees",
-    },
   ], []);
 
   const [selectedCategoryId, setSelectedCategoryId] = useState("cat_sico_gadwal");
@@ -982,15 +976,14 @@ export default function BulkStock({
       if (rowBorder) saveBorderColorToRegistry(rowBorder);
       const borderColor = rowBorder || batchBorder;
 
-      // The category follows the saree type: Gatti Borders sarees go to the Gatti Borders category.
-      const isGatti = batchSareeType === "Gatti Borders";
-      const categoryName = isGatti ? GATTI_CATEGORY.name : "SiCo Gadwal Sarees";
+      // Every saree (incl. the Gatti Borders design) is in SiCo Gadwal Sarees.
+      const categoryName = "SiCo Gadwal Sarees";
 
       return {
         id: "",
         clientRef: row.id,
         name: designObj.name,
-        categoryId: isGatti ? GATTI_CATEGORY.id : "cat_sico_gadwal",
+        categoryId: "cat_sico_gadwal",
         category: categoryName,
         material: batchSareeType,
         purchasePrice: purchasePrice ? Number(purchasePrice) : 0,
@@ -1203,10 +1196,7 @@ export default function BulkStock({
             label="Weave Standard"
             value={selectedCategoryId}
             options={categoryOptions}
-            onChange={(id) => {
-              setSelectedCategoryId(id);
-              setBatchSareeType((t) => sareeTypeForCategory(id, t));
-            }}
+            onChange={setSelectedCategoryId}
           />
 
           <div>
@@ -1254,11 +1244,7 @@ export default function BulkStock({
             </label>
             <select
               value={batchSareeType}
-              onChange={(e) => {
-                const t = e.target.value as SareeType;
-                setBatchSareeType(t);
-                setSelectedCategoryId(t === "Gatti Borders" ? GATTI_CATEGORY.id : "cat_sico_gadwal");
-              }}
+              onChange={(e) => setBatchSareeType(e.target.value as SareeType)}
               className="h-11 w-full rounded-2xl border border-stone-200/80 bg-white/90 px-3 text-xs font-semibold text-stone-900 outline-none transition-all focus:border-[#D4A373] focus:ring-2 focus:ring-[#D4A373]/10"
             >
               {SAREE_TYPES.map((t) => (

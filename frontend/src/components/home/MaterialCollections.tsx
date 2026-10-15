@@ -28,7 +28,7 @@ const materials: MaterialItem[] = [
     name: "Gatti Borders",
     accent: "from-emerald-600/80 to-teal-500/80",
     borderGlow: "hover:border-emerald-400/60",
-    link: "/shop?material=Gatti+Borders",
+    link: "/shop?material=SiCo&category=Gatti+Border",
     image: tempImg2,
   },
   {

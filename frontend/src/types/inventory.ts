@@ -412,7 +412,7 @@ export interface Product {
   category?: string;
 
   /**
-   * Saree type: "SiCo" (SiCo Gadwal), "Pure Gadwal Handloom" or "Gatti Borders". Decides which shop section it appears in.
+   * Saree type: "SiCo" (SiCo Gadwal) or "Pure Gadwal Handloom". Decides which shop section it appears in.
    */
   material?: string;
 
@@ -600,7 +600,6 @@ export const MOCK_CUSTOMERS: CustomerProfile[] = [];
 
 export const CANONICAL_SAREE_CATEGORIES: Category[] = [
   { id: "cat_sico_gadwal", name: "SiCo Gadwal Sarees", slug: "SICO-GADWAL", hsn: "5208", nextSequence: 1 },
-  { id: "cat_gatti_borders", name: "Gatti Borders Sarees", slug: "GATTI-BORDERS", hsn: "5208", nextSequence: 1 },
 ];
 
 export const MOCK_CATEGORIES: Category[] = [...CANONICAL_SAREE_CATEGORIES];

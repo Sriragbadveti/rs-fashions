@@ -14,6 +14,9 @@ import CartDrawer from "../cart/CartDrawer";
 import MobileMenu from "./MobileMenu";
 import logo from "../../assets/logo/logo1.png";
 
+// Scrolling offer strip above the header. Temporarily switched off; set to true to bring it back.
+const SHOW_HEADER_MARQUEE = false;
+
 function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -212,6 +215,7 @@ function Navbar() {
         transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
         className={`fixed inset-x-0 top-0 z-50 select-none font-sans ${showHeader ? "pointer-events-auto" : "pointer-events-none"}`}
       >
+        {SHOW_HEADER_MARQUEE && (
         <motion.div style={{ height: tickerHeight, opacity: tickerOpacity }} className="relative overflow-hidden bg-[#2A2421] text-[#F7EBEC]">
           <div className="flex h-7 items-center overflow-hidden">
             <motion.div
@@ -234,6 +238,7 @@ function Navbar() {
             </motion.div>
           </div>
         </motion.div>
+        )}
 
         <motion.nav
           style={{

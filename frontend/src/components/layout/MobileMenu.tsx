@@ -44,25 +44,10 @@ const sicoSubcategories = [
   { label: "Maa Inti Bangaram", path: "/shop?material=SiCo&category=Maa+Inti+Bangaram" },
 ];
 
-const pureGadwalSubcategories = [
-  { label: "All Pure Gadwal Handloom Sarees", path: "/shop?material=Pure+Gadwal+Handloom" },
-  { label: "Checks", path: "/shop?material=Pure+Gadwal+Handloom&category=Checks" },
-  { label: "Equal Borders", path: "/shop?material=Pure+Gadwal+Handloom&category=Equal+Borders" },
-  { label: "Kanchi Big Borders", path: "/shop?material=Pure+Gadwal+Handloom&category=Kanchi+Big+Borders" },
-  { label: "Vintage Checks", path: "/shop?material=Pure+Gadwal+Handloom&category=Vintage+Checks" },
-  { label: "Gatti Border", path: "/shop?material=Pure+Gadwal+Handloom&category=Gatti+Border" },
-  { label: "Gap Border", path: "/shop?material=Pure+Gadwal+Handloom&category=Gap+Border" },
-  { label: "Maa Inti Bangaram", path: "/shop?material=Pure+Gadwal+Handloom&category=Maa+Inti+Bangaram" },
-];
-
-const gattiBordersSubcategories = [
-  { label: "All Gatti Borders Sarees", path: "/shop?material=Gatti+Borders" },
-];
-
+// A section with `path` (and no items) is a single link instead of an expandable list.
 const menuSections: MenuSection[] = [
   { title: "SiCo Gadwal Sarees", subtitle: "Interlocked Zari & Pure Silk Warp", letter: "G", items: sicoSubcategories },
-  { title: "Pure Gadwal Handloom Sarees", subtitle: "Handwoven Pure Gadwal Silk", letter: "P", items: pureGadwalSubcategories },
-  { title: "Gatti Borders Sarees", subtitle: "Bold Woven Gatti Borders", letter: "B", items: gattiBordersSubcategories },
+  { title: "Pure Gadwal Handloom Sarees", subtitle: "Handwoven Pure Gadwal Silk", letter: "P", items: [], path: "/shop?material=Pure+Gadwal+Handloom" },
 ];
 
 const secondaryLinks = [
@@ -85,11 +70,39 @@ type MenuSection = {
   subtitle: string;
   letter: string;
   items: { label: string; path: string }[];
+  /** Direct link: the section opens this page instead of expanding. */
+  path?: string;
 };
 
 /** One collapsible collection (SiCo Gadwal, Pure Gadwal Handloom...) in the menu. */
-function SareeAccordion({ title, subtitle, letter, items, defaultOpen, onNavigate }: MenuSection & { defaultOpen: boolean; onNavigate: () => void }) {
+function SareeAccordion({ title, subtitle, letter, items, path, defaultOpen, onNavigate }: MenuSection & { defaultOpen: boolean; onNavigate: () => void }) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
+  if (path && items.length === 0) {
+    return (
+      <Link
+        to={path}
+        onClick={onNavigate}
+        className="group flex w-full items-center justify-between rounded-2xl border border-black/[0.07] bg-white/90 px-4 py-3.5 text-left shadow-xs transition-all duration-300 hover:border-black/15"
+      >
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#8E3D51]/10 text-[#8E3D51] transition-transform duration-300 group-hover:scale-105">
+            <span className="font-serif text-sm font-semibold">{letter}</span>
+          </div>
+          <div>
+            <h3 className="font-serif text-[15px] font-normal tracking-tight text-[#2A2421] transition-colors group-hover:text-[#8E3D51]">
+              {title}
+            </h3>
+            <p className="text-[10px] font-light tracking-wide text-[#8C7A6B]">
+              {subtitle}
+            </p>
+          </div>
+        </div>
+        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-black/3 text-[#8E3D51] transition-colors group-hover:bg-[#8E3D51]/10">
+          <FiArrowUpRight size={13} strokeWidth={2} />
+        </div>
+      </Link>
+    );
+  }
   return (
       <div
         className={`overflow-hidden rounded-2xl border transition-all duration-300 ${

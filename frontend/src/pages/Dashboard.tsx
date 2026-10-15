@@ -158,14 +158,9 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
           const nonVerticals = parsed.filter(
             (c) =>
               c.name.toLowerCase().includes("gadwal") ||
-              c.name.toLowerCase().includes("sico") ||
-              c.name.toLowerCase().includes("gatti")
+              c.name.toLowerCase().includes("sico")
           );
           if (nonVerticals.length > 0) {
-            // A list saved before Gatti Borders existed still gets every canonical category.
-            for (const canon of CANONICAL_SAREE_CATEGORIES) {
-              if (!nonVerticals.some((c) => c.id === canon.id || c.name.toLowerCase() === canon.name.toLowerCase())) nonVerticals.push(canon);
-            }
             return nonVerticals;
           }
         }
@@ -430,15 +425,9 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
           const filtered = d.categories.filter(
             (c: any) =>
               c.name.toLowerCase().includes("gadwal") ||
-              c.name.toLowerCase().includes("sico") ||
-              c.name.toLowerCase().includes("gatti")
+              c.name.toLowerCase().includes("sico")
           );
-          const merged = filtered.length > 0 ? [...filtered] : [...CANONICAL_SAREE_CATEGORIES];
-          // Every canonical category (e.g. Gatti Borders) is available even if the database lacks it.
-          for (const canon of CANONICAL_SAREE_CATEGORIES) {
-            const key = canon.name.toLowerCase().split(" ")[0];
-            if (!merged.some((c: any) => c.id === canon.id || String(c.name).toLowerCase().includes(key))) merged.push(canon);
-          }
+          const merged = filtered.length > 0 ? filtered : [...CANONICAL_SAREE_CATEGORIES];
           setCategories(merged);
           safeStorageSet("rs_admin_categories", merged);
         }
