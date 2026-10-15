@@ -6,6 +6,7 @@ import { Sparkles, Package, StarIcon } from "lucide-react";
 import { API_BASE } from "../../config/api";
 import type { Product } from "../../types/inventory";
 import { handleSareeImageError } from "../../utils/imageConverter";
+import { withoutSpecialOffers } from "../../utils/specialOffer";
 import { getImageVariantUrl, fallbackToOriginalImage } from "../../utils/imageVariants";
 
 const DUMMY_PRODUCT_IDS = new Set([
@@ -26,7 +27,7 @@ export default function TrendingProducts() {
     let isMounted = true;
 
     function filterRealTrending(list: Product[]): Product[] {
-      const realList = (list || []).filter(
+      const realList = withoutSpecialOffers(list || []).filter(
         (p) => p && p.id && !DUMMY_PRODUCT_IDS.has(String(p.id))
       );
       let trendingItems = realList.filter((p) => {

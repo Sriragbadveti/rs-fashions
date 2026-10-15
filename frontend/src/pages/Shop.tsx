@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect, memo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { useSearchParams, Link } from "react-router-dom";
+import { useSearchParams, useNavigate, Link } from "react-router-dom";
+import { withoutSpecialOffers } from "../utils/specialOffer";
 import { FiChevronDown, FiFilter, FiSearch, FiSliders, FiX, FiRotateCcw, FiShoppingBag, FiCheck, FiTag } from "react-icons/fi";
 import { type Product } from "../data/products";
 import FilterSheet, { type FilterState } from "../components/shop/FilterSheet";
@@ -317,6 +318,7 @@ const SHELF_CHUNK_SIZE = 6;
 
 export default function Shop() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
 
   const [allProducts, setAllProducts] = useState<Product[]>(() => {
     // Instant first paint: the listing remembered from the last visit (refreshed in the background).
@@ -394,7 +396,7 @@ export default function Shop() {
   }, []);
 
   const categoryPills = useMemo(() => {
-    const liveCats = allProducts.map((p) => p.category).filter((c): c is string => Boolean(c && c.trim()));
+    const liveCats = withoutSpecialOffers(allProducts).map((p) => p.category).filter((c): c is string => Boolean(c && c.trim()));
     return Array.from(new Set([...initialCategoryPills, ...liveCats]));
   }, [allProducts]);
 
@@ -492,15 +494,20 @@ export default function Shop() {
       else if (urlSort === "price_desc") setSort("Price: High to Low");
       else if (urlSort === "bestseller") setSort("Most Popular");
     }
-    setShowOnlyOffers(
+    if (
       searchParams.get("offers") === "true" ||
-        searchParams.get("special_offers") === "true" ||
-        searchParams.get("filter") === "sale"
-    );
+      searchParams.get("special_offers") === "true" ||
+      searchParams.get("filter") === "sale"
+    ) {
+      navigate("/special-offers", { replace: true });
+      return;
+    }
+    setShowOnlyOffers(false);
   }, [searchParams]);
 
   const filteredProducts = useMemo(() => {
-    let result = [...allProducts];
+    // Special Offer sarees appear only on /special-offers, never in the shop (not even under "All").
+    let result = withoutSpecialOffers(allProducts);
 
     if (debouncedSearch.trim()) {
       const query = debouncedSearch.toLowerCase().trim();

@@ -20,6 +20,16 @@ export function isSpecialOfferProduct(p: OfferFlags | null | undefined): boolean
   return tags.some((t) => t === "special_offer" || t === "special_edition" || t === "limited_edition");
 }
 
+/** Special Offer sarees live only on the Special Offers page: every other listing leaves them out. */
+export function withoutSpecialOffers<T extends OfferFlags>(list: T[] | null | undefined): T[] {
+  return (list || []).filter((p) => !isSpecialOfferProduct(p));
+}
+
+/** The sarees the admin put under Special Offers (shown only on the Special Offers page). */
+export function onlySpecialOffers<T extends OfferFlags>(list: T[] | null | undefined): T[] {
+  return (list || []).filter((p) => isSpecialOfferProduct(p));
+}
+
 export interface BundleOffer {
   count: number;
   /** Price the eligible sarees cost together under the offer. */

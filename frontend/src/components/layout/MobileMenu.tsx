@@ -48,6 +48,7 @@ const sicoSubcategories = [
 const menuSections: MenuSection[] = [
   { title: "SiCo Gadwal Sarees", subtitle: "Interlocked Zari & Pure Silk Warp", letter: "G", items: sicoSubcategories },
   { title: "Pure Gadwal Handloom Sarees", subtitle: "Handwoven Pure Gadwal Silk", letter: "P", items: [], path: "/shop?material=Pure+Gadwal+Handloom" },
+  { title: "Special Offers", subtitle: "Bundle deals on selected sarees", letter: "%", items: [], path: "/special-offers" },
 ];
 
 const secondaryLinks = [

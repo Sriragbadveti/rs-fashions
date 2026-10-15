@@ -1,4 +1,5 @@
 import { maxQuantityFor } from "../context/CartContext";
+import { isSpecialOfferProduct, onlySpecialOffers, withoutSpecialOffers } from "../utils/specialOffer";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Link, useNavigate, useParams } from "react-router-dom";
@@ -92,10 +93,19 @@ export default function Product() {
     return (product.borderColor || pAny.border_color || fromTag || fromVariant || "").trim() || undefined;
   }, [product]);
 
+  // Special Offer sarees only ever suggest other Special Offer sarees, and regular sarees never
+  // suggest Special Offer ones.
+  const suggestionPool = useMemo(() => {
+    if (!product) return [];
+    return isSpecialOfferProduct(product as any)
+      ? onlySpecialOffers(allProducts as any[]) as ProductType[]
+      : withoutSpecialOffers(allProducts as any[]) as ProductType[];
+  }, [allProducts, product]);
+
   const sameBorderProducts = useMemo(() => {
     if (!effectiveBorderColor || !product) return [];
     const target = effectiveBorderColor.toLowerCase();
-    return allProducts.filter((item) => {
+    return suggestionPool.filter((item) => {
       if (item.id === product.id) return false;
       const iAny = item as any;
       const itemBorder = (
@@ -106,7 +116,7 @@ export default function Product() {
       ).trim();
       return itemBorder.toLowerCase() === target;
     });
-  }, [allProducts, product, effectiveBorderColor]);
+  }, [suggestionPool, product, effectiveBorderColor]);
 
   const colorVariants: ColorVariantItem[] = useMemo(() => {
     if (!product) return [];
@@ -255,7 +265,7 @@ export default function Product() {
   }
 
   const isSoldOut = product.stock !== undefined && product.stock <= 0;
-  const relatedProducts = allProducts.filter((item) => item.id !== product.id).slice(0, 4);
+  const relatedProducts = suggestionPool.filter((item) => item.id !== product.id).slice(0, 4);
 
   return (
     <main className="min-h-screen bg-linear-to-b from-[#F7EBEC] via-[#F4E7E4] to-[#E9C9C3]/40 font-sans text-[#2A2421] select-none pb-24 sm:pb-16">
@@ -952,7 +962,7 @@ export default function Product() {
       {/* RELATED PRODUCTS (MORE IN STORE) */}
       <RelatedProducts
         currentProduct={product}
-        products={allProducts}
+        products={suggestionPool}
         title="You May Also Like"
         badge="More In Store"
         viewAllLink="/shop"

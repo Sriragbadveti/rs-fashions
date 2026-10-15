@@ -117,7 +117,7 @@ export default function NotFound() {
           </Link>
 
           <Link
-            to="/shop?filter=sale"
+            to="/special-offers"
             className="group rounded-2xl border border-black/8 bg-white/85 p-4 shadow-sm transition-all hover:border-[#8E3D51]/40 hover:bg-white hover:-translate-y-0.5 hover:shadow-md"
           >
             <div className="flex items-center gap-2.5 text-[#8E3D51] mb-2">

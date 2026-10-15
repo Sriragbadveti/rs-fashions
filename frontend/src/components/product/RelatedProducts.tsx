@@ -1,3 +1,4 @@
+import { isSpecialOfferProduct, onlySpecialOffers, withoutSpecialOffers } from "../../utils/specialOffer";
 import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { FiArrowUpRight } from "react-icons/fi";
@@ -44,7 +45,9 @@ export default function RelatedProducts({
     };
   }, [products]);
 
-  const sourceProducts = products && products.length > 0 ? products : fetchedProducts;
+  const sourceProducts = products && products.length > 0
+    ? products
+    : (isSpecialOfferProduct(targetProduct as any) ? onlySpecialOffers(fetchedProducts) : withoutSpecialOffers(fetchedProducts));
 
   const related = useMemo(() => {
     if (!sourceProducts.length) return [];

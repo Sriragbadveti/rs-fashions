@@ -21,6 +21,7 @@ const Checkout = lazy(() => import("./pages/Checkout"));
 const Account = lazy(() => import("./pages/Account"));
 const QuickPay = lazy(() => import("./pages/QuickPay"));
 const OffersStore = lazy(() => import("./pages/OffersStore"));
+const SpecialOffers = lazy(() => import("./pages/SpecialOffers"));
 const OurStory = lazy(() => import("./pages/OurStory"));
 const AuthCallback = lazy(() => import("./pages/AuthCallback"));
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -78,6 +79,12 @@ function AppContent() {
           <Route
             path="/offers"
             element={<OffersStore />}
+          />
+
+          {/* SPECIAL OFFERS (admin-selected sarees; they appear nowhere else) */}
+          <Route
+            path="/special-offers"
+            element={<SpecialOffers />}
           />
 
           {/* PRODUCT */}
