@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { Power, Plus, Trash2, Save, Megaphone, Calendar, Tag, RefreshCw } from "lucide-react";
+import { Power, Plus, Trash2, Save, Calendar, Tag, RefreshCw } from "lucide-react";
 import { API_BASE } from "../config/api";
 import { adminFetch } from "../utils/adminSession";
 import { useModal } from "../context/ModalContext";
 import { useCart } from "../context/CartContext";
-import { festivalMarqueeText, type FestivalOfferConfig, type FestivalTier } from "../utils/festivalOffer";
-import { computeBundleOffer } from "../utils/specialOffer";
+import { type FestivalOfferConfig, type FestivalTier } from "../utils/festivalOffer";
 
 /**
  * Admin "Offers" tab: the festival offer (flat amount off by number of eligible sarees).
@@ -102,8 +101,8 @@ export default function OffersManager() {
       { ...saved, enabled },
       enabled ? `${saved.name} is ON` : `${saved.name} is OFF`,
       enabled
-        ? "Customers get the discount in their cart and at checkout right away, and it is announced in the header."
-        : "The discount is no longer applied and the header announcement is removed."
+        ? "Customers get the discount in their cart and at checkout right away."
+        : "The discount is no longer applied."
     );
   };
 
@@ -139,12 +138,6 @@ export default function OffersManager() {
       </div>
     );
   }
-
-  const marqueeLines = [
-    ...(status.label === "Live on website" ? [festivalMarqueeText({ ...saved, active: true })] : []),
-    computeBundleOffer(0, 0).message,
-    "Complimentary shipping on orders of ₹1,999 & above",
-  ];
 
   return (
     <div className="space-y-6 font-sans text-stone-800">
@@ -263,16 +256,6 @@ export default function OffersManager() {
                 <span>eligible sarees →</span>
                 <span className="font-bold text-emerald-700">{inr(previewDiscount)} off</span>
               </div>
-            </div>
-
-            <div className="rounded-xl border border-stone-200 bg-[#2A2421] p-4 text-[#F7EBEC]">
-              <p className="flex items-center gap-1.5 text-xs font-semibold text-amber-200"><Megaphone className="h-3.5 w-3.5" /> Header announcement (live)</p>
-              <ul className="mt-2 space-y-1.5 text-[11px] uppercase tracking-wider text-stone-200">
-                {marqueeLines.map((line) => (
-                  <li key={line}>• {line}</li>
-                ))}
-              </ul>
-              <p className="mt-3 text-[10px] normal-case text-stone-400">The festival line appears automatically while the offer is live.</p>
             </div>
           </div>
         </div>
