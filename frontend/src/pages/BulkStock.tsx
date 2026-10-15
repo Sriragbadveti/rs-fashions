@@ -49,6 +49,8 @@ interface BulkStockProps {
   categories: Category[];
   /** Resolves with the products the backend actually stored. */
   onBulkRestock: (newProducts: Product[]) => Promise<BulkRestockResult>;
+  /** Used from the Special Offers page: every saree added here is a Special Offer saree. */
+  forceSpecialOffer?: boolean;
 }
 
 type OrderMode = "single" | "dual";
@@ -465,6 +467,7 @@ export default function BulkStock({
   inventory,
   categories,
   onBulkRestock,
+  forceSpecialOffer = false,
 }: BulkStockProps) {
   const [orderMode, setOrderMode] = useState<OrderMode>("single");
 
@@ -991,9 +994,9 @@ export default function BulkStock({
         tags: [
           "bulk-restock",
           orderMode === "dual" ? "dual-tone" : "single-tone",
-          ...(row.specialOffer ? ["special_offer"] : []),
+          ...(forceSpecialOffer || row.specialOffer ? ["special_offer"] : []),
         ],
-        isSpecialOffer: Boolean(row.specialOffer),
+        isSpecialOffer: forceSpecialOffer || Boolean(row.specialOffer),
         description: getDesignDescription(selectedDesignSlug) || undefined,
         imageUrl: allImages[0],
         images: allImages.length > 0 ? allImages : undefined,
@@ -1354,6 +1357,7 @@ export default function BulkStock({
                 <span>Apply to All</span>
               </button>
 
+              {!forceSpecialOffer && (
               <button
                 type="button"
                 onClick={toggleSpecialOfferForAll}
@@ -1363,6 +1367,7 @@ export default function BulkStock({
                 <Sparkles size={13} className="text-amber-700" />
                 <span>{allSpecialOffer ? "Special Offer: Off for All" : "Special Offer: On for All"}</span>
               </button>
+              )}
 
               <button
                 type="button"
@@ -1607,12 +1612,13 @@ export default function BulkStock({
                       Photos for row #{index + 1} ({(row.imageUrl ? 1 : 0) + (row.extraImages || []).length})
                     </span>
                     <label
-                      className={`inline-flex cursor-pointer items-center gap-1.5 rounded-xl px-3 py-1.5 text-[11px] font-bold border ${row.specialOffer ? "bg-[#8E3D51] text-white border-[#8E3D51]" : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50"}`}
-                      title="Puts this saree on the Special Offers page at ₹2,500 (nowhere else)"
+                      className={`inline-flex cursor-pointer items-center gap-1.5 rounded-xl px-3 py-1.5 text-[11px] font-bold border ${forceSpecialOffer || row.specialOffer ? "bg-[#8E3D51] text-white border-[#8E3D51]" : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50"}`}
+                      title={forceSpecialOffer ? "Every saree added from Special Offers is a Special Offer saree" : "Puts this saree on the Special Offers page at ₹2,500 (nowhere else)"}
                     >
                       <input
                         type="checkbox"
-                        checked={Boolean(row.specialOffer)}
+                        checked={forceSpecialOffer || Boolean(row.specialOffer)}
+                        disabled={forceSpecialOffer}
                         onChange={(e) => updateRow(row.id, "specialOffer", e.target.checked)}
                         className="h-3 w-3 accent-[#8E3D51]"
                         data-testid={`special-offer-${index}`}

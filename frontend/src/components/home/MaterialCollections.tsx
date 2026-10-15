@@ -4,6 +4,7 @@ import { FiArrowUpRight } from "react-icons/fi";
 import tempImg1 from "../../assets/images/Home.jpg";
 import tempImg2 from "../../assets/images/Home1.jpg";
 import tempImg3 from "../../assets/images/Home_laptop_1.png";
+import { sicoPatternLink } from "../../config/sareePatterns";
 
 export interface MaterialItem {
   id: string;
@@ -20,7 +21,7 @@ const materials: MaterialItem[] = [
     name: "Maa Inti Bangaram",
     accent: "from-rose-500/80 to-amber-500/80",
     borderGlow: "hover:border-rose-400/60",
-    link: "/shop?material=SiCo",
+    link: sicoPatternLink("Maa Inti Bangaram"),
     image: tempImg1,
   },
   {
@@ -28,23 +29,23 @@ const materials: MaterialItem[] = [
     name: "Gatti Borders",
     accent: "from-emerald-600/80 to-teal-500/80",
     borderGlow: "hover:border-emerald-400/60",
-    link: "/shop?material=SiCo&category=Gatti+Border",
+    link: sicoPatternLink("Gatti Border"),
     image: tempImg2,
   },
   {
     id: "checks-gadwal",
-    name: "Vintage Checks",
+    name: "Checks",
     accent: "from-amber-500/80 to-orange-600/80",
     borderGlow: "hover:border-amber-400/60",
-    link: "/shop?search=Vintage+Checks",
+    link: sicoPatternLink("Checks"),
     image: tempImg3,
   },
   {
     id: "kanchi-border",
-    name: "Kanchi Borders",
+    name: "Kanchi Big Borders",
     accent: "from-fuchsia-600/80 to-[#8E3D51]/80",
     borderGlow: "hover:border-fuchsia-400/60",
-    link: "/shop?search=Big+Kanchi",
+    link: sicoPatternLink("Kanchi Big Borders"),
     image: tempImg1,
   },
 ];
@@ -125,7 +126,7 @@ export default function MaterialCollections() {
             >
               <Link
                 to={mat.link}
-                className="group relative flex aspect-3/4.5 w-full flex-col justify-between overflow-hidden rounded-2xl sm:rounded-3xl bg-black p-4 shadow-sm transition-all duration-300 hover:shadow-xl hover:-translate-y-1.5 active:scale-[0.98] transform-gpu"
+                className="group relative isolate flex aspect-3/4.5 w-full flex-col justify-between overflow-hidden rounded-2xl sm:rounded-3xl bg-black p-4 shadow-sm transition-all duration-300 hover:shadow-xl hover:-translate-y-1.5 active:scale-[0.98] transform-gpu"
               >
                 {/* Saree Image */}
                 <img
@@ -134,22 +135,22 @@ export default function MaterialCollections() {
                   loading="lazy"
                   decoding="async"
                   draggable={false}
-                  className="absolute inset-0 h-full w-full object-cover object-center saturate-[1.2] contrast-[1.05] transition-transform duration-500 ease-out group-hover:scale-105 pointer-events-none will-change-transform"
+                  className="absolute inset-0 z-0 h-full w-full object-cover object-center saturate-[1.2] contrast-[1.05] transition-transform duration-500 ease-out group-hover:scale-105 pointer-events-none will-change-transform"
                 />
 
                 {/* Dark Gradient Overlay */}
-                <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/25 to-transparent" />
+                <div className="pointer-events-none absolute inset-0 z-1 bg-linear-to-t from-black/90 via-black/25 to-transparent" />
 
                 {/* Top Action Row */}
-                <div className="relative z-10 flex items-center justify-end">
+                <div className="relative z-10 flex items-center justify-end transform-[translateZ(0)]">
                   <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/30 text-white backdrop-blur-md transition-all duration-300 group-hover:bg-[#8E3D51] group-hover:rotate-45">
                     <FiArrowUpRight size={13} />
                   </span>
                 </div>
 
                 {/* Bottom Details */}
-                <div className="relative z-10">
-                  <h3 className="font-serif text-base sm:text-lg font-medium tracking-wide text-white drop-shadow-sm">
+                <div className="relative z-10 transform-[translateZ(0)]">
+                  <h3 className="font-serif text-base sm:text-lg font-medium tracking-wide text-white opacity-100 drop-shadow-sm">
                     {mat.name}
                   </h3>
                   <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-amber-300 group-hover:underline">

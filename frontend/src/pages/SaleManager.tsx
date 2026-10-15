@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
-import { FiTag, FiPlus, FiTrash2, FiImage, FiX, FiSearch } from "react-icons/fi";
-import type { Product } from "../types/inventory";
+import { FiTag, FiPlus, FiTrash2, FiImage, FiX, FiSearch, FiUploadCloud } from "react-icons/fi";
+import type { Product, Category } from "../types/inventory";
+import BulkStock from "./BulkStock";
+import type { BulkRestockResult } from "../types/bulkstock";
 import { useModal } from "../context/ModalContext";
 import { variantImgProps } from "../utils/imageVariants";
 import { isSpecialOfferProduct } from "../utils/specialOffer";
@@ -8,6 +10,9 @@ import { isSpecialOfferProduct } from "../utils/specialOffer";
 interface SaleManagerProps {
   inventory: Product[];
   onUpdateProduct: (product: Product) => Promise<boolean> | boolean | void;
+  /** Same as Bulk Upload: lets new sarees be added straight from this page. */
+  categories?: Category[];
+  onBulkRestock?: (newProducts: Product[]) => Promise<BulkRestockResult>;
 }
 
 const OFFER_TAGS = ["special_offer", "special_edition", "limited_edition"];
@@ -19,11 +24,12 @@ const categoryOf = (p: Product) => (p as any).category || p.categoryId || "SiCo 
  * Special Offers: the sarees listed here are exactly the ones with the "Special Offer" setting on.
  * They show on the storefront's Special Offers page and nowhere else on the website.
  */
-export default function SaleManager({ inventory, onUpdateProduct }: SaleManagerProps) {
+export default function SaleManager({ inventory, onUpdateProduct, categories = [], onBulkRestock }: SaleManagerProps) {
   const { toast } = useModal();
   const [searchQuery, setSearchQuery] = useState("");
   const [pickerQuery, setPickerQuery] = useState("");
   const [isAddSareeModalOpen, setIsAddSareeModalOpen] = useState(false);
+  const [isNewSareeOpen, setIsNewSareeOpen] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const offerProducts = useMemo(() => inventory.filter((p) => isSpecialOfferProduct(p as any)), [inventory]);
@@ -116,6 +122,16 @@ export default function SaleManager({ inventory, onUpdateProduct }: SaleManagerP
               <FiPlus size={14} />
               <span>Add From Inventory</span>
             </button>
+            {onBulkRestock && (
+              <button
+                type="button"
+                onClick={() => setIsNewSareeOpen(true)}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-[#8E3D51] bg-white hover:bg-[#8E3D51]/5 text-[#8E3D51] text-xs font-semibold transition-all active:scale-95"
+              >
+                <FiUploadCloud size={14} />
+                <span>Add New Sarees</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -124,7 +140,8 @@ export default function SaleManager({ inventory, onUpdateProduct }: SaleManagerP
             <FiImage size={32} className="mx-auto text-stone-300 mb-2" />
             <p className="text-sm font-semibold text-stone-700">No sarees under Special Offers</p>
             <p className="text-xs text-stone-400 mt-1 max-w-sm mx-auto">
-              Click &quot;Add From Inventory&quot; to pick the sarees that should appear on the Special Offers page.
+              Click &quot;Add From Inventory&quot; to pick existing sarees, or &quot;Add New Sarees&quot; to add new stock straight
+              to the Special Offers page.
             </p>
           </div>
         ) : (
@@ -159,6 +176,31 @@ export default function SaleManager({ inventory, onUpdateProduct }: SaleManagerP
           </div>
         )}
       </div>
+
+      {isNewSareeOpen && onBulkRestock && (
+        // No backdrop blur here: it would trap Bulk Upload's own pop-ups inside this panel.
+        <div className="fixed inset-0 z-60 flex flex-col bg-[#F7F3EE]" role="dialog" aria-modal="true" aria-label="Add new Special Offer sarees">
+          <div className="flex items-center justify-between gap-3 border-b border-stone-200 bg-white px-4 py-3 sm:px-6">
+            <div className="min-w-0">
+              <h3 className="font-display font-bold text-base text-stone-900">Add New Special Offer Sarees</h3>
+              <p className="text-xs text-stone-500">
+                Same as Bulk Upload: new stock is added to inventory and every saree goes straight to the Special Offers page (₹2,500).
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsNewSareeOpen(false)}
+              className="flex shrink-0 items-center gap-1.5 rounded-xl border border-stone-200 px-3 py-1.5 text-xs font-semibold text-stone-600 hover:bg-stone-50"
+            >
+              <FiX size={14} />
+              <span>Done</span>
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-3 sm:p-6">
+            <BulkStock inventory={inventory} categories={categories} onBulkRestock={onBulkRestock} forceSpecialOffer />
+          </div>
+        </div>
+      )}
 
       {isAddSareeModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">

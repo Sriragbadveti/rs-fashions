@@ -16,6 +16,7 @@ import {
   POLICY_LINKS,
   mailtoLink,
 } from "../../config/business";
+import { sicoPatternLink } from "../../config/sareePatterns";
 
 /** Business identity + support line, shared by the full and the slim footer. */
 function BusinessLine({ className = "" }: { className?: string }) {
@@ -60,11 +61,11 @@ function HomeFooter() {
     {
       title: "Explore Sarees",
       links: [
-        { label: "Checks", path: "/shop?search=Checks" },
-        { label: "Gatti Borders", path: "/shop?search=Gatti+borders" },
-        { label: "Ma Inti Bangaram", path: "/shop?search=Ma+inti+Bangaram" },
-        { label: "Big Kanchi Borders", path: "/shop?search=Big+Kanchi" },
-        { label: "Gap Border", path: "/shop?search=Gap+Border" },
+        { label: "Checks", path: sicoPatternLink("Checks") },
+        { label: "Gatti Borders", path: sicoPatternLink("Gatti Border") },
+        { label: "Maa Inti Bangaram", path: sicoPatternLink("Maa Inti Bangaram") },
+        { label: "Kanchi Big Borders", path: sicoPatternLink("Kanchi Big Borders") },
+        { label: "Gap Border", path: sicoPatternLink("Gap Border") },
       ],
     },
     {
