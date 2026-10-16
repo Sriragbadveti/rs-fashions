@@ -12,6 +12,8 @@ export interface ProductCardProps {
   showBorderBadge?: boolean;
   /** "20% Off" / "Special Offer" tag on the photo (hidden on the Special Offers page). */
   showDiscountBadge?: boolean;
+  /** Crossed-out higher price next to the price (hidden on the Special Offers page). */
+  showOriginalPrice?: boolean;
 }
 
 export default function ProductCard({
@@ -19,6 +21,7 @@ export default function ProductCard({
   className = "",
   showBorderBadge = true,
   showDiscountBadge = true,
+  showOriginalPrice = true,
 }: ProductCardProps) {
   const { items = [], addToCart } = useCart() as any;
   const [justAdded, setJustAdded] = useState(false);
@@ -194,7 +197,7 @@ export default function ProductCard({
             <span className="text-sm sm:text-base font-bold text-[#2A2421]">
               ₹{price.toLocaleString("en-IN")}
             </span>
-            {originalPrice && originalPrice > price && (
+            {showOriginalPrice && originalPrice && originalPrice > price && (
               <span className="text-[11px] text-stone-400 line-through">
                 ₹{originalPrice.toLocaleString("en-IN")}
               </span>

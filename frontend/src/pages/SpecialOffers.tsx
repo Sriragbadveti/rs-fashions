@@ -67,7 +67,7 @@ export default function SpecialOffers() {
         {offers.length > 0 ? (
           <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">
             {offers.map((product) => (
-              <ProductCard key={product.id} product={product} showDiscountBadge={false} />
+              <ProductCard key={product.id} product={product} showDiscountBadge={false} showOriginalPrice={false} />
             ))}
           </div>
         ) : (
