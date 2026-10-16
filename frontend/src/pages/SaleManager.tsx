@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
-import { FiTag, FiPlus, FiTrash2, FiImage, FiX, FiSearch, FiUploadCloud } from "react-icons/fi";
+import { useMemo, useRef, useState } from "react";
+import { FiTag, FiPlus, FiTrash2, FiImage, FiX, FiSearch, FiUploadCloud, FiUpload, FiStar } from "react-icons/fi";
+import { StoreService } from "../services/supabase";
 import type { Product, Category } from "../types/inventory";
 import BulkStock from "./BulkStock";
 import type { BulkRestockResult } from "../types/bulkstock";
@@ -17,6 +18,10 @@ interface SaleManagerProps {
 
 const OFFER_TAGS = ["special_offer", "special_edition", "limited_edition"];
 
+const imagesOf = (p: Product): string[] => {
+  const list = Array.isArray((p as any).images) ? ((p as any).images as string[]).filter(Boolean) : [];
+  return list.length > 0 ? list : p.imageUrl ? [p.imageUrl] : [];
+};
 const imageOf = (p: Product) => p.imageUrl || (p as any).images?.[0] || "";
 const categoryOf = (p: Product) => (p as any).category || p.categoryId || "SiCo Gadwal Sarees";
 
@@ -31,6 +36,57 @@ export default function SaleManager({ inventory, onUpdateProduct, categories = [
   const [isAddSareeModalOpen, setIsAddSareeModalOpen] = useState(false);
   const [isNewSareeOpen, setIsNewSareeOpen] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [photoTarget, setPhotoTarget] = useState<Product | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // The saree being edited, read fresh from inventory so saved changes show straight away.
+  const photoProduct = photoTarget ? inventory.find((p) => p.id === photoTarget.id) || photoTarget : null;
+
+  const savePhotos = async (product: Product, images: string[]) => {
+    const ok = await onUpdateProduct({ ...product, images, imageUrl: images[0] || "" } as Product);
+    return ok !== false;
+  };
+
+  const addPhotos = async (files: FileList | null) => {
+    if (!photoProduct || !files || files.length === 0) return;
+    setUploading(true);
+    try {
+      const uploaded: string[] = [];
+      for (const file of Array.from(files)) {
+        try {
+          const res = await StoreService.uploadImage(file);
+          if (res?.success && res.url) uploaded.push(res.url);
+          else toast("Picture not uploaded", `${file.name}: ${res?.message || "upload failed"}`, "error");
+        } catch (err: any) {
+          toast("Picture not uploaded", `${file.name}: ${err?.message || "upload failed"}`, "error");
+        }
+      }
+      if (uploaded.length > 0) {
+        const ok = await savePhotos(photoProduct, [...imagesOf(photoProduct), ...uploaded]);
+        if (ok) toast("Pictures saved", `${uploaded.length} picture${uploaded.length > 1 ? "s" : ""} added to ${photoProduct.name}.`, "success");
+      }
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const removePhoto = async (idx: number) => {
+    if (!photoProduct) return;
+    const current = imagesOf(photoProduct);
+    if (current.length <= 1) {
+      toast("Keep one picture", "A saree needs at least one picture. Add another before removing this one.", "info");
+      return;
+    }
+    await savePhotos(photoProduct, current.filter((_, i) => i !== idx));
+  };
+
+  const makeMainPhoto = async (idx: number) => {
+    if (!photoProduct || idx === 0) return;
+    const current = imagesOf(photoProduct);
+    await savePhotos(photoProduct, [current[idx], ...current.filter((_, i) => i !== idx)]);
+  };
 
   const offerProducts = useMemo(() => inventory.filter((p) => isSpecialOfferProduct(p as any)), [inventory]);
 
@@ -158,6 +214,14 @@ export default function SaleManager({ inventory, onUpdateProduct, categories = [
                     {categoryOf(p)}
                   </span>
                   <h3 className="font-display font-semibold text-xs text-stone-900 truncate">{p.name}</h3>
+                  <button
+                    type="button"
+                    onClick={() => setPhotoTarget(p)}
+                    className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl border border-stone-200 text-[11px] font-semibold text-stone-700 hover:border-[#8E3D51] hover:text-[#8E3D51] transition-colors"
+                  >
+                    <FiImage size={12} />
+                    <span>Add / Change Pictures ({imagesOf(p).length})</span>
+                  </button>
                   <div className="flex items-center justify-between pt-2 border-t border-stone-100">
                     <span className="text-xs font-bold text-stone-900">₹2,500</span>
                     <button
@@ -176,6 +240,71 @@ export default function SaleManager({ inventory, onUpdateProduct, categories = [
           </div>
         )}
       </div>
+
+      {photoProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl space-y-4 border border-stone-200 max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+              <div className="min-w-0">
+                <h3 className="font-display font-bold text-base text-stone-900">Pictures</h3>
+                <p className="text-xs text-stone-500 truncate">{photoProduct.name}</p>
+              </div>
+              <button type="button" onClick={() => setPhotoTarget(null)} className="text-stone-400 hover:text-stone-600 p-1">
+                <FiX size={16} />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto flex-1 pr-1">
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                {imagesOf(photoProduct).map((url, idx) => (
+                  <div key={`${url}-${idx}`} className="relative aspect-[3/4] rounded-xl overflow-hidden border border-stone-200 bg-stone-100">
+                    <img {...variantImgProps(url, "sm")} alt={`${photoProduct.name} ${idx + 1}`} className="w-full h-full object-cover" />
+                    {idx === 0 && (
+                      <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-full bg-[#8E3D51] text-white text-[9px] font-bold uppercase tracking-wider">
+                        Main
+                      </span>
+                    )}
+                    <div className="absolute inset-x-0 bottom-0 flex justify-between p-1.5 bg-linear-to-t from-black/60 to-transparent">
+                      {idx !== 0 ? (
+                        <button type="button" onClick={() => makeMainPhoto(idx)} title="Make main picture" className="p-1 rounded-lg bg-white/90 text-stone-800 hover:bg-white">
+                          <FiStar size={12} />
+                        </button>
+                      ) : <span />}
+                      <button type="button" onClick={() => removePhoto(idx)} title="Remove picture" className="p-1 rounded-lg bg-white/90 text-rose-600 hover:bg-white">
+                        <FiTrash2 size={12} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+
+                <button
+                  type="button"
+                  disabled={uploading}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="aspect-[3/4] rounded-xl border-2 border-dashed border-stone-300 text-stone-500 hover:border-[#8E3D51] hover:text-[#8E3D51] flex flex-col items-center justify-center gap-1.5 text-[11px] font-semibold transition-colors disabled:opacity-50"
+                >
+                  <FiUpload size={18} />
+                  <span>{uploading ? "Uploading..." : "Add pictures"}</span>
+                </button>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={(e) => addPhotos(e.target.files)}
+              />
+            </div>
+
+            <div className="pt-3 border-t border-stone-100 flex justify-end">
+              <button type="button" onClick={() => setPhotoTarget(null)} className="px-4 py-2 rounded-xl border border-stone-200 text-xs font-semibold text-stone-600 hover:bg-stone-50">
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {isNewSareeOpen && onBulkRestock && (
         // No backdrop blur here: it would trap Bulk Upload's own pop-ups inside this panel.
