@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { handleSareeImageError } from "../../utils/imageConverter";
+import { sicoPatternLink, type SicoPattern } from "../../config/sareePatterns";
 import tempImg1 from "../../assets/images/all.jpg";
 import tempImg2 from "../../assets/images/Kanchi borders.jpg";
 import tempImg3 from "../../assets/images/Vintage checks.jpg";
@@ -39,7 +40,8 @@ export interface ShowcaseItem {
   name: string;
   image: string;
   bgColor: string;
-  pattern: string;
+  /** Shop pattern this slide opens ("All" = every SiCo Gadwal saree). */
+  pattern: SicoPattern | "All";
   category: string;
   material: string;
 }
@@ -59,16 +61,16 @@ export const FALLBACK_SHOWCASE_ITEMS: ShowcaseItem[] = [
     name: "KANCHI BORDER",
     image: tempImg2,
     bgColor: "#e8a3ab",
-    pattern: "Kanchi Borders",
+    pattern: "Kanchi Big Borders",
     category: "SiCo Gadwal Sarees",
     material: "SiCo",
   },
   {
     id: "showcase-teal-checks",
-    name: "Vintage Checks",
+    name: "Checks",
     image: tempImg3,
     bgColor: "#7a1332",
-    pattern: "Vintage Checks",
+    pattern: "Checks",
     category: "SiCo Gadwal Sarees",
     material: "SiCo",
   },
@@ -100,6 +102,11 @@ export const FALLBACK_SHOWCASE_ITEMS: ShowcaseItem[] = [
     material: "SiCo",
   },
 ];
+
+/** Shop page a showcase slide opens. */
+function showcaseShopLink(item: Pick<ShowcaseItem, "pattern">): string {
+  return item.pattern === "All" ? "/shop?material=SiCo" : sicoPatternLink(item.pattern);
+}
 
 function bezierPoint(
   t: number,
@@ -259,21 +266,10 @@ export default function ProductShowcase() {
     touchEndX.current = null;
   };
 
-  const handleShopRedirect = (filterQuery?: string) => {
-    const query = (
-      filterQuery ||
-      activeItem.pattern ||
-      activeItem.category ||
-      ""
-    ).trim();
-
-    if (query) {
-      const params = new URLSearchParams();
-      params.set("search", query);
-      navigate(`/shop?${params.toString()}`);
-    } else {
-      navigate("/shop");
-    }
+  // Opens the slide's pattern page (the same page the menu opens). A text search on the slide
+  // title ("KANCHI BORDER", "GATTI BORDER Gadwal"...) matched no saree names and showed nothing.
+  const handleShopRedirect = () => {
+    navigate(showcaseShopLink(activeItem));
   };
 
   const resolvedActiveImg = resolveAssetSrc(activeItem.image);
@@ -806,7 +802,7 @@ export default function ProductShowcase() {
 
           <div
             className={`psc-visual-card ${slideState}`}
-            onClick={() => handleShopRedirect(activeItem.name)}
+            onClick={handleShopRedirect}
             title={`View ${activeItem.name} in shop`}
           >
             {/* Ambient diffused backdrop so any letterboxing has natural saree aura */}
@@ -843,7 +839,7 @@ export default function ProductShowcase() {
 
           <h2
             className="psc-title"
-            onClick={() => handleShopRedirect(activeItem.name)}
+            onClick={handleShopRedirect}
           >
             {activeItem.name}
           </h2>
@@ -851,7 +847,7 @@ export default function ProductShowcase() {
           <button
             type="button"
             className="psc-cta-btn"
-            onClick={() => handleShopRedirect(activeItem.name)}
+            onClick={handleShopRedirect}
           >
             Explore in Shop <span>&#8599;</span>
           </button>

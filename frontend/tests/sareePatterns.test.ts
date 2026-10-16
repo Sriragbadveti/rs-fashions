@@ -19,3 +19,14 @@ test("landing-page tiles and footer link to patterns, never to a plain text sear
     assert.match(src, /sicoPatternLink\(/);
   }
 });
+
+test("showcase carousel slides open pattern pages, not a text search of the slide title", () => {
+  const src = read("../src/components/home/ProductShowcase.tsx");
+  assert.doesNotMatch(src, /params\.set\("search"/);
+  assert.match(src, /sicoPatternLink\(/);
+  const patterns = [...src.matchAll(/pattern: "([^"]+)",/g)].map((m) => m[1]);
+  assert.ok(patterns.length >= 6, "found the slides");
+  for (const p of patterns) {
+    assert.ok(p === "All" || (SICO_PATTERNS as readonly string[]).includes(p), `slide pattern "${p}" is a real shop pattern`);
+  }
+});
