@@ -1,4 +1,5 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { FiTag, FiPlus, FiTrash2, FiImage, FiX, FiSearch, FiUploadCloud, FiUpload, FiStar } from "react-icons/fi";
 import { StoreService } from "../services/supabase";
 import type { Product, Category } from "../types/inventory";
@@ -7,6 +8,14 @@ import type { BulkRestockResult } from "../types/bulkstock";
 import { useModal } from "../context/ModalContext";
 import { variantImgProps } from "../utils/imageVariants";
 import { isSpecialOfferProduct } from "../utils/specialOffer";
+
+/**
+ * Pop-ups render at the top of the page (not inside the admin's content area), so the admin
+ * sidebar can never sit on top of them and hide part of the form.
+ */
+function AboveAdminLayout({ children }: { children: ReactNode }) {
+  return typeof document === "undefined" ? <>{children}</> : createPortal(children, document.body);
+}
 
 interface SaleManagerProps {
   inventory: Product[];
@@ -242,7 +251,8 @@ export default function SaleManager({ inventory, onUpdateProduct, categories = [
       </div>
 
       {photoProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <AboveAdminLayout>
+        <div className="fixed inset-0 z-1000 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl space-y-4 border border-stone-200 max-h-[85vh] flex flex-col">
             <div className="flex items-center justify-between border-b border-stone-100 pb-3">
               <div className="min-w-0">
@@ -304,11 +314,13 @@ export default function SaleManager({ inventory, onUpdateProduct, categories = [
             </div>
           </div>
         </div>
+        </AboveAdminLayout>
       )}
 
       {isNewSareeOpen && onBulkRestock && (
-        // No backdrop blur here: it would trap Bulk Upload's own pop-ups inside this panel.
-        <div className="fixed inset-0 z-60 flex flex-col bg-[#F7F3EE]" role="dialog" aria-modal="true" aria-label="Add new Special Offer sarees">
+        <AboveAdminLayout>
+        {/* No backdrop blur here: it would trap Bulk Upload's own pop-ups inside this panel. */}
+        <div className="fixed inset-0 z-1000 flex flex-col bg-[#F7F3EE]" role="dialog" aria-modal="true" aria-label="Add new Special Offer sarees">
           <div className="flex items-center justify-between gap-3 border-b border-stone-200 bg-white px-4 py-3 sm:px-6">
             <div className="min-w-0">
               <h3 className="font-display font-bold text-base text-stone-900">Add New Special Offer Sarees</h3>
@@ -329,10 +341,12 @@ export default function SaleManager({ inventory, onUpdateProduct, categories = [
             <BulkStock inventory={inventory} categories={categories} onBulkRestock={onBulkRestock} forceSpecialOffer />
           </div>
         </div>
+        </AboveAdminLayout>
       )}
 
       {isAddSareeModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <AboveAdminLayout>
+        <div className="fixed inset-0 z-1000 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl space-y-4 border border-stone-200 max-h-[85vh] flex flex-col">
             <div className="flex items-center justify-between border-b border-stone-100 pb-3">
               <div>
@@ -401,6 +415,7 @@ export default function SaleManager({ inventory, onUpdateProduct, categories = [
             </div>
           </div>
         </div>
+        </AboveAdminLayout>
       )}
     </div>
   );
