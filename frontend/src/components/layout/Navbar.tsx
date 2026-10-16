@@ -8,6 +8,7 @@ import { Store, Package, MapPin, LogOut, User as UserIcon, ChevronDown } from "l
 import { useCart } from "../../context/CartContext";
 import { festivalMarqueeText } from "../../utils/festivalOffer";
 import { computeBundleOffer } from "../../utils/specialOffer";
+import { sicoPatternLink, type SicoPattern } from "../../config/sareePatterns";
 import { getUserSession, clearUserSession, USER_SESSION_EVENT, type UserSession } from "../../utils/userSession";
 
 import CartDrawer from "../cart/CartDrawer";
@@ -425,11 +426,15 @@ function Navbar() {
 
                     <div className="no-scrollbar mt-3 flex items-center gap-2 overflow-x-auto pb-1">
                       <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wider text-stone-400">Trending:</span>
-                      {["Checks", "Gatti Borders", "Ma Inti Bangaram", "Big Kanchi"].map((tag) => (
+                      {(["Checks", "Gatti Border", "Maa Inti Bangaram", "Kanchi Big Borders"] as SicoPattern[]).map((tag) => (
                         <button
                           key={tag}
                           type="button"
-                          onClick={() => setSearchQuery(tag)}
+                          onClick={() => {
+                            setIsSearchOpen(false);
+                            setSearchQuery("");
+                            navigate(sicoPatternLink(tag));
+                          }}
                           className="shrink-0 rounded-full border border-stone-200 bg-white/70 px-2.5 py-0.5 text-[10px] font-medium text-stone-700 transition-colors hover:border-[#8E3D51] hover:text-[#8E3D51]"
                         >
                           {tag}

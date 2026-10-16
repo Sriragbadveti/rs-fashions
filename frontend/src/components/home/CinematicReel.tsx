@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
 import { ArrowUpRight } from "lucide-react";
+import { sicoPatternLink } from "../../config/sareePatterns";
 // Guaranteed verified local high-resolution saree assets
 import sicoGreenKuttu from "../../assets/images/Home.jpg";
 import roseKanchiZari from "../../assets/images/Home1.jpg";
@@ -36,27 +37,27 @@ function humanizeText(text?: string): string {
 const GUARANTEED_EDITORIAL_SAREES: ReelItem[] = [
   {
     id: "sico-green-kuttu",
-    name: "Kanchi Big Border",
+    name: "Kanchi Big Borders",
     category: "SiCo Gadwal Sarees",
     material: "Pure Silk & Cotton",
     image: sicoGreenKuttu,
-    link: "/shop?search=Kuttu+Borders",
+    link: sicoPatternLink("Kanchi Big Borders"),
   },
   {
     id: "rose-kanchi-zari",
-    name: "Equal Border",
+    name: "Equal Borders",
     category: "SiCo Gadwal Sarees",
     material: "Pure Silk & Cotton",
     image: roseKanchiZari,
-    link: "/shop?search=Big+Kanchi",
+    link: sicoPatternLink("Equal Borders"),
   },
   {
     id: "teal-royal-checks",
-    name: "Vintage Checks",
+    name: "Checks",
     category: "SiCo Gadwal Sarees",
     material: "Pure Silk & Cotton",
     image: tealRoyalChecks,
-    link: "/shop?search=Vintage+Checks",
+    link: sicoPatternLink("Checks"),
   },
   {
     id: "pit-loom-crimson",
@@ -64,7 +65,7 @@ const GUARANTEED_EDITORIAL_SAREES: ReelItem[] = [
     category: "SiCo Gadwal Sarees",
     material: "Pure Silk & Cotton",
     image: pitLoomCrimson,
-    link: "/shop?search=Ma+Inti+Bangaram",
+    link: sicoPatternLink("Maa Inti Bangaram"),
   },
   {
     id: "mustard-gatti-gadwal",
@@ -72,7 +73,7 @@ const GUARANTEED_EDITORIAL_SAREES: ReelItem[] = [
     category: "SiCo Gadwal Sarees",
     material: "Pure Silk & Cotton",
     image: sicoGreenKuttu,
-    link: "/shop?search=Gatti+Borders",
+    link: sicoPatternLink("Gap Border"),
   },
 ];
 

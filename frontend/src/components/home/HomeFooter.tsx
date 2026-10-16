@@ -62,7 +62,7 @@ function HomeFooter() {
       title: "Explore Sarees",
       links: [
         { label: "Checks", path: sicoPatternLink("Checks") },
-        { label: "Gatti Borders", path: sicoPatternLink("Gatti Border") },
+        { label: "Gatti Border", path: sicoPatternLink("Gatti Border") },
         { label: "Maa Inti Bangaram", path: sicoPatternLink("Maa Inti Bangaram") },
         { label: "Kanchi Big Borders", path: sicoPatternLink("Kanchi Big Borders") },
         { label: "Gap Border", path: sicoPatternLink("Gap Border") },

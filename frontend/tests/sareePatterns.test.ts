@@ -8,8 +8,10 @@ const read = (p: string) => fs.readFileSync(new URL(p, import.meta.url), "utf8")
 test("pattern links are the same filtered pages the hamburger menu opens", () => {
   assert.equal(sicoPatternLink("Maa Inti Bangaram"), "/shop?material=SiCo&category=Maa+Inti+Bangaram");
   assert.equal(sicoPatternLink("Kanchi Big Borders"), "/shop?material=SiCo&category=Kanchi+Big+Borders");
+  // The menu builds its pattern links from the same list.
   const menu = read("../src/components/layout/MobileMenu.tsx");
-  for (const p of SICO_PATTERNS) assert.ok(menu.includes(`"${sicoPatternLink(p)}"`), `menu has ${p}`);
+  assert.match(menu, /SICO_PATTERNS\.map\(\(pattern\) => \(\{ label: pattern, path: sicoPatternLink\(pattern\) \}\)\)/);
+  for (const p of SICO_PATTERNS) assert.match(sicoPatternLink(p), /^\/shop\?material=SiCo&category=/);
 });
 
 test("landing-page tiles and footer link to patterns, never to a plain text search", () => {

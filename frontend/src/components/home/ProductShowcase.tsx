@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { handleSareeImageError } from "../../utils/imageConverter";
-import { sicoPatternLink, type SicoPattern } from "../../config/sareePatterns";
+import { SICO_ALL_LABEL, SICO_ALL_LINK, sicoPatternLink, type SicoPattern } from "../../config/sareePatterns";
 import tempImg1 from "../../assets/images/all.jpg";
 import tempImg2 from "../../assets/images/Kanchi borders.jpg";
 import tempImg3 from "../../assets/images/Vintage checks.jpg";
@@ -49,7 +49,7 @@ export interface ShowcaseItem {
 export const FALLBACK_SHOWCASE_ITEMS: ShowcaseItem[] = [
   {
     id: "showcase-emerald-gadwal",
-    name: "SiCo GADWAL Sarees",
+    name: SICO_ALL_LABEL,
     image: tempImg1,
     bgColor: "#d8b98a",
     pattern: "All",
@@ -58,7 +58,7 @@ export const FALLBACK_SHOWCASE_ITEMS: ShowcaseItem[] = [
   },
   {
     id: "showcase-rose-gadwal",
-    name: "KANCHI BORDER",
+    name: "Kanchi Big Borders",
     image: tempImg2,
     bgColor: "#e8a3ab",
     pattern: "Kanchi Big Borders",
@@ -76,7 +76,7 @@ export const FALLBACK_SHOWCASE_ITEMS: ShowcaseItem[] = [
   },
   {
     id: "showcase-mustard-gatti",
-    name: "GATTI BORDER Gadwal",
+    name: "Gatti Border",
     image: tempImg4,
     bgColor: "#d99b26",
     pattern: "Gatti Border",
@@ -94,7 +94,7 @@ export const FALLBACK_SHOWCASE_ITEMS: ShowcaseItem[] = [
   },
   {
     id: "showcase-ruby-heritage",
-    name: "MAA INTI BANGARAM",
+    name: "Maa Inti Bangaram",
     image: tempImg6,
     bgColor: "#a01e2e",
     pattern: "Maa Inti Bangaram",
@@ -105,7 +105,7 @@ export const FALLBACK_SHOWCASE_ITEMS: ShowcaseItem[] = [
 
 /** Shop page a showcase slide opens. */
 function showcaseShopLink(item: Pick<ShowcaseItem, "pattern">): string {
-  return item.pattern === "All" ? "/shop?material=SiCo" : sicoPatternLink(item.pattern);
+  return item.pattern === "All" ? SICO_ALL_LINK : sicoPatternLink(item.pattern);
 }
 
 function bezierPoint(
@@ -267,7 +267,7 @@ export default function ProductShowcase() {
   };
 
   // Opens the slide's pattern page (the same page the menu opens). A text search on the slide
-  // title ("KANCHI BORDER", "GATTI BORDER Gadwal"...) matched no saree names and showed nothing.
+  // title matched no saree names and showed nothing.
   const handleShopRedirect = () => {
     navigate(showcaseShopLink(activeItem));
   };
@@ -835,7 +835,7 @@ export default function ProductShowcase() {
         </div>
 
         <div className={`psc-info-panel ${infoHidden ? "info-hidden" : ""}`}>
-          <span className="psc-badge">{activeItem.pattern || activeItem.category}</span>
+          <span className="psc-badge">{activeItem.category}</span>
 
           <h2
             className="psc-title"

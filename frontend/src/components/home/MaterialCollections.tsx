@@ -26,7 +26,7 @@ const materials: MaterialItem[] = [
   },
   {
     id: "gatti-border",
-    name: "Gatti Borders",
+    name: "Gatti Border",
     accent: "from-emerald-600/80 to-teal-500/80",
     borderGlow: "hover:border-emerald-400/60",
     link: sicoPatternLink("Gatti Border"),

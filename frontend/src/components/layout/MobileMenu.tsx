@@ -14,6 +14,7 @@ import {
   type UserSession,
 } from "../../utils/userSession";
 import logo from "../../assets/logo/logo1.png";
+import { SICO_ALL_LABEL, SICO_ALL_LINK, SICO_PATTERNS, sicoPatternLink } from "../../config/sareePatterns";
 
 interface MobileMenuProps {
   onClose: () => void;
@@ -33,15 +34,10 @@ const sortOptions = [
 ];
 
 // Every pattern ("vertical") of the SiCo Gadwal range, with an "All" link on top.
+// These names are THE category names used everywhere on the site (config/sareePatterns.ts).
 const sicoSubcategories = [
-  { label: "All SiCo Gadwal Sarees", path: "/shop?material=SiCo" },
-  { label: "Checks", path: "/shop?material=SiCo&category=Checks" },
-  { label: "Equal Borders", path: "/shop?material=SiCo&category=Equal+Borders" },
-  { label: "Kanchi Big Borders", path: "/shop?material=SiCo&category=Kanchi+Big+Borders" },
-  { label: "Vintage Checks", path: "/shop?material=SiCo&category=Vintage+Checks" },
-  { label: "Gatti Border", path: "/shop?material=SiCo&category=Gatti+Border" },
-  { label: "Gap Border", path: "/shop?material=SiCo&category=Gap+Border" },
-  { label: "Maa Inti Bangaram", path: "/shop?material=SiCo&category=Maa+Inti+Bangaram" },
+  { label: SICO_ALL_LABEL, path: SICO_ALL_LINK },
+  ...SICO_PATTERNS.map((pattern) => ({ label: pattern, path: sicoPatternLink(pattern) })),
 ];
 
 // A section with `path` (and no items) is a single link instead of an expandable list.

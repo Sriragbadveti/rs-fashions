@@ -15,6 +15,10 @@ export const SICO_PATTERNS = [
 ] as const;
 export type SicoPattern = (typeof SICO_PATTERNS)[number];
 
+/** Name and page of the SiCo Gadwal "All" entry (menu section top link). */
+export const SICO_ALL_LABEL = "All SiCo Gadwal Sarees";
+export const SICO_ALL_LINK = "/shop?material=SiCo";
+
 /** Shop page listing one SiCo Gadwal pattern. */
 export function sicoPatternLink(pattern: SicoPattern): string {
   return `/shop?material=SiCo&category=${encodeURIComponent(pattern).replace(/%20/g, "+")}`;
