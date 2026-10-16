@@ -10,12 +10,15 @@ export interface ProductCardProps {
   product: Product;
   className?: string;
   showBorderBadge?: boolean;
+  /** "20% Off" / "Special Offer" tag on the photo (hidden on the Special Offers page). */
+  showDiscountBadge?: boolean;
 }
 
 export default function ProductCard({
   product,
   className = "",
   showBorderBadge = true,
+  showDiscountBadge = true,
 }: ProductCardProps) {
   const { items = [], addToCart } = useCart() as any;
   const [justAdded, setJustAdded] = useState(false);
@@ -119,7 +122,7 @@ export default function ProductCard({
 
         {/* Badges Overlay */}
         <div className="pointer-events-none absolute left-2 top-2 z-10 flex flex-col gap-1">
-          {discountPercentage > 0 ? (
+          {!showDiscountBadge ? null : discountPercentage > 0 ? (
             <span className="rounded-full bg-[#8E3D51] px-2 py-0.5 text-[8px] font-bold uppercase tracking-wider text-white shadow-xs">
               {discountPercentage}% Off
             </span>
