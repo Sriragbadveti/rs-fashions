@@ -43,6 +43,7 @@ import {
   saveBorderColorToRegistry,
 } from "../components/admin/BorderColorInput";
 import { variantImgProps } from "../utils/imageVariants";
+import { SPECIAL_OFFER_PRICE } from "../utils/specialOffer";
 
 interface BulkStockProps {
   inventory: Product[];
@@ -504,7 +505,10 @@ export default function BulkStock({
   );
 
   const [purchasePrice, setPurchasePrice] = useState<string>("");
-  const [salePrice, setSalePrice] = useState<string>("");
+  const [salePriceInput, setSalePrice] = useState<string>("");
+  // From the Special Offers page the selling price is fixed at the Special Offer price and
+  // cannot be changed; everywhere else it is whatever the admin types.
+  const salePrice = forceSpecialOffer ? String(SPECIAL_OFFER_PRICE) : salePriceInput;
 
   const [bulkRows, setBulkRows] = useState<BulkRow[]>([
     {
@@ -990,7 +994,7 @@ export default function BulkStock({
         category: categoryName,
         material: batchSareeType,
         purchasePrice: purchasePrice ? Number(purchasePrice) : 0,
-        salePrice: salePrice ? Number(salePrice) : 0,
+        salePrice: forceSpecialOffer ? SPECIAL_OFFER_PRICE : salePrice ? Number(salePrice) : 0,
         tags: [
           "bulk-restock",
           orderMode === "dual" ? "dual-tone" : "single-tone",
@@ -1222,8 +1226,11 @@ export default function BulkStock({
           </div>
 
           <div>
-            <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.14em] text-stone-500">
-              Showroom Selling Price (₹)
+            <label className="mb-1.5 flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.14em] text-stone-500">
+              <span>Showroom Selling Price (₹)</span>
+              {forceSpecialOffer && (
+                <span className="normal-case tracking-normal text-[9.5px] font-semibold text-[#8E3D51]">Locked · Special Offer</span>
+              )}
             </label>
             <div className="relative">
               <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-stone-400">
@@ -1235,7 +1242,12 @@ export default function BulkStock({
                 placeholder="e.g. 1850"
                 value={salePrice}
                 onChange={(e) => setSalePrice(cleanPriceInput(e.target.value))}
-                className="h-11 w-full rounded-2xl border border-stone-200/80 bg-white/90 pl-8 pr-3 text-xs font-semibold text-stone-900 outline-none transition-all focus:border-[#D4A373] focus:ring-2 focus:ring-[#D4A373]/10"
+                readOnly={forceSpecialOffer}
+                disabled={forceSpecialOffer}
+                aria-label={forceSpecialOffer ? `Selling price locked at ₹${SPECIAL_OFFER_PRICE} for Special Offer sarees` : "Showroom selling price"}
+                title={forceSpecialOffer ? `Every Special Offer saree sells for ₹${SPECIAL_OFFER_PRICE}` : undefined}
+                data-testid="bulk-sale-price"
+                className={`h-11 w-full rounded-2xl border border-stone-200/80 pl-8 pr-3 text-xs font-semibold text-stone-900 outline-none transition-all focus:border-[#D4A373] focus:ring-2 focus:ring-[#D4A373]/10 ${forceSpecialOffer ? "cursor-not-allowed bg-stone-100" : "bg-white/90"}`}
               />
             </div>
           </div>

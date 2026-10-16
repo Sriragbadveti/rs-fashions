@@ -29,3 +29,16 @@ test("only products with the Special Offer setting qualify", () => {
   assert.equal(isSpecialOfferProduct({ tags: ["special_offer"] }), true);
   assert.equal(isSpecialOfferProduct({ isLimitedEdition: true }), true, "legacy edition products keep their intent");
 });
+
+test("sarees added from the Special Offers page are saved at the locked ₹2,500 price", async () => {
+  const fs = await import("node:fs");
+  const src = fs.readFileSync(new URL("../src/pages/BulkStock.tsx", import.meta.url), "utf8");
+  // The visible price and the saved price both come from SPECIAL_OFFER_PRICE in Special Offer mode,
+  // and the input cannot be edited there.
+  assert.match(src, /const salePrice = forceSpecialOffer \? String\(SPECIAL_OFFER_PRICE\) : salePriceInput;/);
+  assert.match(src, /salePrice: forceSpecialOffer \? SPECIAL_OFFER_PRICE :/);
+  assert.match(src, /readOnly=\{forceSpecialOffer\}/);
+  assert.match(src, /disabled=\{forceSpecialOffer\}/);
+  const sale = fs.readFileSync(new URL("../src/pages/SaleManager.tsx", import.meta.url), "utf8");
+  assert.match(sale, /<BulkStock[^>]*forceSpecialOffer/);
+});
