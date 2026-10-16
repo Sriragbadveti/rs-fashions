@@ -7,6 +7,7 @@ import "./index.css";
 
 import { CartProvider } from "./context/CartContext";
 import ScrollToTop from "./components/ScrollToTop";
+import UpdateOnNavigate from "./components/common/UpdateOnNavigate";
 import { installImageCdnFallback } from "./utils/imageVariants";
 import { initMonitoring } from "./utils/monitoring";
 
@@ -39,6 +40,7 @@ ReactDOM.createRoot(
     <BrowserRouter>
       <CartProvider>
         <ScrollToTop />
+        <UpdateOnNavigate />
         <App />
       </CartProvider>
     </BrowserRouter>
