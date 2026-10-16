@@ -11,6 +11,9 @@ const TrendingProducts = lazy(() => import("../components/home/TrendingProducts"
 const ProductShowcase = lazy(() => import("../components/home/ProductShowcase"));
 const CinematicReel = lazy(() => import("../components/home/CinematicReel"));
 
+// "Limited Edition & Trending Pieces" section. Hidden for now; set to true to bring it back.
+const SHOW_TRENDING_SECTION = false;
+
 function Home() {
   return (
     <motion.div
@@ -43,7 +46,9 @@ function Home() {
 
 
       {/* Trending Section: Exclusively displays sarees marked as Special Offer */}
-      <LazySection minHeight={520}><Suspense fallback={null}><TrendingProducts /></Suspense></LazySection>
+      {SHOW_TRENDING_SECTION && (
+        <LazySection minHeight={520}><Suspense fallback={null}><TrendingProducts /></Suspense></LazySection>
+      )}
 
       {/* Full-Screen Curved Lookbook Showcase */}
       <LazySection minHeight={600}><Suspense fallback={null}><ProductShowcase /></Suspense></LazySection>
